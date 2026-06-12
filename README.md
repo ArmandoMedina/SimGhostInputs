@@ -49,6 +49,21 @@ Salida de `compare`:
 - `delta.csv` — delta de tiempo y de canales cada N metros (para graficar).
 - `corners_compare.csv` — tabla por curva.
 
+## Nombres de curvas (opcional)
+
+El reporte usa IDs genéricos (`C01`, `C02`...) salvo que le des un archivo de curvas:
+
+```
+# 1. genera las curvas de TU referencia
+fantasma detect "referencia.csv" -o salida/
+# 2. edita salida/corners_detected.json y añade "name" a cada curva
+#    (y ajusta "tolerances" si quieres avisos más o menos sensibles)
+# 3. úsalo en las comparaciones
+fantasma compare --reference referencia.csv --driver mi_vuelta.csv --corners salida/corners_detected.json
+```
+
+Los nombres de curvas y sus metros son datos de la comunidad: comparte tu "track pack" JSON con otros pilotos del mismo circuito.
+
 ## Cómo capturar telemetría
 
 | Sim | Ruta recomendada |
