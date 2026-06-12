@@ -69,9 +69,18 @@ def cmd_compare(args):
     if args.corners:
         with open(args.corners, encoding="utf-8") as f:
             corners = json.load(f).get("corners")
+    if corners is None:
+        from .core.corners import detect_corners as _dc, extract_milestones as _em
+        ev, _ = _dc(ref)
+        corners = _em(ref, ev)
     trace, rows, summary = compare(ref, drv, step=args.step, corners=corners)
     meta = {"Referencia": args.reference, "Piloto": args.driver}
     report = write_outputs(args.output, trace, rows, summary, meta)
+    if not args.no_charts:
+        from .viz.charts import render_charts
+        charts = render_charts(trace, rows, corners, args.output, top=args.charts_top)
+        for c in charts:
+            print("-> %s" % c)
     print("Referencia: %.3fs | Piloto: %.3fs | Delta: %+.3fs" % (
         summary["ref_laptime"], summary["drv_laptime"],
         summary["drv_laptime"] - summary["ref_laptime"]))
@@ -107,6 +116,8 @@ def main(argv=None):
     sp.add_argument("--step", type=float, default=5.0, help="rejilla de distancia en m (default 5)")
     sp.add_argument("--map", action="append")
     sp.add_argument("-o", "--output", default="salida", help="carpeta de salida")
+    sp.add_argument("--no-charts", action="store_true", help="no generar graficas")
+    sp.add_argument("--charts-top", type=int, default=5, help="graficas de las N curvas con mayor perdida")
     sp.set_defaults(func=cmd_compare)
 
     args = p.parse_args(argv)
