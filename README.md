@@ -42,12 +42,21 @@ fantasma detect "referencia.csv" -o salida/
 
 # comparar tu vuelta contra la referencia
 fantasma compare --reference "referencia.csv" --driver "mi_vuelta.csv" -o salida/
+
+# video HUD transparente para superponer sobre tu grabación
+fantasma overlay --reference "referencia.csv" --driver "mi_vuelta.csv" -o salida/
 ```
 
 Salida de `compare`:
 - `report.md` — el debrief: dónde pierdes, cuánto y en qué fase de cada curva.
-- `delta.csv` — delta de tiempo y de canales cada N metros (para graficar).
-- `corners_compare.csv` — tabla por curva.
+- `delta_map.png` — delta acumulado de la vuelta completa con tus mayores pérdidas anotadas.
+- `curva_<ID>.png` — gráficas ghost (velocidad/gas/freno, tú vs referencia) de las curvas donde más pierdes.
+- `delta.csv` / `corners_compare.csv` — los datos, listos para graficar otra cosa.
+
+Salida de `overlay`:
+- `overlay.mov` — video HUD **con canal alfa** (ProRes 4444) sincronizado con el tiempo de tu vuelta: barras de freno/gas tuyas junto a las de la referencia en el mismo metro, velocidad, delta, curva actual y franja de velocidad. Arrástralo como pista superior en tu editor sobre la grabación real y alinea el segundo 0 con tu cruce de meta. También `--format webm` (VP9 con alfa, mucho más ligero) o `--format png` (frames sueltos).
+
+Documentación completa en [`docs/`](docs/): [guía de usuario](docs/guia-usuario.md) · [formato de datos](docs/formato-datos.md) · [cómo contribuir](CONTRIBUTING.md).
 
 ## Nombres de curvas (opcional)
 
