@@ -91,6 +91,29 @@ def cmd_compare(args):
     print("-> %s" % report)
 
 
+def cmd_overlay(args):
+    _, _, ref = _load_lap(args.reference, _parse_map(args.map))
+    _, _, drv = _load_lap(args.driver, _parse_map(args.map), args.lap)
+    corners = None
+    if args.corners:
+        with open(args.corners, encoding="utf-8") as f:
+            corners = json.load(f).get("corners")
+    else:
+        from .core.corners import detect_corners as _dc, extract_milestones as _em
+        ev, _ = _dc(ref)
+        corners = _em(ref, ev)
+    from .viz.overlay import render_overlay
+    import os
+    os.makedirs(args.output, exist_ok=True)
+
+    def progress(n, total):
+        print("  frame %d/%d (%.0f%%)" % (n, total, 100.0 * n / total))
+
+    out = render_overlay(ref, drv, corners, args.output, fps=args.fps, fmt=args.format,
+                         t_start=args.start, t_end=args.end, progress=progress)
+    print("-> %s" % out)
+
+
 def main(argv=None):
     p = argparse.ArgumentParser(prog="fantasma",
                                 description="Compara tus inputs contra una vuelta de referencia, por distancia.")
@@ -119,6 +142,20 @@ def main(argv=None):
     sp.add_argument("--no-charts", action="store_true", help="no generar graficas")
     sp.add_argument("--charts-top", type=int, default=5, help="graficas de las N curvas con mayor perdida")
     sp.set_defaults(func=cmd_compare)
+
+    sp = sub.add_parser("overlay", help="video HUD transparente para superponer sobre tu grabacion")
+    sp.add_argument("--reference", required=True)
+    sp.add_argument("--driver", required=True)
+    sp.add_argument("--lap", type=int, help="indice de vuelta del piloto (por defecto: la mas rapida)")
+    sp.add_argument("--corners", help="corners.json con nombres (opcional)")
+    sp.add_argument("--fps", type=int, default=30)
+    sp.add_argument("--format", choices=["prores", "webm", "png"], default="prores",
+                    help="prores=.mov 4444 con alfa (default), webm=VP9 con alfa, png=solo frames")
+    sp.add_argument("--start", type=float, default=0.0, help="segundo inicial de la vuelta")
+    sp.add_argument("--end", type=float, help="segundo final (por defecto: vuelta completa)")
+    sp.add_argument("--map", action="append")
+    sp.add_argument("-o", "--output", default="salida", help="carpeta de salida")
+    sp.set_defaults(func=cmd_overlay)
 
     args = p.parse_args(argv)
     try:
