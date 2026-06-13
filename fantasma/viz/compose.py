@@ -14,6 +14,18 @@ POSITIONS = {
 }
 
 
+def _nvenc_available(ffmpeg_path):
+    """Devuelve True si h264_nvenc está disponible en este ffmpeg."""
+    try:
+        r = subprocess.run(
+            [ffmpeg_path, "-hide_banner", "-encoders"],
+            capture_output=True, text=True,
+        )
+        return "h264_nvenc" in r.stdout
+    except Exception:
+        return False
+
+
 def _build_filter(position, scale, offset):
     px, py = POSITIONS.get(position, POSITIONS["bottom-right"])
     steps = []
@@ -59,18 +71,21 @@ def compose_video(video, overlay, output, position="bottom-right",
 
     fc = _build_filter(position, scale, offset)
 
+    use_nvenc = _nvenc_available(ffmpeg)
+    if use_nvenc:
+        video_enc = ["-c:v", "h264_nvenc", "-preset", "p4", "-rc", "vbr", "-cq", "18", "-b:v", "0"]
+    else:
+        video_enc = ["-c:v", "libx264", "-crf", "18", "-preset", "fast"]
+
     cmd = [
         ffmpeg, "-y",
         "-i", video,
         "-i", overlay,
         "-filter_complex", fc,
         "-map", "[out]",
-        "-map", "0:a?",          # audio de la grabación si lo tiene
-        "-c:v", "libx264",
-        "-crf", "18",
-        "-preset", "fast",
-        "-c:a", "aac",
-        "-b:a", "192k",
+        "-map", "0:a?",
+        *video_enc,
+        "-c:a", "aac", "-b:a", "192k",
         output,
     ]
     subprocess.run(cmd, check=True)
