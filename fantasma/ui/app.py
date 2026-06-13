@@ -97,17 +97,23 @@ if step == STEPS[0]:
         st.info("⬆️ Sube la vuelta de referencia para continuar.")
         st.stop()
 
-    # intentar cargar para detectar si necesita mapeo de columnas
-    with st.spinner("Leyendo archivo de referencia…"):
-        try:
-            _ref_path_tmp = _save_upload(ref_file, os.path.splitext(ref_file.name)[1])
-            ref_file.seek(0)
-            from fantasma import importers as _imp_ref
-            _imp_ref.load(_ref_path_tmp)
-            _ref_load_ok = True
-        except ValueError as _e:
-            _ref_load_ok = False
-            _ref_err = str(_e)
+    # intentar cargar para detectar si necesita mapeo de columnas (solo la primera vez)
+    _ref_cache_key = "ref_loaded_%s" % ref_file.file_id
+    if _ref_cache_key not in st.session_state:
+        with st.spinner("Leyendo archivo de referencia…"):
+            try:
+                _ref_path_tmp = _save_upload(ref_file, os.path.splitext(ref_file.name)[1])
+                ref_file.seek(0)
+                from fantasma import importers as _imp_ref
+                _imp_ref.load(_ref_path_tmp)
+                st.session_state[_ref_cache_key] = {"path": _ref_path_tmp, "ok": True}
+            except ValueError as _e:
+                st.session_state[_ref_cache_key] = {"path": _ref_path_tmp, "ok": False, "err": str(_e)}
+    _ref_cache = st.session_state[_ref_cache_key]
+    _ref_path_tmp = _ref_cache["path"]
+    _ref_load_ok  = _ref_cache["ok"]
+    if not _ref_load_ok:
+        _ref_err = _ref_cache.get("err", "")
 
     if not _ref_load_ok:
         st.warning("No pudimos detectar las columnas automáticamente. Indica cuáles son:")
@@ -136,20 +142,22 @@ if step == STEPS[0]:
         st.info("⬆️ Sube tu archivo de telemetría para continuar.")
         st.stop()
 
-    # detectar vueltas automáticamente y mostrar selector
+    # detectar vueltas automáticamente (solo la primera vez; cachear en session_state)
     lap_index = None
-    _detected_laps = []
-    with st.spinner("Leyendo vueltas de tu archivo…"):
-        try:
-            import tempfile as _tf
-            from fantasma import importers as _imp
-            from fantasma.core.normalize import split_laps as _sl
-            _tmp = _tf.NamedTemporaryFile(delete=False, suffix=os.path.splitext(drv_file.name)[1])
-            _tmp.write(drv_file.read()); _tmp.flush(); drv_file.seek(0)
-            _detected_laps = _sl(_imp.load(_tmp.name))
-        except Exception as _e:
-            st.error("No se pudo leer el archivo: %s" % _e)
-            st.stop()
+    _drv_cache_key = "drv_laps_%s" % drv_file.file_id
+    if _drv_cache_key not in st.session_state:
+        with st.spinner("Leyendo vueltas de tu archivo…"):
+            try:
+                import tempfile as _tf
+                from fantasma import importers as _imp
+                from fantasma.core.normalize import split_laps as _sl
+                _tmp = _tf.NamedTemporaryFile(delete=False, suffix=os.path.splitext(drv_file.name)[1])
+                _tmp.write(drv_file.read()); _tmp.flush(); drv_file.seek(0)
+                st.session_state[_drv_cache_key] = {"laps": _sl(_imp.load(_tmp.name)), "path": _tmp.name}
+            except Exception as _e:
+                st.error("No se pudo leer el archivo: %s" % _e)
+                st.stop()
+    _detected_laps = st.session_state[_drv_cache_key]["laps"]
 
     if _detected_laps:
         import pandas as _pd
@@ -252,11 +260,11 @@ if step == STEPS[0]:
     if st.button("Cargar y continuar →", type="primary"):
         with st.spinner("Procesando archivos…"):
             try:
-                ref_path = _save_upload(ref_file, os.path.splitext(ref_file.name)[1]) if ref_file else _ref_path_tmp
-                drv_path = _save_upload(drv_file, os.path.splitext(drv_file.name)[1])
+                ref_path = _ref_path_tmp
+                drv_path = st.session_state[_drv_cache_key]["path"]
 
                 _, ref_laps, ref_lap = _load_lap_cached(ref_path, ref_col_map)
-                _, drv_laps, _       = _load_lap_cached(drv_path)
+                drv_laps = st.session_state[_drv_cache_key]["laps"]
                 _sel_idxs = st.session_state.get("selected_lap_indices", [lap_index])
                 drv_lap   = drv_laps[_sel_idxs[0]] if _sel_idxs else drv_laps[lap_index]
 
