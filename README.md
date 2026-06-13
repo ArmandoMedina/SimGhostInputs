@@ -66,7 +66,7 @@ pip install -e ".[full]"                  # todo lo anterior
 | `Pillow` | Python opcional | `fantasma overlay` — renderizado de frames auxiliares | `pip install Pillow` |
 | `streamlit` + `pandas` | Python opcional | `fantasma ui` — interfaz gráfica local | `pip install 'fantasma-inputs[ui]'` |
 | `scipy` | Python opcional | `fantasma compose --auto-sync` — detección automática de offset video/telemetría | `pip install 'fantasma-inputs[sync]'` |
-| `ffmpeg` | Sistema opcional | Codificar `.webm`/`.mov` con canal alfa y `fantasma compose` | `winget install Gyan.FFmpeg` |
+| `ffmpeg` | Sistema opcional | Codificar `.webm`/`.mov` con canal alfa y `fantasma compose` (auto-detecta NVENC si hay GPU NVIDIA) | `winget install Gyan.FFmpeg` |
 | `gh` (GitHub CLI) | Sistema opcional | Publicar y gestionar el repositorio en GitHub | `winget install GitHub.cli` |
 
 ### Herramientas recomendadas para el flujo de video
@@ -99,7 +99,7 @@ fantasma compare --reference "referencia.csv" --driver "mi_vuelta.csv" -o salida
 # video HUD transparente para superponer sobre tu grabación
 fantasma overlay --reference "referencia.csv" --driver "mi_vuelta.csv" -o salida/
 
-# componer el overlay sobre tu grabación y obtener el video final
+# componer el overlay sobre tu grabación (usa NVENC automáticamente si hay GPU NVIDIA)
 fantasma compose --video "grabacion.mp4" --overlay "salida/overlay.webm" -o "resultado.mp4"
 
 # detectar offset automáticamente y componer en un solo paso (requiere scipy)
