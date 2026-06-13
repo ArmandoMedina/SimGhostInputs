@@ -1,6 +1,7 @@
 """UI local de SimGhostInputs — corre con: fantasma ui (o streamlit run app.py).
 
-Flujo de 4 pasos:
+Flujo:
+  0. Inicio    — guía de exportación y elección de objetivo
   1. Importar  — cargar archivos de referencia y piloto
   2. Comparar  — delta por metro, tabla por curva, gráficas
   3. Overlay   — generar el HUD animado (webm con alfa)
@@ -12,7 +13,6 @@ import tempfile
 
 import streamlit as st
 
-# ── configuración de página ───────────────────────────────────────────────────
 st.set_page_config(
     page_title="SimGhostInputs",
     page_icon="👻",
@@ -64,7 +64,6 @@ def _best_lap_index(laps):
 
 
 def _lap_table(laps, editor_key):
-    """Tabla de selección de vueltas con checkboxes. Devuelve lista de índices marcados."""
     import pandas as _pd
     best_i = _best_lap_index(laps)
     rows = []
@@ -92,17 +91,25 @@ def _lap_table(laps, editor_key):
 
 
 def _cache_file(uploaded_file):
-    """Carga y cachea un archivo subido por file_id. Devuelve dict con path y laps."""
     ck = "file_%s" % uploaded_file.file_id
     if ck not in st.session_state:
         with st.spinner("Leyendo archivo…"):
             try:
-                path  = _save_upload(uploaded_file, os.path.splitext(uploaded_file.name)[1])
-                laps  = _load_laps(path)
+                path = _save_upload(uploaded_file, os.path.splitext(uploaded_file.name)[1])
+                laps = _load_laps(path)
                 st.session_state[ck] = {"path": path, "laps": laps, "ok": True}
             except Exception as _e:
                 st.session_state[ck] = {"path": "", "laps": [], "ok": False, "err": str(_e)}
     return st.session_state[ck]
+
+
+def _img_or_placeholder(rel_path, caption):
+    """Muestra imagen si existe, si no un placeholder con la descripción."""
+    full = os.path.join(os.path.dirname(__file__), "..", "..", rel_path)
+    if os.path.exists(full):
+        st.image(full, caption=caption, use_container_width=True)
+    else:
+        st.info("📷 **Imagen pendiente:** %s" % caption)
 
 
 # ── posiciones del HUD ────────────────────────────────────────────────────────
@@ -116,31 +123,78 @@ _POS_LABELS = {
     "Centro":           "center",
 }
 
+# ── flujos disponibles ────────────────────────────────────────────────────────
+# Cada flujo define qué pasos son relevantes y qué entregables produce.
+_FLOWS = {
+    "📊 Solo análisis": {
+        "desc": "Tabla por curva, gráficas de velocidad/gas/freno y reporte exportable.",
+        "deliverables": ["📄 `report.md` — resumen narrativo por curva",
+                         "📊 `corners_compare.csv` — datos por curva en CSV",
+                         "📈 `delta.csv` — delta continuo metro a metro",
+                         "🖼️ Gráficas PNG por curva"],
+        "steps": [0, 1, 2],
+        "next": {1: 2, 2: None},
+    },
+    "🎬 Análisis + overlay HUD": {
+        "desc": "Todo lo anterior más un video transparente (.webm) con el HUD animado, listo para pegar sobre tu grabación en cualquier editor.",
+        "deliverables": ["Todo lo del análisis",
+                         "🎬 `overlay.webm` — HUD transparente con alfa (velocímetro, gas, freno, delta)"],
+        "steps": [0, 1, 2, 3],
+        "next": {1: 2, 2: 3, 3: None},
+    },
+    "🎥 Video completo con HUD": {
+        "desc": "Todo lo anterior más el video final ya compuesto, listo para subir o compartir.",
+        "deliverables": ["Todo lo del análisis + overlay",
+                         "🎥 `vuelta_composed.mp4` — tu grabación con el HUD ya integrado"],
+        "steps": [0, 1, 2, 3, 4],
+        "next": {1: 2, 2: 3, 3: 4, 4: None},
+    },
+}
+_DEFAULT_FLOW = "🎥 Video completo con HUD"
+
 
 # ── navegación ────────────────────────────────────────────────────────────────
 if "nav_step" not in st.session_state:
     st.session_state["nav_step"] = 0
+if "flow_key" not in st.session_state:
+    st.session_state["flow_key"] = _DEFAULT_FLOW
 
-_STEP_LABELS = ["Importar", "Comparar", "Overlay", "Componer"]
+_flow    = _FLOWS[st.session_state["flow_key"]]
+_STEPS   = ["Inicio", "Importar", "Comparar", "Overlay", "Componer"]
 
 def _step_done(i):
     return bool([
-        "ref_lap" in st.session_state,
-        "summary" in st.session_state,
+        "flow_key" in st.session_state,
+        "ref_lap"  in st.session_state,
+        "summary"  in st.session_state,
         "last_overlay" in st.session_state,
         False,
     ][i])
 
+def _step_in_flow(i):
+    return i in _flow["steps"]
+
 def _step_unlocked(i):
     if i == 0: return True
-    has = "ref_lap" in st.session_state
-    if i in (1, 2): return has
-    if i == 3: return has and "last_overlay" in st.session_state
+    if i == 1: return True
+    if i == 2: return "ref_lap" in st.session_state
+    if i == 3: return "ref_lap" in st.session_state
+    if i == 4: return "last_overlay" in st.session_state
     return False
 
 def _go(i):
     st.session_state["nav_step"] = i
     st.rerun()
+
+def _next_step_btn(current_step_idx):
+    """Botón 'siguiente paso' adaptado al flujo elegido."""
+    next_i = _flow["next"].get(current_step_idx)
+    if next_i is None:
+        st.success("✅ ¡Completaste todos los pasos de tu flujo!")
+    else:
+        label = "Ir al Paso %d — %s →" % (next_i, _STEPS[next_i])
+        if st.button(label, type="primary"):
+            _go(next_i)
 
 
 # ── sidebar ───────────────────────────────────────────────────────────────────
@@ -148,26 +202,115 @@ with st.sidebar:
     st.title("👻 SimGhostInputs")
     st.caption("Análisis de inputs de simracing por distancia")
     st.divider()
-    for _i, _lbl in enumerate(_STEP_LABELS):
-        _current  = st.session_state["nav_step"] == _i
-        _icon     = "▶️" if _current else ("✅" if _step_done(_i) else "○")
+    for _i, _lbl in enumerate(_STEPS):
+        _current    = st.session_state["nav_step"] == _i
+        _done       = _step_done(_i)
+        _in_flow    = _step_in_flow(_i)
+        _unlocked   = _step_unlocked(_i)
+        _icon       = "▶️" if _current else ("✅" if _done else ("○" if _in_flow else "·"))
+        _suffix     = "" if _in_flow else "  *(opcional)*"
         if st.button(
-            "%s  %d · %s" % (_icon, _i + 1, _lbl),
-            disabled=not _step_unlocked(_i),
+            "%s  %d · %s%s" % (_icon, _i, _lbl, _suffix),
+            disabled=not _unlocked,
             use_container_width=True,
             key="nav_%d" % _i,
         ):
             _go(_i)
     st.divider()
+    st.caption("Flujo: **%s**" % st.session_state["flow_key"])
     st.caption("Tus datos nunca salen de tu máquina.")
 
 step_idx = st.session_state["nav_step"]
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# PASO 1 — IMPORTAR
+# PASO 0 — INICIO
 # ══════════════════════════════════════════════════════════════════════════════
 if step_idx == 0:
+    st.markdown('<div class="step-header">👻 Bienvenido a SimGhostInputs</div>', unsafe_allow_html=True)
+    st.caption("Compara tus inputs de simracing contra una vuelta de referencia, curva a curva.")
+
+    # ── cómo exportar telemetría ──────────────────────────────────────────────
+    st.subheader("① Cómo exportar tu telemetría")
+    st.markdown(
+        "SimGhostInputs lee archivos **CSV o XLSX** exportados desde **Sim To MoTeC** "
+        "(un plugin gratuito que captura telemetría mientras corres en el sim)."
+    )
+
+    with st.expander("Ver guía de exportación paso a paso", expanded=True):
+        st.markdown("### 1. Instalar Sim To MoTeC")
+        st.markdown(
+            "Descarga e instala el plugin desde [Sim To MoTeC](https://www.sim-to-motec.com). "
+            "Compatible con AMS2, ACC, iRacing, rFactor 2 y más."
+        )
+        _img_or_placeholder("docs/guide/s2m_01_install.png", "Pantalla de instalación de Sim To MoTeC")
+
+        st.markdown("### 2. Activar la captura")
+        st.markdown(
+            "Abre la configuración del plugin y asegúrate de que la captura esté **activada**. "
+            "El plugin graba automáticamente cada vuelta mientras corres."
+        )
+        _img_or_placeholder("docs/guide/s2m_02_config.png", "Panel de configuración — captura activada")
+
+        st.markdown("### 3. Después de la sesión: abrir i2 Pro")
+        st.markdown(
+            "Abre **MoTeC i2 Pro** (se instala junto con Sim To MoTeC). "
+            "Tu sesión aparecerá en la lista de archivos recientes."
+        )
+        _img_or_placeholder("docs/guide/s2m_03_i2_main.png", "Pantalla principal de MoTeC i2 con la sesión cargada")
+
+        st.markdown("### 4. Exportar como CSV")
+        st.markdown(
+            "En i2 Pro: **File → Export → Channels as CSV**. "
+            "Selecciona todos los canales y guarda el archivo. "
+            "También puedes exportar como **XLSX** si prefieres Excel."
+        )
+        _img_or_placeholder("docs/guide/s2m_04_export.gif", "GIF: pasos para exportar CSV desde MoTeC i2")
+
+        st.info(
+            "💡 Exporta dos archivos: uno con la **vuelta de referencia** "
+            "(tu mejor tiempo, o la de un coach) y otro con **tus vueltas de la sesión**."
+        )
+
+    st.divider()
+
+    # ── ¿qué quieres obtener hoy? ─────────────────────────────────────────────
+    st.subheader("② ¿Qué quieres obtener hoy?")
+    st.caption("Elige tu objetivo y la UI te guiará solo por los pasos que necesitas.")
+
+    _flow_keys = list(_FLOWS.keys())
+    _cols = st.columns(len(_flow_keys))
+    for _ci, (_fk, _fv) in enumerate(_FLOWS.items()):
+        with _cols[_ci]:
+            _selected = st.session_state["flow_key"] == _fk
+            _border   = "2px solid #00c853" if _selected else "1px solid #3d4450"
+            st.markdown(
+                "<div style='border:%s; border-radius:10px; padding:1rem; min-height:200px'>" % _border,
+                unsafe_allow_html=True,
+            )
+            st.markdown("### %s" % _fk)
+            st.caption(_fv["desc"])
+            st.markdown("**Obtienes:**")
+            for _d in _fv["deliverables"]:
+                st.markdown("- %s" % _d)
+            st.markdown("</div>", unsafe_allow_html=True)
+            if not _selected:
+                if st.button("Elegir este", key="flow_%d" % _ci, use_container_width=True):
+                    st.session_state["flow_key"] = _fk
+                    _flow = _FLOWS[_fk]
+                    st.rerun()
+            else:
+                st.success("✓ Seleccionado")
+
+    st.divider()
+    if st.button("Empezar — Ir a Importar →", type="primary"):
+        _go(1)
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# PASO 1 — IMPORTAR
+# ══════════════════════════════════════════════════════════════════════════════
+elif step_idx == 1:
     st.markdown('<div class="step-header">Paso 1 — Importar telemetría</div>', unsafe_allow_html=True)
     st.caption("Sube dos archivos: la vuelta de referencia y la tuya. El resto es automático.")
 
@@ -177,7 +320,6 @@ if step_idx == 0:
         "La vuelta contra la que te comparas — tu mejor tiempo anterior, "
         "la de un coach, o cualquier referencia que quieras superar."
     )
-
     ref_file = st.file_uploader("Archivo de referencia (CSV o XLSX)", type=["csv", "xlsx"], key="ref_upload")
 
     if not ref_file:
@@ -191,17 +333,15 @@ if step_idx == 0:
 
     _ref_laps = _rc["laps"]
     _ref_path = _rc["path"]
-
-    # auto-selección: la más rápida completa
     _ref_auto_i = _best_lap_index(_ref_laps)
-    _ref_sel_i  = st.session_state.get("ref_sel_override_%s" % ref_file.file_id, _ref_auto_i)
+    _ref_sel_i  = st.session_state.get("ref_sel_%s" % ref_file.file_id, _ref_auto_i)
     _ref_sel_i  = min(_ref_sel_i, len(_ref_laps) - 1)
 
     st.success("✓ **Referencia:** %s" % _fmt_lap(_ref_laps[_ref_sel_i].laptime))
 
     if len(_ref_laps) > 1:
         with st.expander("Cambiar vuelta de referencia (%d vueltas en el archivo)" % len(_ref_laps)):
-            st.caption("Marca **solo una** — la que quieres usar como referencia. 🏆 = más rápida · ⚠️ = incompleta")
+            st.caption("Marca **solo una**. 🏆 = más rápida · ⚠️ = incompleta")
             _ref_tbl = _lap_table(_ref_laps, editor_key="ref_lap_tbl")
             if len(_ref_tbl) == 0:
                 st.warning("Marca una vuelta.")
@@ -209,7 +349,7 @@ if step_idx == 0:
                 st.error("Solo puedes marcar **una** vuelta como referencia.")
             else:
                 _ref_sel_i = _ref_tbl[0]
-                st.session_state["ref_sel_override_%s" % ref_file.file_id] = _ref_sel_i
+                st.session_state["ref_sel_%s" % ref_file.file_id] = _ref_sel_i
                 if _ref_tbl[0] != _ref_auto_i:
                     st.info("Usando Vuelta #%d — %s" % (_ref_tbl[0], _fmt_lap(_ref_laps[_ref_tbl[0]].laptime)))
 
@@ -220,7 +360,6 @@ if step_idx == 0:
         "Tus vueltas de la sesión. Se pre-selecciona la más rápida; "
         "puedes marcar varias si quieres generar overlay de toda la sesión."
     )
-
     drv_file = st.file_uploader("Tu archivo de telemetría (CSV o XLSX)", type=["csv", "xlsx"], key="drv_upload")
 
     if not drv_file:
@@ -233,7 +372,6 @@ if step_idx == 0:
         st.stop()
 
     _drv_laps = _dc["laps"]
-
     if not _drv_laps:
         st.warning("No se detectaron vueltas en el archivo.")
         st.stop()
@@ -255,15 +393,12 @@ if step_idx == 0:
     else:
         st.success("✓ **%d vueltas seleccionadas:** %s" % (len(_drv_sel), " · ".join(_drv_times)))
 
-    # ── Opciones avanzadas (curvas + mapeo de columnas) ───────────────────────
+    # ── Opciones avanzadas ────────────────────────────────────────────────────
     _ref_col_map  = None
     _corners_file = None
-    with st.expander("⚙️ Opciones avanzadas"):
+    with st.expander("⚙️ Opciones avanzadas — curvas y mapeo de columnas"):
         st.markdown("**Nombres de curvas** *(opcional)*")
-        st.caption(
-            "Si tienes un corners.json o quieres detectar las curvas automáticamente, "
-            "el reporte mostrará nombres reales en lugar de C01, C02…"
-        )
+        st.caption("Si tienes un corners.json o quieres detectarlos, el reporte mostrará nombres reales.")
         _col_cj, _col_cd = st.columns(2)
         with _col_cj:
             _corners_file = st.file_uploader("Subir corners.json", type=["json"], key="corners_upload")
@@ -288,7 +423,7 @@ if step_idx == 0:
                 {"ID": c["id"], "Nombre": c.get("name", ""), "Metro": c["milestones"]["apex"]["d"]}
                 for c in st.session_state["corners"]
             ]
-            st.caption("Edita los nombres directamente en la tabla:")
+            st.caption("Edita los nombres directamente:")
             _edited = st.data_editor(
                 _pd2.DataFrame(_c_data),
                 column_config={
@@ -303,17 +438,15 @@ if step_idx == 0:
                     st.session_state["corners"][_i2]["name"] = _row["Nombre"]
 
         st.divider()
-        st.markdown("**Mapeo de columnas** *(solo si el archivo dio error al cargar)*")
-        st.caption("Formato: `nombre_en_tu_archivo = significado`, una por línea.")
+        st.markdown("**Mapeo de columnas** *(solo si el archivo no se leyó correctamente)*")
         _pairs = st.text_area(
-            "Columnas",
+            "Columnas", key="ref_map",
             placeholder="Ejemplo:\n  mi_distancia = dist\n  tiempo_s = time\n  velocidad = speed",
-            key="ref_map",
         )
         if _pairs.strip():
             _ref_col_map = dict(p.partition("=")[::2] for p in _pairs.splitlines() if "=" in p)
 
-    # ── Cargar y ver análisis ─────────────────────────────────────────────────
+    # ── Cargar ────────────────────────────────────────────────────────────────
     st.divider()
     if st.button("Cargar y ver análisis →", type="primary"):
         with st.spinner("Procesando…"):
@@ -324,7 +457,6 @@ if step_idx == 0:
                 corners      = st.session_state.get("corners")
                 if _corners_file:
                     corners = _corners_from_json(_corners_file)
-
                 st.session_state.update({
                     "ref_path":          _ref_path,
                     "drv_path":          _dc["path"],
@@ -335,13 +467,12 @@ if step_idx == 0:
                     "drv_selected_laps": drv_selected,
                     "corners":           corners,
                     "ref_col_map":       _ref_col_map,
-                    "needs_compare":     True,   # dispara auto-compare en paso 2
+                    "needs_compare":     True,
                 })
-                _go(1)
+                _go(2)
             except Exception as _e:
                 st.error("Error al cargar: %s" % _e)
 
-    # resumen si ya hay datos cargados
     if "ref_lap" in st.session_state:
         _rl    = st.session_state["ref_lap"]
         _dl    = st.session_state["drv_lap"]
@@ -351,29 +482,27 @@ if step_idx == 0:
         c1.metric("Referencia",  _fmt_lap(_rl.laptime))
         c2.metric("Longitud",    "%.0f m" % _rl.length)
         c3.metric("Tu vuelta",   _fmt_lap(_dl.laptime))
-        c4.metric("Delta",       "%+.3f s" % _delta,
-                  delta=round(-_delta, 3), delta_color="normal")
+        c4.metric("Delta",       "%+.3f s" % _delta, delta=round(-_delta, 3), delta_color="normal")
         if st.button("Ver análisis →", type="primary"):
-            _go(1)
+            _go(2)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
 # PASO 2 — COMPARAR
 # ══════════════════════════════════════════════════════════════════════════════
-elif step_idx == 1:
+elif step_idx == 2:
     st.markdown('<div class="step-header">Paso 2 — Análisis por curva</div>', unsafe_allow_html=True)
 
     if "ref_lap" not in st.session_state:
         st.warning("Primero carga los archivos en el Paso 1.")
         if st.button("← Ir al Paso 1"):
-            _go(0)
+            _go(1)
         st.stop()
 
     ref_lap = st.session_state["ref_lap"]
     drv_lap = st.session_state["drv_lap"]
     corners = st.session_state.get("corners")
 
-    # ── auto-compare al llegar desde el paso 1 ────────────────────────────────
     if st.session_state.pop("needs_compare", False) and "summary" not in st.session_state:
         with st.spinner("Comparando vuelta metro a metro…"):
             try:
@@ -383,32 +512,24 @@ elif step_idx == 1:
             except Exception as _e:
                 st.error("Error en comparación: %s" % _e)
 
-    # ── resumen de laps comparados ────────────────────────────────────────────
     _c1, _c2 = st.columns(2)
     _c1.info("🏁 **Referencia:** %s · %s" % (
-        os.path.basename(st.session_state.get("ref_path", "—")),
-        _fmt_lap(ref_lap.laptime),
-    ))
+        os.path.basename(st.session_state.get("ref_path", "—")), _fmt_lap(ref_lap.laptime)))
     _c2.info("🧑‍💻 **Tu vuelta:** %s · %s" % (
-        os.path.basename(st.session_state.get("drv_path", "—")),
-        _fmt_lap(drv_lap.laptime),
-    ))
+        os.path.basename(st.session_state.get("drv_path", "—")), _fmt_lap(drv_lap.laptime)))
 
-    # ── ajustes avanzados (recalcular) ────────────────────────────────────────
     with st.expander("⚙️ Recalcular con otros ajustes"):
-        st.caption("Por defecto el análisis usa 10 m entre puntos y genera gráficas de las 5 peores curvas.")
-        _gen_charts = st.checkbox("Generar gráficas por curva", value=True,
-                                   help="Velocidad, gas y freno superpuestos en las curvas donde más pierdes.")
+        st.caption("Por defecto: 10 m entre puntos, con gráficas de las 5 peores curvas.")
+        _gen_charts = st.checkbox("Generar gráficas por curva", value=True)
         if not _gen_charts:
-            st.caption("Sin gráficas — solo verás la tabla resumen.")
+            st.caption("Sin gráficas — solo la tabla resumen.")
         _col_sl, _col_n = st.columns(2)
         _track_m = int(ref_lap.length)
         _step_m  = _col_sl.slider(
             "Metros entre puntos", 1, 20, 10,
             help=(
-                "Menos metros = más detalle, más tiempo. "
                 "A 150 km/h, 10 m = una medición cada ~0.24 s. "
-                "💡 Prueba primero con una vuelta para estimar cuánto tarda en tu PC."
+                "💡 Prueba con una vuelta primero para estimar cuánto tarda en tu PC."
             ),
         )
         _frames = max(1, _track_m // int(_step_m))
@@ -417,8 +538,7 @@ elif step_idx == 1:
             "Esta pista: **~%s puntos** (%.1f× %s que con 10 m)"
             % ("{:,}".format(_frames), _rel, "más" if _rel > 1 else "menos")
         )
-        _charts_top = _col_n.number_input("Curvas en gráficas", 1, 20, 5,
-                                           help="Las N donde más tiempo pierdes.")
+        _charts_top = _col_n.number_input("Curvas en gráficas", 1, 20, 5)
         if st.button("Recalcular", type="primary"):
             with st.spinner("Comparando…"):
                 try:
@@ -430,7 +550,9 @@ elif step_idx == 1:
                 except Exception as _e:
                     st.error("Error: %s" % _e)
 
-    # ── resultados ────────────────────────────────────────────────────────────
+    _gen_charts = st.session_state.get("gen_charts", True)
+    _charts_top = st.session_state.get("charts_top", 5)
+
     if "summary" not in st.session_state:
         st.info("Los resultados aparecerán aquí una vez completado el análisis.")
         st.stop()
@@ -449,9 +571,9 @@ elif step_idx == 1:
     st.divider()
     st.subheader("¿Dónde estás perdiendo tiempo?")
     st.caption(
-        "**Vel. mínima** = velocidad en el ápex de la curva. "
+        "**Vel. mínima** = velocidad en el ápex. "
         "**Diferencia km/h** = cuánto más rápido/lento vs referencia. "
-        "**Tiempo ganado/perdido** = impacto en el tiempo de vuelta."
+        "**Tiempo ganado/perdido** = impacto en el crono."
     )
     if rows:
         import pandas as pd
@@ -482,14 +604,13 @@ elif step_idx == 1:
                 st.error("Error en gráficas: %s" % _e)
 
     st.divider()
-    if st.button("Ir al Paso 3 — Generar overlay →", type="primary"):
-        _go(2)
+    _next_step_btn(2)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
 # PASO 3 — OVERLAY
 # ══════════════════════════════════════════════════════════════════════════════
-elif step_idx == 2:
+elif step_idx == 3:
     st.markdown('<div class="step-header">Paso 3 — Generar overlay HUD</div>', unsafe_allow_html=True)
     st.caption(
         "Genera un video transparente con el HUD animado (velocímetro, barras de gas/freno, delta). "
@@ -499,7 +620,7 @@ elif step_idx == 2:
     if "ref_lap" not in st.session_state:
         st.warning("Primero carga los archivos en el Paso 1.")
         if st.button("← Ir al Paso 1"):
-            _go(0)
+            _go(1)
         st.stop()
 
     ref_lap = st.session_state["ref_lap"]
@@ -508,7 +629,7 @@ elif step_idx == 2:
 
     all_laps = st.checkbox(
         "Generar overlay para TODAS las vueltas seleccionadas en el Paso 1",
-        help="Genera un overlay por cada vuelta que marcaste. Útil para revisar una sesión entera.",
+        help="Genera un overlay por cada vuelta que marcaste.",
     )
     _ndrv = len(st.session_state.get("drv_selected_laps", [drv_lap]))
     if all_laps and _ndrv > 1:
@@ -517,21 +638,21 @@ elif step_idx == 2:
     out_dir = st.text_input(
         "Carpeta de salida",
         value=os.path.join(os.path.expanduser("~"), "fantasma_salida"),
-        help="El overlay se guardará aquí. Se crea automáticamente si no existe.",
+        help="Se crea automáticamente si no existe.",
     )
 
     with st.expander("⚙️ Opciones avanzadas"):
         _col_a, _col_b = st.columns(2)
         _fps = _col_a.selectbox(
             "Fotogramas por segundo (FPS)", [24, 30, 60], index=1,
-            help="Usa el mismo valor que tiene tu grabación. La mayoría de cámaras graban a 30 o 60 fps.",
+            help="Usa el mismo valor que tiene tu grabación.",
         )
         _fmt = _col_b.selectbox(
             "Formato del overlay", ["webm", "prores", "png"], index=0,
             help=(
                 "webm — Recomendado: compatible con cualquier editor.\n"
                 "prores — Para Final Cut Pro o DaVinci Resolve en Mac.\n"
-                "png — Solo fotogramas, sin codificar (uso avanzado)."
+                "png — Solo fotogramas sin codificar (uso avanzado)."
             ),
         )
 
@@ -566,8 +687,7 @@ elif step_idx == 2:
                 st.code(_w)
             st.session_state["last_overlay"] = _webms[0]
             st.divider()
-            if st.button("Ir al Paso 4 — Componer video →", type="primary"):
-                _go(3)
+            _next_step_btn(3)
         except ImportError:
             st.error("Faltan dependencias. Ejecuta: pip install 'fantasma-inputs[overlay]'")
         except Exception as _e:
@@ -577,7 +697,7 @@ elif step_idx == 2:
 # ══════════════════════════════════════════════════════════════════════════════
 # PASO 4 — COMPONER
 # ══════════════════════════════════════════════════════════════════════════════
-elif step_idx == 3:
+elif step_idx == 4:
     st.markdown('<div class="step-header">Paso 4 — Componer video final</div>', unsafe_allow_html=True)
     st.caption(
         "Junta el overlay del Paso 3 con tu video de grabación. "
@@ -603,8 +723,7 @@ elif step_idx == 3:
 
     st.divider()
     _col3, _col4, _col5 = st.columns(3)
-    _pos_sel  = _col3.selectbox("Posición del HUD en pantalla", list(_POS_LABELS.keys()),
-                                 help="Esquina donde aparecerá el HUD.")
+    _pos_sel  = _col3.selectbox("Posición del HUD en pantalla", list(_POS_LABELS.keys()))
     _position = _POS_LABELS[_pos_sel]
     _offset   = _col4.number_input(
         "Retraso del HUD (segundos)", value=0.0, step=0.5,
@@ -614,11 +733,12 @@ elif step_idx == 3:
         ),
     )
     _scale = _col5.slider("Tamaño del HUD", 0.25, 1.5, 1.0, 0.05,
-                           help="1.0 = tamaño original. Reduce si tapa demasiado.")
+                           help="1.0 = tamaño original.")
 
     _out_path = st.text_input(
-        "Archivo de salida *(opcional — si lo dejas vacío se guarda junto al video)*",
+        "Archivo de salida *(opcional)*",
         placeholder=r"C:\Videos\mi_vuelta_con_hud.mp4",
+        help="Si lo dejas vacío se guarda junto al video con el sufijo _composed.",
     )
 
     st.divider()
@@ -635,6 +755,7 @@ elif step_idx == 3:
                 st.success("✓ Video guardado en:")
                 st.code(_result)
                 st.balloons()
+                _next_step_btn(4)
             except RuntimeError as _e:
                 st.error(str(_e))
             except Exception as _e:
