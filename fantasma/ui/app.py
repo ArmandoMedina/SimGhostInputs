@@ -250,34 +250,46 @@ if step_idx == 0:
     )
 
     with st.expander("Ver guía de exportación paso a paso", expanded=False):
-        st.markdown("### 1. Instalar Sim To MoTeC")
+        st.markdown("### 1. Instalar y abrir Sim To MoTeC")
         st.markdown(
-            "Descarga e instala el plugin desde [Sim To MoTeC](https://www.sim-to-motec.com). "
-            "Compatible con AMS2, ACC, iRacing, rFactor 2 y más."
+            "Descarga e instala **[Sim To MoTeC](https://github.com/GeekyDeaks/sim-to-motec/releases)** "
+            "(AMS2 logger). Compatible con AMS2, ACC, iRacing, rFactor 2 y más. "
+            "Una vez instalado, ábrelo antes de arrancar el sim."
         )
-        _img_or_placeholder("docs/guide/s2m_01_install.png", "Pantalla de instalación de Sim To MoTeC")
+        _img_or_placeholder("docs/guide/s2m_01_install.png",
+                            "AMS2 logger v1.8.6 — la app lista antes de iniciar la sesión")
 
-        st.markdown("### 2. Activar la captura")
+        st.markdown("### 2. Configurar y arrancar la captura")
         st.markdown(
-            "Abre la configuración del plugin y asegúrate de que la captura esté **activada**. "
-            "El plugin graba automáticamente cada vuelta mientras corres."
+            "Ajusta **Sampling Frequency a 20 Hz** y haz clic en **Start**. "
+            "El logger queda en espera hasta que AMS2 arranque — "
+            "verás los campos Vehicle, Venue y Lap rellenarse automáticamente al entrar en pista."
         )
-        _img_or_placeholder("docs/guide/s2m_02_config.png", "Panel de configuración — captura activada")
+        _img_or_placeholder("docs/guide/s2m_02_config.png",
+                            "Sampling Frequency: 20 Hz · Log File: Not Started · Start activado")
 
-        st.markdown("### 3. Después de la sesión: abrir i2 Pro")
+        st.markdown("### 3. Después de la sesión: abrir MoTeC i2")
         st.markdown(
-            "Abre **MoTeC i2 Pro** (se instala junto con Sim To MoTeC). "
-            "Tu sesión aparecerá en la lista de archivos recientes."
+            "Abre **MoTeC i2 Standard** (se instala junto con Sim To MoTeC). "
+            "Ve a **File → Open Log File** y abre el `.ld` generado por el logger "
+            "(normalmente en `Documentos/MoTeC/`)."
         )
-        _img_or_placeholder("docs/guide/s2m_03_i2_main.png", "Pantalla principal de MoTeC i2 con la sesión cargada")
+        _img_or_placeholder("docs/guide/s2m_03_i2_main.png",
+                            "MoTeC i2 — File → Export Data...")
 
         st.markdown("### 4. Exportar como CSV")
         st.markdown(
-            "En i2 Pro: **File → Export → Channels as CSV**. "
-            "Selecciona todos los canales y guarda el archivo. "
-            "También puedes exportar como **XLSX** si prefieres Excel."
+            "En MoTeC i2: **File → Export Data...**  \n"
+            "Opciones recomendadas:  \n"
+            "- **Data Extent:** Entire Outing  \n"
+            "- **Output File Format:** CSV File  \n"
+            "- **Output Sample Rate:** Auto  \n"
+            "- ✅ Include Time Stamp  \n"
+            "- ✅ Include Distance Data  \n\n"
+            "Haz clic en **Export** y guarda el archivo."
         )
-        _img_or_placeholder("docs/guide/s2m_04_export.gif", "GIF: pasos para exportar CSV desde MoTeC i2")
+        _img_or_placeholder("docs/guide/s2m_04_export.gif",
+                            "File → Export Data → opciones recomendadas → Export")
 
         st.info(
             "💡 Exporta dos archivos: uno con la **vuelta de referencia** "
