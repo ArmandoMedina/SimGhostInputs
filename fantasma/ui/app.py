@@ -98,11 +98,27 @@ if step == STEPS[0]:
         st.subheader("Vuelta del piloto")
         drv_file = st.file_uploader("CSV o XLSX del piloto", type=["csv", "xlsx"],
                                     key="drv_upload")
-        lap_index = st.number_input("Índice de vuelta (vacío = más rápida)", min_value=0,
-                                    value=None, step=1, key="lap_idx")
+        lap_index = st.number_input(
+            "Índice de vuelta",
+            min_value=0, value=None, step=1, key="lap_idx",
+            help=(
+                "Número de vuelta dentro del archivo (empieza en 0). "
+                "Déjalo vacío para usar automáticamente la vuelta más rápida. "
+                "Para saber qué vueltas contiene tu archivo y sus índices, "
+                "corre en terminal: fantasma laps <tu_archivo.csv>"
+            ))
 
-    corners_file = st.file_uploader("corners.json (opcional — nombres y tolerancias)",
-                                    type=["json"], key="corners_upload")
+    corners_file = st.file_uploader(
+        "corners.json (opcional)",
+        type=["json"], key="corners_upload",
+        help=(
+            "Archivo con los nombres de las curvas del circuito y sus tolerancias. "
+            "Sin él, las curvas aparecen como C01, C02… en el reporte. "
+            "Para generarlo: fantasma detect <referencia.csv> -o salida/ "
+            "Luego edita salida/corners_detected.json y añade el campo 'name' a cada curva. "
+            "Puedes compartir este archivo con otros pilotos del mismo circuito."
+        ))
+    st.caption("Sin corners.json las curvas se llaman C01, C02… Generalo con: `fantasma detect <referencia.csv> -o salida/`")
 
     if st.button("Cargar archivos", type="primary",
                  disabled=not (ref_file and drv_file)):
