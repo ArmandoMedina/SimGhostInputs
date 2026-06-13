@@ -76,67 +76,75 @@ with st.sidebar:
 # ══════════════════════════════════════════════════════════════════════════════
 if step == STEPS[0]:
     st.markdown('<div class="step-header">Paso 1 — Importar telemetría</div>', unsafe_allow_html=True)
-    st.caption("Sube los archivos de MoTeC (CSV/XLSX). Los datos se guardan solo en memoria.")
 
-    col_ref, col_drv = st.columns(2)
+    # ── 1A: vuelta de referencia ──────────────────────────────────────────────
+    st.subheader("① Vuelta de referencia")
+    ref_file = st.file_uploader("CSV o XLSX de referencia", type=["csv", "xlsx"],
+                                key="ref_upload")
+    ref_col_map = None
+    if ref_file and ref_file.name.endswith(".csv"):
+        with st.expander("Mapeo de columnas (CSV genérico)", expanded=False):
+            st.caption("Deja en blanco si es export MoTeC estándar.")
+            pairs = st.text_area("columna_csv=canal  (una por línea)",
+                                 placeholder="dist_m=dist\nspeed_kmh=speed",
+                                 key="ref_map")
+            if pairs.strip():
+                ref_col_map = dict(p.partition("=")[::2] for p in pairs.splitlines() if "=" in p)
 
-    with col_ref:
-        st.subheader("Vuelta de referencia")
-        ref_file = st.file_uploader("CSV o XLSX de referencia", type=["csv", "xlsx"],
-                                    key="ref_upload")
-        ref_col_map = None
-        if ref_file and ref_file.name.endswith(".csv"):
-            with st.expander("Mapeo de columnas (CSV genérico)", expanded=False):
-                st.caption("Deja en blanco si es export MoTeC estándar.")
-                pairs = st.text_area("columna_csv=canal  (una por línea)",
-                                     placeholder="dist_m=dist\nspeed_kmh=speed",
-                                     key="ref_map")
-                if pairs.strip():
-                    ref_col_map = dict(p.partition("=")[::2] for p in pairs.splitlines() if "=" in p)
+    if not ref_file:
+        st.info("Sube primero la vuelta de referencia para continuar.")
+        st.stop()
 
-    with col_drv:
-        st.subheader("Vuelta del piloto")
-        drv_file = st.file_uploader("CSV o XLSX del piloto", type=["csv", "xlsx"],
-                                    key="drv_upload")
-        if drv_file:
-            try:
-                import tempfile as _tf
-                from fantasma import importers as _imp
-                from fantasma.core.normalize import split_laps as _sl
-                _tmp = _tf.NamedTemporaryFile(delete=False, suffix=os.path.splitext(drv_file.name)[1])
-                _tmp.write(drv_file.read()); _tmp.flush(); drv_file.seek(0)
-                _outing = _imp.load(_tmp.name)
-                _laps = _sl(_outing)
-                import pandas as _pd
-                _df = _pd.DataFrame([{
-                    "Índice": i,
-                    "Duración (s)": "%.2f" % l.laptime,
-                    "Longitud (m)": "%.0f" % l.length,
-                    "Completa": "✓" if l.meta.get("is_complete") else "—",
-                } for i, l in enumerate(_laps)])
-                st.dataframe(_df, hide_index=True, use_container_width=True)
-            except Exception:
-                pass
-        lap_index = st.number_input(
-            "Índice de vuelta (vacío = más rápida automáticamente)",
-            min_value=0, value=None, step=1, key="lap_idx",
-            help=(
-                "Mira la tabla de arriba para ver qué vueltas tiene tu archivo. "
-                "Escribe el número de la columna 'Índice' de la vuelta que quieres analizar. "
-                "Si lo dejas vacío, se usa automáticamente la vuelta más rápida."
-            ))
-
+    # ── 1B: vuelta del piloto ─────────────────────────────────────────────────
     st.divider()
-    st.subheader("Curvas del circuito (opcional)")
-    col_cj, col_cd = st.columns([2, 1])
+    st.subheader("② Vuelta del piloto")
+    drv_file = st.file_uploader("CSV o XLSX del piloto", type=["csv", "xlsx"],
+                                key="drv_upload")
+
+    if not drv_file:
+        st.info("Ahora sube el archivo con tus vueltas.")
+        st.stop()
+
+    # tabla de vueltas automática
+    lap_index = None
+    try:
+        import tempfile as _tf
+        from fantasma import importers as _imp
+        from fantasma.core.normalize import split_laps as _sl
+        import pandas as _pd
+        _tmp = _tf.NamedTemporaryFile(delete=False, suffix=os.path.splitext(drv_file.name)[1])
+        _tmp.write(drv_file.read()); _tmp.flush(); drv_file.seek(0)
+        _laps = _sl(_imp.load(_tmp.name))
+        _df = _pd.DataFrame([{
+            "Índice": i,
+            "Duración (s)": "%.2f" % l.laptime,
+            "Longitud (m)": "%.0f" % l.length,
+            "Completa": "✓" if l.meta.get("is_complete") else "—",
+        } for i, l in enumerate(_laps)])
+        st.caption("Vueltas detectadas en tu archivo:")
+        st.dataframe(_df, hide_index=True, use_container_width=True)
+    except Exception:
+        pass
+
+    lap_index = st.number_input(
+        "¿Qué vuelta quieres analizar? (índice de la tabla — vacío = más rápida)",
+        min_value=0, value=None, step=1, key="lap_idx",
+        help="Escribe el número de la columna Índice de la vuelta que quieres. Vacío = se elige automáticamente la más rápida.")
+
+    # ── 1C: curvas del circuito ───────────────────────────────────────────────
+    st.divider()
+    st.subheader("③ Curvas del circuito (opcional)")
+    st.caption("Permite nombrar las curvas en el reporte. Sin esto se llaman C01, C02…")
+
+    col_cj, col_cd = st.columns([1, 1])
     with col_cj:
         corners_file = st.file_uploader(
             "Sube un corners.json existente",
             type=["json"], key="corners_upload",
-            help="Archivo con nombres de curvas y tolerancias. Sin él las curvas se llaman C01, C02…")
+            help="Archivo con nombres de curvas y tolerancias generado previamente.")
     with col_cd:
-        st.caption("¿No tienes corners.json? Genéralo aquí con la vuelta de referencia:")
-        if st.button("Detectar curvas de referencia", disabled=not ref_file):
+        st.write("¿No tienes uno? Detéctalo ahora:")
+        if st.button("Detectar curvas de la referencia"):
             try:
                 from fantasma import importers as _imp2
                 from fantasma.core.normalize import split_laps as _sl2, fastest_lap as _fl2
@@ -144,24 +152,22 @@ if step == STEPS[0]:
                 import tempfile as _tf2, json as _json
                 _tmp2 = _tf2.NamedTemporaryFile(delete=False, suffix=os.path.splitext(ref_file.name)[1])
                 _tmp2.write(ref_file.read()); _tmp2.flush(); ref_file.seek(0)
-                _ref_out = _imp2.load(_tmp2.name)
-                _ref_lap = _fl2(_sl2(_ref_out))
+                _ref_lap = _fl2(_sl2(_imp2.load(_tmp2.name)))
                 _evs, _ = _dc(_ref_lap)
                 _corners = _em(_ref_lap, _evs)
-                _cjson = _json.dumps({"corners": _corners}, indent=2, ensure_ascii=False)
+                st.session_state["corners"] = _corners
                 st.download_button(
                     "Descargar corners.json",
-                    data=_cjson,
-                    file_name="corners.json",
-                    mime="application/json",
+                    data=_json.dumps({"corners": _corners}, indent=2, ensure_ascii=False),
+                    file_name="corners.json", mime="application/json",
                 )
-                st.session_state["corners"] = _corners
-                st.success("%d curvas detectadas. Descarga el JSON, edita los nombres y vuelve a subirlo." % len(_corners))
+                st.success("%d curvas detectadas. Puedes editar los nombres en el JSON y volver a subirlo." % len(_corners))
             except Exception as e:
-                st.error("Error al detectar curvas: %s" % e)
+                st.error("Error: %s" % e)
 
-    if st.button("Cargar archivos", type="primary",
-                 disabled=not (ref_file and drv_file)):
+    # ── 1D: cargar ───────────────────────────────────────────────────────────
+    st.divider()
+    if st.button("Cargar y continuar →", type="primary"):
         with st.spinner("Cargando…"):
             try:
                 ref_path = _save_upload(ref_file, os.path.splitext(ref_file.name)[1])
