@@ -78,7 +78,7 @@ def _lap_table(laps, editor_key, single=False):
     if single:
         st.caption("Marca **solo una** vuelta — es la referencia contra la que te vas a comparar. 🏆 = más rápida completa · ⚠️ = vuelta incompleta (out/in lap)")
     else:
-        st.caption("Marca las vueltas que quieres analizar. Puedes marcar varias. 🏆 = más rápida · ⚠️ = incompleta (out/in lap)")
+        st.info("Aquí **sí puedes marcar varias vueltas**. La primera marcada se usará en el análisis; las demás se incluyen si generas overlay de toda la sesión. 🏆 = más rápida · ⚠️ = incompleta (out/in lap)")
 
     edited = st.data_editor(
         _pd.DataFrame(rows),
