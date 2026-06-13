@@ -18,8 +18,10 @@ xlsx    = ["openpyxl"]
 overlay = ["Pillow>=10", "matplotlib>=3.7"]
 # pip install -e ".[charts]"    -> graficas ghost y mapa de delta (fantasma compare)
 charts  = ["matplotlib>=3.7"]
+# pip install -e ".[ui]"        -> interfaz grafica local (streamlit)
+ui      = ["streamlit>=1.35", "pandas"]
 # pip install -e ".[full]"      -> todo lo anterior
-full    = ["openpyxl", "Pillow>=10", "matplotlib>=3.7"]
+full    = ["openpyxl", "Pillow>=10", "matplotlib>=3.7", "streamlit>=1.35", "pandas"]
 
 [project.scripts]
 fantasma = "fantasma.cli:main"
