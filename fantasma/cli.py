@@ -70,9 +70,8 @@ def cmd_compare(args):
         with open(args.corners, encoding="utf-8") as f:
             corners = json.load(f).get("corners")
     if corners is None:
-        from .core.corners import detect_corners as _dc, extract_milestones as _em
-        ev, _ = _dc(ref)
-        corners = _em(ref, ev)
+        ev, _ = detect_corners(ref)
+        corners = extract_milestones(ref, ev)
     trace, rows, summary = compare(ref, drv, step=args.step, corners=corners)
     meta = {"Referencia": args.reference, "Piloto": args.driver}
     report = write_outputs(args.output, trace, rows, summary, meta)
@@ -103,9 +102,8 @@ def cmd_overlay(args):
         with open(args.corners, encoding="utf-8") as f:
             corners = json.load(f).get("corners")
     else:
-        from .core.corners import detect_corners as _dc, extract_milestones as _em
-        ev, _ = _dc(ref)
-        corners = _em(ref, ev)
+        ev, _ = detect_corners(ref)
+        corners = extract_milestones(ref, ev)
 
     os.makedirs(args.output, exist_ok=True)
 
