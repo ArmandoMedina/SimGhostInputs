@@ -1,6 +1,6 @@
 # 👻 SimGhostInputs
 
-[![Estado](https://img.shields.io/badge/estado-pre--release%20v0.2-orange)](CHANGELOG.md)
+[![Estado](https://img.shields.io/badge/estado-pre--release%20v0.3-orange)](CHANGELOG.md)
 [![Ko-fi](https://img.shields.io/badge/Ko--fi-Buy%20me%20a%20Lap-FF5E5B?logo=ko-fi&logoColor=white)](https://ko.fi/armandomedina2255)
 [![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL--3.0-blue.svg)](LICENSE)
 
@@ -51,6 +51,7 @@ pip install -e ".[xlsx]"                  # + leer archivos .xlsx de MoTeC i2
 pip install -e ".[overlay]"               # + fantasma overlay (HUD de video)
 pip install -e ".[charts]"                # + fantasma compare con gráficas
 pip install -e ".[ui]"                    # + fantasma ui (interfaz gráfica local)
+pip install -e ".[sync]"                  # + fantasma compose --auto-sync (detección de offset)
 pip install -e ".[full]"                  # todo lo anterior
 ```
 
@@ -62,6 +63,7 @@ pip install -e ".[full]"                  # todo lo anterior
 | `matplotlib` | Python opcional | `fantasma overlay` — HUD animado; `fantasma compare` — gráficas ghost | `pip install matplotlib` |
 | `Pillow` | Python opcional | `fantasma overlay` — renderizado de frames auxiliares | `pip install Pillow` |
 | `streamlit` + `pandas` | Python opcional | `fantasma ui` — interfaz gráfica local | `pip install 'fantasma-inputs[ui]'` |
+| `scipy` | Python opcional | `fantasma compose --auto-sync` — detección automática de offset video/telemetría | `pip install 'fantasma-inputs[sync]'` |
 | `ffmpeg` | Sistema opcional | Codificar `.webm`/`.mov` con canal alfa y `fantasma compose` | `winget install Gyan.FFmpeg` |
 | `gh` (GitHub CLI) | Sistema opcional | Publicar y gestionar el repositorio en GitHub | `winget install GitHub.cli` |
 
@@ -97,6 +99,10 @@ fantasma overlay --reference "referencia.csv" --driver "mi_vuelta.csv" -o salida
 
 # componer el overlay sobre tu grabación y obtener el video final
 fantasma compose --video "grabacion.mp4" --overlay "salida/overlay.webm" -o "resultado.mp4"
+
+# detectar offset automáticamente y componer en un solo paso (requiere scipy)
+fantasma compose --video "grabacion.mp4" --overlay "salida/overlay.webm" \
+    --auto-sync --driver "mi_vuelta.csv" -o "resultado.mp4"
 ```
 
 Salida de `compare`:
@@ -120,7 +126,7 @@ Salida de `overlay`:
 
   Los umbrales de G lateral del volante son **relativos a la vuelta de referencia**: el percentil 75 y 90 del `|G-lat|` de esa vuelta definen qué es "trabajando" y "al límite" para ese auto y pista, sin necesidad de ajuste manual.
 
-  La franja de datos muestra: GAP acumulado · ΔV en el metro actual · índice de deslizamiento (proxy de desgaste) · activaciones de ABS por segmento.
+  La franja de datos muestra: GAP acumulado · ΔV en el metro actual · índice de deslizamiento (proxy de desgaste) · activaciones de ABS por segmento · **marcha actual** (1–6 / N / R) · **velocidad en km/h** · **distancia en metros**. Los tres últimos campos son útiles para verificar la sincronía visualmente comparando con el velocímetro y el marcador de marcha del sim.
 
 Documentación completa en [`docs/`](docs/): [guía de usuario](docs/guia-usuario.md) · [formato de datos](docs/formato-datos.md) · [cómo contribuir](CONTRIBUTING.md).
 
