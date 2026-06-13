@@ -1,11 +1,17 @@
 """UI local de SimGhostInputs — corre con: fantasma ui (o streamlit run app.py).
 
-Flujo:
-  0. Inicio    — guía de exportación y elección de objetivo
+Pasos disponibles:
+  0. Inicio    — guía de exportación y selector de flujo
   1. Importar  — cargar archivos de referencia y piloto
-  2. Comparar  — delta por metro, tabla por curva, gráficas
+  2. Comparar  — delta por metro, tabla por curva, gráficas  (solo en flujos de análisis)
   3. Overlay   — generar el HUD animado (webm con alfa)
   4. Componer  — superponer el overlay sobre el video de grabación
+
+Flujos predefinidos (el usuario elige en el Paso 0):
+  📊 Solo análisis      → 0 → 1 → 2
+  🎬 Solo overlay       → 0 → 1 → 3
+  🎥 Video con HUD      → 0 → 1 → 3 → 4  (default)
+  Los pasos fuera del flujo elegido quedan accesibles desde el sidebar como opcionales.
 """
 import json
 import os
@@ -138,27 +144,25 @@ _FLOWS = {
         "steps": [0, 1, 2],
         "next": {1: 2, 2: None},
     },
-    "🎬 Overlay + video": {
-        "desc": "HUD animado sincronizado con tu vuelta, ya compuesto sobre tu grabación. Sin análisis por curva.",
+    "🎬 Solo overlay": {
+        "desc": "HUD animado (.webm con transparencia) para pegar tú mismo en tu editor de video.",
         "deliverables": [
             "🎬 `overlay.webm` — HUD transparente con alfa (velocímetro, gas, freno, delta)",
+        ],
+        "steps": [0, 1, 3],
+        "next": {1: 3, 3: None},
+    },
+    "🎥 Video con HUD": {
+        "desc": "El video final ya compuesto: tu grabación con el HUD integrado, listo para subir.",
+        "deliverables": [
+            "🎬 `overlay.webm` — HUD transparente con alfa",
             "🎥 `vuelta_composed.mp4` — tu grabación con el HUD ya integrado",
         ],
         "steps": [0, 1, 3, 4],
         "next": {1: 3, 3: 4, 4: None},
     },
-    "🎥 Análisis + overlay + video": {
-        "desc": "Todo: análisis por curva, HUD animado y video final compuesto.",
-        "deliverables": [
-            "📄 `report.md` + gráficas PNG por curva",
-            "🎬 `overlay.webm` — HUD transparente con alfa",
-            "🎥 `vuelta_composed.mp4` — tu grabación con el HUD ya integrado",
-        ],
-        "steps": [0, 1, 2, 3, 4],
-        "next": {1: 2, 2: 3, 3: 4, 4: None},
-    },
 }
-_DEFAULT_FLOW = "🎬 Overlay + video"
+_DEFAULT_FLOW = "🎥 Video con HUD"
 
 
 # ── navegación ────────────────────────────────────────────────────────────────
@@ -364,10 +368,7 @@ elif step_idx == 1:
     # ── ② Tu telemetría ───────────────────────────────────────────────────────
     st.divider()
     st.subheader("② Tu archivo de telemetría")
-    st.caption(
-        "Tus vueltas de la sesión. Se pre-selecciona la más rápida; "
-        "puedes marcar varias si quieres generar overlay de toda la sesión."
-    )
+    st.caption("Tus vueltas de la sesión. Se usa automáticamente la más rápida.")
     drv_file = st.file_uploader("Tu archivo de telemetría (CSV o XLSX)", type=["csv", "xlsx"], key="drv_upload")
 
     if not drv_file:
@@ -384,22 +385,25 @@ elif step_idx == 1:
         st.warning("No se detectaron vueltas en el archivo.")
         st.stop()
 
-    st.info(
-        "Aquí **sí puedes marcar varias vueltas**. "
-        "La primera marcada se usa en el análisis; las demás se incluyen si generas overlay de toda la sesión. "
-        "🏆 = más rápida · ⚠️ = incompleta (out/in lap)"
-    )
-    _drv_sel = _lap_table(_drv_laps, editor_key="drv_lap_tbl")
+    _drv_auto_i = _best_lap_index(_drv_laps)
+    _drv_sel_i  = st.session_state.get("drv_sel_%s" % drv_file.file_id, _drv_auto_i)
+    _drv_sel_i  = min(_drv_sel_i, len(_drv_laps) - 1)
 
-    if not _drv_sel:
-        st.warning("Marca al menos una vuelta para continuar.")
-        st.stop()
+    st.success("✓ **Tu vuelta:** %s" % _fmt_lap(_drv_laps[_drv_sel_i].laptime))
 
-    _drv_times = [_fmt_lap(_drv_laps[i].laptime) for i in _drv_sel if i < len(_drv_laps)]
-    if len(_drv_sel) == 1:
-        st.success("✓ **Tu vuelta:** %s" % _drv_times[0])
-    else:
-        st.success("✓ **%d vueltas seleccionadas:** %s" % (len(_drv_sel), " · ".join(_drv_times)))
+    if len(_drv_laps) > 1:
+        with st.expander("Cambiar vuelta (%d vueltas en el archivo)" % len(_drv_laps)):
+            st.caption("Marca **solo una**. 🏆 = más rápida · ⚠️ = incompleta")
+            _drv_tbl = _lap_table(_drv_laps, editor_key="drv_lap_tbl")
+            if len(_drv_tbl) == 0:
+                st.warning("Marca una vuelta.")
+            elif len(_drv_tbl) > 1:
+                st.error("Solo puedes marcar **una** vuelta aquí.")
+            else:
+                _drv_sel_i = _drv_tbl[0]
+                st.session_state["drv_sel_%s" % drv_file.file_id] = _drv_sel_i
+                if _drv_tbl[0] != _drv_auto_i:
+                    st.info("Usando Vuelta #%d — %s" % (_drv_tbl[0], _fmt_lap(_drv_laps[_drv_tbl[0]].laptime)))
 
     # ── Opciones avanzadas ────────────────────────────────────────────────────
     _ref_col_map  = None
@@ -467,23 +471,21 @@ elif step_idx == 1:
     if st.button(_load_label, type="primary"):
         with st.spinner("Procesando…"):
             try:
-                ref_lap      = _ref_laps[_ref_sel_i]
-                drv_lap      = _drv_laps[_drv_sel[0]]
-                drv_selected = [_drv_laps[i] for i in _drv_sel if i < len(_drv_laps)]
-                corners      = st.session_state.get("corners")
+                ref_lap = _ref_laps[_ref_sel_i]
+                drv_lap = _drv_laps[_drv_sel_i]
+                corners = st.session_state.get("corners")
                 if _corners_file:
                     corners = _corners_from_json(_corners_file)
                 st.session_state.update({
-                    "ref_path":          _ref_path,
-                    "drv_path":          _dc["path"],
-                    "ref_laps":          _ref_laps,
-                    "drv_laps":          _drv_laps,
-                    "ref_lap":           ref_lap,
-                    "drv_lap":           drv_lap,
-                    "drv_selected_laps": drv_selected,
-                    "corners":           corners,
-                    "ref_col_map":       _ref_col_map,
-                    "needs_compare":     _next_1 == 2,
+                    "ref_path":      _ref_path,
+                    "drv_path":      _dc["path"],
+                    "ref_laps":      _ref_laps,
+                    "drv_laps":      _drv_laps,
+                    "ref_lap":       ref_lap,
+                    "drv_lap":       drv_lap,
+                    "corners":       corners,
+                    "ref_col_map":   _ref_col_map,
+                    "needs_compare": _next_1 == 2,
                 })
                 _go(_next_1 or 2)
             except Exception as _e:
@@ -649,13 +651,18 @@ elif step_idx == 3:
         _next_step_btn(3)
         st.divider()
 
-    all_laps = st.checkbox(
-        "Generar overlay para TODAS las vueltas seleccionadas en el Paso 1",
-        help="Genera un overlay por cada vuelta que marcaste.",
-    )
-    _ndrv = len(st.session_state.get("drv_selected_laps", [drv_lap]))
-    if all_laps and _ndrv > 1:
-        st.info("Se generarán %d overlays. Tiempo estimado: %d–%d min." % (_ndrv, _ndrv * 15, _ndrv * 30))
+    _all_drv_laps    = st.session_state.get("drv_laps", [drv_lap])
+    _complete_laps   = [l for l in _all_drv_laps if l.meta.get("is_complete")]
+    _has_multi       = len(_complete_laps) > 1
+    all_laps = False
+    if _has_multi:
+        all_laps = st.checkbox(
+            "Generar overlay para TODAS las vueltas completas del archivo (%d vueltas)" % len(_complete_laps),
+            help="Genera un overlay por cada vuelta completa detectada en tu archivo, sin necesidad de seleccionarlas antes.",
+        )
+        if all_laps:
+            st.info("Se generarán %d overlays. Tiempo estimado: %d–%d min." % (
+                len(_complete_laps), len(_complete_laps) * 15, len(_complete_laps) * 30))
 
     out_dir = st.text_input(
         "Carpeta de salida",
@@ -691,10 +698,9 @@ elif step_idx == 3:
         try:
             from fantasma.viz.overlay import render_overlay
             if all_laps:
-                _laps_r = st.session_state.get("drv_selected_laps") or [drv_lap]
-                _webms  = []
-                for _i, _lap in enumerate(_laps_r):
-                    st.write("Vuelta %d/%d — %s" % (_i + 1, len(_laps_r), _fmt_lap(_lap.laptime)))
+                _webms = []
+                for _i, _lap in enumerate(_complete_laps):
+                    st.write("Vuelta %d/%d — %s" % (_i + 1, len(_complete_laps), _fmt_lap(_lap.laptime)))
                     _ld = os.path.join(out_dir, "lap_%02d" % _i)
                     os.makedirs(_ld, exist_ok=True)
                     _webms.append(render_overlay(ref_lap, _lap, corners or [], _ld,

@@ -1,6 +1,6 @@
 """Comparacion piloto vs referencia, por distancia (no por tiempo)."""
 from .normalize import resample
-from .corners import detect_corners, extract_milestones
+from .corners import detect_corners, extract_milestones, _samples
 from . import wear
 
 
@@ -65,7 +65,6 @@ def compare(ref, drv, step=5.0, corners=None):
     if corners is None:
         events, _ = detect_corners(ref)
         corners = extract_milestones(ref, events)
-    from .corners import _samples
     drv_data, _ = _samples(drv)
 
     def delta_at(dist):

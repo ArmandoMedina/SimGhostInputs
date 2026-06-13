@@ -88,8 +88,6 @@ def load(path):
 
     if header is None:
         raise NotMotecFormat("No se encontro la fila de canales 'Time' (¿es un export de MoTeC i2?)")
-    if "beacon markers" in {k.lower() for k in meta}:
-        pass
     lap.meta = meta
     # beacons del outing, si existen
     bm = meta.get("Beacon Markers", "")
