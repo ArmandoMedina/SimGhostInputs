@@ -119,7 +119,12 @@ if step == STEPS[0]:
                 pass
         lap_index = st.number_input(
             "Índice de vuelta (vacío = más rápida automáticamente)",
-            min_value=0, value=None, step=1, key="lap_idx")
+            min_value=0, value=None, step=1, key="lap_idx",
+            help=(
+                "Mira la tabla de arriba para ver qué vueltas tiene tu archivo. "
+                "Escribe el número de la columna 'Índice' de la vuelta que quieres analizar. "
+                "Si lo dejas vacío, se usa automáticamente la vuelta más rápida."
+            ))
 
     st.divider()
     st.subheader("Curvas del circuito (opcional)")
