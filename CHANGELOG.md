@@ -5,20 +5,38 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/). Versionado
 ## [Unreleased]
 
 ### Añadido
-- **`fantasma ui`**: interfaz gráfica local basada en Streamlit (localhost, sin hosting). Flujo de 4 pasos: Importar → Comparar → Overlay → Componer. Temas dark/light del sistema operativo. Extra `[ui]`: `pip install 'fantasma-inputs[ui]'`.
-- **`fantasma compose`**: nuevo subcomando que compone el overlay sobre el video de grabación usando ffmpeg. Parámetros: `--video`, `--overlay`, `--position` (top-left / top-right / bottom-left / bottom-right / top-center / bottom-center / center), `--offset` (delay en segundos), `--scale` (factor de escala), `-o`. No requiere abrir un editor de video externo.
-- **`fantasma overlay --all-laps`**: renderiza todas las vueltas completas del archivo del piloto (una por subcarpeta `lap_NN/`) y las concatena en `overlay_all.webm`. La referencia se reinicia en cada vuelta.
+- **`fantasma ui`**: interfaz gráfica local basada en Streamlit (localhost, sin hosting). Flujo de 4 pasos: Importar → Comparar → Overlay → Componer. Extra `[ui]`: `pip install 'fantasma-inputs[ui]'`.
+  - Wizard progresivo con `st.stop()`: cada sección se desbloquea cuando la anterior está completa.
+  - **Tabla de selección de vueltas** (referencia y piloto) con `st.data_editor` + checkboxes: muestra `🏆 Más rápida` / `✓ Completa` / `⚠️ Incompleta`; pre-marca la vuelta completa más rápida. La referencia es single-select; el piloto acepta múltiples (se usan todas en overlay `--all-laps`).
+  - **Carga en caché por `file_id`**: el archivo se parsea una sola vez; marcar/desmarcar vueltas en la tabla no re-procesa el archivo.
+  - **Tiempos en M:SS.ss** en todos los indicadores (en vez de segundos crudos).
+  - **Sidebar como breadcrumbs**: botones ▶️ (paso actual) / ✅ (completado) / ○ (pendiente) con navegación programática; los pasos futuros quedan deshabilitados hasta tener datos.
+  - **Botones "Ir al Paso N →"** al final de cada paso para no depender de la barra lateral.
+  - **Editor inline de nombres de curvas**: `st.data_editor` permite nombrar curvas directamente en la UI sin editar JSON a mano.
+  - Detección automática de vueltas al subir el archivo; columna "Estado" con emoji en la tabla.
+- **`fantasma compose`**: nuevo subcomando que compone el overlay sobre el video de grabación usando ffmpeg. Parámetros: `--video`, `--overlay`, `--position`, `--offset` (delay en segundos), `--scale`, `-o`.
+- **`fantasma overlay --all-laps`**: renderiza todas las vueltas completas del archivo del piloto (una por subcarpeta `lap_NN/`); con fallback por longitud (90 % del máximo) cuando ninguna vuelta tiene `is_complete=True`.
+- **Badges en README**: Ko-fi "Buy me a Lap" y AGPL-3.0.
 
 ### Cambiado
-- **Overlay HUD rediseñado (HUD-A)**: reemplaza las barras instantáneas (Pillow) por 3 paneles de líneas rodantes (matplotlib) con ventana deslizante de ±320m/+200m alrededor del cursor. Franja superior con GAP, ΔV, índice de deslizamiento y contador de ABS. Requiere `matplotlib>=3.7` (añadido al extra `[overlay]`).
+- **Overlay HUD rediseñado (HUD-A)**: reemplaza las barras instantáneas (Pillow) por 3 paneles de líneas rodantes (matplotlib) con ventana deslizante de ±320m/+200m alrededor del cursor. Franja superior con GAP, ΔV, índice de deslizamiento y contador de ABS.
+- **Branding → SimGhostInputs**: strings de marca en `setup.ps1`, `report.py` y README actualizados; nombre técnico del paquete (`fantasma-inputs`) y comando CLI (`fantasma`) sin cambios.
 
 ### Añadido
-- **Codificación de color ABS/TCS en overlay**: freno ámbar / gas violeta cuando la electrónica interviene; versiones apagadas del mismo color en la referencia para distinguir jerarquía visual sin perder continuidad de línea.
-- **Steering coloreado por G lateral relativo**: amarillo (P75–P90) y naranja (>P90) calibrados contra los percentiles de la vuelta de referencia; escala automática para cualquier auto y pista sin configuración manual.
-- **Indicadores de desgaste de goma** (`wear.py`): índice de deslizamiento (slip tyre-speed vs vehicle-speed), activaciones de ABS/TCS por tramo, temperatura media de gomas, combustible usado. Visibles en la franja de datos del HUD y en `report.md`.
-- **`setup.ps1`**: script de instalación interactivo para Windows — instala el paquete Python con los grupos de dependencias opcionales (`xlsx`, `overlay`, `charts`, `full`) y ofrece instalar via winget: ffmpeg, GitHub CLI, VLC y Kdenlive.
-- **Grupos de dependencias opcionales** en `pyproject.toml`: `pip install -e ".[xlsx|overlay|charts|full]"` para instalar solo lo necesario.
-- **Flujo de video documentado en la guía de usuario**: VLC para previsualizar el overlay con canal alfa; Kdenlive (GPL) como editor open source recomendado para sincronizar el HUD con la grabación; instrucciones de instalación con winget incluidas.
+- **Codificación de color ABS/TCS en overlay**: freno ámbar / gas violeta cuando la electrónica interviene; versiones apagadas en la referencia para distinguir jerarquía visual.
+- **Steering coloreado por G lateral relativo**: amarillo (P75–P90) y naranja (>P90) calibrados contra percentiles de la referencia; escala automática sin configuración manual.
+- **Indicadores de desgaste de goma** (`wear.py`): índice de deslizamiento, activaciones de ABS/TCS, temperatura media, combustible usado. Visibles en HUD y en `report.md`.
+- **`setup.ps1`**: instalación interactiva para Windows — paquete Python + winget para ffmpeg, GitHub CLI, VLC y Kdenlive.
+- **Grupos de dependencias opcionales** en `pyproject.toml`: `pip install -e ".[xlsx|overlay|charts|ui|full]"`.
+
+### Corregido
+- **CSV genérico**: `GUESS` dict extendido con variantes `_pct`, `_deg`, `_m`, `_s`, `_kmh` — cubre exports de SimHub, jocmaster y otros loggers sin necesidad de `--map`.
+- **`fantasma overlay --all-laps`**: fallback cuando `is_complete=False` en todas las vueltas (archivo sin beacon de meta); usa las vueltas ≥ 90 % de la longitud máxima.
+- **`numpy`**: añadido a los extras `overlay` y `full` en `pyproject.toml` (era dependencia implícita de matplotlib).
+- **`report.md`**: URL y nombre de marca corregidos en el pie del reporte generado.
+
+### Eliminado
+- Archivos de configuración de desarrollo (`.claude/`, `CLAUDE.md`) retirados del seguimiento de git (siguen disponibles localmente vía `.gitignore`).
 
 ---
 
