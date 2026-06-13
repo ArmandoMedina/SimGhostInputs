@@ -6,6 +6,7 @@ naranja >P90). Fondo #0a0c10. Cursor amarillo.
 
 Dependencias (extra `overlay`): Pillow>=10, matplotlib>=3.7, ffmpeg en PATH.
 """
+import concurrent.futures
 import os
 import shutil
 import subprocess
@@ -240,6 +241,64 @@ class _HUDFigure:
         self._plt.close(self.fig)
 
 
+# ── worker de proceso (nivel de módulo — requerido por spawn en Windows) ──────
+
+def _render_chunk(args):
+    """Renderiza el rango de frames [frame_start, frame_end) en un proceso separado."""
+    import matplotlib
+    matplotlib.use("Agg")
+
+    (frame_start, frame_end,
+     ds, ref_ch, drv_ch, p75, p90,
+     ref_slip, drv_slip,
+     ref_d_o, ref_abs_o, drv_d_o, drv_abs_o,
+     trace, n_tr, step,
+     t_arr, d_arr, corners_by_seg,
+     frames_dir, fps, t_start) = args
+
+    hud      = _HUDFigure()
+    last_png = None
+    try:
+        for n in range(frame_start, frame_end):
+            t     = t_start + n / fps
+            i_t   = max(0, min(int(np.searchsorted(t_arr, t, "right")) - 1, len(d_arr) - 1))
+            cur_d = float(d_arr[i_t])
+
+            w0    = max(0.0, cur_d - W_BEFORE)
+            w1    = min(float(ds[-1]), cur_d + W_AFTER)
+            mask  = (ds >= w0) & (ds <= w1)
+            win_d = ds[mask]
+
+            out_path = os.path.join(frames_dir, "f%06d.png" % n)
+            if win_d.size < 2:
+                if last_png is not None:
+                    shutil.copy(last_png, out_path)
+                continue
+
+            rw = {k: v[mask] for k, v in ref_ch.items()}
+            dw = {k: v[mask] for k, v in drv_ch.items()}
+
+            gap          = trace[max(0, min(int(cur_d / step), n_tr - 1))]["delta_t"]
+            ref_v        = float(np.interp(cur_d, ds, ref_ch["speed"]))
+            drv_v        = float(np.interp(cur_d, ds, drv_ch["speed"]))
+            dv           = int(drv_v - ref_v)
+            slip_val     = _slip_window(drv_slip, ds, w0, w1)
+            ref_slip_val = _slip_window(ref_slip, ds, w0, w1)
+            abs_n        = _count_events(drv_d_o, drv_abs_o, w0, w1)
+            ref_abs_n    = _count_events(ref_d_o, ref_abs_o, w0, w1)
+            corner_name, corner_txt = _corner_at(corners_by_seg, cur_d)
+
+            hud.update(cur_d, win_d, rw, dw, p75, p90,
+                       gap, dv, slip_val, ref_slip_val, abs_n, ref_abs_n,
+                       corner_name, corner_txt)
+            hud.to_pil().save(out_path)
+            last_png = out_path
+    finally:
+        hud.close()
+
+    return frame_end - frame_start
+
+
 # ── función principal ─────────────────────────────────────────────────────────
 
 def render_overlay(ref, drv, corners, outdir, fps=30, fmt="webm",
@@ -299,9 +358,6 @@ def render_overlay(ref, drv, corners, outdir, fps=30, fmt="webm",
     trace = delta_trace(ref, drv, step)
     n_tr  = len(trace)
 
-    def get_delta(d):
-        return trace[max(0, min(int(d / step), n_tr - 1))]["delta_t"]
-
     # tiempo → distancia del piloto
     t_arr = np.array(drv.col("time"), dtype=float)
     d_arr = np.array(drv.col("dist"), dtype=float)
@@ -311,59 +367,30 @@ def render_overlay(ref, drv, corners, outdir, fps=30, fmt="webm",
         return c.get("segment_m") or c.get("range_m") or [0.0, 0.0]
     corners_by_seg = [((_seg(c)[0], _seg(c)[1]), c) for c in corners]
 
-    # ── bucle de frames ───────────────────────────────────────────────────────
+    # ── render paralelo de frames ─────────────────────────────────────────────
     frames_dir = os.path.join(outdir, "frames")
     os.makedirs(frames_dir, exist_ok=True)
     t_end    = t_end if t_end is not None else float(t_arr[-1])
     n_frames = int((t_end - t_start) * fps)
 
-    hud = _HUDFigure()
-    try:
-        for n in range(n_frames):
-            t    = t_start + n / fps
-            i_t  = max(0, min(int(np.searchsorted(t_arr, t, "right")) - 1, len(d_arr) - 1))
-            cur_d = float(d_arr[i_t])
+    n_workers = max(1, (os.cpu_count() or 1) - 1)
+    chunk_sz  = max(1, (n_frames + n_workers - 1) // n_workers)
+    chunks    = [(i, min(n_frames, i + chunk_sz)) for i in range(0, n_frames, chunk_sz)]
 
-            w0 = max(0.0, cur_d - W_BEFORE)
-            w1 = min(float(ds[-1]), cur_d + W_AFTER)
+    base = (ds, ref_ch, drv_ch, p75, p90,
+            ref_slip, drv_slip,
+            ref_d_o, ref_abs_o, drv_d_o, drv_abs_o,
+            trace, n_tr, step,
+            t_arr, d_arr, corners_by_seg,
+            frames_dir, fps, t_start)
 
-            mask  = (ds >= w0) & (ds <= w1)
-            win_d = ds[mask]
-            if win_d.size < 2:
-                # ventana vacía (inicio/fin extremo de vuelta), copia frame anterior
-                if n > 0:
-                    import shutil as _sh
-                    _sh.copy(
-                        os.path.join(frames_dir, "f%06d.png" % (n - 1)),
-                        os.path.join(frames_dir, "f%06d.png" % n),
-                    )
-                continue
-
-            rw = {k: v[mask] for k, v in ref_ch.items()}
-            dw = {k: v[mask] for k, v in drv_ch.items()}
-
-            gap   = get_delta(cur_d)
-            ref_v = float(np.interp(cur_d, ds, ref_ch["speed"]))
-            drv_v = float(np.interp(cur_d, ds, drv_ch["speed"]))
-            dv    = int(drv_v - ref_v)
-
-            slip_val     = _slip_window(drv_slip, ds, w0, w1)
-            ref_slip_val = _slip_window(ref_slip, ds, w0, w1)
-            abs_n        = _count_events(drv_d_o, drv_abs_o, w0, w1)
-            ref_abs_n    = _count_events(ref_d_o, ref_abs_o, w0, w1)
-
-            corner_name, corner_txt = _corner_at(corners_by_seg, cur_d)
-
-            hud.update(cur_d, win_d, rw, dw, p75, p90,
-                       gap, dv, slip_val, ref_slip_val, abs_n, ref_abs_n,
-                       corner_name, corner_txt)
-
-            hud.to_pil().save(os.path.join(frames_dir, "f%06d.png" % n))
-
-            if progress and n % (fps * 10) == 0:
-                progress(n, n_frames)
-    finally:
-        hud.close()
+    with concurrent.futures.ProcessPoolExecutor(max_workers=n_workers) as executor:
+        futs = [executor.submit(_render_chunk, (s, e, *base)) for s, e in chunks]
+        done = 0
+        for fut in concurrent.futures.as_completed(futs):
+            done += fut.result()
+            if progress:
+                progress(done, n_frames)
 
     if fmt == "png":
         return frames_dir
