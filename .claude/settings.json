@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "all=$(git diff --name-only 2>/dev/null; git diff --cached --name-only 2>/dev/null); if echo \"$all\" | grep -qE '\\.py$' && ! echo \"$all\" | grep -q 'CHANGELOG'; then printf '{\"systemMessage\": \"Hay archivos .py modificados sin documentar en CHANGELOG.md. Ejecuta /changelog antes de commitear.\"}'; fi",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  }
+}
