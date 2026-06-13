@@ -747,9 +747,10 @@ elif step_idx == 3:
         os.makedirs(out_dir, exist_ok=True)
         _bar = st.progress(0, text="Iniciando…")
 
-        def _progress(n, total):
-            pct = n / total if total else 0
-            _bar.progress(pct, text="Frame %d / %d (%.0f%%)" % (n, total, pct * 100))
+        def _progress(n, total, status=None):
+            pct = min(n / total, 1.0) if total else 0
+            label = status if status else "Frame %d / %d (%.0f%%)" % (n, total, pct * 100)
+            _bar.progress(pct, text=label)
 
         try:
             from fantasma.viz.overlay import render_overlay

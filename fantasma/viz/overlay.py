@@ -8,6 +8,7 @@ Dependencias (extra `overlay`): Pillow>=10, matplotlib>=3.7, ffmpeg en PATH.
 """
 import os
 import pickle
+import re
 import shutil
 import subprocess
 import sys
@@ -361,6 +362,26 @@ def _render_parallel(chunks, base, n_frames, progress):
 
 # ── función principal ─────────────────────────────────────────────────────────
 
+def _run_ffmpeg(cmd, n_frames, progress):
+    """Corre ffmpeg y alimenta el callback de progreso leyendo stdout en tiempo real."""
+    cmd_p = [cmd[0], "-progress", "pipe:1", "-nostats"] + cmd[1:]
+    pat = re.compile(r"^frame=(\d+)")
+    proc = subprocess.Popen(cmd_p, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+                            text=True)
+    try:
+        for line in proc.stdout:
+            if progress and n_frames > 0:
+                m = pat.match(line.strip())
+                if m:
+                    enc = int(m.group(1))
+                    progress(enc, n_frames,
+                             status="Codificando video… frame %d / %d" % (enc, n_frames))
+    finally:
+        proc.wait()
+    if proc.returncode != 0:
+        raise subprocess.CalledProcessError(proc.returncode, cmd)
+
+
 def render_overlay(ref, drv, corners, outdir, fps=30, fmt="webm",
                    t_start=0.0, t_end=None, progress=None):
     """Renderiza el overlay HUD-A. Devuelve ruta del video o carpeta de frames."""
@@ -459,11 +480,15 @@ def render_overlay(ref, drv, corners, outdir, fps=30, fmt="webm",
         print("aviso: ffmpeg no encontrado — frames en %s" % frames_dir)
         return frames_dir
 
+    n_cpu = os.cpu_count() or 4
+
     if fmt == "webm":
         out = os.path.join(outdir, "overlay.webm")
+        # VP9 alpha no tiene encoder GPU disponible; row-mt aprovecha todos los cores
         cmd = [ffmpeg, "-y", "-framerate", str(fps),
                "-i", os.path.join(frames_dir, "f%06d.png"),
-               "-c:v", "libvpx-vp9", "-pix_fmt", "yuva420p", "-b:v", "2M", out]
+               "-c:v", "libvpx-vp9", "-pix_fmt", "yuva420p", "-b:v", "2M",
+               "-row-mt", "1", "-threads", str(n_cpu), out]
     else:
         out = os.path.join(outdir, "overlay.mov")
         cmd = [ffmpeg, "-y", "-framerate", str(fps),
@@ -471,6 +496,6 @@ def render_overlay(ref, drv, corners, outdir, fps=30, fmt="webm",
                "-c:v", "prores_ks", "-profile:v", "4444",
                "-pix_fmt", "yuva444p10le", out]
 
-    subprocess.run(cmd, check=True, capture_output=True)
+    _run_ffmpeg(cmd, n_frames, progress)
     shutil.rmtree(frames_dir, ignore_errors=True)
     return out
