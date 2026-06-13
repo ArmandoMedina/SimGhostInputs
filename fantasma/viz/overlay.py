@@ -59,7 +59,7 @@ def _interp_lap(lap, ds):
     """Interpola todos los canales del Lap en la rejilla uniforme ds (1 m)."""
     d_orig = np.array(lap.col("dist"), dtype=float)
     out = {}
-    for ch in ("throttle", "brake", "steering", "speed", "glat", "abs", "tcs"):
+    for ch in ("throttle", "brake", "steering", "speed", "glat", "abs", "tcs", "gear"):
         raw = lap.col(ch)
         if raw:
             out[ch] = np.interp(ds, d_orig, np.array(raw, dtype=float))
@@ -120,6 +120,9 @@ class _HUDFigure:
         self.t_sl_ref  = fig.text(0.305, 0.978, "",  color=_DIM,   fontsize=10, **kw)
         self.t_ab_val  = fig.text(0.405, 0.985, "",  color=_ABS,   fontsize=14, **kw)
         self.t_ab_ref  = fig.text(0.450, 0.978, "",  color=_DIM,   fontsize=10, **kw)
+        self.t_gear_val = fig.text(0.665, 0.985, "",  color=_FG,  fontsize=17, weight="bold", **kw)
+        self.t_dist_val = fig.text(0.755, 0.985, "",  color=_DIM, fontsize=14, **kw)
+        self.t_spd_val  = fig.text(0.855, 0.985, "",  color=_FG,  fontsize=14, **kw)
         self.t_corner  = fig.text(0.988, 0.985, "",  color=_YEL,   fontsize=15,
                                   weight="bold", va="top", ha="right", transform=fig.transFigure)
         self.t_corner2 = fig.text(0.988, 0.948, "",  color=_DIM,   fontsize=10,
@@ -132,6 +135,9 @@ class _HUDFigure:
         fig.text(0.375, 0.97,  "ABS",       color=_DIM,  fontsize=10, **kw)
         fig.text(0.520, 0.97,  "freno+ABS", color=_ABS,  fontsize=9,  **kw)
         fig.text(0.585, 0.97,  "gas+TCS",   color=_TCS,  fontsize=9,  **kw)
+        fig.text(0.635, 0.97,  "MARCHA",    color=_DIM,  fontsize=9,  **kw)
+        fig.text(0.730, 0.97,  "m",         color=_DIM,  fontsize=9,  **kw)
+        fig.text(0.830, 0.97,  "km/h",      color=_DIM,  fontsize=9,  **kw)
 
         # ── estilo de paneles ─────────────────────────────────────────────────
         specs = [("gas %", -5, 105), ("freno %", -5, 105), ("volante °", -38, 38)]
@@ -181,7 +187,7 @@ class _HUDFigure:
 
     def update(self, cur_d, win_d, rw, dw, p75, p90,
                gap, dv, slip_val, ref_slip_val, abs_n, ref_abs_n,
-               corner_name, corner_txt):
+               corner_name, corner_txt, gear=None, speed=None):
         """Actualiza datos y texto para el frame actual."""
         l = self.l
 
@@ -225,6 +231,11 @@ class _HUDFigure:
             self.t_sl_ref.set_text("")
         self.t_ab_val.set_text("●" * min(abs_n, 5))
         self.t_ab_ref.set_text("ref %d✕" % ref_abs_n)
+        if gear is not None:
+            g = int(round(gear))
+            self.t_gear_val.set_text("N" if g == 0 else ("R" if g < 0 else str(g)))
+        self.t_dist_val.set_text("%d" % int(cur_d))
+        self.t_spd_val.set_text("%d" % int(speed) if speed is not None else "")
         self.t_corner.set_text(corner_name)
         self.t_corner2.set_text(corner_txt)
 
@@ -288,9 +299,10 @@ def _render_chunk(args):
             ref_abs_n    = _count_events(ref_d_o, ref_abs_o, w0, w1)
             corner_name, corner_txt = _corner_at(corners_by_seg, cur_d)
 
+            gear = float(np.interp(cur_d, ds, drv_ch["gear"])) if drv_ch.get("gear") is not None else None
             hud.update(cur_d, win_d, rw, dw, p75, p90,
                        gap, dv, slip_val, ref_slip_val, abs_n, ref_abs_n,
-                       corner_name, corner_txt)
+                       corner_name, corner_txt, gear=gear, speed=drv_v)
             hud.to_pil().save(out_path)
             last_png = out_path
     finally:
