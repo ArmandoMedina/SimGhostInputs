@@ -374,8 +374,6 @@ def render_overlay(ref, drv, corners, outdir, fps=30, fmt="webm",
     n_frames = int((t_end - t_start) * fps)
 
     n_workers = max(1, (os.cpu_count() or 1) - 1)
-    chunk_sz  = max(1, (n_frames + n_workers - 1) // n_workers)
-    chunks    = [(i, min(n_frames, i + chunk_sz)) for i in range(0, n_frames, chunk_sz)]
 
     base = (ds, ref_ch, drv_ch, p75, p90,
             ref_slip, drv_slip,
@@ -384,13 +382,28 @@ def render_overlay(ref, drv, corners, outdir, fps=30, fmt="webm",
             t_arr, d_arr, corners_by_seg,
             frames_dir, fps, t_start)
 
-    with concurrent.futures.ProcessPoolExecutor(max_workers=n_workers) as executor:
-        futs = [executor.submit(_render_chunk, (s, e, *base)) for s, e in chunks]
-        done = 0
-        for fut in concurrent.futures.as_completed(futs):
-            done += fut.result()
-            if progress:
-                progress(done, n_frames)
+    if n_workers <= 1:
+        # 1 o 2 cores: spawn overhead > ganancia; loop secuencial
+        _render_chunk((0, n_frames, *base))
+        if progress:
+            progress(n_frames, n_frames)
+    else:
+        # mp_context="spawn" fuerza el mismo comportamiento en Linux/Mac que en Windows.
+        # fork (default en Linux) + matplotlib puede deadlockear o lanzar UserWarning.
+        # PENDIENTE: probar en Linux y macOS antes de quitar este comentario.
+        import multiprocessing
+        mp_ctx = multiprocessing.get_context("spawn")
+        chunk_sz = max(1, (n_frames + n_workers - 1) // n_workers)
+        chunks   = [(i, min(n_frames, i + chunk_sz)) for i in range(0, n_frames, chunk_sz)]
+        with concurrent.futures.ProcessPoolExecutor(
+            max_workers=n_workers, mp_context=mp_ctx
+        ) as executor:
+            futs = [executor.submit(_render_chunk, (s, e, *base)) for s, e in chunks]
+            done = 0
+            for fut in concurrent.futures.as_completed(futs):
+                done += fut.result()
+                if progress:
+                    progress(done, n_frames)
 
     if fmt == "png":
         return frames_dir
