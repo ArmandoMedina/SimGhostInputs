@@ -92,6 +92,6 @@ def render_markdown(trace, corner_rows, summary, meta=None):
             ("%+d" % r["d_brake_m"]) if r.get("d_brake_m") is not None else "—",
             r["time_lost"], r.get("flags", "")))
     out.append("")
-    out.append("*Generado por [SimGhostInputs](https://github.com/) — AGPL-3.0-or-later. "
+    out.append("*Generado por [SimGhostInputs](https://github.com/ArmandoMedina/SimGhostInputs) — AGPL-3.0-or-later. "
                "Comparacion por distancia; delta positivo = el piloto pierde tiempo.*")
     return "\n".join(out) + "\n"
