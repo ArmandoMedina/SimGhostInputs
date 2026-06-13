@@ -139,7 +139,9 @@ def auto_sync(video_path, drv_lap):
 
     Raises:
         ImportError:  si scipy no esta instalado
-        RuntimeError: si faltan canales de telemetria o ffmpeg no esta en PATH
+        RuntimeError: si faltan canales de telemetria, ffmpeg no esta en PATH,
+                      o la correlacion audio/tele es insuficiente (z < 3.0 sigma) —
+                      indica que el video no corresponde a la vuelta telemetrada
     """
     try:
         import scipy  # noqa: F401
@@ -160,5 +162,15 @@ def auto_sync(video_path, drv_lap):
     # lag < 0: vuelta empieza |lag| segundos ANTES del inicio del video
     lags = (np.arange(len(corr)) - (len(tele) - 1)) / _CORR_HZ
     mask = np.abs(lags) <= _SEARCH_SEC
-    offset = float(lags[mask][np.argmax(corr[mask])])
+    corr_w = corr[mask]
+    peak_idx = np.argmax(corr_w)
+    peak_val = corr_w[peak_idx]
+    z = (peak_val - corr_w.mean()) / (corr_w.std() + 1e-9)
+    if z < 3.0:
+        raise RuntimeError(
+            "auto_sync: pico de correlacion insuficiente (z=%.1f, minimo 3.0). "
+            "El video no parece corresponder a la vuelta telemetrada, o el audio "
+            "no contiene senal de motor reconocible en la banda 150-500 Hz." % z
+        )
+    offset = float(lags[mask][peak_idx])
     return offset
