@@ -171,15 +171,21 @@ if step == STEPS[0]:
         _lap_rows = []
         for i, l in enumerate(_detected_laps):
             _complete = l.meta.get("is_complete", False)
+            if i == _best_i:
+                _estado = "🏆 Más rápida"
+            elif _complete:
+                _estado = "✓ Completa"
+            else:
+                _estado = "⚠️ Incompleta"
             _lap_rows.append({
                 "Analizar": i == _best_i,
                 "#": i,
                 "Tiempo": _fmt_lap(l.laptime),
                 "Metros": int(l.length),
-                "Completa": "✓" if _complete else "—",
+                "Estado": _estado,
             })
 
-        st.caption("Marca las vueltas que quieres analizar. La vuelta completa más rápida está pre-seleccionada.")
+        st.caption("Marca las vueltas que quieres analizar. 🏆 = más rápida completa · ⚠️ = incompleta (out/in lap)")
         _edited_laps = st.data_editor(
             _pd.DataFrame(_lap_rows),
             column_config={
@@ -187,7 +193,7 @@ if step == STEPS[0]:
                 "#":        st.column_config.NumberColumn("#", disabled=True, width="small"),
                 "Tiempo":   st.column_config.TextColumn("Tiempo", disabled=True, width="medium"),
                 "Metros":   st.column_config.NumberColumn("Metros", disabled=True, width="small"),
-                "Completa": st.column_config.TextColumn("✓", disabled=True, width="small"),
+                "Estado":   st.column_config.TextColumn("Estado", disabled=True, width="medium"),
             },
             hide_index=True,
             use_container_width=True,
