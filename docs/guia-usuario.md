@@ -57,6 +57,8 @@ Ahí mismo puedes ajustar `"tolerances"` por curva: `vmin_kmh` y `brake_start_m`
 
 ## 6. Video con HUD transparente
 
+> Para una descripción detallada de cada elemento visual del HUD (paneles, colores, franja de datos) consulta la [referencia del HUD](hud-reference.md).
+
 ```
 fantasma overlay --reference ref.csv --driver mi_outing.csv --corners salida/corners_detected.json -o salida/
 ```

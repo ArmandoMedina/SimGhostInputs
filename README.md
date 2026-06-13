@@ -4,6 +4,8 @@
 [![Ko-fi](https://img.shields.io/badge/Ko--fi-Buy%20me%20a%20Lap-FF5E5B?logo=ko-fi&logoColor=white)](https://ko.fi/armandomedina2255)
 [![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL--3.0-blue.svg)](LICENSE)
 
+![HUD preview](docs/demo/overlay_hud_preview.gif)
+
 > [!WARNING]
 > **Proyecto en desarrollo activo — versión 0.x (pre-release).**
 > El motor CLI está validado con telemetría real, pero la interfaz gráfica (`fantasma ui`) y el flujo de video completo (`fantasma compose`) están en pruebas.
@@ -128,7 +130,9 @@ Salida de `overlay`:
 
   La franja de datos muestra: GAP acumulado · ΔV en el metro actual · índice de deslizamiento (proxy de desgaste) · activaciones de ABS por segmento · **marcha actual** (1–6 / N / R) · **velocidad en km/h** · **distancia en metros**. Los tres últimos campos son útiles para verificar la sincronía visualmente comparando con el velocímetro y el marcador de marcha del sim.
 
-Documentación completa en [`docs/`](docs/): [guía de usuario](docs/guia-usuario.md) · [formato de datos](docs/formato-datos.md) · [cómo contribuir](CONTRIBUTING.md).
+Documentación completa en [`docs/`](docs/): [guía de usuario](docs/guia-usuario.md) · [referencia del HUD](docs/hud-reference.md) · [formato de datos](docs/formato-datos.md) · [cómo contribuir](CONTRIBUTING.md).
+
+> **Demo:** descarga [`sample_60s_nordschleife.mp4`](https://github.com/ArmandoMedina/SimGhostInputs/releases/latest/download/sample_60s_nordschleife.mp4) para ver el HUD en acción sobre grabación real (AMS2 · BMW M4 GT3 · Nordschleife).
 
 ## Nombres de curvas (opcional)
 

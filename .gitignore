@@ -12,3 +12,4 @@ driver/
 *.ldx
 .claude/
 CLAUDE.md
+docs/demo/_*
