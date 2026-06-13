@@ -52,6 +52,11 @@ def _load_lap_cached(path, column_map=None):
     return outing, laps, best
 
 
+def _fmt_lap(seconds):
+    m, s = divmod(int(seconds), 60)
+    return "%d:%05.2f" % (m, seconds - m * 60)
+
+
 def _corners_from_json(uploaded):
     data = json.load(uploaded)
     return data.get("corners", data) if isinstance(data, dict) else data
@@ -79,105 +84,163 @@ if step == STEPS[0]:
 
     # ── 1A: vuelta de referencia ──────────────────────────────────────────────
     st.subheader("① Vuelta de referencia")
-    ref_file = st.file_uploader("CSV o XLSX de referencia", type=["csv", "xlsx"],
+    st.caption(
+        "Es la vuelta contra la que te vas a comparar — puede ser tu mejor tiempo anterior, "
+        "la de un coach, o cualquier lap de referencia que quieras superar. "
+        "Exporta el archivo desde MoTeC i2 como CSV o XLSX."
+    )
+    ref_file = st.file_uploader("Selecciona el archivo de referencia", type=["csv", "xlsx"],
                                 key="ref_upload")
     ref_col_map = None
-    if ref_file and ref_file.name.endswith(".csv"):
-        with st.expander("Mapeo de columnas (CSV genérico)", expanded=False):
-            st.caption("Deja en blanco si es export MoTeC estándar.")
-            pairs = st.text_area("columna_csv=canal  (una por línea)",
-                                 placeholder="dist_m=dist\nspeed_kmh=speed",
-                                 key="ref_map")
+
+    if not ref_file:
+        st.info("⬆️ Sube la vuelta de referencia para continuar.")
+        st.stop()
+
+    # intentar cargar para detectar si necesita mapeo de columnas
+    with st.spinner("Leyendo archivo de referencia…"):
+        try:
+            _ref_path_tmp = _save_upload(ref_file, os.path.splitext(ref_file.name)[1])
+            ref_file.seek(0)
+            from fantasma import importers as _imp_ref
+            _imp_ref.load(_ref_path_tmp)
+            _ref_load_ok = True
+        except ValueError as _e:
+            _ref_load_ok = False
+            _ref_err = str(_e)
+
+    if not _ref_load_ok:
+        st.warning("No pudimos detectar las columnas automáticamente. Indica cuáles son:")
+        with st.expander("Configurar columnas del archivo", expanded=True):
+            st.caption(
+                "Tu archivo tiene nombres de columnas que no reconocemos. "
+                "Escribe abajo cómo se llaman en tu archivo y qué significan, "
+                "una por línea con el formato  nombre_en_tu_archivo = significado"
+            )
+            _ejemplo = "Ejemplo:\n  mi_distancia = dist\n  tiempo_s = time\n  velocidad = speed"
+            pairs = st.text_area("Columnas", placeholder=_ejemplo, key="ref_map")
             if pairs.strip():
                 ref_col_map = dict(p.partition("=")[::2] for p in pairs.splitlines() if "=" in p)
 
-    if not ref_file:
-        st.info("Sube primero la vuelta de referencia para continuar.")
-        st.stop()
-
     # ── 1B: vuelta del piloto ─────────────────────────────────────────────────
     st.divider()
-    st.subheader("② Vuelta del piloto")
-    drv_file = st.file_uploader("CSV o XLSX del piloto", type=["csv", "xlsx"],
+    st.subheader("② Tu archivo de telemetría")
+    st.caption(
+        "El archivo con tus vueltas de la sesión. "
+        "Si tiene varias vueltas podrás elegir cuál analizar en el siguiente paso."
+    )
+    drv_file = st.file_uploader("Selecciona tu archivo de telemetría", type=["csv", "xlsx"],
                                 key="drv_upload")
 
     if not drv_file:
-        st.info("Ahora sube el archivo con tus vueltas.")
+        st.info("⬆️ Sube tu archivo de telemetría para continuar.")
         st.stop()
 
-    # tabla de vueltas automática
+    # detectar vueltas automáticamente y mostrar selector
     lap_index = None
-    try:
-        import tempfile as _tf
-        from fantasma import importers as _imp
-        from fantasma.core.normalize import split_laps as _sl
-        import pandas as _pd
-        _tmp = _tf.NamedTemporaryFile(delete=False, suffix=os.path.splitext(drv_file.name)[1])
-        _tmp.write(drv_file.read()); _tmp.flush(); drv_file.seek(0)
-        _laps = _sl(_imp.load(_tmp.name))
-        _df = _pd.DataFrame([{
-            "Índice": i,
-            "Duración (s)": "%.2f" % l.laptime,
-            "Longitud (m)": "%.0f" % l.length,
-            "Completa": "✓" if l.meta.get("is_complete") else "—",
-        } for i, l in enumerate(_laps)])
-        st.caption("Vueltas detectadas en tu archivo:")
-        st.dataframe(_df, hide_index=True, use_container_width=True)
-    except Exception:
-        pass
+    _detected_laps = []
+    with st.spinner("Leyendo vueltas de tu archivo…"):
+        try:
+            import tempfile as _tf
+            from fantasma import importers as _imp
+            from fantasma.core.normalize import split_laps as _sl
+            _tmp = _tf.NamedTemporaryFile(delete=False, suffix=os.path.splitext(drv_file.name)[1])
+            _tmp.write(drv_file.read()); _tmp.flush(); drv_file.seek(0)
+            _detected_laps = _sl(_imp.load(_tmp.name))
+        except Exception as _e:
+            st.error("No se pudo leer el archivo: %s" % _e)
+            st.stop()
 
-    lap_index = st.number_input(
-        "¿Qué vuelta quieres analizar? (índice de la tabla — vacío = más rápida)",
-        min_value=0, value=None, step=1, key="lap_idx",
-        help="Escribe el número de la columna Índice de la vuelta que quieres. Vacío = se elige automáticamente la más rápida.")
+    if _detected_laps:
+        import pandas as _pd
+        _opts = []
+        _best_i = 0
+        _best_t = float("inf")
+        for i, l in enumerate(_detected_laps):
+            _complete = l.meta.get("is_complete")
+            _label = "Vuelta %d — %s · %.0f m%s" % (
+                i, _fmt_lap(l.laptime), l.length,
+                " ✓" if _complete else ""
+            )
+            _opts.append(_label)
+            if _complete and l.laptime < _best_t:
+                _best_t = l.laptime
+                _best_i = i
+
+        _sel = st.selectbox(
+            "¿Qué vuelta quieres analizar?",
+            options=range(len(_opts)),
+            format_func=lambda i: _opts[i],
+            index=_best_i,
+            help="Se pre-selecciona automáticamente la vuelta completa más rápida."
+        )
+        lap_index = int(_sel)
+    else:
+        st.warning("No se detectaron vueltas en el archivo.")
+        st.stop()
 
     # ── 1C: curvas del circuito ───────────────────────────────────────────────
     st.divider()
-    st.subheader("③ Curvas del circuito (opcional)")
-    st.caption("Permite nombrar las curvas en el reporte. Sin esto se llaman C01, C02…")
+    st.subheader("③ Nombres de curvas (opcional)")
+    st.caption(
+        "Si agregas nombres, el reporte mostrará 'Hatzenbach', 'Karussell', etc. "
+        "en lugar de C01, C02… Puedes saltarte este paso y añadirlos después."
+    )
 
+    _corners_in_state = "corners" in st.session_state and st.session_state["corners"]
     col_cj, col_cd = st.columns([1, 1])
+    corners_file = None
     with col_cj:
         corners_file = st.file_uploader(
-            "Sube un corners.json existente",
-            type=["json"], key="corners_upload",
-            help="Archivo con nombres de curvas y tolerancias generado previamente.")
+            "Sube un corners.json que ya tengas",
+            type=["json"], key="corners_upload")
     with col_cd:
-        st.write("¿No tienes uno? Detéctalo ahora:")
-        if st.button("Detectar curvas de la referencia"):
-            try:
-                from fantasma import importers as _imp2
-                from fantasma.core.normalize import split_laps as _sl2, fastest_lap as _fl2
-                from fantasma.core.corners import detect_corners as _dc, extract_milestones as _em
-                import tempfile as _tf2, json as _json
-                _tmp2 = _tf2.NamedTemporaryFile(delete=False, suffix=os.path.splitext(ref_file.name)[1])
-                _tmp2.write(ref_file.read()); _tmp2.flush(); ref_file.seek(0)
-                _ref_lap = _fl2(_sl2(_imp2.load(_tmp2.name)))
-                _evs, _ = _dc(_ref_lap)
-                _corners = _em(_ref_lap, _evs)
-                st.session_state["corners"] = _corners
-                st.download_button(
-                    "Descargar corners.json",
-                    data=_json.dumps({"corners": _corners}, indent=2, ensure_ascii=False),
-                    file_name="corners.json", mime="application/json",
-                )
-                st.success("%d curvas detectadas. Puedes editar los nombres en el JSON y volver a subirlo." % len(_corners))
-            except Exception as e:
-                st.error("Error: %s" % e)
+        st.write("¿Primera vez? Detéctalas automáticamente:")
+        if st.button("Detectar curvas"):
+            with st.spinner("Analizando vuelta de referencia…"):
+                try:
+                    from fantasma import importers as _imp2
+                    from fantasma.core.normalize import split_laps as _sl2, fastest_lap as _fl2
+                    from fantasma.core.corners import detect_corners as _dc, extract_milestones as _em
+                    _ref_lap2 = _fl2(_sl2(_imp2.load(_ref_path_tmp)))
+                    _evs, _ = _dc(_ref_lap2)
+                    _corners_det = _em(_ref_lap2, _evs)
+                    st.session_state["corners"] = _corners_det
+                    st.session_state["corners_editable"] = True
+                    st.success("✓ %d curvas detectadas. Puedes ponerles nombre abajo." % len(_corners_det))
+                except Exception as e:
+                    st.error("Error: %s" % e)
+
+    if st.session_state.get("corners_editable") and st.session_state.get("corners"):
+        import pandas as _pd2
+        _c_data = [{"ID": c["id"], "Nombre": c.get("name", ""), "Metro": c["milestones"]["apex"]["d"]}
+                   for c in st.session_state["corners"]]
+        st.caption("Escribe el nombre de cada curva (puedes dejar en blanco las que no conozcas):")
+        _edited = st.data_editor(
+            _pd2.DataFrame(_c_data),
+            column_config={
+                "ID":     st.column_config.TextColumn("ID", disabled=True, width="small"),
+                "Metro":  st.column_config.NumberColumn("Metro", disabled=True, width="small"),
+                "Nombre": st.column_config.TextColumn("Nombre de la curva", width="medium"),
+            },
+            hide_index=True, use_container_width=True, key="corners_editor"
+        )
+        for i, row in _edited.iterrows():
+            if row["Nombre"]:
+                st.session_state["corners"][i]["name"] = row["Nombre"]
 
     # ── 1D: cargar ───────────────────────────────────────────────────────────
     st.divider()
     if st.button("Cargar y continuar →", type="primary"):
-        with st.spinner("Cargando…"):
+        with st.spinner("Procesando archivos…"):
             try:
-                ref_path = _save_upload(ref_file, os.path.splitext(ref_file.name)[1])
+                ref_path = _save_upload(ref_file, os.path.splitext(ref_file.name)[1]) if ref_file else _ref_path_tmp
                 drv_path = _save_upload(drv_file, os.path.splitext(drv_file.name)[1])
 
                 _, ref_laps, ref_lap = _load_lap_cached(ref_path, ref_col_map)
-                _, drv_laps, drv_lap = _load_lap_cached(drv_path,
-                                                         lap_index=int(lap_index) if lap_index is not None else None)
+                _, drv_laps, drv_lap = _load_lap_cached(drv_path, lap_index=lap_index)
 
-                corners = None
+                corners = st.session_state.get("corners")
                 if corners_file:
                     corners = _corners_from_json(corners_file)
 
@@ -187,9 +250,9 @@ if step == STEPS[0]:
                     "ref_lap": ref_lap,   "drv_lap": drv_lap,
                     "corners": corners,
                     "ref_col_map": ref_col_map,
-                    "lap_index": int(lap_index) if lap_index is not None else None,
+                    "lap_index": lap_index,
                 })
-                st.success("Archivos cargados correctamente.")
+                st.success("✓ Archivos cargados. Ve al Paso 2 para comparar.")
             except Exception as e:
                 st.error("Error al cargar: %s" % e)
 
