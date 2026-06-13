@@ -61,7 +61,7 @@ Ahí mismo puedes ajustar `"tolerances"` por curva: `vmin_kmh` y `brake_start_m`
 fantasma overlay --reference ref.csv --driver mi_outing.csv --corners salida/corners_detected.json -o salida/
 ```
 
-Produce `overlay.webm` (VP9 con canal alfa) o `overlay.mov` (ProRes 4444) de la duración exacta de tu vuelta.
+Produce `overlay.webm` (VP9 con canal alfa) o `overlay.mov` (ProRes 4444) de la duración exacta de tu vuelta. En máquinas multi-core el render se paralela automáticamente (`N_cores − 1` procesos).
 
 Requiere [ffmpeg](https://ffmpeg.org/) en el PATH. Sin ffmpeg genera los frames PNG igualmente.
 
@@ -78,9 +78,31 @@ Abre `overlay.webm` en [VLC](https://www.videolan.org/vlc/) para verificar que e
 winget install VideoLAN.VLC
 ```
 
-### Sincronizar con tu grabación
+### Sincronizar y componer con `fantasma compose` (recomendado)
 
-La opción open source recomendada es **[Kdenlive](https://kdenlive.org/)** (GPL, Windows/Mac/Linux):
+Una vez que tienes el overlay y la grabación, el comando `compose` los fusiona automáticamente:
+
+```
+# Con offset manual (sabes cuántos segundos de preámbulo tiene el video):
+fantasma compose --video "grabacion.mp4" --overlay "salida/overlay.webm" --offset 5.0 -o "resultado.mp4"
+
+# Con detección automática de offset por correlación de audio (requiere scipy):
+pip install "fantasma-inputs[sync]"
+fantasma compose --video "grabacion.mp4" --overlay "salida/overlay.webm" \
+    --auto-sync --driver "mi_outing.csv" -o "resultado.mp4"
+```
+
+La detección automática extrae la energía del motor del audio del video (banda 150–500 Hz) y la correlaciona con la señal de RPM/velocidad de la telemetría. Precisión ~0.5 s. Funciona con cualquier sim que exporte RPM o velocidad.
+
+Si usas `fantasma ui`, el Paso 4 incluye un botón «Detectar sincronía automáticamente» que hace lo mismo desde la interfaz gráfica.
+
+#### Referencia visual de sincronía
+
+El HUD muestra en todo momento la **marcha** (1–6/N/R), la **velocidad en km/h** y la **distancia en metros**. Si el video tiene el velocímetro o el contador de marchas visible, puedes verificar visualmente que el HUD coincide con lo que se ve en pantalla.
+
+### Sincronizar manualmente con un editor de video
+
+Si prefieres componer el video con un editor externo, la opción open source recomendada es **[Kdenlive](https://kdenlive.org/)** (GPL, Windows/Mac/Linux):
 
 ```
 winget install KDE.Kdenlive
@@ -89,14 +111,14 @@ winget install KDE.Kdenlive
 Flujo en Kdenlive:
 
 1. **Proyecto nuevo** → ajusta la resolución a la de tu grabación (p. ej. 1920×1080).
-2. **Pista V1** (abajo): tu grabación de la vuelta (pantalla del sim, replay o captura del visor VR).
-3. **Pista V2** (arriba): `overlay.webm` — Kdenlive aplica el canal alfa automáticamente, sin configurar nada.
-4. **Sincronización**: arrastra el overlay hasta que una frenada fuerte del HUD coincida visualmente con la grabación. La frenada de entrada a meta (larga y brusca) es el punto de calibración más fácil de identificar.
+2. **Pista V1** (abajo): tu grabación de la vuelta.
+3. **Pista V2** (arriba): `overlay.webm` — Kdenlive aplica el canal alfa automáticamente.
+4. **Sincronización**: usa los campos de marcha/velocidad/distancia del HUD como referencia visual, o calcula el offset con `fantasma compose --auto-sync` y aplícalo como blank inicial en la pista del overlay.
 5. **Exportar**: H.264 MP4 con el perfil que prefieras.
 
-Otras opciones compatibles: Premiere Pro, DaVinci Resolve (gratuito), CapCut. Cualquier editor que soporte WebM VP9 con alfa o ProRes 4444 funciona.
+Otras opciones compatibles: Premiere Pro, DaVinci Resolve (gratuito), CapCut.
 
-Opciones útiles del comando: `--format webm` (predeterminado, más ligero) o `--format prores` (.mov, máxima calidad), `--start/--end` para renderizar solo un tramo (p. ej. una curva problemática), `--fps 60` si tu grabación es a 60.
+Opciones útiles del comando `overlay`: `--format webm` (predeterminado) o `--format prores` (.mov, máxima calidad), `--start/--end` para renderizar solo un tramo, `--fps 60` si tu grabación es a 60, `--all-laps` para renderizar todas las vueltas completas del archivo en lote.
 
 ## Preguntas frecuentes
 
