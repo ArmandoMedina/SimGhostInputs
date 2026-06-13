@@ -58,15 +58,19 @@ st.markdown("""
     padding: 0.4rem 1.4rem !important;
     font-size: 0.85rem !important;
     cursor: pointer !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    gap: 0 !important;
     transition: border-color 0.2s, color 0.2s !important;
 }
 [data-testid="stFileUploaderDropzone"] button:hover {
     border-color: #00c853 !important;
     color: #00c853 !important;
+}
+/* centrar el texto dentro del boton */
+[data-testid="stFileUploaderDropzone"] button [data-testid="stMarkdownContainer"],
+[data-testid="stFileUploaderDropzone"] button [data-testid="stMarkdownContainer"] p {
+    width: 100% !important;
+    text-align: center !important;
+    margin: 0 !important;
+    padding: 0 !important;
 }
 /* texto de limite de tamaño */
 [data-testid="stFileUploaderDropzone"] small {
