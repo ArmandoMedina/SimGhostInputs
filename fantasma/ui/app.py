@@ -410,7 +410,13 @@ elif step_idx == 1:
         step_m     = st.slider(
             "Precisión del análisis (metros entre puntos)",
             1, 20, 5,
-            help="Valor más bajo = análisis más fino pero más lento. 5 m es suficiente para la mayoría de pistas.",
+            help=(
+                "Cuántos metros hay entre cada punto de comparación a lo largo de la pista. "
+                "A 150 km/h, 5 m = una medición cada ~0.12 s — más que suficiente para ver "
+                "en qué parte de cada curva pierdes tiempo. "
+                "Bajar a 1 m da más detalle pero tarda 5× más; subir a 20 m es más rápido "
+                "pero puede perder eventos cortos como un kink o una frenada de emergencia."
+            ),
         )
         charts_top = st.number_input(
             "Cuántas curvas mostrar en las gráficas",
