@@ -29,8 +29,22 @@ st.markdown("""
 .step-header { font-size: 1.3rem; font-weight: 700; margin-bottom: 0.5rem; }
 .metric-ok  { color: #00c853; }
 .metric-bad { color: #ff1744; }
-/* ocultar solo el icono "+" del file uploader, conservar el area de drop */
+/* ocultar icono "+" */
 [data-testid="stFileUploader"] [data-testid="stIconMaterial"] { display: none !important; }
+/* centrar y estilizar el area de carga */
+[data-testid="stFileUploaderDropzone"] {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 1.5rem !important;
+    border: 2px dashed #3d4450 !important;
+    border-radius: 8px !important;
+    text-align: center !important;
+}
+[data-testid="stFileUploaderDropzone"] button {
+    margin: 0 auto !important;
+}
 </style>
 """, unsafe_allow_html=True)
 
