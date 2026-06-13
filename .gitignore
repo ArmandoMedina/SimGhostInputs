@@ -11,3 +11,4 @@ driver/
 *.ld
 *.ldx
 .claude/
+CLAUDE.md
