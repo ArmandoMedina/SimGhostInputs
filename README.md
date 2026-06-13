@@ -1,6 +1,6 @@
 # 👻 SimGhostInputs
 
-[![Estado](https://img.shields.io/badge/estado-pre--release%20v0.x-orange)](CHANGELOG.md)
+[![Estado](https://img.shields.io/badge/estado-pre--release%20v0.2-orange)](CHANGELOG.md)
 [![Ko-fi](https://img.shields.io/badge/Ko--fi-Buy%20me%20a%20Lap-FF5E5B?logo=ko-fi&logoColor=white)](https://ko.fi/armandomedina2255)
 [![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL--3.0-blue.svg)](LICENSE)
 
@@ -50,6 +50,7 @@ pip install -e .                          # núcleo (sin dependencias externas)
 pip install -e ".[xlsx]"                  # + leer archivos .xlsx de MoTeC i2
 pip install -e ".[overlay]"               # + fantasma overlay (HUD de video)
 pip install -e ".[charts]"                # + fantasma compare con gráficas
+pip install -e ".[ui]"                    # + fantasma ui (interfaz gráfica local)
 pip install -e ".[full]"                  # todo lo anterior
 ```
 
@@ -58,12 +59,11 @@ pip install -e ".[full]"                  # todo lo anterior
 | Dependencia | Tipo | Para qué | Cómo instalar |
 | :-- | :-- | :-- | :-- |
 | `openpyxl` | Python opcional | Leer `.xlsx` exportados de MoTeC i2 | `pip install openpyxl` |
-| `Pillow` | Python requerido* | `fantasma overlay` — renderizar frames HUD | `pip install Pillow` |
-| `matplotlib` | Python opcional | `fantasma compare` — gráficas ghost y mapa de delta | `pip install matplotlib` |
-| `ffmpeg` | Sistema opcional | Codificar `.webm`/`.mov` con canal alfa; sin él, el overlay genera frames PNG | `winget install Gyan.FFmpeg` |
+| `matplotlib` | Python opcional | `fantasma overlay` — HUD animado; `fantasma compare` — gráficas ghost | `pip install matplotlib` |
+| `Pillow` | Python opcional | `fantasma overlay` — renderizado de frames auxiliares | `pip install Pillow` |
+| `streamlit` + `pandas` | Python opcional | `fantasma ui` — interfaz gráfica local | `pip install 'fantasma-inputs[ui]'` |
+| `ffmpeg` | Sistema opcional | Codificar `.webm`/`.mov` con canal alfa y `fantasma compose` | `winget install Gyan.FFmpeg` |
 | `gh` (GitHub CLI) | Sistema opcional | Publicar y gestionar el repositorio en GitHub | `winget install GitHub.cli` |
-
-\* `Pillow` solo se necesita si usas `fantasma overlay`. El resto de comandos (`laps`, `detect`, `compare`) funcionan sin él.
 
 ### Herramientas recomendadas para el flujo de video
 
@@ -80,6 +80,9 @@ El `setup.ps1` incluido pregunta si instalar VLC y Kdenlive junto con el resto.
 ## Uso rápido
 
 ```
+# interfaz gráfica local (abre el navegador automáticamente)
+fantasma ui
+
 # ver las vueltas que contiene un archivo
 fantasma laps "mi_export_motec.csv"
 
@@ -91,6 +94,9 @@ fantasma compare --reference "referencia.csv" --driver "mi_vuelta.csv" -o salida
 
 # video HUD transparente para superponer sobre tu grabación
 fantasma overlay --reference "referencia.csv" --driver "mi_vuelta.csv" -o salida/
+
+# componer el overlay sobre tu grabación y obtener el video final
+fantasma compose --video "grabacion.mp4" --overlay "salida/overlay.webm" -o "resultado.mp4"
 ```
 
 Salida de `compare`:
