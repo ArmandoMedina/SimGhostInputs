@@ -6,10 +6,12 @@ naranja >P90). Fondo #0a0c10. Cursor amarillo.
 
 Dependencias (extra `overlay`): Pillow>=10, matplotlib>=3.7, ffmpeg en PATH.
 """
-import concurrent.futures
 import os
+import pickle
 import shutil
 import subprocess
+import sys
+import tempfile
 
 import numpy as np
 
@@ -311,6 +313,52 @@ def _render_chunk(args):
     return frame_end - frame_start
 
 
+# ── render paralelo vía subprocess ───────────────────────────────────────────
+
+def _render_parallel(chunks, base, n_frames, progress):
+    """Lanza un subprocess por chunk usando python -m fantasma.viz._overlay_worker.
+
+    Evita el crash de ProcessPoolExecutor(spawn) bajo Streamlit: el proceso
+    hijo intentaba reimportar __main__ del servidor de Streamlit y caía en
+    cascada, forzando el fallback al render serial (1 core).
+    """
+    worker_cmd = [sys.executable, "-m", "fantasma.viz._overlay_worker"]
+    procs, tmp_files = [], []
+
+    for s, e in chunks:
+        tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".pkl")
+        pickle.dump((s, e, *base), tmp)
+        tmp.close()
+        tmp_files.append(tmp.name)
+        procs.append(subprocess.Popen(
+            worker_cmd + [tmp.name],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        ))
+
+    failed = []
+    done = 0
+    for p, tmp_f, (s, e) in zip(procs, tmp_files, chunks):
+        p.wait()
+        try:
+            os.unlink(tmp_f)
+        except OSError:
+            pass
+        if p.returncode != 0:
+            failed.append((s, e))
+        else:
+            done += e - s
+            if progress:
+                progress(done, n_frames)
+
+    # fallback serial para cualquier chunk que haya fallado
+    for s, e in failed:
+        _render_chunk((s, e, *base))
+        done += e - s
+        if progress:
+            progress(done, n_frames)
+
+
 # ── función principal ─────────────────────────────────────────────────────────
 
 def render_overlay(ref, drv, corners, outdir, fps=30, fmt="webm",
@@ -395,38 +443,13 @@ def render_overlay(ref, drv, corners, outdir, fps=30, fmt="webm",
             frames_dir, fps, t_start)
 
     if n_workers <= 1:
-        # 1 o 2 cores: spawn overhead > ganancia; loop secuencial
         _render_chunk((0, n_frames, *base))
         if progress:
             progress(n_frames, n_frames)
     else:
-        # mp_context="spawn" fuerza el mismo comportamiento en Linux/Mac que en Windows.
-        # fork (default en Linux) + matplotlib puede deadlockear o lanzar UserWarning.
-        # PENDIENTE: probar en Linux y macOS antes de quitar este comentario.
-        import multiprocessing
-        mp_ctx   = multiprocessing.get_context("spawn")
         chunk_sz = max(1, (n_frames + n_workers - 1) // n_workers)
         chunks   = [(i, min(n_frames, i + chunk_sz)) for i in range(0, n_frames, chunk_sz)]
-        _ok = False
-        try:
-            with concurrent.futures.ProcessPoolExecutor(
-                max_workers=n_workers, mp_context=mp_ctx
-            ) as executor:
-                futs = [executor.submit(_render_chunk, (s, e, *base)) for s, e in chunks]
-                done = 0
-                for fut in concurrent.futures.as_completed(futs):
-                    done += fut.result()
-                    if progress:
-                        progress(done, n_frames)
-            _ok = True
-        except (RuntimeError, concurrent.futures.process.BrokenProcessPool, OSError):
-            # spawn falló: contexto sin __main__ (Streamlit, test, etc.)
-            # los workers intentaron relanzar más workers → caída en cascada.
-            pass
-        if not _ok:
-            _render_chunk((0, n_frames, *base))
-            if progress:
-                progress(n_frames, n_frames)
+        _render_parallel(chunks, base, n_frames, progress)
 
     if fmt == "png":
         return frames_dir
