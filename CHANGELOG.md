@@ -4,6 +4,9 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/). Versionado
 
 ## [Unreleased]
 
+### Pendiente / Known issues
+- **Charts en UI (Paso 2)**: las 5 gráficas se generan correctamente por CLI (`fantasma compare -o salida/`) pero no se renderizan en `fantasma ui` — `st.image()` no muestra archivos generados en directorio temporal. Pendiente investigar mecanismo de caché/sesión de Streamlit para pasar imágenes generadas en runtime.
+
 ---
 
 ## [0.4.0] — 2026-06-13
