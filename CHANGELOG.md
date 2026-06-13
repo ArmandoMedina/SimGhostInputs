@@ -4,6 +4,9 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/). Versionado
 
 ## [Unreleased]
 
+### Añadido
+- **`fantasma compose` — NVENC automático**: si el sistema tiene una GPU NVIDIA con `h264_nvenc` disponible, el compose usa GPU encoding en lugar de `libx264` CPU. En una RTX 2060, un video de 70 min pasa de horas a ~19 min (3.7× tiempo real). Fallback automático a `libx264` si no hay NVENC.
+
 ### Pendiente / Known issues
 - **Charts en UI (Paso 2)**: las 5 gráficas se generan correctamente por CLI (`fantasma compare -o salida/`) pero no se renderizan en `fantasma ui` — `st.image()` no muestra archivos generados en directorio temporal. Pendiente investigar mecanismo de caché/sesión de Streamlit para pasar imágenes generadas en runtime.
 
