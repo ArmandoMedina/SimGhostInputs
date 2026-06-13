@@ -1,11 +1,11 @@
-# 👻 Fantasma Inputs
+# 👻 SimGhostInputs
 
 [![Ko-fi](https://img.shields.io/badge/Ko--fi-Buy%20me%20a%20Lap-FF5E5B?logo=ko-fi&logoColor=white)](https://ko.fi/armandomedina2255)
 [![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL--3.0-blue.svg)](LICENSE)
 
 **Compara tus inputs contra una vuelta de referencia, por distancia, no por tiempo.**
 
-Fantasma Inputs es una herramienta abierta para sim racers que quieren estudiar su conducción con datos claros, visuales y accionables. Convierte telemetrías exportadas desde distintas fuentes —CSV, Excel, MoTeC u otros formatos compatibles— en un formato común que permite comparar una vuelta del piloto contra una vuelta de referencia.
+SimGhostInputs es una herramienta abierta para sim racers que quieren estudiar su conducción con datos claros, visuales y accionables. Convierte telemetrías exportadas desde distintas fuentes —CSV, Excel, MoTeC u otros formatos compatibles— en un formato común que permite comparar una vuelta del piloto contra una vuelta de referencia.
 
 El objetivo **no** es distribuir vueltas de referencia pagadas, privadas o de terceros. Cada usuario carga sus propios archivos de telemetría y se asegura de tener derecho a usarlos. El software solamente proporciona el motor de conversión, normalización, comparación y visualización.
 
@@ -140,4 +140,4 @@ En el roadmap: lectura directa de `.ld` (sin pasar por i2) e iRacing `.ibt`.
 
 ## Licencia
 
-[AGPL-3.0-or-later](LICENSE). © Colaboradores de Fantasma Inputs.
+[AGPL-3.0-or-later](LICENSE). © Colaboradores de SimGhostInputs.

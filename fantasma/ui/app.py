@@ -1,4 +1,4 @@
-"""UI local de Fantasma Inputs — corre con: fantasma ui (o streamlit run app.py).
+"""UI local de SimGhostInputs — corre con: fantasma ui (o streamlit run app.py).
 
 Flujo de 4 pasos:
   1. Importar  — cargar archivos de referencia y piloto
@@ -16,7 +16,7 @@ import streamlit as st
 
 # ── configuración de página ───────────────────────────────────────────────────
 st.set_page_config(
-    page_title="Fantasma Inputs",
+    page_title="SimGhostInputs",
     page_icon="👻",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -63,7 +63,7 @@ with st.sidebar:
     st.image("https://raw.githubusercontent.com/ArmandoMedina/SimGhostInputs/master/docs/logo.png",
              use_container_width=True, output_format="auto",
              caption=None) if False else None   # logo futuro
-    st.title("👻 Fantasma Inputs")
+    st.title("👻 SimGhostInputs")
     st.caption("Análisis de inputs de simracing por distancia")
     st.divider()
     step = st.radio("Flujo de trabajo", STEPS, label_visibility="collapsed")

@@ -1,4 +1,4 @@
-# Fantasma Inputs — Guía para Claude
+# SimGhostInputs — Guía para Claude
 
 ## Qué es este proyecto
 

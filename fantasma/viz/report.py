@@ -36,7 +36,7 @@ def write_outputs(outdir, trace, corner_rows, summary, meta=None):
 def render_markdown(trace, corner_rows, summary, meta=None):
     meta = meta or {}
     out = []
-    out.append("# 👻 Fantasma Inputs — Debrief\n")
+    out.append("# 👻 SimGhostInputs — Debrief\n")
     if meta:
         ctx = " · ".join("%s: %s" % (k, v) for k, v in meta.items() if v)
         out.append("*%s*\n" % ctx)
@@ -92,6 +92,6 @@ def render_markdown(trace, corner_rows, summary, meta=None):
             ("%+d" % r["d_brake_m"]) if r.get("d_brake_m") is not None else "—",
             r["time_lost"], r.get("flags", "")))
     out.append("")
-    out.append("*Generado por [Fantasma Inputs](https://github.com/) — AGPL-3.0-or-later. "
+    out.append("*Generado por [SimGhostInputs](https://github.com/) — AGPL-3.0-or-later. "
                "Comparacion por distancia; delta positivo = el piloto pierde tiempo.*")
     return "\n".join(out) + "\n"

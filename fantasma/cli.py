@@ -1,4 +1,4 @@
-"""CLI de Fantasma Inputs: fantasma laps | detect | compare"""
+"""CLI de SimGhostInputs: fantasma laps | detect | compare"""
 import argparse
 import json
 import sys
