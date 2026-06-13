@@ -1,4 +1,4 @@
-# setup.ps1 — instala todas las dependencias de Fantasma Inputs en Windows
+# setup.ps1 — instala todas las dependencias de SimGhostInputs en Windows
 # Uso: powershell -ExecutionPolicy Bypass -File setup.ps1
 # Parametros opcionales:
 #   -Full       instala dependencias Python completas (openpyxl + Pillow + matplotlib)
@@ -151,12 +151,12 @@ if ($SkipSystem) {
 # -----------------------------------------------------------------------
 Write-Host ""
 Write-Host "======================================================" -ForegroundColor Cyan
-Write-Host "  Fantasma Inputs listo." -ForegroundColor Cyan
+Write-Host "  SimGhostInputs listo." -ForegroundColor Cyan
 Write-Host ""
 Write-Host "  fantasma laps mi_export.csv"
 Write-Host "  fantasma detect mi_export.csv -o salida/"
 Write-Host "  fantasma compare --reference ref.csv --driver yo.csv -o salida/"
 Write-Host "  fantasma overlay --reference ref.csv --driver yo.csv --format webm -o salida/"
 Write-Host ""
-Write-Host "  Mas info: https://github.com/tu-usuario/fantasma-inputs"
+Write-Host "  Mas info: https://github.com/ArmandoMedina/SimGhostInputs"
 Write-Host "======================================================" -ForegroundColor Cyan
