@@ -114,7 +114,12 @@ def cmd_overlay(args):
         print("  frame %d/%d (%.0f%%)" % (n, total, pct))
 
     if args.all_laps:
-        laps_to_render = [l for l in drv_laps if l.meta.get("is_complete", True)]
+        complete = [l for l in drv_laps if l.meta.get("is_complete")]
+        if complete:
+            laps_to_render = complete
+        else:
+            maxlen = max(l.length for l in drv_laps)
+            laps_to_render = [l for l in drv_laps if l.length >= maxlen * 0.9]
         webms = []
         for i, lap in enumerate(laps_to_render):
             lap_dir = os.path.join(args.output, "lap_%02d" % i)

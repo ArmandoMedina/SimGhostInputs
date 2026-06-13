@@ -10,11 +10,16 @@ from ..core.lap import Lap
 
 GUESS = {
     "time": "time", "sessiontime": "time", "t": "time",
+    "lap_time_s": "time", "laptime_s": "time", "laptime": "time", "lap_time": "time",
     "dist": "dist", "distance": "dist", "lapdist": "dist", "lap_distance": "dist",
+    "dist_m": "dist", "dist_meters": "dist",
     "speed": "speed", "speed_kmh": "speed", "kmh": "speed", "groundspeed": "speed",
     "throttle": "throttle", "gas": "throttle",
+    "throttle_pct": "throttle", "throttlepct": "throttle", "throttle_percent": "throttle",
     "brake": "brake", "freno": "brake",
+    "brake_pct": "brake", "brakepct": "brake", "brake_percent": "brake",
     "steering": "steering", "steer": "steering", "steerangle": "steering",
+    "steering_deg": "steering", "steering_angle": "steering",
     "gear": "gear", "marcha": "gear",
     "glat": "glat", "g_lat": "glat", "lateralg": "glat",
     "glong": "glong", "g_long": "glong",
