@@ -429,9 +429,6 @@ elif step_idx == 1:
                                              "gen_charts": _gen_charts})
                 except Exception as _e:
                     st.error("Error: %s" % _e)
-    else:
-        _gen_charts = st.session_state.get("gen_charts", True)
-        _charts_top = st.session_state.get("charts_top", 5)
 
     # ── resultados ────────────────────────────────────────────────────────────
     if "summary" not in st.session_state:
