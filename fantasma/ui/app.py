@@ -29,6 +29,9 @@ st.markdown("""
 .step-header { font-size: 1.3rem; font-weight: 700; margin-bottom: 0.5rem; }
 .metric-ok  { color: #00c853; }
 .metric-bad { color: #ff1744; }
+/* ocultar icono del uploader — solo confunde al usuario */
+[data-testid="stFileUploaderDropzoneInstructions"] svg,
+[data-testid="stFileUploaderDropzoneInstructions"] span:first-child { display: none; }
 </style>
 """, unsafe_allow_html=True)
 
