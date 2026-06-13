@@ -3,7 +3,7 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "simghostinputs"
+name = "fantasma-inputs"
 version = "0.1.0"
 description = "Compara tus inputs de simracing contra una vuelta de referencia, por distancia."
 readme = "README.md"
