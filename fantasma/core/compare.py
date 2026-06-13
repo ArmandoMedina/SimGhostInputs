@@ -14,7 +14,7 @@ def delta_trace(ref, drv, step=5.0):
     for i in range(n):
         row = {"dist": r.channels["dist"][i],
                "delta_t": d.channels["time"][i] - r.channels["time"][i]}
-        for ch in ("speed", "throttle", "brake", "steering", "gear"):
+        for ch in ("speed", "throttle", "brake", "steering", "gear", "glat", "glong"):
             if ch in r.channels:
                 row["ref_" + ch] = r.channels[ch][i]
             if ch in d.channels:
