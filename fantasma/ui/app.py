@@ -749,15 +749,63 @@ elif step_idx == 4:
         placeholder=r"C:\Users\TuNombre\fantasma_salida\overlay.webm",
     )
 
+    # ── auto-sync ─────────────────────────────────────────────────────────────
+    st.divider()
+    with st.expander("🔍 Detectar sincronía automáticamente *(opcional — requiere scipy)*"):
+        st.caption(
+            "Compara el audio del video con los canales RPM/velocidad de la telemetría "
+            "para calcular el offset exacto. Precisión ~0.5 s. "
+            "Si ya cargaste telemetría en el Paso 1 se usa directamente."
+        )
+        _drv_for_sync = st.session_state.get("drv_lap")
+        _sc_col1, _sc_col2 = st.columns([2, 1])
+        with _sc_col1:
+            if _drv_for_sync is None:
+                _sync_up = st.file_uploader(
+                    "Telemetría del piloto (CSV o XLSX)", type=["csv", "xlsx"],
+                    key="sync_drv_upload",
+                )
+                if _sync_up:
+                    _sc = _cache_file(_sync_up)
+                    if _sc["ok"] and _sc["laps"]:
+                        from fantasma.core.normalize import fastest_lap as _fl
+                        _drv_for_sync = _fl(_sc["laps"])
+            else:
+                st.info("Usando vuelta cargada en el Paso 1.")
+        with _sc_col2:
+            _can_sync = bool(_video_path and _drv_for_sync)
+            if st.button("Detectar offset", disabled=not _can_sync, key="btn_autosync"):
+                with st.spinner("Analizando audio del video… (~30 s)"):
+                    try:
+                        from fantasma.viz.sync import auto_sync
+                        _det = auto_sync(_video_path, _drv_for_sync)
+                        st.session_state["_autosync_detected"] = _det
+                        st.session_state["compose_offset"]     = _det
+                    except ImportError as _ie:
+                        st.error(str(_ie))
+                    except Exception as _se:
+                        st.error("Error en auto-sync: %s" % _se)
+
+        if "_autosync_detected" in st.session_state:
+            st.success(
+                "Offset detectado: **%.3f s** — pre-cargado en «Retraso del HUD»." %
+                st.session_state["_autosync_detected"]
+            )
+
+    # ── parametros de composicion ──────────────────────────────────────────────
     st.divider()
     _col3, _col4, _col5 = st.columns(3)
     _pos_sel  = _col3.selectbox("Posición del HUD en pantalla", list(_POS_LABELS.keys()))
     _position = _POS_LABELS[_pos_sel]
     _offset   = _col4.number_input(
-        "Retraso del HUD (segundos)", value=0.0, step=0.5,
+        "Retraso del HUD (segundos)",
+        value=st.session_state.get("compose_offset", 0.0),
+        step=0.1,
+        key="compose_offset",
         help=(
             "Cuántos segundos pasan desde el inicio del video hasta que empieza la vuelta. "
-            "Ejemplo: si empiezas a grabar 10 s antes de cruzar la meta, pon 10."
+            "Ejemplo: si empiezas a grabar 10 s antes de cruzar la meta, pon 10. "
+            "«Detectar offset» rellena este campo automáticamente."
         ),
     )
     _scale = _col5.slider("Tamaño del HUD", 0.25, 1.5, 1.0, 0.05,
