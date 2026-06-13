@@ -116,6 +116,34 @@ if ($SkipSystem) {
             Write-Skip "gh omitido  (puedes subir el repo manualmente desde github.com/new)"
         }
     }
+
+    # VLC: para previsualizar overlay.webm con canal alfa
+    $vlcPath = "C:\Program Files\VideoLAN\VLC\vlc.exe"
+    if ((Get-Command vlc -ErrorAction SilentlyContinue) -or (Test-Path $vlcPath)) {
+        Write-Skip "VLC ya instalado"
+    } else {
+        $resp = Read-Host "    Instalar VLC (previsualizar overlay.webm con alfa)? (s/n)"
+        if ($resp -eq "s") {
+            winget install VideoLAN.VLC --accept-source-agreements --accept-package-agreements
+            Write-OK "VLC instalado"
+        } else {
+            Write-Skip "VLC omitido"
+        }
+    }
+
+    # Kdenlive: editor open source para sincronizar HUD con la grabacion
+    $kdenlivePath = "C:\Program Files\kdenlive\bin\kdenlive.exe"
+    if ((Get-Command kdenlive -ErrorAction SilentlyContinue) -or (Test-Path $kdenlivePath)) {
+        Write-Skip "Kdenlive ya instalado"
+    } else {
+        $resp = Read-Host "    Instalar Kdenlive (editor open source para sincronizar el HUD con tu grabacion)? (s/n)"
+        if ($resp -eq "s") {
+            winget install KDE.Kdenlive --accept-source-agreements --accept-package-agreements
+            Write-OK "Kdenlive instalado"
+        } else {
+            Write-Skip "Kdenlive omitido  (otras opciones: DaVinci Resolve, Premiere)"
+        }
+    }
 }
 
 # -----------------------------------------------------------------------

@@ -61,15 +61,42 @@ Ahí mismo puedes ajustar `"tolerances"` por curva: `vmin_kmh` y `brake_start_m`
 fantasma overlay --reference ref.csv --driver mi_outing.csv --corners salida/corners_detected.json -o salida/
 ```
 
-Produce `overlay.mov` (ProRes 4444 con canal alfa) de la duración exacta de tu vuelta. En tu editor (Premiere, DaVinci, CapCut):
+Produce `overlay.webm` (VP9 con canal alfa) o `overlay.mov` (ProRes 4444) de la duración exacta de tu vuelta.
 
-1. Pista 1: tu grabación de la vuelta (pantalla, replay o visor VR).
-2. Pista 2: `overlay.mov`.
-3. Alinea el **segundo 0 del overlay** con el frame donde cruzas la línea de meta.
+Requiere [ffmpeg](https://ffmpeg.org/) en el PATH. Sin ffmpeg genera los frames PNG igualmente.
 
-Opciones útiles: `--format webm` (archivo mucho más pequeño, verifica que tu editor soporte alfa en VP9), `--start/--end` para renderizar solo un tramo (p. ej. una curva problemática), `--fps 60` si tu grabación es a 60.
+```
+# Windows — instalar ffmpeg de una vez:
+winget install Gyan.FFmpeg
+```
 
-Requiere [ffmpeg](https://ffmpeg.org/) en el PATH (en Windows: `winget install Gyan.FFmpeg`). Sin ffmpeg deja los frames PNG.
+### Previsualizar el overlay
+
+Abre `overlay.webm` en [VLC](https://www.videolan.org/vlc/) para verificar que el HUD se ve correcto antes de editar. VLC reproduce WebM con alfa sin configuración adicional.
+
+```
+winget install VideoLAN.VLC
+```
+
+### Sincronizar con tu grabación
+
+La opción open source recomendada es **[Kdenlive](https://kdenlive.org/)** (GPL, Windows/Mac/Linux):
+
+```
+winget install KDE.Kdenlive
+```
+
+Flujo en Kdenlive:
+
+1. **Proyecto nuevo** → ajusta la resolución a la de tu grabación (p. ej. 1920×1080).
+2. **Pista V1** (abajo): tu grabación de la vuelta (pantalla del sim, replay o captura del visor VR).
+3. **Pista V2** (arriba): `overlay.webm` — Kdenlive aplica el canal alfa automáticamente, sin configurar nada.
+4. **Sincronización**: arrastra el overlay hasta que una frenada fuerte del HUD coincida visualmente con la grabación. La frenada de entrada a meta (larga y brusca) es el punto de calibración más fácil de identificar.
+5. **Exportar**: H.264 MP4 con el perfil que prefieras.
+
+Otras opciones compatibles: Premiere Pro, DaVinci Resolve (gratuito), CapCut. Cualquier editor que soporte WebM VP9 con alfa o ProRes 4444 funciona.
+
+Opciones útiles del comando: `--format webm` (predeterminado, más ligero) o `--format prores` (.mov, máxima calidad), `--start/--end` para renderizar solo un tramo (p. ej. una curva problemática), `--fps 60` si tu grabación es a 60.
 
 ## Preguntas frecuentes
 

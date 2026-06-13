@@ -56,6 +56,18 @@ pip install -e ".[full]"                  # todo lo anterior
 
 \* `Pillow` solo se necesita si usas `fantasma overlay`. El resto de comandos (`laps`, `detect`, `compare`) funcionan sin él.
 
+### Herramientas recomendadas para el flujo de video
+
+No son dependencias del paquete, pero completan el flujo de análisis con video:
+
+| Herramienta | Para qué | Cómo instalar (Windows) |
+| :-- | :-- | :-- |
+| **[VLC](https://www.videolan.org/vlc/)** | Previsualizar `overlay.webm` con alfa antes de editar | `winget install VideoLAN.VLC` |
+| **[Kdenlive](https://kdenlive.org/)** | Editor open source (GPL) para superponer el HUD sobre tu grabación | `winget install KDE.Kdenlive` |
+| **[DaVinci Resolve](https://www.blackmagicdesign.com/products/davinciresolve)** | Alternativa profesional gratuita (no open source) | Descarga manual |
+
+El `setup.ps1` incluido pregunta si instalar VLC y Kdenlive junto con el resto.
+
 ## Uso rápido
 
 ```
