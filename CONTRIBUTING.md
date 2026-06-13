@@ -1,4 +1,4 @@
-# Contribuir a Fantasma Inputs
+# Contribuir a SimGhostInputs
 
 Gracias por el interés. La regla de la casa es la del README:
 
