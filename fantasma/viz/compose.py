@@ -1,0 +1,77 @@
+"""Compositor: superpone el overlay (canal alfa) sobre el video de grabación con ffmpeg."""
+import os
+import shutil
+import subprocess
+
+POSITIONS = {
+    "top-left":      ("0",        "0"),
+    "top-right":     ("W-w",      "0"),
+    "bottom-left":   ("0",        "H-h"),
+    "bottom-right":  ("W-w",      "H-h"),
+    "top-center":    ("(W-w)/2",  "0"),
+    "bottom-center": ("(W-w)/2",  "H-h"),
+    "center":        ("(W-w)/2",  "(H-h)/2"),
+}
+
+
+def _build_filter(position, scale, offset):
+    px, py = POSITIONS.get(position, POSITIONS["bottom-right"])
+    steps = []
+    cur = "1:v"
+
+    if scale != 1.0:
+        steps.append("[%s]scale=iw*%.6f:ih*%.6f[ov_s]" % (cur, scale, scale))
+        cur = "ov_s"
+
+    if offset != 0.0:
+        steps.append("[%s]setpts=PTS+%.6f/TB[ov_d]" % (cur, offset))
+        cur = "ov_d"
+
+    steps.append("[0:v][%s]overlay=x=%s:y=%s[out]" % (cur, px, py))
+    return ";".join(steps)
+
+
+def compose_video(video, overlay, output, position="bottom-right",
+                  offset=0.0, scale=1.0):
+    """Superpone overlay con canal alfa sobre el video de grabación.
+
+    Args:
+        video:    Ruta al video de la grabación (mp4, mov, mkv…).
+        overlay:  Ruta al overlay con canal alfa (.webm VP9 o .mov ProRes 4444).
+        output:   Ruta del archivo de salida.
+        position: Posición del HUD ('bottom-right', 'top-left', etc.).
+        offset:   Segundos de delay del overlay (positivo = overlay empieza
+                  después; útil si el video arranca antes de la vuelta).
+        scale:    Factor de escala del overlay (1.0 = tamaño original).
+
+    Returns:
+        Ruta del archivo de salida.
+    """
+    ffmpeg = shutil.which("ffmpeg")
+    if not ffmpeg:
+        raise RuntimeError(
+            "ffmpeg no encontrado en PATH — instálalo con: winget install Gyan.FFmpeg"
+        )
+
+    out_dir = os.path.dirname(output)
+    if out_dir:
+        os.makedirs(out_dir, exist_ok=True)
+
+    fc = _build_filter(position, scale, offset)
+
+    cmd = [
+        ffmpeg, "-y",
+        "-i", video,
+        "-i", overlay,
+        "-filter_complex", fc,
+        "-map", "[out]",
+        "-map", "0:a?",          # audio de la grabación si lo tiene
+        "-c:v", "libx264",
+        "-crf", "18",
+        "-preset", "fast",
+        "-c:a", "aac",
+        "-b:a", "192k",
+        output,
+    ]
+    subprocess.run(cmd, check=True)
+    return output
