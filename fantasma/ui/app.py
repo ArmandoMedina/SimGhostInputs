@@ -237,7 +237,7 @@ if step_idx == 0:
         "(un plugin gratuito que captura telemetría mientras corres en el sim)."
     )
 
-    with st.expander("Ver guía de exportación paso a paso", expanded=True):
+    with st.expander("Ver guía de exportación paso a paso", expanded=False):
         st.markdown("### 1. Instalar Sim To MoTeC")
         st.markdown(
             "Descarga e instala el plugin desde [Sim To MoTeC](https://www.sim-to-motec.com). "
