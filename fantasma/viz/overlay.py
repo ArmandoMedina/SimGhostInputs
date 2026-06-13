@@ -45,11 +45,15 @@ _DPI     = 110   # → ~1870 × 572 px
 
 def _masked(vals, flags, active):
     """NaN donde el flag no coincide con active (corta la línea en matplotlib)."""
+    if flags is None:
+        return np.full_like(vals, np.nan)
     return np.where((np.asarray(flags) > 0.5) == active, vals, np.nan)
 
 
 def _masked_g(vals, glat, lo, hi=None):
     """NaN fuera del rango |G-lat| ∈ [lo, hi)."""
+    if glat is None:
+        return np.full_like(vals, np.nan)
     cond = np.abs(glat) >= lo
     if hi is not None:
         cond &= np.abs(glat) < hi
@@ -58,16 +62,24 @@ def _masked_g(vals, glat, lo, hi=None):
 
 # ── interpolación ─────────────────────────────────────────────────────────────
 
+_REQUIRED_CH = ("throttle", "brake", "steering", "speed")
+_OPTIONAL_CH = ("glat", "abs", "tcs", "gear")
+
+
 def _interp_lap(lap, ds):
-    """Interpola todos los canales del Lap en la rejilla uniforme ds (1 m)."""
+    """Interpola canales del Lap en la rejilla uniforme ds (1 m).
+
+    Canales requeridos ausentes → zeros (el HUD puede seguir dibujándose).
+    Canales opcionales ausentes → None (el renderizador los omite limpiamente).
+    """
     d_orig = np.array(lap.col("dist"), dtype=float)
     out = {}
-    for ch in ("throttle", "brake", "steering", "speed", "glat", "abs", "tcs", "gear"):
+    for ch in _REQUIRED_CH:
         raw = lap.col(ch)
-        if raw:
-            out[ch] = np.interp(ds, d_orig, np.array(raw, dtype=float))
-        else:
-            out[ch] = np.zeros_like(ds, dtype=float)
+        out[ch] = np.interp(ds, d_orig, np.array(raw, dtype=float)) if raw else np.zeros_like(ds)
+    for ch in _OPTIONAL_CH:
+        raw = lap.col(ch)
+        out[ch] = np.interp(ds, d_orig, np.array(raw, dtype=float)) if raw else None
     return out
 
 
@@ -289,8 +301,8 @@ def _render_chunk(args):
                     shutil.copy(last_png, out_path)
                 continue
 
-            rw = {k: v[mask] for k, v in ref_ch.items()}
-            dw = {k: v[mask] for k, v in drv_ch.items()}
+            rw = {k: v[mask] if v is not None else None for k, v in ref_ch.items()}
+            dw = {k: v[mask] if v is not None else None for k, v in drv_ch.items()}
 
             gap          = trace[max(0, min(int(cur_d / step), n_tr - 1))]["delta_t"]
             ref_v        = float(np.interp(cur_d, ds, ref_ch["speed"]))
