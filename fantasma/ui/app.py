@@ -8,9 +8,7 @@ Flujo de 4 pasos:
 """
 import json
 import os
-import sys
 import tempfile
-import threading
 
 import streamlit as st
 
@@ -22,7 +20,7 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# ── CSS mínimo: fondo oscuro coherente con el HUD ────────────────────────────
+# ── CSS mínimo ────────────────────────────────────────────────────────────────
 st.markdown("""
 <style>
 [data-testid="stSidebar"] { background: #0e1117; }
@@ -36,20 +34,16 @@ st.markdown("""
 # ── helpers ───────────────────────────────────────────────────────────────────
 
 def _save_upload(uploaded, suffix):
-    """Guarda un UploadedFile en un archivo temporal y devuelve la ruta."""
     tmp = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
     tmp.write(uploaded.read())
     tmp.flush()
     return tmp.name
 
 
-def _load_lap_cached(path, column_map=None):
+def _load_laps(path, column_map=None):
     from fantasma import importers
-    from fantasma.core.normalize import split_laps, fastest_lap
-    outing = importers.load(path, column_map)
-    laps   = split_laps(outing)
-    best   = fastest_lap(laps)
-    return outing, laps, best
+    from fantasma.core.normalize import split_laps
+    return split_laps(importers.load(path, column_map))
 
 
 def _fmt_lap(seconds):
@@ -62,191 +56,236 @@ def _corners_from_json(uploaded):
     return data.get("corners", data) if isinstance(data, dict) else data
 
 
-# ── sidebar: navegación ───────────────────────────────────────────────────────
-STEPS = ["1 · Importar", "2 · Comparar", "3 · Overlay", "4 · Componer"]
+def _lap_table(laps, editor_key, single=False):
+    """Muestra tabla de selección de vueltas; devuelve lista de índices marcados."""
+    import pandas as _pd
+    _best_i, _best_t = 0, float("inf")
+    for i, l in enumerate(laps):
+        if l.meta.get("is_complete") and l.laptime < _best_t:
+            _best_t, _best_i = l.laptime, i
+
+    rows = []
+    for i, l in enumerate(laps):
+        _c = l.meta.get("is_complete", False)
+        rows.append({
+            "Sel":    i == _best_i,
+            "#":      i,
+            "Tiempo": _fmt_lap(l.laptime),
+            "Metros": int(l.length),
+            "Estado": "🏆 Más rápida" if i == _best_i else ("✓ Completa" if _c else "⚠️ Incompleta"),
+        })
+
+    caption = (
+        "Se usará la primera marcada como referencia."
+        if single else
+        "Marca las vueltas a analizar. 🏆 = más rápida · ⚠️ = incompleta (out/in lap)"
+    )
+    st.caption(caption)
+    edited = st.data_editor(
+        _pd.DataFrame(rows),
+        column_config={
+            "Sel":    st.column_config.CheckboxColumn("Sel", width="small"),
+            "#":      st.column_config.NumberColumn("#", disabled=True, width="small"),
+            "Tiempo": st.column_config.TextColumn("Tiempo", disabled=True, width="medium"),
+            "Metros": st.column_config.NumberColumn("Metros", disabled=True, width="small"),
+            "Estado": st.column_config.TextColumn("Estado", disabled=True, width="medium"),
+        },
+        hide_index=True, use_container_width=True, key=editor_key,
+    )
+    return [int(r["#"]) for _, r in edited.iterrows() if r["Sel"]]
+
+
+# ── estado de navegación ──────────────────────────────────────────────────────
+if "nav_step" not in st.session_state:
+    st.session_state["nav_step"] = 0
+
+_STEP_LABELS = ["Importar", "Comparar", "Overlay", "Componer"]
+
+def _step_done(i):
+    return bool([
+        "ref_lap" in st.session_state,
+        "summary" in st.session_state,
+        "last_overlay" in st.session_state,
+        False,
+    ][i])
+
+def _step_unlocked(i):
+    if i == 0: return True
+    has_data = "ref_lap" in st.session_state
+    if i in (1, 2): return has_data
+    if i == 3: return has_data and "last_overlay" in st.session_state
+    return False
+
+def _go(i):
+    st.session_state["nav_step"] = i
+    st.rerun()
+
+
+# ── sidebar: breadcrumbs ──────────────────────────────────────────────────────
 with st.sidebar:
-    st.image("https://raw.githubusercontent.com/ArmandoMedina/SimGhostInputs/master/docs/logo.png",
-             use_container_width=True, output_format="auto",
-             caption=None) if False else None   # logo futuro
     st.title("👻 SimGhostInputs")
     st.caption("Análisis de inputs de simracing por distancia")
     st.divider()
-    step = st.radio("Flujo de trabajo", STEPS, label_visibility="collapsed")
+    for _i, _lbl in enumerate(_STEP_LABELS):
+        _current  = st.session_state["nav_step"] == _i
+        _icon     = "▶️" if _current else ("✅" if _step_done(_i) else "○")
+        _disabled = not _step_unlocked(_i)
+        if st.button(
+            "%s  %d · %s" % (_icon, _i + 1, _lbl),
+            disabled=_disabled,
+            use_container_width=True,
+            key="nav_%d" % _i,
+        ):
+            _go(_i)
     st.divider()
     st.caption("Tus datos nunca salen de tu máquina.")
+
+step_idx = st.session_state["nav_step"]
 
 
 # ══════════════════════════════════════════════════════════════════════════════
 # PASO 1 — IMPORTAR
 # ══════════════════════════════════════════════════════════════════════════════
-if step == STEPS[0]:
+if step_idx == 0:
     st.markdown('<div class="step-header">Paso 1 — Importar telemetría</div>', unsafe_allow_html=True)
 
     # ── 1A: vuelta de referencia ──────────────────────────────────────────────
     st.subheader("① Vuelta de referencia")
     st.caption(
-        "Es la vuelta contra la que te vas a comparar — puede ser tu mejor tiempo anterior, "
-        "la de un coach, o cualquier lap de referencia que quieras superar. "
-        "Exporta el archivo desde MoTeC i2 como CSV o XLSX."
+        "La vuelta contra la que te vas a comparar — tu mejor tiempo anterior, "
+        "la de un coach, o cualquier referencia que quieras superar. "
+        "Exporta desde MoTeC i2 como CSV o XLSX."
     )
-    ref_file = st.file_uploader("Selecciona el archivo de referencia (un solo archivo CSV o XLSX)",
-                                type=["csv", "xlsx"], key="ref_upload")
+    ref_file = st.file_uploader(
+        "Selecciona el archivo de referencia (CSV o XLSX)",
+        type=["csv", "xlsx"], key="ref_upload",
+    )
     ref_col_map = None
 
     if not ref_file:
         st.info("⬆️ Sube la vuelta de referencia para continuar.")
         st.stop()
 
-    # intentar cargar para detectar si necesita mapeo de columnas (solo la primera vez)
-    _ref_cache_key = "ref_loaded_%s" % ref_file.file_id
-    if _ref_cache_key not in st.session_state:
+    # cargar y detectar vueltas (cachear por file_id)
+    _ref_ck = "ref_%s" % ref_file.file_id
+    if _ref_ck not in st.session_state:
         with st.spinner("Leyendo archivo de referencia…"):
             try:
-                _ref_path_tmp = _save_upload(ref_file, os.path.splitext(ref_file.name)[1])
+                _rpath = _save_upload(ref_file, os.path.splitext(ref_file.name)[1])
                 ref_file.seek(0)
-                from fantasma import importers as _imp_ref
-                _imp_ref.load(_ref_path_tmp)
-                st.session_state[_ref_cache_key] = {"path": _ref_path_tmp, "ok": True}
+                _rlaps = _load_laps(_rpath)
+                st.session_state[_ref_ck] = {"path": _rpath, "ok": True, "laps": _rlaps}
             except ValueError as _e:
-                st.session_state[_ref_cache_key] = {"path": _ref_path_tmp, "ok": False, "err": str(_e)}
-    _ref_cache = st.session_state[_ref_cache_key]
-    _ref_path_tmp = _ref_cache["path"]
-    _ref_load_ok  = _ref_cache["ok"]
-    if not _ref_load_ok:
-        _ref_err = _ref_cache.get("err", "")
+                _rpath = _save_upload(ref_file, os.path.splitext(ref_file.name)[1])
+                st.session_state[_ref_ck] = {"path": _rpath, "ok": False, "err": str(_e), "laps": []}
+            except Exception as _e:
+                st.session_state[_ref_ck] = {"path": "", "ok": False, "err": str(_e), "laps": []}
 
-    if not _ref_load_ok:
+    _rc       = st.session_state[_ref_ck]
+    _ref_path = _rc["path"]
+    _ref_laps = _rc["laps"]
+
+    if not _rc["ok"]:
         st.warning("No pudimos detectar las columnas automáticamente. Indica cuáles son:")
         with st.expander("Configurar columnas del archivo", expanded=True):
             st.caption(
-                "Tu archivo tiene nombres de columnas que no reconocemos. "
-                "Escribe abajo cómo se llaman en tu archivo y qué significan, "
-                "una por línea con el formato  nombre_en_tu_archivo = significado"
+                "Escribe cómo se llaman en tu archivo y qué significan, "
+                "una por línea con el formato:  nombre_en_tu_archivo = significado"
             )
-            _ejemplo = "Ejemplo:\n  mi_distancia = dist\n  tiempo_s = time\n  velocidad = speed"
-            pairs = st.text_area("Columnas", placeholder=_ejemplo, key="ref_map")
+            pairs = st.text_area(
+                "Columnas",
+                placeholder="Ejemplo:\n  mi_distancia = dist\n  tiempo_s = time\n  velocidad = speed",
+                key="ref_map",
+            )
             if pairs.strip():
                 ref_col_map = dict(p.partition("=")[::2] for p in pairs.splitlines() if "=" in p)
+
+    # selección de vuelta de referencia
+    if _ref_laps:
+        _ref_sel = _lap_table(_ref_laps, editor_key="ref_lap_sel", single=True)
+        if not _ref_sel:
+            st.warning("Marca la vuelta que quieres usar como referencia.")
+            st.stop()
+        st.session_state["ref_lap_index"] = _ref_sel[0]
 
     # ── 1B: vuelta del piloto ─────────────────────────────────────────────────
     st.divider()
     st.subheader("② Tu archivo de telemetría")
     st.caption(
         "El archivo con tus vueltas de la sesión. "
-        "Si tiene varias vueltas podrás elegir cuál analizar en el siguiente paso."
+        "Puedes seleccionar una o varias vueltas para analizar y generar overlay."
     )
-    drv_file = st.file_uploader("Selecciona tu archivo de telemetría (un solo archivo CSV o XLSX)",
-                                type=["csv", "xlsx"], key="drv_upload")
+    drv_file = st.file_uploader(
+        "Selecciona tu archivo de telemetría (CSV o XLSX)",
+        type=["csv", "xlsx"], key="drv_upload",
+    )
 
     if not drv_file:
         st.info("⬆️ Sube tu archivo de telemetría para continuar.")
         st.stop()
 
-    # detectar vueltas automáticamente (solo la primera vez; cachear en session_state)
-    lap_index = None
-    _drv_cache_key = "drv_laps_%s" % drv_file.file_id
-    if _drv_cache_key not in st.session_state:
+    _drv_ck = "drv_%s" % drv_file.file_id
+    if _drv_ck not in st.session_state:
         with st.spinner("Leyendo vueltas de tu archivo…"):
             try:
-                import tempfile as _tf
-                from fantasma import importers as _imp
-                from fantasma.core.normalize import split_laps as _sl
-                _tmp = _tf.NamedTemporaryFile(delete=False, suffix=os.path.splitext(drv_file.name)[1])
-                _tmp.write(drv_file.read()); _tmp.flush(); drv_file.seek(0)
-                st.session_state[_drv_cache_key] = {"laps": _sl(_imp.load(_tmp.name)), "path": _tmp.name}
+                _dpath = _save_upload(drv_file, os.path.splitext(drv_file.name)[1])
+                drv_file.seek(0)
+                _dlaps = _load_laps(_dpath)
+                st.session_state[_drv_ck] = {"path": _dpath, "laps": _dlaps}
             except Exception as _e:
                 st.error("No se pudo leer el archivo: %s" % _e)
                 st.stop()
-    _detected_laps = st.session_state[_drv_cache_key]["laps"]
 
-    if _detected_laps:
-        import pandas as _pd
-        _best_i = 0
-        _best_t = float("inf")
-        for i, l in enumerate(_detected_laps):
-            if l.meta.get("is_complete") and l.laptime < _best_t:
-                _best_t = l.laptime
-                _best_i = i
+    _dc       = st.session_state[_drv_ck]
+    _drv_laps = _dc["laps"]
 
-        _lap_rows = []
-        for i, l in enumerate(_detected_laps):
-            _complete = l.meta.get("is_complete", False)
-            if i == _best_i:
-                _estado = "🏆 Más rápida"
-            elif _complete:
-                _estado = "✓ Completa"
-            else:
-                _estado = "⚠️ Incompleta"
-            _lap_rows.append({
-                "Analizar": i == _best_i,
-                "#": i,
-                "Tiempo": _fmt_lap(l.laptime),
-                "Metros": int(l.length),
-                "Estado": _estado,
-            })
-
-        st.caption("Marca las vueltas que quieres analizar. 🏆 = más rápida completa · ⚠️ = incompleta (out/in lap)")
-        _edited_laps = st.data_editor(
-            _pd.DataFrame(_lap_rows),
-            column_config={
-                "Analizar": st.column_config.CheckboxColumn("Analizar", width="small"),
-                "#":        st.column_config.NumberColumn("#", disabled=True, width="small"),
-                "Tiempo":   st.column_config.TextColumn("Tiempo", disabled=True, width="medium"),
-                "Metros":   st.column_config.NumberColumn("Metros", disabled=True, width="small"),
-                "Estado":   st.column_config.TextColumn("Estado", disabled=True, width="medium"),
-            },
-            hide_index=True,
-            use_container_width=True,
-            key="lap_selector",
-        )
-
-        _selected_indices = [int(row["#"]) for _, row in _edited_laps.iterrows() if row["Analizar"]]
-        if not _selected_indices:
-            st.warning("Marca al menos una vuelta para continuar.")
-            st.stop()
-
-        lap_index = _selected_indices[0]
-        st.session_state["selected_lap_indices"] = _selected_indices
-    else:
+    if not _drv_laps:
         st.warning("No se detectaron vueltas en el archivo.")
         st.stop()
+
+    _drv_sel = _lap_table(_drv_laps, editor_key="drv_lap_sel", single=False)
+    if not _drv_sel:
+        st.warning("Marca al menos una vuelta para continuar.")
+        st.stop()
+    st.session_state["drv_lap_indices"] = _drv_sel
 
     # ── 1C: curvas del circuito ───────────────────────────────────────────────
     st.divider()
     st.subheader("③ Nombres de curvas (opcional)")
     st.caption(
         "Si agregas nombres, el reporte mostrará 'Hatzenbach', 'Karussell', etc. "
-        "en lugar de C01, C02… Puedes saltarte este paso y añadirlos después."
+        "en lugar de C01, C02… Puedes saltarte este paso."
     )
 
-    _corners_in_state = "corners" in st.session_state and st.session_state["corners"]
     col_cj, col_cd = st.columns([1, 1])
     corners_file = None
     with col_cj:
         corners_file = st.file_uploader(
             "Sube un corners.json que ya tengas",
-            type=["json"], key="corners_upload")
+            type=["json"], key="corners_upload",
+        )
     with col_cd:
         st.write("¿Primera vez? Detéctalas automáticamente:")
         if st.button("Detectar curvas"):
             with st.spinner("Analizando vuelta de referencia…"):
                 try:
-                    from fantasma import importers as _imp2
-                    from fantasma.core.normalize import split_laps as _sl2, fastest_lap as _fl2
-                    from fantasma.core.corners import detect_corners as _dc, extract_milestones as _em
-                    _ref_lap2 = _fl2(_sl2(_imp2.load(_ref_path_tmp)))
-                    _evs, _ = _dc(_ref_lap2)
-                    _corners_det = _em(_ref_lap2, _evs)
-                    st.session_state["corners"] = _corners_det
+                    from fantasma.core.normalize import fastest_lap as _fl
+                    from fantasma.core.corners import detect_corners as _dc2, extract_milestones as _em
+                    _best_ref = _fl(_ref_laps)
+                    _evs, _   = _dc2(_best_ref)
+                    _cdet     = _em(_best_ref, _evs)
+                    st.session_state["corners"]          = _cdet
                     st.session_state["corners_editable"] = True
-                    st.success("✓ %d curvas detectadas. Puedes ponerles nombre abajo." % len(_corners_det))
-                except Exception as e:
-                    st.error("Error: %s" % e)
+                    st.success("✓ %d curvas detectadas." % len(_cdet))
+                except Exception as _e:
+                    st.error("Error: %s" % _e)
 
     if st.session_state.get("corners_editable") and st.session_state.get("corners"):
         import pandas as _pd2
-        _c_data = [{"ID": c["id"], "Nombre": c.get("name", ""), "Metro": c["milestones"]["apex"]["d"]}
-                   for c in st.session_state["corners"]]
+        _c_data = [
+            {"ID": c["id"], "Nombre": c.get("name", ""), "Metro": c["milestones"]["apex"]["d"]}
+            for c in st.session_state["corners"]
+        ]
         st.caption("Escribe el nombre de cada curva (puedes dejar en blanco las que no conozcas):")
         _edited = st.data_editor(
             _pd2.DataFrame(_c_data),
@@ -255,67 +294,75 @@ if step == STEPS[0]:
                 "Metro":  st.column_config.NumberColumn("Metro", disabled=True, width="small"),
                 "Nombre": st.column_config.TextColumn("Nombre de la curva", width="medium"),
             },
-            hide_index=True, use_container_width=True, key="corners_editor"
+            hide_index=True, use_container_width=True, key="corners_editor",
         )
         for i, row in _edited.iterrows():
             if row["Nombre"]:
                 st.session_state["corners"][i]["name"] = row["Nombre"]
 
-    # ── 1D: cargar ───────────────────────────────────────────────────────────
+    # ── 1D: cargar ────────────────────────────────────────────────────────────
     st.divider()
     if st.button("Cargar y continuar →", type="primary"):
         with st.spinner("Procesando archivos…"):
             try:
-                ref_path = _ref_path_tmp
-                drv_path = st.session_state[_drv_cache_key]["path"]
+                from fantasma.core.normalize import fastest_lap as _fl2
+                _sel_ref = st.session_state.get("ref_lap_index", 0)
+                _sel_drv = st.session_state.get("drv_lap_indices", [0])
 
-                _, ref_laps, ref_lap = _load_lap_cached(ref_path, ref_col_map)
-                drv_laps = st.session_state[_drv_cache_key]["laps"]
-                _sel_idxs = st.session_state.get("selected_lap_indices", [lap_index])
-                drv_lap   = drv_laps[_sel_idxs[0]] if _sel_idxs else drv_laps[lap_index]
+                ref_lap  = _ref_laps[_sel_ref]
+                drv_laps = _dc["laps"]
+                drv_lap  = drv_laps[_sel_drv[0]]
+                drv_selected = [drv_laps[i] for i in _sel_drv if i < len(drv_laps)]
 
                 corners = st.session_state.get("corners")
                 if corners_file:
                     corners = _corners_from_json(corners_file)
 
-                _drv_selected = [drv_laps[i] for i in _sel_idxs if i < len(drv_laps)]
                 st.session_state.update({
-                    "ref_path": ref_path, "drv_path": drv_path,
-                    "ref_laps": ref_laps, "drv_laps": drv_laps,
-                    "ref_lap": ref_lap,   "drv_lap": drv_lap,
-                    "drv_selected_laps": _drv_selected,
-                    "corners": corners,
-                    "ref_col_map": ref_col_map,
-                    "lap_index": lap_index,
+                    "ref_path":         _ref_path,
+                    "drv_path":         _dc["path"],
+                    "ref_laps":         _ref_laps,
+                    "drv_laps":         drv_laps,
+                    "ref_lap":          ref_lap,
+                    "drv_lap":          drv_lap,
+                    "drv_selected_laps": drv_selected,
+                    "corners":          corners,
+                    "ref_col_map":      ref_col_map,
                 })
-                st.success("✓ Archivos cargados. Ve al Paso 2 para comparar.")
-            except Exception as e:
-                st.error("Error al cargar: %s" % e)
+                st.success("✓ Archivos cargados correctamente.")
+            except Exception as _e:
+                st.error("Error al cargar: %s" % _e)
 
     if "ref_lap" in st.session_state:
-        ref_lap = st.session_state["ref_lap"]
-        drv_lap = st.session_state["drv_lap"]
+        _rl = st.session_state["ref_lap"]
+        _dl = st.session_state["drv_lap"]
+        _delta = _dl.laptime - _rl.laptime
         c1, c2, c3, c4 = st.columns(4)
-        c1.metric("Ref. — tiempo de vuelta", "%.3f s" % ref_lap.laptime)
-        c2.metric("Ref. — longitud",          "%.0f m" % ref_lap.length)
-        c3.metric("Piloto — tiempo de vuelta", "%.3f s" % drv_lap.laptime)
-        delta = drv_lap.laptime - ref_lap.laptime
-        c4.metric("Delta",
-                  "%+.3f s" % delta,
-                  delta=round(-delta, 3),   # positivo si el piloto es más rápido
-                  delta_color="normal")
-        st.caption("Vueltas referencia: %d · Vueltas piloto: %d" % (
-            len(st.session_state["ref_laps"]), len(st.session_state["drv_laps"])))
+        c1.metric("Referencia",  _fmt_lap(_rl.laptime))
+        c2.metric("Ref. — longitud", "%.0f m" % _rl.length)
+        c3.metric("Tu vuelta",   _fmt_lap(_dl.laptime))
+        c4.metric("Delta", "%+.3f s" % _delta,
+                  delta=round(-_delta, 3), delta_color="normal")
+        _ndrv = len(st.session_state.get("drv_selected_laps", []))
+        st.caption(
+            "Vueltas de referencia disponibles: %d · Vueltas del piloto seleccionadas: %d"
+            % (len(st.session_state["ref_laps"]), _ndrv)
+        )
+        st.divider()
+        if st.button("Ir al Paso 2 — Comparar →", type="primary"):
+            _go(1)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
 # PASO 2 — COMPARAR
 # ══════════════════════════════════════════════════════════════════════════════
-elif step == STEPS[1]:
+elif step_idx == 1:
     st.markdown('<div class="step-header">Paso 2 — Comparar</div>', unsafe_allow_html=True)
 
     if "ref_lap" not in st.session_state:
         st.warning("Primero carga los archivos en el Paso 1.")
+        if st.button("← Ir al Paso 1"):
+            _go(0)
         st.stop()
 
     ref_lap = st.session_state["ref_lap"]
@@ -324,7 +371,7 @@ elif step == STEPS[1]:
 
     col_cfg, col_run = st.columns([2, 1])
     with col_cfg:
-        step_m = st.slider("Resolución de rejilla (metros)", 1, 20, 5)
+        step_m     = st.slider("Resolución de rejilla (metros)", 1, 20, 5)
         gen_charts = st.checkbox("Generar gráficas por curva", value=True)
         charts_top = st.number_input("Top N curvas con mayor pérdida", 1, 20, 5)
 
@@ -334,11 +381,9 @@ elif step == STEPS[1]:
                 from fantasma.core.compare import compare
                 trace, rows, summary = compare(ref_lap, drv_lap,
                                                step=float(step_m), corners=corners)
-                st.session_state.update({
-                    "trace": trace, "rows": rows, "summary": summary,
-                })
-            except Exception as e:
-                st.error("Error en comparación: %s" % e)
+                st.session_state.update({"trace": trace, "rows": rows, "summary": summary})
+            except Exception as _e:
+                st.error("Error en comparación: %s" % _e)
 
     if "summary" in st.session_state:
         summary = st.session_state["summary"]
@@ -346,9 +391,9 @@ elif step == STEPS[1]:
         trace   = st.session_state["trace"]
 
         c1, c2, c3 = st.columns(3)
-        c1.metric("Tiempo referencia", "%.3f s" % summary["ref_laptime"])
-        c2.metric("Tiempo piloto",     "%.3f s" % summary["drv_laptime"])
-        c3.metric("Delta total",       "%+.3f s" % summary["total_delta"],
+        c1.metric("Tiempo referencia", _fmt_lap(summary["ref_laptime"]))
+        c2.metric("Tiempo piloto",     _fmt_lap(summary["drv_laptime"]))
+        c3.metric("Delta total", "%+.3f s" % summary["total_delta"],
                   delta=round(-summary["total_delta"], 3), delta_color="normal")
 
         st.divider()
@@ -378,18 +423,24 @@ elif step == STEPS[1]:
                             cols[i % n_cols].image(path, use_container_width=True)
                 except ImportError:
                     st.info("matplotlib no instalado — instala `fantasma-inputs[charts]` para gráficas.")
-                except Exception as e:
-                    st.error("Error en gráficas: %s" % e)
+                except Exception as _e:
+                    st.error("Error en gráficas: %s" % _e)
+
+        st.divider()
+        if st.button("Ir al Paso 3 — Overlay →", type="primary"):
+            _go(2)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
 # PASO 3 — OVERLAY
 # ══════════════════════════════════════════════════════════════════════════════
-elif step == STEPS[2]:
+elif step_idx == 2:
     st.markdown('<div class="step-header">Paso 3 — Generar overlay HUD</div>', unsafe_allow_html=True)
 
     if "ref_lap" not in st.session_state:
         st.warning("Primero carga los archivos en el Paso 1.")
+        if st.button("← Ir al Paso 1"):
+            _go(0)
         st.stop()
 
     ref_lap = st.session_state["ref_lap"]
@@ -397,16 +448,17 @@ elif step == STEPS[2]:
     corners = st.session_state.get("corners")
 
     col_a, col_b, col_c = st.columns(3)
-    fps    = col_a.selectbox("FPS", [24, 30, 60], index=1)
-    fmt    = col_b.selectbox("Formato", ["webm", "prores", "png"], index=0)
-    all_laps = col_c.checkbox("Todas las vueltas (--all-laps)",
-                               help="Renderiza cada vuelta completa del piloto por separado.")
-
-    out_dir = st.text_input("Carpeta de salida",
-                             value=os.path.join(os.path.expanduser("~"), "fantasma_salida"))
-
-    st.info("El render puede tardar 15-30 min para una vuelta completa del Nordschleife. "
-            "La barra de progreso se actualiza cada 10 segundos de video.")
+    fps      = col_a.selectbox("FPS", [24, 30, 60], index=1)
+    fmt      = col_b.selectbox("Formato", ["webm", "prores", "png"], index=0)
+    all_laps = col_c.checkbox(
+        "Todas las vueltas seleccionadas",
+        help="Renderiza cada vuelta que marcaste en el Paso 1.",
+    )
+    out_dir = st.text_input(
+        "Carpeta de salida",
+        value=os.path.join(os.path.expanduser("~"), "fantasma_salida"),
+    )
+    st.info("El render puede tardar 15-30 min para una vuelta completa del Nordschleife.")
 
     if st.button("Generar overlay", type="primary"):
         os.makedirs(out_dir, exist_ok=True)
@@ -416,41 +468,40 @@ elif step == STEPS[2]:
         def _progress(n, total):
             pct = n / total if total else 0
             progress_bar.progress(pct, text="Frame %d / %d (%.0f%%)" % (n, total, pct * 100))
-            status_text.caption("Renderizando…")
 
         try:
             from fantasma.viz.overlay import render_overlay
-
             if all_laps:
-                complete = st.session_state.get("drv_selected_laps") or st.session_state["drv_laps"]
+                laps_to_render = st.session_state.get("drv_selected_laps") or [drv_lap]
                 webms = []
-                for i, lap in enumerate(complete):
-                    st.write("Vuelta %d/%d — %.2f s" % (i + 1, len(complete), lap.laptime))
+                for i, lap in enumerate(laps_to_render):
+                    st.write("Vuelta %d/%d — %s" % (i + 1, len(laps_to_render), _fmt_lap(lap.laptime)))
                     lap_dir = os.path.join(out_dir, "lap_%02d" % i)
                     os.makedirs(lap_dir, exist_ok=True)
-                    out = render_overlay(ref_lap, lap, corners or [], lap_dir,
-                                         fps=fps, fmt=fmt, progress=_progress)
-                    webms.append(out)
+                    webms.append(render_overlay(ref_lap, lap, corners or [], lap_dir,
+                                                fps=fps, fmt=fmt, progress=_progress))
             else:
-                out = render_overlay(ref_lap, drv_lap, corners or [], out_dir,
-                                     fps=fps, fmt=fmt, progress=_progress)
-                webms = [out]
+                webms = [render_overlay(ref_lap, drv_lap, corners or [], out_dir,
+                                        fps=fps, fmt=fmt, progress=_progress)]
 
             progress_bar.progress(1.0, text="Completado")
             st.success("Overlay generado:")
             for w in webms:
                 st.code(w)
-            st.session_state["last_overlay"] = webms[0] if len(webms) == 1 else os.path.join(out_dir, "overlay_all.webm")
+            st.session_state["last_overlay"] = webms[0]
+            st.divider()
+            if st.button("Ir al Paso 4 — Componer →", type="primary"):
+                _go(3)
         except ImportError:
             st.error("matplotlib y/o Pillow no instalados. Ejecuta: pip install 'fantasma-inputs[overlay]'")
-        except Exception as e:
-            st.error("Error: %s" % e)
+        except Exception as _e:
+            st.error("Error: %s" % _e)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
 # PASO 4 — COMPONER
 # ══════════════════════════════════════════════════════════════════════════════
-elif step == STEPS[3]:
+elif step_idx == 3:
     st.markdown('<div class="step-header">Paso 4 — Componer video final</div>', unsafe_allow_html=True)
     st.caption("Superpone el overlay sobre tu grabación. Solo necesitas ffmpeg instalado.")
 
@@ -476,7 +527,7 @@ elif step == STEPS[3]:
     if st.button("Componer video", type="primary",
                  disabled=not (video_path and overlay_path)):
         if not out_path:
-            base = os.path.splitext(os.path.basename(video_path))[0]
+            base     = os.path.splitext(os.path.basename(video_path))[0]
             out_path = os.path.join(os.path.dirname(video_path), base + "_composed.mp4")
 
         with st.spinner("Composiendo con ffmpeg…"):
@@ -486,7 +537,7 @@ elif step == STEPS[3]:
                                        position=position, offset=offset, scale=scale)
                 st.success("Video compuesto:")
                 st.code(result)
-            except RuntimeError as e:
-                st.error(str(e))
-            except Exception as e:
-                st.error("Error al componer: %s" % e)
+            except RuntimeError as _e:
+                st.error(str(_e))
+            except Exception as _e:
+                st.error("Error al componer: %s" % _e)
