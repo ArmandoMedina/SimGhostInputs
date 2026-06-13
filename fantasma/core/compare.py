@@ -1,6 +1,7 @@
 """Comparacion piloto vs referencia, por distancia (no por tiempo)."""
 from .normalize import resample
 from .corners import detect_corners, extract_milestones
+from . import wear
 
 
 def delta_trace(ref, drv, step=5.0):
@@ -71,6 +72,11 @@ def compare(ref, drv, step=5.0, corners=None):
         i = min(int(dist / step), len(trace) - 1)
         return trace[max(0, i)]["delta_t"]
 
+    # series de slip (proxy de desgaste), si hay canales de rueda
+    ref_ratios, drv_ratios = wear.calibrate(ref), wear.calibrate(drv)
+    ref_slip = wear.slip_series(ref, ref_ratios) if ref_ratios else None
+    drv_slip = wear.slip_series(drv, drv_ratios) if drv_ratios else None
+
     rows = []
     for c in corners:
         m = c["milestones"]
@@ -91,6 +97,13 @@ def compare(ref, drv, step=5.0, corners=None):
             row["d_brake_m"] = drv_m["brake_d"] - m["brake_start"]["d"]
         if "full_throttle" in m and "gas100_d" in drv_m:
             row["d_gas100_m"] = drv_m["gas100_d"] - m["full_throttle"]["d"]
+        if ref_slip is not None and drv_slip is not None:
+            row["ref_slip"] = wear.slip_index(ref, lo, hi, slip=ref_slip)
+            row["drv_slip"] = wear.slip_index(drv, lo, hi, slip=drv_slip)
+        ra = wear.assist_count(ref, "abs", lo, hi)
+        da = wear.assist_count(drv, "abs", lo, hi)
+        if ra is not None and da is not None:
+            row["ref_abs"], row["drv_abs"] = ra, da
         tol = c.get("tolerances", {})
         flags = []
         if abs(row["d_vmin"]) > tol.get("vmin_kmh", 5):
@@ -105,5 +118,7 @@ def compare(ref, drv, step=5.0, corners=None):
         "drv_laptime": round(drv.laptime, 3),
         "total_delta": round(trace[-1]["delta_t"], 3) if trace else 0.0,
         "corners": len(rows),
+        "ref_wear": wear.wear_summary(ref),
+        "drv_wear": wear.wear_summary(drv),
     }
     return trace, rows, summary

@@ -45,6 +45,22 @@ def render_markdown(trace, corner_rows, summary, meta=None):
     out.append("| **Tiempo de vuelta** | %s | %s | **%+.3f s** |" % (
         _fmt_t(summary["ref_laptime"]), _fmt_t(summary["drv_laptime"]),
         summary["drv_laptime"] - summary["ref_laptime"]))
+    rw, dw = summary.get("ref_wear") or {}, summary.get("drv_wear") or {}
+    if "slip_index" in rw and "slip_index" in dw:
+        out.append("| Índice de deslizamiento (desgaste) | %.2f | %.2f | %+.2f |" % (
+            rw["slip_index"], dw["slip_index"], dw["slip_index"] - rw["slip_index"]))
+    if "abs_count" in rw and "abs_count" in dw:
+        out.append("| Activaciones de ABS | %d | %d | %+d |" % (
+            rw["abs_count"], dw["abs_count"], dw["abs_count"] - rw["abs_count"]))
+    if "tcs_count" in rw and "tcs_count" in dw:
+        out.append("| Activaciones de TCS | %d | %d | %+d |" % (
+            rw["tcs_count"], dw["tcs_count"], dw["tcs_count"] - rw["tcs_count"]))
+    if "tyre_temp_avg" in rw and "tyre_temp_avg" in dw:
+        out.append("| Temp. media de gomas (°C) | %.0f | %.0f | %+.0f |" % (
+            rw["tyre_temp_avg"], dw["tyre_temp_avg"], dw["tyre_temp_avg"] - rw["tyre_temp_avg"]))
+    if "fuel_used" in rw and "fuel_used" in dw:
+        out.append("| Combustible usado (L) | %.2f | %.2f | %+.2f |" % (
+            rw["fuel_used"], dw["fuel_used"], dw["fuel_used"] - rw["fuel_used"]))
     out.append("")
     losses = [r for r in corner_rows if r.get("time_lost") is not None]
     losses.sort(key=lambda r: r["time_lost"], reverse=True)
