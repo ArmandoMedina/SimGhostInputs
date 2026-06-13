@@ -153,28 +153,46 @@ if step == STEPS[0]:
 
     if _detected_laps:
         import pandas as _pd
-        _opts = []
         _best_i = 0
         _best_t = float("inf")
         for i, l in enumerate(_detected_laps):
-            _complete = l.meta.get("is_complete")
-            _label = "Vuelta %d — %s · %.0f m%s" % (
-                i, _fmt_lap(l.laptime), l.length,
-                " ✓" if _complete else ""
-            )
-            _opts.append(_label)
-            if _complete and l.laptime < _best_t:
+            if l.meta.get("is_complete") and l.laptime < _best_t:
                 _best_t = l.laptime
                 _best_i = i
 
-        _sel = st.selectbox(
-            "¿Qué vuelta quieres analizar?",
-            options=range(len(_opts)),
-            format_func=lambda i: _opts[i],
-            index=_best_i,
-            help="Se pre-selecciona automáticamente la vuelta completa más rápida."
+        _lap_rows = []
+        for i, l in enumerate(_detected_laps):
+            _complete = l.meta.get("is_complete", False)
+            _lap_rows.append({
+                "Analizar": i == _best_i,
+                "#": i,
+                "Tiempo": _fmt_lap(l.laptime),
+                "Metros": int(l.length),
+                "Completa": "✓" if _complete else "—",
+            })
+
+        st.caption("Marca las vueltas que quieres analizar. La vuelta completa más rápida está pre-seleccionada.")
+        _edited_laps = st.data_editor(
+            _pd.DataFrame(_lap_rows),
+            column_config={
+                "Analizar": st.column_config.CheckboxColumn("Analizar", width="small"),
+                "#":        st.column_config.NumberColumn("#", disabled=True, width="small"),
+                "Tiempo":   st.column_config.TextColumn("Tiempo", disabled=True, width="medium"),
+                "Metros":   st.column_config.NumberColumn("Metros", disabled=True, width="small"),
+                "Completa": st.column_config.TextColumn("✓", disabled=True, width="small"),
+            },
+            hide_index=True,
+            use_container_width=True,
+            key="lap_selector",
         )
-        lap_index = int(_sel)
+
+        _selected_indices = [int(row["#"]) for _, row in _edited_laps.iterrows() if row["Analizar"]]
+        if not _selected_indices:
+            st.warning("Marca al menos una vuelta para continuar.")
+            st.stop()
+
+        lap_index = _selected_indices[0]
+        st.session_state["selected_lap_indices"] = _selected_indices
     else:
         st.warning("No se detectaron vueltas en el archivo.")
         st.stop()
@@ -238,16 +256,20 @@ if step == STEPS[0]:
                 drv_path = _save_upload(drv_file, os.path.splitext(drv_file.name)[1])
 
                 _, ref_laps, ref_lap = _load_lap_cached(ref_path, ref_col_map)
-                _, drv_laps, drv_lap = _load_lap_cached(drv_path, lap_index=lap_index)
+                _, drv_laps, _       = _load_lap_cached(drv_path)
+                _sel_idxs = st.session_state.get("selected_lap_indices", [lap_index])
+                drv_lap   = drv_laps[_sel_idxs[0]] if _sel_idxs else drv_laps[lap_index]
 
                 corners = st.session_state.get("corners")
                 if corners_file:
                     corners = _corners_from_json(corners_file)
 
+                _drv_selected = [drv_laps[i] for i in _sel_idxs if i < len(drv_laps)]
                 st.session_state.update({
                     "ref_path": ref_path, "drv_path": drv_path,
                     "ref_laps": ref_laps, "drv_laps": drv_laps,
                     "ref_lap": ref_lap,   "drv_lap": drv_lap,
+                    "drv_selected_laps": _drv_selected,
                     "corners": corners,
                     "ref_col_map": ref_col_map,
                     "lap_index": lap_index,
@@ -386,8 +408,7 @@ elif step == STEPS[2]:
             from fantasma.viz.overlay import render_overlay
 
             if all_laps:
-                drv_laps = st.session_state["drv_laps"]
-                complete = [l for l in drv_laps if l.meta.get("is_complete", True)]
+                complete = st.session_state.get("drv_selected_laps") or st.session_state["drv_laps"]
                 webms = []
                 for i, lap in enumerate(complete):
                     st.write("Vuelta %d/%d — %.2f s" % (i + 1, len(complete), lap.laptime))
