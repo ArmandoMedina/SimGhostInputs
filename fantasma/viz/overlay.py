@@ -392,18 +392,29 @@ def render_overlay(ref, drv, corners, outdir, fps=30, fmt="webm",
         # fork (default en Linux) + matplotlib puede deadlockear o lanzar UserWarning.
         # PENDIENTE: probar en Linux y macOS antes de quitar este comentario.
         import multiprocessing
-        mp_ctx = multiprocessing.get_context("spawn")
+        mp_ctx   = multiprocessing.get_context("spawn")
         chunk_sz = max(1, (n_frames + n_workers - 1) // n_workers)
         chunks   = [(i, min(n_frames, i + chunk_sz)) for i in range(0, n_frames, chunk_sz)]
-        with concurrent.futures.ProcessPoolExecutor(
-            max_workers=n_workers, mp_context=mp_ctx
-        ) as executor:
-            futs = [executor.submit(_render_chunk, (s, e, *base)) for s, e in chunks]
-            done = 0
-            for fut in concurrent.futures.as_completed(futs):
-                done += fut.result()
-                if progress:
-                    progress(done, n_frames)
+        _ok = False
+        try:
+            with concurrent.futures.ProcessPoolExecutor(
+                max_workers=n_workers, mp_context=mp_ctx
+            ) as executor:
+                futs = [executor.submit(_render_chunk, (s, e, *base)) for s, e in chunks]
+                done = 0
+                for fut in concurrent.futures.as_completed(futs):
+                    done += fut.result()
+                    if progress:
+                        progress(done, n_frames)
+            _ok = True
+        except (RuntimeError, concurrent.futures.process.BrokenProcessPool, OSError):
+            # spawn falló: contexto sin __main__ (Streamlit, test, etc.)
+            # los workers intentaron relanzar más workers → caída en cascada.
+            pass
+        if not _ok:
+            _render_chunk((0, n_frames, *base))
+            if progress:
+                progress(n_frames, n_frames)
 
     if fmt == "png":
         return frames_dir
