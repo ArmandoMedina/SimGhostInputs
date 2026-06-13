@@ -221,6 +221,7 @@ if step_idx == 0:
             st.error("Solo puedes marcar **una** vuelta como referencia. Desmarca las demás.")
             st.stop()
         st.session_state["ref_lap_index"] = _ref_sel[0]
+        st.success("✓ Referencia: Vuelta #%d — %s" % (_ref_sel[0], _fmt_lap(_ref_laps[_ref_sel[0]].laptime)))
 
     # ── 1B: vuelta del piloto ─────────────────────────────────────────────────
     st.divider()
@@ -263,6 +264,11 @@ if step_idx == 0:
         st.warning("Marca al menos una vuelta para continuar.")
         st.stop()
     st.session_state["drv_lap_indices"] = _drv_sel
+    _drv_sel_times = [_fmt_lap(_drv_laps[i].laptime) for i in _drv_sel if i < len(_drv_laps)]
+    if len(_drv_sel) == 1:
+        st.success("✓ 1 vuelta seleccionada: %s" % _drv_sel_times[0])
+    else:
+        st.success("✓ %d vueltas seleccionadas: %s" % (len(_drv_sel), " · ".join(_drv_sel_times)))
 
     # ── 1C: curvas del circuito ───────────────────────────────────────────────
     st.divider()
@@ -405,6 +411,8 @@ elif step_idx == 1:
         value=True,
         help="Muestra velocidad, gas y freno de ambas vueltas superpuestos en las curvas donde más tiempo pierdes.",
     )
+    if not gen_charts:
+        st.caption("Sin gráficas activadas — el análisis será más rápido pero solo verás la tabla resumen por curva.")
 
     with st.expander("⚙️ Ajustes avanzados"):
         step_m = st.slider(
@@ -423,7 +431,8 @@ elif step_idx == 1:
             "Esta pista mide **%s m** → con %d m entre puntos se generan **~%s puntos de comparación** "
             "(%.1f× %s que con 10 m). "
             "El tiempo real depende de la velocidad de tu PC y la longitud de la vuelta — "
-            "pistas largas como el Nordschleife generan 4-6× más puntos que una pista corta de 3-4 km."
+            "pistas largas como el Nordschleife generan 4-6× más puntos que una pista corta de 3-4 km. "
+            "💡 Si tienes varias vueltas en cola, prueba primero con una sola para ver cuánto tarda en tu PC."
             % (
                 "{:,}".format(_track_m),
                 int(step_m),
