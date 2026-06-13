@@ -1,7 +1,13 @@
 # 👻 SimGhostInputs
 
+[![Estado](https://img.shields.io/badge/estado-pre--release%20v0.x-orange)](CHANGELOG.md)
 [![Ko-fi](https://img.shields.io/badge/Ko--fi-Buy%20me%20a%20Lap-FF5E5B?logo=ko-fi&logoColor=white)](https://ko.fi/armandomedina2255)
 [![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL--3.0-blue.svg)](LICENSE)
+
+> [!WARNING]
+> **Proyecto en desarrollo activo — versión 0.x (pre-release).**
+> El motor CLI está validado con telemetría real, pero la interfaz gráfica (`fantasma ui`) y el flujo de video completo (`fantasma compose`) están en pruebas.
+> La API interna puede cambiar sin aviso entre versiones 0.x. No se garantiza estabilidad hasta v1.0.
 
 **Compara tus inputs contra una vuelta de referencia, por distancia, no por tiempo.**
 
