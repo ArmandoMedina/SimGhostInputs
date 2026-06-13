@@ -29,9 +29,11 @@ st.markdown("""
 .step-header { font-size: 1.3rem; font-weight: 700; margin-bottom: 0.5rem; }
 .metric-ok  { color: #00c853; }
 .metric-bad { color: #ff1744; }
-/* ocultar icono del uploader — solo confunde al usuario */
-[data-testid="stFileUploaderDropzoneInstructions"] svg,
-[data-testid="stFileUploaderDropzoneInstructions"] span:first-child { display: none; }
+/* ocultar icono y texto del dropzone — dejar solo el botón Browse */
+[data-testid="stFileUploaderDropzoneInstructions"] { display: none !important; }
+[data-testid="stFileUploaderDropzone"] svg { display: none !important; }
+[data-testid="stFileUploader"] svg { display: none !important; }
+section[data-testid="stFileUploader"] small { display: none !important; }
 </style>
 """, unsafe_allow_html=True)
 
