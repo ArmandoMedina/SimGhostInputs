@@ -125,32 +125,40 @@ _POS_LABELS = {
 
 # ── flujos disponibles ────────────────────────────────────────────────────────
 # Cada flujo define qué pasos son relevantes y qué entregables produce.
+# Overlay (3) y Componer (4) no dependen de Comparar (2): se desbloquean desde Importar.
 _FLOWS = {
     "📊 Solo análisis": {
-        "desc": "Tabla por curva, gráficas de velocidad/gas/freno y reporte exportable.",
-        "deliverables": ["📄 `report.md` — resumen narrativo por curva",
-                         "📊 `corners_compare.csv` — datos por curva en CSV",
-                         "📈 `delta.csv` — delta continuo metro a metro",
-                         "🖼️ Gráficas PNG por curva"],
+        "desc": "Tabla por curva, gráficas ghost y reporte exportable. Sin video.",
+        "deliverables": [
+            "📄 `report.md` — resumen narrativo por curva",
+            "📊 `corners_compare.csv` — datos por curva en CSV",
+            "📈 `delta.csv` — delta continuo metro a metro",
+            "🖼️ Gráficas PNG por curva",
+        ],
         "steps": [0, 1, 2],
         "next": {1: 2, 2: None},
     },
-    "🎬 Análisis + overlay HUD": {
-        "desc": "Todo lo anterior más un video transparente (.webm) con el HUD animado, listo para pegar sobre tu grabación en cualquier editor.",
-        "deliverables": ["Todo lo del análisis",
-                         "🎬 `overlay.webm` — HUD transparente con alfa (velocímetro, gas, freno, delta)"],
-        "steps": [0, 1, 2, 3],
-        "next": {1: 2, 2: 3, 3: None},
+    "🎬 Overlay + video": {
+        "desc": "HUD animado sincronizado con tu vuelta, ya compuesto sobre tu grabación. Sin análisis por curva.",
+        "deliverables": [
+            "🎬 `overlay.webm` — HUD transparente con alfa (velocímetro, gas, freno, delta)",
+            "🎥 `vuelta_composed.mp4` — tu grabación con el HUD ya integrado",
+        ],
+        "steps": [0, 1, 3, 4],
+        "next": {1: 3, 3: 4, 4: None},
     },
-    "🎥 Video completo con HUD": {
-        "desc": "Todo lo anterior más el video final ya compuesto, listo para subir o compartir.",
-        "deliverables": ["Todo lo del análisis + overlay",
-                         "🎥 `vuelta_composed.mp4` — tu grabación con el HUD ya integrado"],
+    "🎥 Análisis + overlay + video": {
+        "desc": "Todo: análisis por curva, HUD animado y video final compuesto.",
+        "deliverables": [
+            "📄 `report.md` + gráficas PNG por curva",
+            "🎬 `overlay.webm` — HUD transparente con alfa",
+            "🎥 `vuelta_composed.mp4` — tu grabación con el HUD ya integrado",
+        ],
         "steps": [0, 1, 2, 3, 4],
         "next": {1: 2, 2: 3, 3: 4, 4: None},
     },
 }
-_DEFAULT_FLOW = "🎥 Video completo con HUD"
+_DEFAULT_FLOW = "🎬 Overlay + video"
 
 
 # ── navegación ────────────────────────────────────────────────────────────────
@@ -396,9 +404,13 @@ elif step_idx == 1:
     # ── Opciones avanzadas ────────────────────────────────────────────────────
     _ref_col_map  = None
     _corners_file = None
+    _flow_has_analysis = 2 in _flow["steps"]
     with st.expander("⚙️ Opciones avanzadas — curvas y mapeo de columnas"):
         st.markdown("**Nombres de curvas** *(opcional)*")
-        st.caption("Si tienes un corners.json o quieres detectarlos, el reporte mostrará nombres reales.")
+        if _flow_has_analysis:
+            st.caption("Si tienes un corners.json o quieres detectarlos, el reporte y el HUD mostrarán los nombres reales.")
+        else:
+            st.caption("Si tienes un corners.json o quieres detectarlos, los nombres aparecerán en los paneles del HUD.")
         _col_cj, _col_cd = st.columns(2)
         with _col_cj:
             _corners_file = st.file_uploader("Subir corners.json", type=["json"], key="corners_upload")
@@ -447,8 +459,12 @@ elif step_idx == 1:
             _ref_col_map = dict(p.partition("=")[::2] for p in _pairs.splitlines() if "=" in p)
 
     # ── Cargar ────────────────────────────────────────────────────────────────
+    _next_1 = _flow["next"].get(1)
+    _load_labels = {2: "Cargar y ver análisis →", 3: "Cargar y generar overlay →"}
+    _load_label  = _load_labels.get(_next_1, "Cargar →")
+
     st.divider()
-    if st.button("Cargar y ver análisis →", type="primary"):
+    if st.button(_load_label, type="primary"):
         with st.spinner("Procesando…"):
             try:
                 ref_lap      = _ref_laps[_ref_sel_i]
@@ -467,9 +483,9 @@ elif step_idx == 1:
                     "drv_selected_laps": drv_selected,
                     "corners":           corners,
                     "ref_col_map":       _ref_col_map,
-                    "needs_compare":     True,
+                    "needs_compare":     _next_1 == 2,
                 })
-                _go(2)
+                _go(_next_1 or 2)
             except Exception as _e:
                 st.error("Error al cargar: %s" % _e)
 
@@ -483,8 +499,7 @@ elif step_idx == 1:
         c2.metric("Longitud",    "%.0f m" % _rl.length)
         c3.metric("Tu vuelta",   _fmt_lap(_dl.laptime))
         c4.metric("Delta",       "%+.3f s" % _delta, delta=round(-_delta, 3), delta_color="normal")
-        if st.button("Ver análisis →", type="primary"):
-            _go(2)
+        _next_step_btn(1)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -519,15 +534,17 @@ elif step_idx == 2:
         os.path.basename(st.session_state.get("drv_path", "—")), _fmt_lap(drv_lap.laptime)))
 
     with st.expander("⚙️ Recalcular con otros ajustes"):
-        st.caption("Por defecto: 10 m entre puntos, con gráficas de las 5 peores curvas.")
+        st.caption("Ajusta la resolución y las gráficas del **reporte de análisis**. No afecta el overlay (que usa su propia resolución interna).")
         _gen_charts = st.checkbox("Generar gráficas por curva", value=True)
         if not _gen_charts:
             st.caption("Sin gráficas — solo la tabla resumen.")
         _col_sl, _col_n = st.columns(2)
         _track_m = int(ref_lap.length)
         _step_m  = _col_sl.slider(
-            "Metros entre puntos", 1, 20, 10,
+            "Metros entre puntos (resolución del análisis)", 1, 20, 10,
             help=(
+                "Controla la granularidad del reporte y la tabla por curva. "
+                "No afecta el overlay (usa 5 m fijos internamente). "
                 "A 150 km/h, 10 m = una medición cada ~0.24 s. "
                 "💡 Prueba con una vuelta primero para estimar cuánto tarda en tu PC."
             ),
@@ -626,6 +643,11 @@ elif step_idx == 3:
     ref_lap = st.session_state["ref_lap"]
     drv_lap = st.session_state["drv_lap"]
     corners = st.session_state.get("corners")
+
+    if "last_overlay" in st.session_state:
+        st.success("✓ Ya tienes un overlay generado: `%s`" % st.session_state["last_overlay"])
+        _next_step_btn(3)
+        st.divider()
 
     all_laps = st.checkbox(
         "Generar overlay para TODAS las vueltas seleccionadas en el Paso 1",
