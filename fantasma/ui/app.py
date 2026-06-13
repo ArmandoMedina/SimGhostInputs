@@ -618,17 +618,55 @@ elif step_idx == 2:
 
     if _gen_charts:
         st.divider()
-        st.subheader("Gráficas por curva")
+        st.subheader("Gráficas de análisis")
         with st.spinner("Generando gráficas…"):
             try:
                 _out = tempfile.mkdtemp()
                 from fantasma.viz.charts import render_charts
                 _charts = render_charts(trace, rows, corners or [], _out, top=int(_charts_top))
-                _nc = min(len(_charts), 2)
-                if _nc:
-                    _cols = st.columns(_nc)
-                    for _i, _p in enumerate(_charts):
-                        _cols[_i % _nc].image(_p, use_container_width=True)
+
+                def _charts_of(prefix):
+                    return [p for p in _charts if os.path.basename(p).startswith(prefix)]
+
+                # -- Resumen de vuelta: delta map + time loss bar (side by side)
+                _overview = _charts_of("delta_map") + _charts_of("time_loss_bar")
+                if _overview:
+                    st.markdown("**Resumen de vuelta**")
+                    _ov_cols = st.columns(len(_overview))
+                    for _i, _p in enumerate(_overview):
+                        _ov_cols[_i].image(_p, use_container_width=True)
+
+                # -- Círculo de fricción G-G (ancho completo, es cuadrado)
+                _gg = _charts_of("gg_diagram")
+                if _gg:
+                    st.markdown("**Círculo de fricción (G-G)**")
+                    _c1, _c2, _c3 = st.columns([1, 2, 1])
+                    _c2.image(_gg[0], use_container_width=True)
+
+                # -- Vista multi-canal de vuelta completa (ancho completo)
+                _full = _charts_of("full_lap")
+                if _full:
+                    st.markdown("**Vista completa de la vuelta — todos los canales**")
+                    st.image(_full[0], use_container_width=True)
+
+                # -- Curvas: grid 2 columnas
+                _corners = _charts_of("curva_")
+                if _corners:
+                    st.markdown("**Curvas con mayor pérdida de tiempo**")
+                    _cc = st.columns(2)
+                    for _i, _p in enumerate(_corners):
+                        _cc[_i % 2].image(_p, use_container_width=True)
+
+                # -- Zonas de frenada: grid 2 columnas
+                _brakes = _charts_of("frenada_")
+                if _brakes:
+                    st.markdown("**Detalle de zonas de frenada**")
+                    _bc = st.columns(2)
+                    for _i, _p in enumerate(_brakes):
+                        _bc[_i % 2].image(_p, use_container_width=True)
+
+                if not _charts:
+                    st.info("No se generaron gráficas.")
             except ImportError:
                 st.info("matplotlib no instalado — ejecuta: pip install 'fantasma-inputs[charts]'")
             except Exception as _e:
