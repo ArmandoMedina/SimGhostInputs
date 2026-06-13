@@ -157,6 +157,16 @@ def _concat_videos(paths, output, fmt):
         os.unlink(list_file)
 
 
+def cmd_ui(args):
+    import shutil, subprocess, os
+    if not shutil.which("streamlit"):
+        print("error: streamlit no instalado — ejecuta: pip install 'fantasma-inputs[ui]'",
+              file=sys.stderr)
+        return 1
+    app = os.path.join(os.path.dirname(__file__), "ui", "app.py")
+    subprocess.run(["streamlit", "run", app, "--server.port", str(args.port)], check=True)
+
+
 def cmd_compose(args):
     import os
     from .viz.compose import compose_video
@@ -213,6 +223,10 @@ def main(argv=None):
     sp.add_argument("--map", action="append")
     sp.add_argument("-o", "--output", default="salida", help="carpeta de salida")
     sp.set_defaults(func=cmd_overlay)
+
+    sp = sub.add_parser("ui", help="abre la interfaz grafica local en el navegador (requiere streamlit)")
+    sp.add_argument("--port", type=int, default=8501, help="puerto local (default: 8501)")
+    sp.set_defaults(func=cmd_ui)
 
     sp = sub.add_parser("compose",
                         help="superponer overlay sobre tu grabacion y generar el video final")

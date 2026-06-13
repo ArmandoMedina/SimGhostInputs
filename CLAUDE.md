@@ -16,8 +16,10 @@ Motor open-source (AGPL-3.0) para comparar inputs de simracing contra una vuelta
 - Comparador piloto vs referencia: delta continuo por metro + tabla por curva con tolerancias
 - Reportes: `report.md`, `delta.csv`, `corners_compare.csv`
 - Gráficas ghost: mapa de delta + velocidad/gas/freno por curva (matplotlib, opcional)
-- Overlay HUD con canal alfa para superponer sobre grabaciones (PIL + ffmpeg, opcional)
-- CLI: `fantasma laps | detect | compare | overlay`
+- Overlay HUD con canal alfa para superponer sobre grabaciones (matplotlib + ffmpeg, opcional)
+- `fantasma compose`: compositor ffmpeg que superpone el overlay sobre el video final
+- UI local (`fantasma ui`): interfaz Streamlit en localhost — sin hosting, datos siempre locales
+- CLI: `fantasma laps | detect | compare | overlay | compose | ui`
 - Nuevos **importadores** para otros formatos (iRacing .ibt, `.ld` directo, SimHub CSV...)
 - Mejoras al detector de curvas, al comparador o al sistema de tolerancias
 
@@ -30,7 +32,8 @@ Motor open-source (AGPL-3.0) para comparar inputs de simracing contra una vuelta
 | Listener de telemetría en vivo (Fase 3) | Es un proyecto separado; este repo es offline/post-tanda |
 | Motor TTS / voz en tiempo real | Idem — live coaching es otro repo |
 | Vueltas de referencia, telemetrías o setups incluidos en el repo | Cada usuario trae sus propios datos (principio AGPL) |
-| Interfaz web, API REST o servicio cloud | CLI primero; una web requeriría modelo de hosting ajeno al scope |
+| API REST o servicio cloud | Requiere hosting externo ajeno al scope |
+| UI web hospedada (SaaS, servidor público) | Idem — los datos del usuario no deben salir de su máquina |
 | Base de datos propia o backend de almacenamiento | Los datos son CSV/JSON estándar; sin lock-in |
 | Machine learning o inferencia de IA en el pipeline de comparación | El comparador es aritmética pura — un LLM solo añade latencia |
 | Duplicar funcionalidad de CrewChief (spotter, combustible, daños) | CrewChief ya lo resuelve; este proyecto es solo coaching por datos |

@@ -5,6 +5,7 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/). Versionado
 ## [Unreleased]
 
 ### Añadido
+- **`fantasma ui`**: interfaz gráfica local basada en Streamlit (localhost, sin hosting). Flujo de 4 pasos: Importar → Comparar → Overlay → Componer. Temas dark/light del sistema operativo. Extra `[ui]`: `pip install 'fantasma-inputs[ui]'`.
 - **`fantasma compose`**: nuevo subcomando que compone el overlay sobre el video de grabación usando ffmpeg. Parámetros: `--video`, `--overlay`, `--position` (top-left / top-right / bottom-left / bottom-right / top-center / bottom-center / center), `--offset` (delay en segundos), `--scale` (factor de escala), `-o`. No requiere abrir un editor de video externo.
 - **`fantasma overlay --all-laps`**: renderiza todas las vueltas completas del archivo del piloto (una por subcarpeta `lap_NN/`) y las concatena en `overlay_all.webm`. La referencia se reinicia en cada vuelta.
 
