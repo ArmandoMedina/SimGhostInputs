@@ -4,6 +4,9 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/). Versionado
 
 ## [Unreleased]
 
+### Cambiado
+- **Overlay HUD rediseñado (HUD-A)**: reemplaza las barras instantáneas (Pillow) por 3 paneles de líneas rodantes (matplotlib) con ventana deslizante de ±320m/+200m alrededor del cursor. Franja superior con GAP, ΔV, índice de deslizamiento y contador de ABS. Requiere `matplotlib>=3.7` (añadido al extra `[overlay]`).
+
 ### Añadido
 - **Codificación de color ABS/TCS en overlay**: freno ámbar / gas violeta cuando la electrónica interviene; versiones apagadas del mismo color en la referencia para distinguir jerarquía visual sin perder continuidad de línea.
 - **Steering coloreado por G lateral relativo**: amarillo (P75–P90) y naranja (>P90) calibrados contra los percentiles de la vuelta de referencia; escala automática para cualquier auto y pista sin configuración manual.

@@ -15,7 +15,7 @@ dependencies = []
 # pip install -e ".[xlsx]"      -> leer archivos .xlsx de MoTeC i2
 xlsx    = ["openpyxl"]
 # pip install -e ".[overlay]"   -> generar el HUD de video (fantasma overlay)
-overlay = ["Pillow>=10"]
+overlay = ["Pillow>=10", "matplotlib>=3.7"]
 # pip install -e ".[charts]"    -> graficas ghost y mapa de delta (fantasma compare)
 charts  = ["matplotlib>=3.7"]
 # pip install -e ".[full]"      -> todo lo anterior

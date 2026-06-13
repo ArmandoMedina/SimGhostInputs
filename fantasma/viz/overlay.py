@@ -1,190 +1,390 @@
-"""Overlay HUD animado con transparencia, para superponer sobre el video real.
+"""Overlay HUD animado — 3 paneles rodantes (gas / freno / volante) + franja de datos.
 
-Genera una secuencia de frames PNG (RGBA) sincronizada con el TIEMPO de la vuelta
-del piloto, y opcionalmente la codifica con ffmpeg a un video con canal alfa:
-  - prores  -> .mov ProRes 4444 (alfa, compatible con Premiere/DaVinci/CapCut)
-  - webm    -> .webm VP9 con alfa (mas ligero, editores modernos y OBS)
-  - png     -> solo la secuencia de frames
+Diseño HUD-A: ventana deslizante de W_BEFORE metros antes y W_AFTER metros después
+del cursor. Colores: ABS=ámbar, TCS=violeta, volante por G-lat (amarillo P75-P90,
+naranja >P90). Fondo #0a0c10. Cursor amarillo.
 
-El HUD muestra: barras de freno y gas (tu vs referencia en el mismo metro),
-velocidades, delta acumulado, nombre de curva y franja de velocidad (ultimos metros).
+Dependencias (extra `overlay`): Pillow>=10, matplotlib>=3.7, ffmpeg en PATH.
 """
-import bisect
 import os
 import shutil
 import subprocess
 
-from PIL import Image, ImageDraw, ImageFont
+import numpy as np
 
-W, H = 1920, 300
-REF = (154, 160, 166, 230)
-DRV_BRAKE = (255, 23, 68, 255)
-DRV_GAS = (0, 200, 83, 255)
-DRV_SPEED = (255, 109, 0, 255)
-FG = (232, 234, 237, 255)
-DIM = (232, 234, 237, 140)
-PANEL = (10, 12, 16, 150)
-YELLOW = (253, 216, 53, 255)
+# ── paleta ───────────────────────────────────────────────────────────────────
+_BG    = "#0a0c10"
+_FG    = "#e8eaed"
+_DIM   = "#9aa0a6"
+_REF   = "#9aa0a6"
+_GAS   = "#00c853"
+_FRENO = "#ff1744"
+_VOL   = "#40c4ff"
+_ABS   = "#ffab00"
+_TCS   = "#e040fb"
+_RABS  = "#b8860b"
+_RTCS  = "#7b5ea7"
+_GMED  = "#fdd835"
+_GMAX  = "#ff6d00"
+_RGMED = "#6b5e00"
+_RGMAX = "#7a3300"
+_YEL   = "#fdd835"
 
-
-def _font(size):
-    for name in ("arialbd.ttf", "arial.ttf", "segoeui.ttf"):
-        try:
-            return ImageFont.truetype(name, size)
-        except OSError:
-            continue
-    return ImageFont.load_default()
-
-
-class _LapIndex:
-    """Acceso por tiempo y por distancia a una vuelta (canales crudos)."""
-
-    def __init__(self, lap):
-        self.t = lap.col("time")
-        self.d = lap.col("dist")
-        self.ch = lap.channels
-
-    def at_time(self, t):
-        i = bisect.bisect_right(self.t, t) - 1
-        return max(0, min(i, len(self.t) - 1))
-
-    def at_dist(self, d):
-        i = bisect.bisect_right(self.d, d) - 1
-        return max(0, min(i, len(self.d) - 1))
-
-    def val(self, name, i, default=0.0):
-        c = self.ch.get(name)
-        return c[i] if c else default
+W_BEFORE = 320   # metros antes del cursor
+W_AFTER  = 200   # metros después del cursor
+_FIG_W   = 17    # pulgadas
+_FIG_H   = 5.2
+_DPI     = 110   # → ~1870 × 572 px
 
 
-def _bar(draw, x, y, h, w, pct, color, label, font):
-    """Barra vertical 0-100 con fondo."""
-    draw.rectangle([x, y, x + w, y + h], fill=(255, 255, 255, 28))
-    fill_h = int(h * max(0, min(100, pct)) / 100.0)
-    draw.rectangle([x, y + h - fill_h, x + w, y + h], fill=color)
-    draw.text((x + w / 2, y + h + 6), label, font=font, fill=DIM, anchor="ma")
+# ── utilidades de enmascarado ─────────────────────────────────────────────────
+
+def _masked(vals, flags, active):
+    """NaN donde el flag no coincide con active (corta la línea en matplotlib)."""
+    return np.where((np.asarray(flags) > 0.5) == active, vals, np.nan)
 
 
-def render_frame(img_draw, ref_ix, drv_ix, t, corners_by_seg, delta_at, fonts):
-    draw = img_draw
-    f_big, f_med, f_small = fonts
-    di = drv_ix.at_time(t)
-    dist = drv_ix.d[di]
-    ri = ref_ix.at_dist(dist)
+def _masked_g(vals, glat, lo, hi=None):
+    """NaN fuera del rango |G-lat| ∈ [lo, hi)."""
+    cond = np.abs(glat) >= lo
+    if hi is not None:
+        cond &= np.abs(glat) < hi
+    return np.where(cond, vals, np.nan)
 
-    # panel de fondo
-    draw.rounded_rectangle([10, 10, W - 10, H - 10], radius=18, fill=PANEL)
 
-    # --- barras freno / gas (ref gris al lado de las tuyas) ---
-    bh, bw, y0 = 180, 34, 38
-    x = 60
-    _bar(draw, x, y0, bh, bw, ref_ix.val("brake", ri), REF, "", f_small)
-    _bar(draw, x + 44, y0, bh, bw, drv_ix.val("brake", di), DRV_BRAKE, "", f_small)
-    draw.text((x + 22 + bw / 2, y0 + bh + 6), "FRENO", font=f_small, fill=DIM, anchor="ma")
-    x = 220
-    _bar(draw, x, y0, bh, bw, ref_ix.val("throttle", ri), REF, "", f_small)
-    _bar(draw, x + 44, y0, bh, bw, drv_ix.val("throttle", di), DRV_GAS, "", f_small)
-    draw.text((x + 22 + bw / 2, y0 + bh + 6), "GAS", font=f_small, fill=DIM, anchor="ma")
-    draw.text((60 + bw / 2, y0 - 26), "ref", font=f_small, fill=DIM, anchor="ma")
+# ── interpolación ─────────────────────────────────────────────────────────────
 
-    # --- velocidad y marcha ---
-    v_drv = drv_ix.val("speed", di)
-    v_ref = ref_ix.val("speed", ri)
-    g_drv = int(drv_ix.val("gear", di))
-    draw.text((420, 60), "%3.0f" % v_drv, font=f_big, fill=DRV_SPEED)
-    draw.text((420, 150), "ref %3.0f km/h" % v_ref, font=f_small, fill=DIM)
-    draw.text((420, 185), "marcha %d" % g_drv, font=f_small, fill=DIM)
-    dv = v_drv - v_ref
-    if abs(dv) >= 8:
-        draw.text((570, 185), "%+.0f" % dv, font=f_small,
-                  fill=DRV_BRAKE if dv < 0 else DRV_GAS)
+def _interp_lap(lap, ds):
+    """Interpola todos los canales del Lap en la rejilla uniforme ds (1 m)."""
+    d_orig = np.array(lap.col("dist"), dtype=float)
+    out = {}
+    for ch in ("throttle", "brake", "steering", "speed", "glat", "abs", "tcs"):
+        raw = lap.col(ch)
+        if raw:
+            out[ch] = np.interp(ds, d_orig, np.array(raw, dtype=float))
+        else:
+            out[ch] = np.zeros_like(ds, dtype=float)
+    return out
 
-    # --- delta acumulado ---
-    dt = delta_at(dist)
-    color = DRV_BRAKE if dt > 0.05 else (DRV_GAS if dt < -0.05 else FG)
-    draw.text((760, 60), "%+.2f s" % dt, font=f_big, fill=color)
-    draw.text((760, 150), "delta vs referencia", font=f_small, fill=DIM)
 
-    # --- curva actual ---
-    name, flash = "", None
+# ── métricas por ventana ──────────────────────────────────────────────────────
+
+def _count_events(d_orig, flag_orig, lo, hi):
+    """Flancos de subida (0→1) de flag_orig en el tramo [lo, hi]."""
+    mask = (d_orig >= lo) & (d_orig <= hi)
+    f = (flag_orig[mask] > 0.5).astype(np.int8)
+    return int(np.sum(np.diff(f) > 0)) if len(f) >= 2 else 0
+
+
+def _slip_window(slip_grid, ds, lo, hi):
+    """Índice de slip en la ventana visible; None si no hay serie."""
+    if slip_grid is None:
+        return None
+    mask = (ds >= lo) & (ds <= hi)
+    excess = np.maximum(0.0, np.abs(slip_grid[mask]) - 2.0)   # DEADBAND_PCT = 2
+    return round(float(np.mean(excess)), 2) if excess.size else None
+
+
+def _corner_at(corners_by_seg, dist):
+    """Nombre y texto de V-Min de la curva que contiene dist."""
     for (lo, hi), c in corners_by_seg:
         if lo <= dist <= hi:
             name = c.get("name", c.get("id", ""))
-            ap = c["milestones"]["apex"]
-            flash = "ápex m%d · V-Min ref %d" % (ap["d"], ap["v"])
-            break
-    draw.text((1100, 60), name, font=f_med, fill=YELLOW)
-    if flash:
-        draw.text((1100, 120), flash, font=f_small, fill=DIM)
-    draw.text((1100, 185), "m %s" % "{:,}".format(int(dist)), font=f_small, fill=DIM)
-
-    # --- franja de velocidad (ultimos 500m, tu naranja sobre ref gris) ---
-    fx0, fx1, fy0, fy1 = 1450, W - 50, 50, 230
-    draw.rectangle([fx0, fy0, fx1, fy1], fill=(255, 255, 255, 18))
-    span = 500.0
-    vmax = 300.0
-    pts_ref, pts_drv = [], []
-    for k in range(60):
-        dd = dist - span + span * k / 59.0
-        if dd < 0:
-            continue
-        xr = fx0 + (fx1 - fx0) * k / 59.0
-        rr = ref_ix.at_dist(dd)
-        dr = drv_ix.at_dist(dd)
-        pts_ref.append((xr, fy1 - (fy1 - fy0) * min(vmax, ref_ix.val("speed", rr)) / vmax))
-        pts_drv.append((xr, fy1 - (fy1 - fy0) * min(vmax, drv_ix.val("speed", dr)) / vmax))
-    if len(pts_ref) > 1:
-        draw.line(pts_ref, fill=REF, width=3)
-        draw.line(pts_drv, fill=DRV_SPEED, width=2)
-    draw.text((fx0 + 4, fy1 + 6), "velocidad · últimos 500 m", font=f_small, fill=DIM)
+            ap = (c.get("milestones") or {}).get("apex", {})
+            v = ap.get("v")
+            txt2 = "V-Min objetivo %d km/h" % v if v else ""
+            return name, txt2
+    return "", ""
 
 
-def render_overlay(ref, drv, corners, outdir, fps=30, fmt="prores",
+# ── figura matplotlib reutilizable ────────────────────────────────────────────
+
+class _HUDFigure:
+    """Crea la figura una sola vez; update() cambia datos sin recrear artistas."""
+
+    def __init__(self):
+        import matplotlib.pyplot as plt
+        self._plt = plt
+
+        fig, axes = plt.subplots(3, 1, figsize=(_FIG_W, _FIG_H), sharex=True)
+        fig.patch.set_facecolor(_BG)
+        self.fig   = fig
+        self.axes  = axes
+
+        # ── franja de datos (textos dinámicos) ───────────────────────────────
+        kw = dict(transform=fig.transFigure, va="top")
+        self.t_gap_val = fig.text(0.045, 0.985, "",  color=_FRENO, fontsize=17, weight="bold", **kw)
+        self.t_dv_val  = fig.text(0.158, 0.985, "",  color=_FG,    fontsize=17, weight="bold", **kw)
+        self.t_sl_val  = fig.text(0.272, 0.985, "—", color=_FG,    fontsize=17, weight="bold", **kw)
+        self.t_sl_ref  = fig.text(0.305, 0.978, "",  color=_DIM,   fontsize=10, **kw)
+        self.t_ab_val  = fig.text(0.405, 0.985, "",  color=_ABS,   fontsize=14, **kw)
+        self.t_ab_ref  = fig.text(0.450, 0.978, "",  color=_DIM,   fontsize=10, **kw)
+        self.t_corner  = fig.text(0.988, 0.985, "",  color=_YEL,   fontsize=15,
+                                  weight="bold", va="top", ha="right", transform=fig.transFigure)
+        self.t_corner2 = fig.text(0.988, 0.948, "",  color=_DIM,   fontsize=10,
+                                  va="top", ha="right", transform=fig.transFigure)
+
+        # labels fijos
+        fig.text(0.012, 0.97,  "GAP",       color=_DIM,  fontsize=10, **kw)
+        fig.text(0.135, 0.97,  "ΔV",        color=_DIM,  fontsize=10, **kw)
+        fig.text(0.225, 0.97,  "DESLIZ",    color=_DIM,  fontsize=10, **kw)
+        fig.text(0.375, 0.97,  "ABS",       color=_DIM,  fontsize=10, **kw)
+        fig.text(0.520, 0.97,  "freno+ABS", color=_ABS,  fontsize=9,  **kw)
+        fig.text(0.585, 0.97,  "gas+TCS",   color=_TCS,  fontsize=9,  **kw)
+
+        # ── estilo de paneles ─────────────────────────────────────────────────
+        specs = [("gas %", -5, 105), ("freno %", -5, 105), ("volante °", -38, 38)]
+        for ax, (ylabel, ylo, yhi) in zip(axes, specs):
+            ax.set_facecolor((0, 0, 0, 0))
+            for sp in ax.spines.values():
+                sp.set_visible(False)
+            ax.tick_params(colors=_DIM, labelsize=8, length=0, labelbottom=False)
+            ax.grid(color="#2a2e33", linewidth=0.5, alpha=0.6)
+            ax.set_ylabel(ylabel, color=_FG, fontsize=9)
+            ax.set_ylim(ylo, yhi)
+
+        axes[2].axhline(0, color="#444", lw=0.7)
+
+        lw   = 1.8
+        nil  = ([], [])
+        l    = {}
+
+        # panel gas (índice 0)
+        ax0 = axes[0]
+        l["rthr"]   = ax0.plot(*nil, color=_REF,  lw=lw)[0]
+        l["rtcs"]   = ax0.plot(*nil, color=_RTCS, lw=lw)[0]
+        l["dthr"]   = ax0.plot(*nil, color=_GAS,  lw=lw)[0]
+        l["dtcs"]   = ax0.plot(*nil, color=_TCS,  lw=lw)[0]
+        self.cur0   = ax0.axvline(0, color=_YEL, lw=1.5, alpha=0.9)
+
+        # panel freno (índice 1)
+        ax1 = axes[1]
+        l["rbrk"]   = ax1.plot(*nil, color=_REF,   lw=lw)[0]
+        l["rabs"]   = ax1.plot(*nil, color=_RABS,  lw=lw)[0]
+        l["dbrk"]   = ax1.plot(*nil, color=_FRENO, lw=lw)[0]
+        l["dabs"]   = ax1.plot(*nil, color=_ABS,   lw=lw)[0]
+        self.cur1   = ax1.axvline(0, color=_YEL, lw=1.5, alpha=0.9)
+
+        # panel volante (índice 2)
+        ax2 = axes[2]
+        l["rsteer"] = ax2.plot(*nil, color=_REF,   lw=lw)[0]
+        l["rgmed"]  = ax2.plot(*nil, color=_RGMED, lw=lw)[0]
+        l["rgmax"]  = ax2.plot(*nil, color=_RGMAX, lw=lw)[0]
+        l["dsteer"] = ax2.plot(*nil, color=_VOL,   lw=lw)[0]
+        l["dgmed"]  = ax2.plot(*nil, color=_GMED,  lw=lw)[0]
+        l["dgmax"]  = ax2.plot(*nil, color=_GMAX,  lw=lw)[0]
+        self.cur2   = ax2.axvline(0, color=_YEL, lw=1.5, alpha=0.9)
+
+        self.l = l
+        fig.tight_layout(rect=(0, 0, 1, 0.90))
+
+    def update(self, cur_d, win_d, rw, dw, p75, p90,
+               gap, dv, slip_val, ref_slip_val, abs_n, ref_abs_n,
+               corner_name, corner_txt):
+        """Actualiza datos y texto para el frame actual."""
+        l = self.l
+
+        # gas
+        l["rthr"].set_data(win_d, rw["throttle"])
+        l["rtcs"].set_data(win_d, _masked(rw["throttle"], rw["tcs"], True))
+        l["dthr"].set_data(win_d, dw["throttle"])
+        l["dtcs"].set_data(win_d, _masked(dw["throttle"], dw["tcs"], True))
+
+        # freno
+        l["rbrk"].set_data(win_d, rw["brake"])
+        l["rabs"].set_data(win_d, _masked(rw["brake"], rw["abs"], True))
+        l["dbrk"].set_data(win_d, dw["brake"])
+        l["dabs"].set_data(win_d, _masked(dw["brake"], dw["abs"], True))
+
+        # volante
+        l["rsteer"].set_data(win_d, rw["steering"])
+        l["rgmed"].set_data(win_d, _masked_g(rw["steering"], rw["glat"], p75, p90))
+        l["rgmax"].set_data(win_d, _masked_g(rw["steering"], rw["glat"], p90))
+        l["dsteer"].set_data(win_d, dw["steering"])
+        l["dgmed"].set_data(win_d, _masked_g(dw["steering"], dw["glat"], p75, p90))
+        l["dgmax"].set_data(win_d, _masked_g(dw["steering"], dw["glat"], p90))
+
+        # cursor y límites de ventana
+        for cur in (self.cur0, self.cur1, self.cur2):
+            cur.set_xdata([cur_d, cur_d])
+        x0 = float(win_d[0]) if win_d.size else 0.0
+        x1 = float(win_d[-1]) if win_d.size else 1.0
+        self.axes[0].set_xlim(x0, x1)   # se propaga a sharex
+
+        # franja de datos
+        self.t_gap_val.set_text("%+.2f s" % gap)
+        self.t_gap_val.set_color(_FRENO if gap > 0 else _GAS)
+        self.t_dv_val.set_text("%+d" % dv)
+        self.t_dv_val.set_color(_FRENO if dv < -8 else _FG)
+        if slip_val is not None:
+            self.t_sl_val.set_text("%.1f" % slip_val)
+            self.t_sl_ref.set_text("ref %.1f" % ref_slip_val if ref_slip_val is not None else "")
+        else:
+            self.t_sl_val.set_text("—")
+            self.t_sl_ref.set_text("")
+        self.t_ab_val.set_text("●" * min(abs_n, 5))
+        self.t_ab_ref.set_text("ref %d✕" % ref_abs_n)
+        self.t_corner.set_text(corner_name)
+        self.t_corner2.set_text(corner_txt)
+
+    def to_pil(self):
+        """Renderiza y devuelve imagen PIL RGBA."""
+        from PIL import Image
+        self.fig.canvas.draw()
+        buf = self.fig.canvas.buffer_rgba()
+        w, h = self.fig.canvas.get_width_height()
+        arr = np.frombuffer(buf, dtype=np.uint8).reshape(h, w, 4).copy()
+        return Image.fromarray(arr, "RGBA")
+
+    def close(self):
+        self._plt.close(self.fig)
+
+
+# ── función principal ─────────────────────────────────────────────────────────
+
+def render_overlay(ref, drv, corners, outdir, fps=30, fmt="webm",
                    t_start=0.0, t_end=None, progress=None):
-    """Renderiza el overlay de la vuelta del piloto. Devuelve la ruta del video o carpeta."""
+    """Renderiza el overlay HUD-A. Devuelve ruta del video o carpeta de frames."""
+    try:
+        import matplotlib
+        matplotlib.use("Agg")
+    except ImportError:
+        raise ImportError(
+            "matplotlib requerido para el overlay: "
+            "pip install 'fantasma-inputs[overlay]'"
+        )
+
     from ..core.compare import delta_trace
-    trace = delta_trace(ref, drv, 5.0)
-    step = 5.0
+    from ..core import wear
 
-    def delta_at(dist):
-        i = max(0, min(int(dist / step), len(trace) - 1))
-        return trace[i]["delta_t"]
+    # ── rejilla uniforme de distancias (1 m) ─────────────────────────────────
+    d_max = max(ref.col("dist")[-1], drv.col("dist")[-1])
+    ds = np.arange(0.0, d_max + 1.0, 1.0)
 
-    ref_ix, drv_ix = _LapIndex(ref), _LapIndex(drv)
-    corners_by_seg = [((c.get("segment_m") or c.get("range_m"))[0],
-                       (c.get("segment_m") or c.get("range_m"))[1]) for c in corners]
-    corners_by_seg = list(zip(corners_by_seg, corners))
-    fonts = (_font(72), _font(44), _font(22))
+    ref_ch = _interp_lap(ref, ds)
+    drv_ch = _interp_lap(drv, ds)
 
+    # percentiles G-lat de referencia
+    glat_raw = ref.col("glat") or []
+    glat_sorted = sorted(abs(x) for x in glat_raw) if glat_raw else [0.0]
+    n_gl = len(glat_sorted)
+    p75 = glat_sorted[int(n_gl * 0.75)]
+    p90 = glat_sorted[int(n_gl * 0.90)]
+
+    # slip en rejilla (None si faltan canales de velocidad de rueda)
+    def _to_grid(lap):
+        cal = wear.calibrate(lap)
+        if cal is None:
+            return None
+        s = wear.slip_series(lap, cal)
+        if s is None:
+            return None
+        return np.interp(ds, np.array(lap.col("dist"), dtype=float), np.array(s, dtype=float))
+
+    ref_slip = _to_grid(ref)
+    drv_slip = _to_grid(drv)
+
+    # ABS originales (sin interpolar) para conteo de flancos preciso
+    def _orig_flags(lap, ch):
+        d = np.array(lap.col("dist"), dtype=float)
+        raw = lap.col(ch)
+        f = np.array(raw, dtype=float) if raw else np.zeros(len(d))
+        return d, f
+
+    ref_d_o, ref_abs_o = _orig_flags(ref, "abs")
+    drv_d_o, drv_abs_o = _orig_flags(drv, "abs")
+
+    # delta en tiempo (5 m de resolución)
+    step  = 5.0
+    trace = delta_trace(ref, drv, step)
+    n_tr  = len(trace)
+
+    def get_delta(d):
+        return trace[max(0, min(int(d / step), n_tr - 1))]["delta_t"]
+
+    # tiempo → distancia del piloto
+    t_arr = np.array(drv.col("time"), dtype=float)
+    d_arr = np.array(drv.col("dist"), dtype=float)
+
+    # corners: ((lo, hi), dict)
+    def _seg(c):
+        return c.get("segment_m") or c.get("range_m") or [0.0, 0.0]
+    corners_by_seg = [((_seg(c)[0], _seg(c)[1]), c) for c in corners]
+
+    # ── bucle de frames ───────────────────────────────────────────────────────
     frames_dir = os.path.join(outdir, "frames")
     os.makedirs(frames_dir, exist_ok=True)
-    t_end = t_end if t_end is not None else drv_ix.t[-1]
+    t_end    = t_end if t_end is not None else float(t_arr[-1])
     n_frames = int((t_end - t_start) * fps)
-    for n in range(n_frames):
-        t = t_start + n / fps
-        img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-        render_frame(ImageDraw.Draw(img), ref_ix, drv_ix, t, corners_by_seg, delta_at, fonts)
-        img.save(os.path.join(frames_dir, "f%06d.png" % n))
-        if progress and n % (fps * 10) == 0:
-            progress(n, n_frames)
+
+    hud = _HUDFigure()
+    try:
+        for n in range(n_frames):
+            t    = t_start + n / fps
+            i_t  = max(0, min(int(np.searchsorted(t_arr, t, "right")) - 1, len(d_arr) - 1))
+            cur_d = float(d_arr[i_t])
+
+            w0 = max(0.0, cur_d - W_BEFORE)
+            w1 = min(float(ds[-1]), cur_d + W_AFTER)
+
+            mask  = (ds >= w0) & (ds <= w1)
+            win_d = ds[mask]
+            if win_d.size < 2:
+                # ventana vacía (inicio/fin extremo de vuelta), copia frame anterior
+                if n > 0:
+                    import shutil as _sh
+                    _sh.copy(
+                        os.path.join(frames_dir, "f%06d.png" % (n - 1)),
+                        os.path.join(frames_dir, "f%06d.png" % n),
+                    )
+                continue
+
+            rw = {k: v[mask] for k, v in ref_ch.items()}
+            dw = {k: v[mask] for k, v in drv_ch.items()}
+
+            gap   = get_delta(cur_d)
+            ref_v = float(np.interp(cur_d, ds, ref_ch["speed"]))
+            drv_v = float(np.interp(cur_d, ds, drv_ch["speed"]))
+            dv    = int(drv_v - ref_v)
+
+            slip_val     = _slip_window(drv_slip, ds, w0, w1)
+            ref_slip_val = _slip_window(ref_slip, ds, w0, w1)
+            abs_n        = _count_events(drv_d_o, drv_abs_o, w0, w1)
+            ref_abs_n    = _count_events(ref_d_o, ref_abs_o, w0, w1)
+
+            corner_name, corner_txt = _corner_at(corners_by_seg, cur_d)
+
+            hud.update(cur_d, win_d, rw, dw, p75, p90,
+                       gap, dv, slip_val, ref_slip_val, abs_n, ref_abs_n,
+                       corner_name, corner_txt)
+
+            hud.to_pil().save(os.path.join(frames_dir, "f%06d.png" % n))
+
+            if progress and n % (fps * 10) == 0:
+                progress(n, n_frames)
+    finally:
+        hud.close()
 
     if fmt == "png":
         return frames_dir
+
     ffmpeg = shutil.which("ffmpeg")
     if not ffmpeg:
-        print("aviso: ffmpeg no encontrado; quedan los frames PNG en %s" % frames_dir)
+        print("aviso: ffmpeg no encontrado — frames en %s" % frames_dir)
         return frames_dir
+
     if fmt == "webm":
         out = os.path.join(outdir, "overlay.webm")
-        cmd = [ffmpeg, "-y", "-framerate", str(fps), "-i",
-               os.path.join(frames_dir, "f%06d.png"),
+        cmd = [ffmpeg, "-y", "-framerate", str(fps),
+               "-i", os.path.join(frames_dir, "f%06d.png"),
                "-c:v", "libvpx-vp9", "-pix_fmt", "yuva420p", "-b:v", "2M", out]
     else:
         out = os.path.join(outdir, "overlay.mov")
-        cmd = [ffmpeg, "-y", "-framerate", str(fps), "-i",
-               os.path.join(frames_dir, "f%06d.png"),
+        cmd = [ffmpeg, "-y", "-framerate", str(fps),
+               "-i", os.path.join(frames_dir, "f%06d.png"),
                "-c:v", "prores_ks", "-profile:v", "4444",
                "-pix_fmt", "yuva444p10le", out]
+
     subprocess.run(cmd, check=True, capture_output=True)
     shutil.rmtree(frames_dir, ignore_errors=True)
     return out
