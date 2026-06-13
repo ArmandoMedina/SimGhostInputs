@@ -407,16 +407,30 @@ elif step_idx == 1:
     )
 
     with st.expander("⚙️ Ajustes avanzados"):
-        step_m     = st.slider(
+        step_m = st.slider(
             "Precisión del análisis (metros entre puntos)",
-            1, 20, 5,
+            1, 20, 10,
             help=(
-                "Cuántos metros hay entre cada punto de comparación a lo largo de la pista. "
-                "A 150 km/h, 5 m = una medición cada ~0.12 s — más que suficiente para ver "
-                "en qué parte de cada curva pierdes tiempo. "
-                "Bajar a 1 m da más detalle pero tarda 5× más; subir a 20 m es más rápido "
-                "pero puede perder eventos cortos como un kink o una frenada de emergencia."
+                "Cuántos metros hay entre cada punto de comparación. "
+                "Menos metros = más detalle, más tiempo de cómputo. "
+                "Más metros = más rápido, con algo menos de resolución en eventos cortos."
             ),
+        )
+        _track_m = int(ref_lap.length)
+        _frames  = max(1, _track_m // int(step_m))
+        _rel = _frames / max(1, _track_m // 10)
+        st.caption(
+            "Esta pista mide **%s m** → con %d m entre puntos se generan **~%s puntos de comparación** "
+            "(%.1f× %s que con 10 m). "
+            "El tiempo real depende de la velocidad de tu PC y la longitud de la vuelta — "
+            "pistas largas como el Nordschleife generan 4-6× más puntos que una pista corta de 3-4 km."
+            % (
+                "{:,}".format(_track_m),
+                int(step_m),
+                "{:,}".format(_frames),
+                _rel,
+                "más" if _rel > 1 else "menos",
+            )
         )
         charts_top = st.number_input(
             "Cuántas curvas mostrar en las gráficas",
