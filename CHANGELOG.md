@@ -8,6 +8,9 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/). Versionado
 - **Codificación de color ABS/TCS en overlay**: freno ámbar / gas violeta cuando la electrónica interviene; versiones apagadas del mismo color en la referencia para distinguir jerarquía visual sin perder continuidad de línea.
 - **Steering coloreado por G lateral relativo**: amarillo (P75–P90) y naranja (>P90) calibrados contra los percentiles de la vuelta de referencia; escala automática para cualquier auto y pista sin configuración manual.
 - **Indicadores de desgaste de goma** (`wear.py`): índice de deslizamiento (slip tyre-speed vs vehicle-speed), activaciones de ABS/TCS por tramo, temperatura media de gomas, combustible usado. Visibles en la franja de datos del HUD y en `report.md`.
+- **`setup.ps1`**: script de instalación interactivo para Windows — instala el paquete Python con los grupos de dependencias opcionales (`xlsx`, `overlay`, `charts`, `full`) y ofrece instalar via winget: ffmpeg, GitHub CLI, VLC y Kdenlive.
+- **Grupos de dependencias opcionales** en `pyproject.toml`: `pip install -e ".[xlsx|overlay|charts|full]"` para instalar solo lo necesario.
+- **Flujo de video documentado en la guía de usuario**: VLC para previsualizar el overlay con canal alfa; Kdenlive (GPL) como editor open source recomendado para sincronizar el HUD con la grabación; instrucciones de instalación con winget incluidas.
 
 ---
 
