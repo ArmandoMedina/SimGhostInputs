@@ -98,27 +98,62 @@ if step == STEPS[0]:
         st.subheader("Vuelta del piloto")
         drv_file = st.file_uploader("CSV o XLSX del piloto", type=["csv", "xlsx"],
                                     key="drv_upload")
+        if drv_file:
+            try:
+                import tempfile as _tf
+                from fantasma import importers as _imp
+                from fantasma.core.normalize import split_laps as _sl
+                _tmp = _tf.NamedTemporaryFile(delete=False, suffix=os.path.splitext(drv_file.name)[1])
+                _tmp.write(drv_file.read()); _tmp.flush(); drv_file.seek(0)
+                _outing = _imp.load(_tmp.name)
+                _laps = _sl(_outing)
+                import pandas as _pd
+                _df = _pd.DataFrame([{
+                    "Índice": i,
+                    "Duración (s)": "%.2f" % l.laptime,
+                    "Longitud (m)": "%.0f" % l.length,
+                    "Completa": "✓" if l.meta.get("is_complete") else "—",
+                } for i, l in enumerate(_laps)])
+                st.dataframe(_df, hide_index=True, use_container_width=True)
+            except Exception:
+                pass
         lap_index = st.number_input(
-            "Índice de vuelta",
-            min_value=0, value=None, step=1, key="lap_idx",
-            help=(
-                "Número de vuelta dentro del archivo (empieza en 0). "
-                "Déjalo vacío para usar automáticamente la vuelta más rápida. "
-                "Para saber qué vueltas contiene tu archivo y sus índices, "
-                "corre en terminal: fantasma laps <tu_archivo.csv>"
-            ))
+            "Índice de vuelta (vacío = más rápida automáticamente)",
+            min_value=0, value=None, step=1, key="lap_idx")
 
-    corners_file = st.file_uploader(
-        "corners.json (opcional)",
-        type=["json"], key="corners_upload",
-        help=(
-            "Archivo con los nombres de las curvas del circuito y sus tolerancias. "
-            "Sin él, las curvas aparecen como C01, C02… en el reporte. "
-            "Para generarlo: fantasma detect <referencia.csv> -o salida/ "
-            "Luego edita salida/corners_detected.json y añade el campo 'name' a cada curva. "
-            "Puedes compartir este archivo con otros pilotos del mismo circuito."
-        ))
-    st.caption("Sin corners.json las curvas se llaman C01, C02… Generalo con: `fantasma detect <referencia.csv> -o salida/`")
+    st.divider()
+    st.subheader("Curvas del circuito (opcional)")
+    col_cj, col_cd = st.columns([2, 1])
+    with col_cj:
+        corners_file = st.file_uploader(
+            "Sube un corners.json existente",
+            type=["json"], key="corners_upload",
+            help="Archivo con nombres de curvas y tolerancias. Sin él las curvas se llaman C01, C02…")
+    with col_cd:
+        st.caption("¿No tienes corners.json? Genéralo aquí con la vuelta de referencia:")
+        if st.button("Detectar curvas de referencia", disabled=not ref_file):
+            try:
+                from fantasma import importers as _imp2
+                from fantasma.core.normalize import split_laps as _sl2, fastest_lap as _fl2
+                from fantasma.core.corners import detect_corners as _dc, extract_milestones as _em
+                import tempfile as _tf2, json as _json
+                _tmp2 = _tf2.NamedTemporaryFile(delete=False, suffix=os.path.splitext(ref_file.name)[1])
+                _tmp2.write(ref_file.read()); _tmp2.flush(); ref_file.seek(0)
+                _ref_out = _imp2.load(_tmp2.name)
+                _ref_lap = _fl2(_sl2(_ref_out))
+                _evs, _ = _dc(_ref_lap)
+                _corners = _em(_ref_lap, _evs)
+                _cjson = _json.dumps({"corners": _corners}, indent=2, ensure_ascii=False)
+                st.download_button(
+                    "Descargar corners.json",
+                    data=_cjson,
+                    file_name="corners.json",
+                    mime="application/json",
+                )
+                st.session_state["corners"] = _corners
+                st.success("%d curvas detectadas. Descarga el JSON, edita los nombres y vuelve a subirlo." % len(_corners))
+            except Exception as e:
+                st.error("Error al detectar curvas: %s" % e)
 
     if st.button("Cargar archivos", type="primary",
                  disabled=not (ref_file and drv_file)):
