@@ -89,8 +89,8 @@ if step == STEPS[0]:
         "la de un coach, o cualquier lap de referencia que quieras superar. "
         "Exporta el archivo desde MoTeC i2 como CSV o XLSX."
     )
-    ref_file = st.file_uploader("Selecciona el archivo de referencia", type=["csv", "xlsx"],
-                                key="ref_upload")
+    ref_file = st.file_uploader("Selecciona el archivo de referencia (un solo archivo CSV o XLSX)",
+                                type=["csv", "xlsx"], key="ref_upload")
     ref_col_map = None
 
     if not ref_file:
@@ -129,8 +129,8 @@ if step == STEPS[0]:
         "El archivo con tus vueltas de la sesión. "
         "Si tiene varias vueltas podrás elegir cuál analizar en el siguiente paso."
     )
-    drv_file = st.file_uploader("Selecciona tu archivo de telemetría", type=["csv", "xlsx"],
-                                key="drv_upload")
+    drv_file = st.file_uploader("Selecciona tu archivo de telemetría (un solo archivo CSV o XLSX)",
+                                type=["csv", "xlsx"], key="drv_upload")
 
     if not drv_file:
         st.info("⬆️ Sube tu archivo de telemetría para continuar.")
