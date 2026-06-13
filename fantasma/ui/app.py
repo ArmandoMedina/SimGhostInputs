@@ -29,8 +29,13 @@ st.markdown("""
 .step-header { font-size: 1.3rem; font-weight: 700; margin-bottom: 0.5rem; }
 .metric-ok  { color: #00c853; }
 .metric-bad { color: #ff1744; }
-/* ocultar icono "+" */
-[data-testid="stFileUploader"] [data-testid="stIconMaterial"] { display: none !important; }
+/* eliminar icono "+" del boton sin dejar espacio residual */
+[data-testid="stFileUploader"] [data-testid="stIconMaterial"] {
+    display: none !important;
+    width: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
 /* area de carga centrada */
 [data-testid="stFileUploaderDropzone"] {
     display: flex !important;
@@ -50,9 +55,13 @@ st.markdown("""
     border: 1px solid #4a5568 !important;
     border-radius: 6px !important;
     color: #a0aec0 !important;
-    padding: 0.4rem 1.2rem !important;
+    padding: 0.4rem 1.4rem !important;
     font-size: 0.85rem !important;
     cursor: pointer !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 0 !important;
     transition: border-color 0.2s, color 0.2s !important;
 }
 [data-testid="stFileUploaderDropzone"] button:hover {
