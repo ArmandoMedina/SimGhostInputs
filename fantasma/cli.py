@@ -173,12 +173,35 @@ def cmd_ui(args):
 def cmd_compose(args):
     import os
     from .viz.compose import compose_video
+
+    offset = args.offset
+    if getattr(args, "auto_sync", False):
+        if not args.driver:
+            print("error: --auto-sync requiere --driver <archivo_telemetria>", file=sys.stderr)
+            return 1
+        print("Detectando offset de sincronizacion…")
+        try:
+            from .viz.sync import auto_sync
+            _, _, lap = _load_lap(
+                args.driver,
+                _parse_map(getattr(args, "map", None)),
+                getattr(args, "lap_idx", None),
+            )
+            offset = auto_sync(args.video, lap)
+            print("  -> offset detectado: %.3f s" % offset)
+        except ImportError as e:
+            print("error: %s" % e, file=sys.stderr)
+            return 1
+        except Exception as e:
+            print("error en auto-sync: %s" % e, file=sys.stderr)
+            return 1
+
     output = args.output
     if not output:
         base = os.path.splitext(os.path.basename(args.video))[0]
         output = os.path.join(os.path.dirname(args.video) or ".", base + "_composed.mp4")
     out = compose_video(args.video, args.overlay, output,
-                        position=args.position, offset=args.offset, scale=args.scale)
+                        position=args.position, offset=offset, scale=args.scale)
     print("-> %s" % out)
 
 
@@ -245,6 +268,13 @@ def main(argv=None):
     sp.add_argument("--scale", type=float, default=1.0,
                     help="factor de escala del HUD (ej. 0.5 = mitad de tamano; default: 1.0)")
     sp.add_argument("-o", "--output", help="archivo de salida (default: <video>_composed.mp4)")
+    sp.add_argument("--auto-sync", action="store_true",
+                    help="detectar offset automaticamente con correlacion audio vs telemetria (requiere scipy)")
+    sp.add_argument("--driver",  help="archivo de telemetria del piloto (necesario con --auto-sync)")
+    sp.add_argument("--lap-idx", type=int, dest="lap_idx",
+                    help="indice de vuelta del piloto para --auto-sync (por defecto: la mas rapida)")
+    sp.add_argument("--map", action="append",
+                    help="columna=canal para CSV generico con --auto-sync")
     sp.set_defaults(func=cmd_compose)
 
     args = p.parse_args(argv)

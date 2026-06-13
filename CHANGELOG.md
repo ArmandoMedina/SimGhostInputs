@@ -4,6 +4,11 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/). Versionado
 
 ## [Unreleased]
 
+### Añadido
+- **`fantasma compose --auto-sync`**: detecta automáticamente el offset temporal entre el video de grabación y el overlay de telemetría mediante correlación cruzada de audio. Extrae la energía espectral del motor (banda 150–500 Hz) del audio del video y la correlaciona contra RPM + velocidad de la telemetría. Precisión ~0.5 s. Extra opcional: `pip install 'fantasma-inputs[sync]'`. Parámetros: `--auto-sync --driver <tele.csv> [--lap-idx N] [--map col=canal]`.
+- **UI Paso 4 — Detectar sincronía**: expander «Detectar sincronía automáticamente» en el Paso 4 de `fantasma ui`. Si hay una vuelta cargada del Paso 1 la usa directamente; si no, permite subir la telemetría. El offset detectado se pre-rellena en el campo «Retraso del HUD».
+- **`docs/decisions-sync-offset.md`**: documento que registra las 5 opciones evaluadas para la detección de offset (correlación de audio, FFT con numpy, OCR del velocímetro, timestamps de metadata y guía manual) con razonamiento de descarte para cada opción rechazada.
+
 ### Mejorado
 - **`fantasma overlay` — render paralelo**: frames distribuidos en `N_cores − 1` procesos con `ProcessPoolExecutor`; cada worker crea su propio `_HUDFigure` independiente. En Xeon E5-2680 v4 (14c): ~37 min/vuelta → ~3 min/vuelta.
 - **HUD — marcha, velocidad y distancia**: la franja de datos del overlay muestra ahora la marcha actual del piloto (1-6 / N / R), la velocidad en km/h y la distancia recorrida en la vuelta en metros. Útil para verificar sincronía visualmente comparando con el velocímetro y el odómetro del sim.
