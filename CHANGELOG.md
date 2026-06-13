@@ -2,6 +2,15 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/). Versionado [SemVer](https://semver.org/lang/es/).
 
+## [Unreleased]
+
+### Añadido
+- **Codificación de color ABS/TCS en overlay**: freno ámbar / gas violeta cuando la electrónica interviene; versiones apagadas del mismo color en la referencia para distinguir jerarquía visual sin perder continuidad de línea.
+- **Steering coloreado por G lateral relativo**: amarillo (P75–P90) y naranja (>P90) calibrados contra los percentiles de la vuelta de referencia; escala automática para cualquier auto y pista sin configuración manual.
+- **Indicadores de desgaste de goma** (`wear.py`): índice de deslizamiento (slip tyre-speed vs vehicle-speed), activaciones de ABS/TCS por tramo, temperatura media de gomas, combustible usado. Visibles en la franja de datos del HUD y en `report.md`.
+
+---
+
 ## [0.1.0] — 2026-06-12
 
 Primera versión funcional, validada con telemetría real de dos pilotos (BMW M4 GT3, Nordschleife, AMS2).

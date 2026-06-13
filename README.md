@@ -17,6 +17,7 @@ Por eso el código se publica bajo **AGPL-3.0-or-later**: puedes usar, estudiar,
 - Normaliza todo a un formato interno estándar: **distancia de vuelta con metro 0 en meta**, remuestreo configurable (5 m por defecto).
 - Detecta curvas e hitos automáticamente: frenada, turn-in, release, ápex (V-Min), gas, gas 100%, G lateral máxima, pendiente.
 - Compara piloto vs referencia **por distancia**: delta de tiempo continuo, Δ V-Min, Δ metro de frenada, tiempo perdido por curva.
+- Calcula indicadores de desgaste de goma: índice de deslizamiento (slip rueda vs velocidad real), activaciones de ABS/TCS por curva, temperatura media de gomas y combustible consumido.
 - Genera reporte en Markdown + CSVs de salida listos para graficar.
 
 ## Qué NO incluye
@@ -25,11 +26,35 @@ Vueltas de referencia pagadas, telemetrías privadas de coaches o proveedores, s
 
 ## Instalación
 
+**Windows (recomendado):** ejecuta el script de setup incluido — instala el paquete, las dependencias Python y las herramientas del sistema en un paso:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File setup.ps1
+# o con todo incluido (openpyxl + Pillow + matplotlib):
+powershell -ExecutionPolicy Bypass -File setup.ps1 -Full
 ```
-pip install -e .
-# opcional, para leer .xlsx:
-pip install openpyxl
+
+**Manual:**
+
 ```
+pip install -e .                          # núcleo (sin dependencias externas)
+pip install -e ".[xlsx]"                  # + leer archivos .xlsx de MoTeC i2
+pip install -e ".[overlay]"               # + fantasma overlay (HUD de video)
+pip install -e ".[charts]"                # + fantasma compare con gráficas
+pip install -e ".[full]"                  # todo lo anterior
+```
+
+### Dependencias completas
+
+| Dependencia | Tipo | Para qué | Cómo instalar |
+| :-- | :-- | :-- | :-- |
+| `openpyxl` | Python opcional | Leer `.xlsx` exportados de MoTeC i2 | `pip install openpyxl` |
+| `Pillow` | Python requerido* | `fantasma overlay` — renderizar frames HUD | `pip install Pillow` |
+| `matplotlib` | Python opcional | `fantasma compare` — gráficas ghost y mapa de delta | `pip install matplotlib` |
+| `ffmpeg` | Sistema opcional | Codificar `.webm`/`.mov` con canal alfa; sin él, el overlay genera frames PNG | `winget install Gyan.FFmpeg` |
+| `gh` (GitHub CLI) | Sistema opcional | Publicar y gestionar el repositorio en GitHub | `winget install GitHub.cli` |
+
+\* `Pillow` solo se necesita si usas `fantasma overlay`. El resto de comandos (`laps`, `detect`, `compare`) funcionan sin él.
 
 ## Uso rápido
 
@@ -54,7 +79,21 @@ Salida de `compare`:
 - `delta.csv` / `corners_compare.csv` — los datos, listos para graficar otra cosa.
 
 Salida de `overlay`:
-- `overlay.mov` — video HUD **con canal alfa** (ProRes 4444) sincronizado con el tiempo de tu vuelta: barras de freno/gas tuyas junto a las de la referencia en el mismo metro, velocidad, delta, curva actual y franja de velocidad. Arrástralo como pista superior en tu editor sobre la grabación real y alinea el segundo 0 con tu cruce de meta. También `--format webm` (VP9 con alfa, mucho más ligero) o `--format png` (frames sueltos).
+- `overlay.mov` — video HUD **con canal alfa** (ProRes 4444) sincronizado con el tiempo de tu vuelta. Arrástralo como pista superior en tu editor sobre la grabación real y alinea el segundo 0 con tu cruce de meta. También `--format webm` (VP9 con alfa, mucho más ligero) o `--format png` (frames sueltos).
+
+  El HUD incluye tres paneles (gas / freno / volante) con codificación de color por estado:
+
+  | Canal | Color piloto | Color referencia |
+  | :-- | :-- | :-- |
+  | Gas / Freno — normal | verde / rojo | gris |
+  | Gas / Freno — **TCS activo** | violeta vívido | violeta apagado |
+  | Gas / Freno — **ABS activo** | ámbar vívido | ámbar apagado |
+  | Volante — carga lateral media (P75–P90 ref) | amarillo | amarillo apagado |
+  | Volante — carga lateral alta (> P90 ref) | naranja | naranja apagado |
+
+  Los umbrales de G lateral del volante son **relativos a la vuelta de referencia**: el percentil 75 y 90 del `|G-lat|` de esa vuelta definen qué es "trabajando" y "al límite" para ese auto y pista, sin necesidad de ajuste manual.
+
+  La franja de datos muestra: GAP acumulado · ΔV en el metro actual · índice de deslizamiento (proxy de desgaste) · activaciones de ABS por segmento.
 
 Documentación completa en [`docs/`](docs/): [guía de usuario](docs/guia-usuario.md) · [formato de datos](docs/formato-datos.md) · [cómo contribuir](CONTRIBUTING.md).
 
