@@ -92,8 +92,12 @@ def cmd_compare(args):
 
 
 def cmd_overlay(args):
-    _, _, ref = _load_lap(args.reference, _parse_map(args.map))
-    _, _, drv = _load_lap(args.driver, _parse_map(args.map), args.lap)
+    import os
+    from .viz.overlay import render_overlay
+
+    _, ref_laps, ref = _load_lap(args.reference, _parse_map(args.map))
+    _, drv_laps, drv = _load_lap(args.driver, _parse_map(args.map), args.lap)
+
     corners = None
     if args.corners:
         with open(args.corners, encoding="utf-8") as f:
@@ -102,15 +106,66 @@ def cmd_overlay(args):
         from .core.corners import detect_corners as _dc, extract_milestones as _em
         ev, _ = _dc(ref)
         corners = _em(ref, ev)
-    from .viz.overlay import render_overlay
-    import os
+
     os.makedirs(args.output, exist_ok=True)
 
     def progress(n, total):
-        print("  frame %d/%d (%.0f%%)" % (n, total, 100.0 * n / total))
+        pct = 100.0 * n / total if total else 0
+        print("  frame %d/%d (%.0f%%)" % (n, total, pct))
 
-    out = render_overlay(ref, drv, corners, args.output, fps=args.fps, fmt=args.format,
-                         t_start=args.start, t_end=args.end, progress=progress)
+    if args.all_laps:
+        laps_to_render = [l for l in drv_laps if l.meta.get("is_complete", True)]
+        webms = []
+        for i, lap in enumerate(laps_to_render):
+            lap_dir = os.path.join(args.output, "lap_%02d" % i)
+            os.makedirs(lap_dir, exist_ok=True)
+            print("Renderizando vuelta %d/%d (%.2fs)…" % (i + 1, len(laps_to_render), lap.laptime))
+            out = render_overlay(ref, lap, corners, lap_dir, fps=args.fps,
+                                 fmt=args.format, t_start=args.start,
+                                 t_end=args.end, progress=progress)
+            webms.append(out)
+            print("-> %s" % out)
+
+        if args.format != "png" and len(webms) > 1:
+            _concat_videos(webms, os.path.join(args.output, "overlay_all.webm"), args.format)
+            print("-> %s" % os.path.join(args.output, "overlay_all.webm"))
+    else:
+        out = render_overlay(ref, drv, corners, args.output, fps=args.fps,
+                             fmt=args.format, t_start=args.start,
+                             t_end=args.end, progress=progress)
+        print("-> %s" % out)
+
+
+def _concat_videos(paths, output, fmt):
+    """Concatena varios archivos de video con ffmpeg."""
+    import shutil, subprocess, tempfile, os
+    ffmpeg = shutil.which("ffmpeg")
+    if not ffmpeg:
+        print("aviso: ffmpeg no disponible, no se pudo concatenar")
+        return
+    with tempfile.NamedTemporaryFile("w", suffix=".txt", delete=False, encoding="utf-8") as f:
+        for p in paths:
+            f.write("file '%s'\n" % p.replace("\\", "/"))
+        list_file = f.name
+    try:
+        subprocess.run(
+            [ffmpeg, "-y", "-f", "concat", "-safe", "0", "-i", list_file,
+             "-c", "copy", output],
+            check=True, capture_output=True,
+        )
+    finally:
+        os.unlink(list_file)
+
+
+def cmd_compose(args):
+    import os
+    from .viz.compose import compose_video
+    output = args.output
+    if not output:
+        base = os.path.splitext(os.path.basename(args.video))[0]
+        output = os.path.join(os.path.dirname(args.video) or ".", base + "_composed.mp4")
+    out = compose_video(args.video, args.overlay, output,
+                        position=args.position, offset=args.offset, scale=args.scale)
     print("-> %s" % out)
 
 
@@ -147,6 +202,8 @@ def main(argv=None):
     sp.add_argument("--reference", required=True)
     sp.add_argument("--driver", required=True)
     sp.add_argument("--lap", type=int, help="indice de vuelta del piloto (por defecto: la mas rapida)")
+    sp.add_argument("--all-laps", action="store_true",
+                    help="renderiza todas las vueltas completas y las concatena en overlay_all.webm")
     sp.add_argument("--corners", help="corners.json con nombres (opcional)")
     sp.add_argument("--fps", type=int, default=30)
     sp.add_argument("--format", choices=["prores", "webm", "png"], default="prores",
@@ -156,6 +213,22 @@ def main(argv=None):
     sp.add_argument("--map", action="append")
     sp.add_argument("-o", "--output", default="salida", help="carpeta de salida")
     sp.set_defaults(func=cmd_overlay)
+
+    sp = sub.add_parser("compose",
+                        help="superponer overlay sobre tu grabacion y generar el video final")
+    sp.add_argument("--video",   required=True, help="grabacion de la vuelta (.mp4, .mov, .mkv…)")
+    sp.add_argument("--overlay", required=True, help="overlay con canal alfa (.webm o .mov)")
+    sp.add_argument("--position",
+                    choices=["top-left", "top-right", "bottom-left", "bottom-right",
+                             "top-center", "bottom-center", "center"],
+                    default="bottom-right",
+                    help="posicion del HUD en el video (default: bottom-right)")
+    sp.add_argument("--offset", type=float, default=0.0,
+                    help="segundos de delay del overlay — util si el video arranca antes de la vuelta")
+    sp.add_argument("--scale", type=float, default=1.0,
+                    help="factor de escala del HUD (ej. 0.5 = mitad de tamano; default: 1.0)")
+    sp.add_argument("-o", "--output", help="archivo de salida (default: <video>_composed.mp4)")
+    sp.set_defaults(func=cmd_compose)
 
     args = p.parse_args(argv)
     try:
