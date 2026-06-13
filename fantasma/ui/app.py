@@ -29,54 +29,6 @@ st.markdown("""
 .step-header { font-size: 1.3rem; font-weight: 700; margin-bottom: 0.5rem; }
 .metric-ok  { color: #00c853; }
 .metric-bad { color: #ff1744; }
-/* eliminar icono "+" del boton sin dejar espacio residual */
-[data-testid="stFileUploader"] [data-testid="stIconMaterial"] {
-    display: none !important;
-    width: 0 !important;
-    margin: 0 !important;
-    padding: 0 !important;
-}
-/* area de carga centrada */
-[data-testid="stFileUploaderDropzone"] {
-    display: flex !important;
-    flex-direction: column !important;
-    align-items: center !important;
-    justify-content: center !important;
-    padding: 2rem 1.5rem !important;
-    border: 2px dashed #3d4450 !important;
-    border-radius: 10px !important;
-    background: #0e1117 !important;
-    gap: 0.75rem !important;
-    text-align: center !important;
-}
-/* boton integrado al estilo del area */
-[data-testid="stFileUploaderDropzone"] button {
-    background: transparent !important;
-    border: 1px solid #4a5568 !important;
-    border-radius: 6px !important;
-    color: #a0aec0 !important;
-    padding: 0.4rem 1.4rem !important;
-    font-size: 0.85rem !important;
-    cursor: pointer !important;
-    transition: border-color 0.2s, color 0.2s !important;
-}
-[data-testid="stFileUploaderDropzone"] button:hover {
-    border-color: #00c853 !important;
-    color: #00c853 !important;
-}
-/* centrar el texto dentro del boton */
-[data-testid="stFileUploaderDropzone"] button [data-testid="stMarkdownContainer"],
-[data-testid="stFileUploaderDropzone"] button [data-testid="stMarkdownContainer"] p {
-    width: 100% !important;
-    text-align: center !important;
-    margin: 0 !important;
-    padding: 0 !important;
-}
-/* texto de limite de tamaño */
-[data-testid="stFileUploaderDropzone"] small {
-    color: #4a5568 !important;
-    font-size: 0.75rem !important;
-}
 </style>
 """, unsafe_allow_html=True)
 
