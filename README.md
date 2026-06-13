@@ -1,6 +1,6 @@
 # 👻 SimGhostInputs
 
-[![Estado](https://img.shields.io/badge/estado-pre--release%20v0.3-orange)](CHANGELOG.md)
+[![Estado](https://img.shields.io/badge/estado-pre--release%20v0.4-orange)](CHANGELOG.md)
 [![Ko-fi](https://img.shields.io/badge/Ko--fi-Buy%20me%20a%20Lap-FF5E5B?logo=ko-fi&logoColor=white)](https://ko.fi/armandomedina2255)
 [![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL--3.0-blue.svg)](LICENSE)
 
@@ -110,7 +110,11 @@ fantasma compose --video "grabacion.mp4" --overlay "salida/overlay.webm" \
 Salida de `compare`:
 - `report.md` — el debrief: dónde pierdes, cuánto y en qué fase de cada curva.
 - `delta_map.png` — delta acumulado de la vuelta completa con tus mayores pérdidas anotadas.
-- `curva_<ID>.png` — gráficas ghost (velocidad/gas/freno, tú vs referencia) de las curvas donde más pierdes.
+- `time_loss_bar.png` — barras horizontales por curva ordenadas por pérdida (verde = ganas, rojo = pierdes).
+- `gg_diagram.png` — círculo de fricción: scatter G-lat vs G-long, tú vs referencia. Muestra si estás usando el agarre disponible. Requiere `glat`/`glong` en el CSV.
+- `full_lap.png` — todos los canales (velocidad, gas, freno, volante, marcha, G-lat, G-long, delta) a lo largo de la vuelta completa en un solo PNG.
+- `curva_<ID>.png` — gráficas ghost por curva (hasta 5 paneles: velocidad / gas / freno / volante / G-lat) de las curvas donde más pierdes.
+- `frenada_<ID>.png` — zoom en las zonas de frenada: velocidad + freno + G-long con el punto de frenada de referencia vs el tuyo marcado.
 - `delta.csv` / `corners_compare.csv` — los datos, listos para graficar otra cosa.
 
 Salida de `overlay`:

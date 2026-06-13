@@ -6,6 +6,21 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/). Versionado
 
 ---
 
+## [0.4.0] — 2026-06-13
+
+### Añadido
+- **`plot_time_loss_bar`** (`compare -o`): gráfica de barras horizontales con el tiempo perdido o ganado por curva, ordenadas de mayor a menor pérdida. Verde = ganas, rojo = pierdes. Archivo: `time_loss_bar.png`.
+- **`plot_gg_diagram`** (`compare -o`): diagrama G-G (círculo de fricción) — scatter de G-lat vs G-long del piloto superpuesto sobre la referencia. Muestra si el piloto está aprovechando el agarre disponible. Se genera solo cuando los canales `glat` y `glong` están presentes en el CSV. Archivo: `gg_diagram.png`.
+- **`plot_full_lap`** (`compare -o`): vista multi-canal de la vuelta completa en un solo PNG horizontal (16:9). Incluye todos los canales disponibles: delta acumulado, velocidad, gas, freno, volante, marcha, G-lat, G-long. Útil para imprimir o compartir. Archivo: `full_lap.png`.
+- **`plot_brake_zones`** (`compare -o`): zoom automático en las N zonas de frenada con mayor pérdida de tiempo. Muestra velocidad + presión de freno + G-long (si disponible) con marcadores del punto de frenada de referencia vs piloto. Archivos: `frenada_<id>.png`.
+- **`plot_corner` — paneles de volante y G-lat**: los charts por curva (`curva_<id>.png`) ahora incluyen hasta 5 paneles — se agregan ángulo de volante (azul) y G-lat (amarillo) cuando los canales están presentes. Degradación graceful: si el CSV no tiene esos canales, los paneles no aparecen.
+
+### Mejorado
+- **`compare.delta_trace`**: incluye ahora `glat` y `glong` en el trace de comparación para alimentar el diagrama G-G y los paneles nuevos de curva/frenada.
+- **`render_charts`**: genera automáticamente todos los nuevos charts además de los existentes (`delta_map`, per-corner). La firma y los parámetros no cambian — compatibilidad hacia atrás total.
+
+---
+
 ## [0.3.0] — 2026-06-13
 
 ### Añadido
