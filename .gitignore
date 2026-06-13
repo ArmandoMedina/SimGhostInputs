@@ -10,3 +10,4 @@ reference/
 driver/
 *.ld
 *.ldx
+.claude/settings.local.json
