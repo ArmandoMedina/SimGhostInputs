@@ -1,6 +1,6 @@
 # 👻 SimGhostInputs
 
-[![Estado](https://img.shields.io/badge/estado-pre--release%20v0.4-orange)](CHANGELOG.md)
+[![Estado](https://img.shields.io/badge/estado-pre--release%20v0.5-orange)](CHANGELOG.md)
 [![Ko-fi](https://img.shields.io/badge/Ko--fi-Buy%20me%20a%20Coffee-FF5E5B?logo=ko-fi&logoColor=white)](https://ko-fi.com/armandomedina2255)
 [![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL--3.0-blue.svg)](LICENSE)
 
@@ -10,8 +10,8 @@
 
 > [!WARNING]
 > **Proyecto en desarrollo activo — versión 0.x (pre-release).**
-> El motor CLI está validado con telemetría real, pero la interfaz gráfica (`fantasma ui`) y el flujo de video completo (`fantasma compose`) están en pruebas.
-> La API interna puede cambiar sin aviso entre versiones 0.x. No se garantiza estabilidad hasta v1.0.
+> El motor CLI, la interfaz gráfica (`fantasma ui`) y el flujo de video completo (`fantasma compose`) están probados con telemetría y grabaciones reales.
+> La API interna puede cambiar sin aviso entre versiones 0.x. No se garantiza estabilidad hasta v1.0 (AMS2).
 
 **Compara tus inputs contra una vuelta de referencia, por distancia, no por tiempo.**
 
@@ -25,6 +25,7 @@ Por eso el código se publica bajo **AGPL-3.0-or-later**: puedes usar, estudiar,
 
 ## Qué hace
 
+- **Interfaz gráfica local** (`fantasma ui`): 5 pasos en el navegador (localhost, sin hosting). Flujos predefinidos: solo análisis, solo overlay, o video completo con HUD. Tus datos nunca salen de tu máquina.
 - Importa telemetría desde **CSV exportado de MoTeC i2** (y el mismo formato en `.xlsx`), o CSV genérico con mapeo de columnas.
 - Separa las vueltas de un *outing* (por beacons, número de vuelta o reinicio de distancia) y elige la más rápida.
 - Normaliza todo a un formato interno estándar: **distancia de vuelta con metro 0 en meta**, remuestreo configurable (5 m por defecto).
@@ -32,6 +33,9 @@ Por eso el código se publica bajo **AGPL-3.0-or-later**: puedes usar, estudiar,
 - Compara piloto vs referencia **por distancia**: delta de tiempo continuo, Δ V-Min, Δ metro de frenada, tiempo perdido por curva.
 - Calcula indicadores de desgaste de goma: índice de deslizamiento (slip rueda vs velocidad real), activaciones de ABS/TCS por curva, temperatura media de gomas y combustible consumido.
 - Genera reporte en Markdown + CSVs de salida listos para graficar.
+- **Overlay HUD animado** con canal alfa (VP9/WebM): velocímetro, gas/freno con color por ABS/TCS, delta continuo, marcha y distancia. Render paralelo en todos los cores.
+- **Sincronía automática video/telemetría** (`--auto-sync`): correlación cruzada del audio del motor (150–500 Hz) contra RPM/velocidad. Detecta el offset en ~30 s con precisión ~0.5 s. Valida la correlación (z-score ≥ 3σ) y verifica que no haya pausas de juego en el audio de la vuelta.
+- **Composición del video final** con NVENC automático si hay GPU NVIDIA disponible (3.7× más rápido que CPU en RTX 2060). El output es un clip recortado exactamente a la duración de la vuelta — sin re-codificar toda la sesión.
 
 ## Qué NO incluye
 
@@ -85,6 +89,10 @@ El `setup.ps1` incluido pregunta si instalar VLC y Kdenlive junto con el resto.
 
 ## Uso rápido
 
+La forma más fácil es la interfaz gráfica: `fantasma ui` abre el navegador y te guía por 5 pasos (Inicio → Importar → Comparar / Overlay → Componer). No necesitas recordar ningún flag.
+
+Para usar el CLI directamente:
+
 ```
 # interfaz gráfica local (abre el navegador automáticamente)
 fantasma ui
@@ -120,7 +128,7 @@ Salida de `compare`:
 - `delta.csv` / `corners_compare.csv` — los datos, listos para graficar otra cosa.
 
 Salida de `overlay`:
-- `overlay.mov` — video HUD **con canal alfa** (ProRes 4444) sincronizado con el tiempo de tu vuelta. Arrástralo como pista superior en tu editor sobre la grabación real y alinea el segundo 0 con tu cruce de meta. También `--format webm` (VP9 con alfa, mucho más ligero) o `--format png` (frames sueltos).
+- `overlay.webm` — video HUD **con canal alfa** (VP9) sincronizado con el tiempo de tu vuelta. Arrástralo como pista superior en tu editor sobre la grabación real y alinea el segundo 0 con tu cruce de meta. También `--format prores` (ProRes 4444 .mov para Final Cut / DaVinci) o `--format png` (frames sueltos).
 
   El HUD incluye tres paneles (gas / freno / volante) con codificación de color por estado:
 
