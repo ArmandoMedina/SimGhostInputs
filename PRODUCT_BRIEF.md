@@ -38,7 +38,30 @@ Requiere comparar dos vueltas metro a metro y mostrar la diferencia de forma cla
 
 ---
 
-## 4. Los Dos Productos de Este Repositorio
+## 4. Landscape — Qué Existe y Qué No
+
+Se hizo una revisión exhaustiva del ecosistema open source en junio 2026. Estos son los proyectos más relevantes encontrados y por qué ninguno cubre el mismo territorio:
+
+| Proyecto | Licencia | Qué hace | Por qué no es lo mismo |
+| :-- | :-- | :-- | :-- |
+| [TrackDataAnalysis](https://github.com/racer-coder/TrackDataAnalysis) | MIT | GUI de escritorio, comparación por distancia, reproduce video en sinc con datos | No genera overlay WebM, no importa CSV de MoTeC i2, no auto-sync por audio |
+| [simracing-ai-coach](https://github.com/POWERRRRRRRR/simracing-ai-coach) | MIT | Comparación por distancia en AC, reporte HTML, coaching por LLM | Solo Assetto Corsa, reporte HTML (no Markdown), sin video |
+| [LMU-Telemetry-Lab](https://github.com/rabbit20031225/LMU-Telemetry-Lab) | MIT | Ghost car 3D + comparación por distancia en LMU | Solo LMU, HUD en vivo (no exportable), sin CSV MoTeC |
+| [TinyPedal](https://github.com/TinyPedal/TinyPedal) | GPL-3.0 | Overlay de telemetría en tiempo real para rF2/LMU | Sin análisis post-sesión, sin video exportado |
+| [b4mad/racing](https://github.com/b4mad/racing) | GPL-3.0 | Telemetría comunitaria vía MQTT → Grafana | Cloud, en vivo, sin análisis post-sesión, sin video |
+| [PurpleSector](https://github.com/chrismarth/PurpleSector) | AGPL-3.0 | Coaching post-sesión con IA para AC | Solo Assetto Corsa, sin video, sin MoTeC CSV |
+
+**Conclusión:** Ningún proyecto open source encontrado combina el pipeline completo de SimGhostInputs: importar CSV de MoTeC i2 → reporte Markdown con gráficas → overlay WebM renderizado con canal alfa → auto-sincronización por correlación de audio con video grabado. Los proyectos existentes cubren partes del problema (comparación por distancia, overlay en vivo, reporte post-sesión) pero con enfoques, stacks y flujos de trabajo completamente distintos.
+
+### Nota sobre CrewChief
+
+[CrewChief](https://github.com/mrbelowski/CrewChiefV4) es la herramienta de referencia para coaching de voz en tiempo real en simracing. Su código es público en GitHub pero no tiene archivo de licencia formal — legalmente es "All Rights Reserved" por defecto. No se recomienda forkear ni incorporar su código.
+
+Lo relevante para este proyecto: CrewChief expone un canal **MQTT** documentado que publica telemetría en tiempo real. Si en el futuro `fantasma-live` necesita capturar datos durante la sesión, MQTT es el mecanismo de integración limpio — sin forkear CrewChief, sin dependencia de su licencia ambigua.
+
+---
+
+## 5. Los Dos Productos de Este Repositorio
 
 ### Producto 1 — Análisis Post-Tanda
 
@@ -91,7 +114,7 @@ Ambos productos comparten el mismo motor de importación, normalización y compa
 
 ---
 
-## 5. Alcance
+## 6. Alcance
 
 ### Está dentro de este repositorio
 
@@ -123,7 +146,7 @@ Ambos productos comparten el mismo motor de importación, normalización y compa
 
 ---
 
-## 6. Horizonte de Este Repositorio
+## 7. Horizonte de Este Repositorio
 
 **Lo que falta por construir aquí:**
 
@@ -141,7 +164,7 @@ El motivo de la separación es simple: mientras AMS2 corre, la GPU está al lím
 
 ---
 
-## 7. Principios de Diseño
+## 8. Principios de Diseño
 
 Estas decisiones no se negocian. Son el por qué detrás de cómo está construido el proyecto.
 
@@ -159,7 +182,7 @@ Estas decisiones no se negocian. Son el por qué detrás de cómo está construi
 
 ---
 
-## 8. Cómo Se Ve el Éxito
+## 9. Cómo Se Ve el Éxito
 
 No hay métricas de negocio porque no hay negocio. Hay preguntas concretas de uso:
 

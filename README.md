@@ -172,3 +172,11 @@ En el roadmap: lectura directa de `.ld` (sin pasar por i2) e iRacing `.ibt`.
 ## Licencia
 
 [AGPL-3.0-or-later](LICENSE). © Colaboradores de SimGhostInputs.
+
+### Dependencias de terceros
+
+Todas las dependencias Python del proyecto (openpyxl, matplotlib, Pillow, pandas, scipy, numpy) son MIT o BSD — completamente compatibles con AGPL-3.0 sin restricciones adicionales.
+
+**Streamlit** usa Apache 2.0, que es compatible con AGPL-3.0 en esta dirección: código AGPL-3.0 puede usar dependencias Apache 2.0, pero no al revés. Los contribuidores que incorporen código de este proyecto en otro proyecto deben respetar el copyleft de AGPL-3.0.
+
+**ffmpeg** se usa como proceso externo vía `subprocess` — nunca se linka contra sus bibliotecas. Al no existir linking no existe obra derivada, por lo que las obligaciones de licencia de ffmpeg (LGPL/GPL según el build del sistema) no se extienden al código de SimGhostInputs. ffmpeg debe instalarse por separado y bajo su propia licencia.
