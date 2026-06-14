@@ -4,6 +4,11 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/). Versionado
 
 ## [Unreleased]
 
+### Cambiado
+- **UI Paso 1 — selección de vuelta**: la tabla con checkboxes múltiples reemplazada por radio buttons. Una sola vuelta seleccionable por diseño; sin mensajes de error ni warnings por selección incorrecta.
+- **UI Paso 3 — overlay**: eliminado el checkbox «Generar para TODAS las vueltas». El overlay siempre se genera para la vuelta seleccionada en Paso 1. Múltiples vueltas se procesan repitiendo el flujo (con «Procesar otra vuelta», v0.9.0).
+- **`fantasma compose` — output recortado a la vuelta**: cuando se provee telemetría (`--driver`), el output es un clip de exactamente la duración de la vuelta en lugar del video completo. Usa seek rápido (`-ss offset`) y límite de duración (`-t laptime`). Tiempos de compose consistentes sin importar la duración de la sesión grabada (Nordschleife: 1:15 min vs 4:47 previos).
+
 ### Pendiente / Known issues
 _(ninguno)_
 

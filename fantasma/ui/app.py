@@ -70,30 +70,14 @@ def _best_lap_index(laps):
 
 
 def _lap_table(laps, editor_key):
-    import pandas as _pd
     best_i = _best_lap_index(laps)
-    rows = []
+    options = []
     for i, l in enumerate(laps):
         _c = l.meta.get("is_complete", False)
-        rows.append({
-            "Sel":    i == best_i,
-            "#":      i,
-            "Tiempo": _fmt_lap(l.laptime),
-            "Metros": int(l.length),
-            "Estado": "🏆 Más rápida" if i == best_i else ("✓ Completa" if _c else "⚠️ Incompleta"),
-        })
-    edited = st.data_editor(
-        _pd.DataFrame(rows),
-        column_config={
-            "Sel":    st.column_config.CheckboxColumn("Sel", width="small"),
-            "#":      st.column_config.NumberColumn("#", disabled=True, width="small"),
-            "Tiempo": st.column_config.TextColumn("Tiempo", disabled=True, width="medium"),
-            "Metros": st.column_config.NumberColumn("Metros", disabled=True, width="small"),
-            "Estado": st.column_config.TextColumn("Estado", disabled=True, width="medium"),
-        },
-        hide_index=True, use_container_width=True, key=editor_key,
-    )
-    return [int(r["#"]) for _, r in edited.iterrows() if r["Sel"]]
+        estado = "🏆 Más rápida" if i == best_i else ("✓ Completa" if _c else "⚠️ Incompleta")
+        options.append("#%d  ·  %s  ·  %dm  ·  %s" % (i, _fmt_lap(l.laptime), int(l.length), estado))
+    sel = st.radio("", options, index=best_i, key=editor_key, label_visibility="collapsed")
+    return [options.index(sel)]
 
 
 def _cache_file(uploaded_file):
@@ -365,17 +349,11 @@ elif step_idx == 1:
 
     if len(_ref_laps) > 1:
         with st.expander("Cambiar vuelta de referencia (%d vueltas en el archivo)" % len(_ref_laps)):
-            st.caption("Marca **solo una**. 🏆 = más rápida · ⚠️ = incompleta")
             _ref_tbl = _lap_table(_ref_laps, editor_key="ref_lap_tbl")
-            if len(_ref_tbl) == 0:
-                st.warning("Marca una vuelta.")
-            elif len(_ref_tbl) > 1:
-                st.error("Solo puedes marcar **una** vuelta como referencia.")
-            else:
-                _ref_sel_i = _ref_tbl[0]
-                st.session_state["ref_sel_%s" % ref_file.file_id] = _ref_sel_i
-                if _ref_tbl[0] != _ref_auto_i:
-                    st.info("Usando Vuelta #%d — %s" % (_ref_tbl[0], _fmt_lap(_ref_laps[_ref_tbl[0]].laptime)))
+            _ref_sel_i = _ref_tbl[0]
+            st.session_state["ref_sel_%s" % ref_file.file_id] = _ref_sel_i
+            if _ref_tbl[0] != _ref_auto_i:
+                st.info("Usando Vuelta #%d — %s" % (_ref_tbl[0], _fmt_lap(_ref_laps[_ref_tbl[0]].laptime)))
 
     # ── ② Tu telemetría ───────────────────────────────────────────────────────
     st.divider()
@@ -405,17 +383,11 @@ elif step_idx == 1:
 
     if len(_drv_laps) > 1:
         with st.expander("Cambiar vuelta (%d vueltas en el archivo)" % len(_drv_laps)):
-            st.caption("Marca **solo una**. 🏆 = más rápida · ⚠️ = incompleta")
             _drv_tbl = _lap_table(_drv_laps, editor_key="drv_lap_tbl")
-            if len(_drv_tbl) == 0:
-                st.warning("Marca una vuelta.")
-            elif len(_drv_tbl) > 1:
-                st.error("Solo puedes marcar **una** vuelta aquí.")
-            else:
-                _drv_sel_i = _drv_tbl[0]
-                st.session_state["drv_sel_%s" % drv_file.file_id] = _drv_sel_i
-                if _drv_tbl[0] != _drv_auto_i:
-                    st.info("Usando Vuelta #%d — %s" % (_drv_tbl[0], _fmt_lap(_drv_laps[_drv_tbl[0]].laptime)))
+            _drv_sel_i = _drv_tbl[0]
+            st.session_state["drv_sel_%s" % drv_file.file_id] = _drv_sel_i
+            if _drv_tbl[0] != _drv_auto_i:
+                st.info("Usando Vuelta #%d — %s" % (_drv_tbl[0], _fmt_lap(_drv_laps[_drv_tbl[0]].laptime)))
 
     # ── Opciones avanzadas ────────────────────────────────────────────────────
     _ref_col_map  = None
@@ -684,19 +656,6 @@ elif step_idx == 3:
         _next_step_btn(3)
         st.divider()
 
-    _all_drv_laps    = st.session_state.get("drv_laps", [drv_lap])
-    _complete_laps   = [l for l in _all_drv_laps if l.meta.get("is_complete")]
-    _has_multi       = len(_complete_laps) > 1
-    all_laps = False
-    if _has_multi:
-        all_laps = st.checkbox(
-            "Generar overlay para TODAS las vueltas completas del archivo (%d vueltas)" % len(_complete_laps),
-            help="Genera un overlay por cada vuelta completa detectada en tu archivo, sin necesidad de seleccionarlas antes.",
-        )
-        if all_laps:
-            st.info("Se generarán %d overlays. Tiempo estimado: %d–%d min." % (
-                len(_complete_laps), len(_complete_laps) * 15, len(_complete_laps) * 30))
-
     out_dir = st.text_input(
         "Carpeta de salida",
         value=os.path.join(os.path.expanduser("~"), "fantasma_salida"),
@@ -731,17 +690,8 @@ elif step_idx == 3:
 
         try:
             from fantasma.viz.overlay import render_overlay
-            if all_laps:
-                _webms = []
-                for _i, _lap in enumerate(_complete_laps):
-                    st.write("Vuelta %d/%d — %s" % (_i + 1, len(_complete_laps), _fmt_lap(_lap.laptime)))
-                    _ld = os.path.join(out_dir, "lap_%02d" % _i)
-                    os.makedirs(_ld, exist_ok=True)
-                    _webms.append(render_overlay(ref_lap, _lap, corners or [], _ld,
-                                                 fps=_fps, fmt=_fmt, progress=_progress))
-            else:
-                _webms = [render_overlay(ref_lap, drv_lap, corners or [], out_dir,
-                                         fps=_fps, fmt=_fmt, progress=_progress)]
+            _webms = [render_overlay(ref_lap, drv_lap, corners or [], out_dir,
+                                     fps=_fps, fmt=_fmt, progress=_progress)]
 
             _bar.progress(1.0, text="Completado")
             st.success("✓ Overlay generado en:")
