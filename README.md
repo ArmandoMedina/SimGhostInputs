@@ -4,7 +4,7 @@
 [![Ko-fi](https://img.shields.io/badge/Ko--fi-Buy%20me%20a%20Coffee-FF5E5B?logo=ko-fi&logoColor=white)](https://ko-fi.com/armandomedina2255)
 [![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL--3.0-blue.svg)](LICENSE)
 
-📋 [Brief de Producto](PRODUCT_BRIEF.md) · 📝 [Changelog](CHANGELOG.md) · 🤝 [Contribuir](CONTRIBUTING.md)
+📋 [Brief de Producto](PRODUCT_BRIEF.md) · 🗺️ [Roadmap](ROADMAP.md) · 📝 [Changelog](CHANGELOG.md) · 🤝 [Contribuir](CONTRIBUTING.md)
 
 ![HUD preview](docs/demo/overlay_hud_preview.gif)
 
