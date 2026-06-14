@@ -497,7 +497,6 @@ elif step_idx == 1:
                     "drv_lap":       drv_lap,
                     "corners":       corners,
                     "ref_col_map":   _ref_col_map,
-                    "needs_compare": _next_1 == 2,
                 })
                 _go(_next_1 or 2)
             except Exception as _e:
@@ -532,11 +531,11 @@ elif step_idx == 2:
     drv_lap = st.session_state["drv_lap"]
     corners = st.session_state.get("corners")
 
-    if st.session_state.pop("needs_compare", False) and "summary" not in st.session_state:
+    if "summary" not in st.session_state:
         with st.spinner("Comparando vuelta metro a metro…"):
             try:
                 from fantasma.core.compare import compare
-                _t, _r, _s = compare(ref_lap, drv_lap, step=10.0, corners=corners)
+                _t, _r, _s = compare(ref_lap, drv_lap, step=1.0, corners=corners)
                 st.session_state.update({"trace": _t, "rows": _r, "summary": _s})
                 st.session_state.pop("charts_paths", None)
             except Exception as _e:
@@ -547,44 +546,6 @@ elif step_idx == 2:
         os.path.basename(st.session_state.get("ref_path", "—")), _fmt_lap(ref_lap.laptime)))
     _c2.info("🧑‍💻 **Tu vuelta:** %s · %s" % (
         os.path.basename(st.session_state.get("drv_path", "—")), _fmt_lap(drv_lap.laptime)))
-
-    with st.expander("⚙️ Recalcular con otros ajustes"):
-        st.caption("Ajusta la resolución y las gráficas del **reporte de análisis**. No afecta el overlay (que usa su propia resolución interna).")
-        _gen_charts = st.checkbox("Generar gráficas por curva", value=True)
-        if not _gen_charts:
-            st.caption("Sin gráficas — solo la tabla resumen.")
-        _col_sl, _col_n = st.columns(2)
-        _track_m = int(ref_lap.length)
-        _step_m  = _col_sl.slider(
-            "Metros entre puntos (resolución del análisis)", 1, 20, 10,
-            help=(
-                "Controla la granularidad del reporte y la tabla por curva. "
-                "No afecta el overlay (usa 5 m fijos internamente). "
-                "A 150 km/h, 10 m = una medición cada ~0.24 s. "
-                "💡 Prueba con una vuelta primero para estimar cuánto tarda en tu PC."
-            ),
-        )
-        _frames = max(1, _track_m // int(_step_m))
-        _rel    = _frames / max(1, _track_m // 10)
-        _col_sl.caption(
-            "Esta pista: **~%s puntos** (%.1f× %s que con 10 m)"
-            % ("{:,}".format(_frames), _rel, "más" if _rel > 1 else "menos")
-        )
-        _charts_top = _col_n.number_input("Curvas en gráficas", 1, 20, 5)
-        if st.button("Recalcular", type="primary"):
-            with st.spinner("Comparando…"):
-                try:
-                    from fantasma.core.compare import compare
-                    _t, _r, _s = compare(ref_lap, drv_lap, step=float(_step_m), corners=corners)
-                    st.session_state.update({"trace": _t, "rows": _r, "summary": _s,
-                                             "charts_top": int(_charts_top),
-                                             "gen_charts": _gen_charts})
-                    st.session_state.pop("charts_paths", None)
-                except Exception as _e:
-                    st.error("Error: %s" % _e)
-
-    _gen_charts = st.session_state.get("gen_charts", True)
-    _charts_top = st.session_state.get("charts_top", 5)
 
     if "summary" not in st.session_state:
         st.info("Los resultados aparecerán aquí una vez completado el análisis.")
@@ -618,82 +579,81 @@ elif step_idx == 2:
             "Diferencia (km/h)":         "{:+.0f}",
         }), use_container_width=True, hide_index=True)
 
-    if _gen_charts:
-        st.divider()
-        st.subheader("Gráficas de análisis")
+    st.divider()
+    st.subheader("Gráficas de análisis")
 
-        # Generate once per comparison; cache invalidated by compare/recalculate.
-        # Error messages are set outside the spinner so they survive the rerun cycle.
-        if "charts_paths" not in st.session_state:
-            _charts_import_err = False
-            _charts_gen_err = None
-            with st.spinner("Generando gráficas…"):
-                try:
-                    _out = tempfile.mkdtemp()
-                    from fantasma.viz.charts import render_charts
-                    st.session_state["charts_paths"] = render_charts(
-                        trace, rows, corners or [], _out, top=int(_charts_top)
-                    )
-                except ImportError:
-                    st.session_state["charts_paths"] = []
-                    _charts_import_err = True
-                except Exception as _e:
-                    st.session_state["charts_paths"] = []
-                    _charts_gen_err = str(_e)
-            if _charts_import_err:
-                st.info("matplotlib no instalado — ejecuta: pip install 'fantasma-inputs[charts]'")
-            if _charts_gen_err:
-                st.error("Error en gráficas: %s" % _charts_gen_err)
+    # Generate once per comparison; cache invalidated when summary changes.
+    # Error messages are set outside the spinner so they survive the rerun cycle.
+    if "charts_paths" not in st.session_state:
+        _charts_import_err = False
+        _charts_gen_err = None
+        with st.spinner("Generando gráficas…"):
+            try:
+                _out = tempfile.mkdtemp()
+                from fantasma.viz.charts import render_charts
+                st.session_state["charts_paths"] = render_charts(
+                    trace, rows, corners or [], _out, top=None
+                )
+            except ImportError:
+                st.session_state["charts_paths"] = []
+                _charts_import_err = True
+            except Exception as _e:
+                st.session_state["charts_paths"] = []
+                _charts_gen_err = str(_e)
+        if _charts_import_err:
+            st.info("matplotlib no instalado — ejecuta: pip install 'fantasma-inputs[charts]'")
+        if _charts_gen_err:
+            st.error("Error en gráficas: %s" % _charts_gen_err)
 
-        _charts = st.session_state.get("charts_paths", [])
+    _charts = st.session_state.get("charts_paths", [])
 
-        if _charts:
-            def _show(container, path):
-                try:
-                    with open(path, "rb") as _f:
-                        container.image(_f.read(), use_container_width=True)
-                except Exception as _ie:
-                    container.error("No se pudo cargar: %s\n%s" % (os.path.basename(path), _ie))
+    if _charts:
+        def _show(container, path):
+            try:
+                with open(path, "rb") as _f:
+                    container.image(_f.read(), use_container_width=True)
+            except Exception as _ie:
+                container.error("No se pudo cargar: %s\n%s" % (os.path.basename(path), _ie))
 
-            def _charts_of(prefix):
-                return [p for p in _charts if os.path.basename(p).startswith(prefix)]
+        def _charts_of(prefix):
+            return [p for p in _charts if os.path.basename(p).startswith(prefix)]
 
-            # -- Resumen de vuelta: delta map + time loss bar (side by side)
-            _overview = _charts_of("delta_map") + _charts_of("time_loss_bar")
-            if _overview:
-                st.markdown("**Resumen de vuelta**")
-                _ov_cols = st.columns(len(_overview))
-                for _i, _p in enumerate(_overview):
-                    _show(_ov_cols[_i], _p)
+        # -- Resumen de vuelta: delta map + time loss bar (side by side)
+        _overview = _charts_of("delta_map") + _charts_of("time_loss_bar")
+        if _overview:
+            st.markdown("**Resumen de vuelta**")
+            _ov_cols = st.columns(len(_overview))
+            for _i, _p in enumerate(_overview):
+                _show(_ov_cols[_i], _p)
 
-            # -- Círculo de fricción G-G (centrado)
-            _gg = _charts_of("gg_diagram")
-            if _gg:
-                st.markdown("**Círculo de fricción (G-G)**")
-                _, _gc, _ = st.columns([1, 2, 1])
-                _show(_gc, _gg[0])
+        # -- Círculo de fricción G-G (centrado)
+        _gg = _charts_of("gg_diagram")
+        if _gg:
+            st.markdown("**Círculo de fricción (G-G)**")
+            _, _gc, _ = st.columns([1, 2, 1])
+            _show(_gc, _gg[0])
 
-            # -- Vista multi-canal de vuelta completa (ancho completo)
-            _full = _charts_of("full_lap")
-            if _full:
-                st.markdown("**Vista completa de la vuelta — todos los canales**")
-                _show(st, _full[0])
+        # -- Vista multi-canal de vuelta completa (ancho completo)
+        _full = _charts_of("full_lap")
+        if _full:
+            st.markdown("**Vista completa de la vuelta — todos los canales**")
+            _show(st, _full[0])
 
-            # -- Curvas: grid 2 columnas
-            _corners_charts = _charts_of("curva_")
-            if _corners_charts:
-                st.markdown("**Curvas con mayor pérdida de tiempo**")
-                _cc = st.columns(2)
-                for _i, _p in enumerate(_corners_charts):
-                    _show(_cc[_i % 2], _p)
+        # -- Curvas: grid 2 columnas
+        _corners_charts = _charts_of("curva_")
+        if _corners_charts:
+            st.markdown("**Curvas con mayor pérdida de tiempo**")
+            _cc = st.columns(2)
+            for _i, _p in enumerate(_corners_charts):
+                _show(_cc[_i % 2], _p)
 
-            # -- Zonas de frenada: grid 2 columnas
-            _brakes = _charts_of("frenada_")
-            if _brakes:
-                st.markdown("**Detalle de zonas de frenada**")
-                _bc = st.columns(2)
-                for _i, _p in enumerate(_brakes):
-                    _show(_bc[_i % 2], _p)
+        # -- Zonas de frenada: grid 2 columnas
+        _brakes = _charts_of("frenada_")
+        if _brakes:
+            st.markdown("**Detalle de zonas de frenada**")
+            _bc = st.columns(2)
+            for _i, _p in enumerate(_brakes):
+                _show(_bc[_i % 2], _p)
 
     st.divider()
     _next_step_btn(2)
