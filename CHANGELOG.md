@@ -9,6 +9,7 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/). Versionado
 
 ### Mejorado
 - **`auto_sync` — validación de confianza**: si el pico de correlación audio/telemetría no supera 3σ sobre el ruido, lanza `RuntimeError` con mensaje claro. Antes devolvía un offset inventado sin aviso cuando el video no correspondía a la vuelta.
+- **`auto_sync` — check de duración mínima**: si el audio del video tiene menos de 30 s, lanza `RuntimeError` claro antes de intentar la correlación. Con muy pocas muestras el z-score era artificialmente alto (varianza ≈ 0 en `corr_w`) y se colaba un offset basura sin aviso — reproducible con cualquier video de <30 s independientemente de si correspondía o no a la vuelta.
 - **`fantasma overlay` — progreso de codificación ffmpeg en tiempo real**: la barra de progreso de la UI ya no se congela al 99% mientras ffmpeg codifica. `_run_ffmpeg()` lanza ffmpeg con `-progress pipe:1`, lee `frame=N` de stdout y llama el callback de progreso con el texto «Codificando video… frame N / total». Compatible con cualquier formato (webm/mov).
 - **`fantasma overlay` — VP9 multithreading**: añadidos `-row-mt 1 -threads N` al comando VP9 de `libvpx-vp9`, donde N = `os.cpu_count()`. Aprovecha todos los cores disponibles durante la codificación. (VP9+alpha `yuva420p` no tiene encoder GPU disponible en ningún vendor, por lo que el multithreading CPU es el máximo rendimiento posible para este codec.)
 
@@ -21,6 +22,7 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/). Versionado
 - **`__version__` desactualizado**: `fantasma/__init__.py` reportaba `0.2.0`; corregido a `0.4.0`.
 
 ### Cambiado
+- **`fantasma overlay` — formato por defecto cambiado a `webm`**: el default era `prores` (contradecía la documentación y producía archivos de 4+ GB que colgaban ffmpeg en sessions largas). Ahora el default es `webm` (VP9 con canal alfa), coherente con la guía de usuario. Para calidad máxima en editores de video usar `--format prores` explícito.
 - **`__version__` — fuente única de verdad**: `fantasma/__init__.py` ya no tiene la versión hardcodeada. La lee en runtime de `pyproject.toml` via `importlib.metadata.version("fantasma-inputs")`. Elimina el riesgo de que `pyproject.toml` y `__init__.py` queden desincronizados en cada release.
 
 ### Eliminado

@@ -242,8 +242,8 @@ def main(argv=None):
                     help="renderiza todas las vueltas completas y las concatena en overlay_all.webm")
     sp.add_argument("--corners", help="corners.json con nombres (opcional)")
     sp.add_argument("--fps", type=int, default=30)
-    sp.add_argument("--format", choices=["prores", "webm", "png"], default="prores",
-                    help="prores=.mov 4444 con alfa (default), webm=VP9 con alfa, png=solo frames")
+    sp.add_argument("--format", choices=["prores", "webm", "png"], default="webm",
+                    help="webm=VP9 con alfa (default), prores=.mov 4444 con alfa, png=solo frames")
     sp.add_argument("--start", type=float, default=0.0, help="segundo inicial de la vuelta")
     sp.add_argument("--end", type=float, help="segundo final (por defecto: vuelta completa)")
     sp.add_argument("--map", action="append")

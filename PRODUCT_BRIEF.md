@@ -196,3 +196,28 @@ Si la respuesta a esas cuatro preguntas es sí, el producto funciona.
 ---
 
 *SimGhostInputs es un proyecto de hobby construido por un sim racer para sim racers. El código es libre, los datos son tuyos y el objetivo es simple: mejorar más rápido en menos tiempo.*
+
+---
+
+## 10. Concepto de UX — Drill-down por curva (visión futura, sin spec)
+
+> Capturado 2026-06-14. No implementar hasta validar el producto base. Puede cambiar.
+
+La tabla actual de curvas muestra tiempo perdido ordenado de mayor a menor. El siguiente paso natural es hacerla interactiva: el piloto pica en una curva y ve exactamente qué corregir.
+
+**Flujo:**
+1. Vista principal: lista de curvas ordenadas por tiempo perdido (mayor → menor)
+2. Click en una curva → panel de detalle con coaching específico calculado desde los datos
+
+**Qué mostraría el detalle:**
+- **Punto de frenada:** cuántos metros antes/después de la referencia (`Δ frenada`)
+- **Intensidad de frenada:** si el piloto frena más suave o más fuerte que la referencia (curva de presión)
+- **Progresividad:** qué tan lineal/abrupto es el perfil de freno comparado con la referencia
+- **V-Min (ápex):** velocidad de paso target, cuánto más/menos lleva el piloto
+- **Gas:** cuántos metros después de la referencia abre el gas, qué tan progresivo
+- **Volante / G-lat:** si el piloto genera más o menos carga lateral, en qué fase de la curva
+- **Marchas / RPM:** si usa la misma marcha o una diferente (impacto en tracción en la salida)
+- **Síntesis en lenguaje natural:** "Frenas 40 m antes con 15% menos intensidad → llegas 8 km/h más lento al ápex → pierdes 0.6 s en la salida" — derivado de aritmética, no de LLM
+
+**Por qué encaja en el proyecto:**
+El insight 80/20 dice que pocas curvas concentran la mayoría del tiempo perdido. La tabla ya las ordena. El drill-down convierte el dato en instrucción concreta sin salir de los principios: aritmética pura, sin red, sin IA.
