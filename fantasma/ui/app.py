@@ -865,21 +865,22 @@ elif step_idx == 4:
                 pct = min(n / total, 1.0) if total else 0
                 _bar.progress(pct, text="Componiendo… frame %d / %d (%.0f%%)" % (n, total, pct * 100))
 
+            _drv_lap     = st.session_state.get("drv_lap")
+            _lap_duration = _drv_lap.laptime if _drv_lap is not None else None
             _result = compose_video(_video_path, _overlay_path, _out_path,
                                     position=_position, offset=_offset, scale=_scale,
+                                    lap_duration=_lap_duration,
                                     progress=_compose_progress)
             _bar.progress(1.0, text="Completado")
             st.success("✓ Video guardado en:")
             st.code(_result)
-            _drv_lap = st.session_state.get("drv_lap")
             if _drv_lap is not None:
                 def _mss(s):
                     return "%d:%02d" % (int(s) // 60, int(s) % 60)
-                _t_end = _offset + _drv_lap.laptime
                 st.info(
-                    "El HUD aparece en el **minuto %s** del video "
-                    "y termina en el **%s** (vuelta de %.1f s)." % (
-                        _mss(_offset), _mss(_t_end), _drv_lap.laptime)
+                    "Clip recortado desde el minuto **%s** del video original · "
+                    "duración: **%s** (%.1f s)." % (
+                        _mss(_offset), _mss(_drv_lap.laptime), _drv_lap.laptime)
                 )
             st.balloons()
             _next_step_btn(4)
