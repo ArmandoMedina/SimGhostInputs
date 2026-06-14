@@ -175,18 +175,26 @@ def cmd_compose(args):
     from .viz.compose import compose_video
 
     offset = args.offset
-    if getattr(args, "auto_sync", False):
-        if not args.driver:
-            print("error: --auto-sync requiere --driver <archivo_telemetria>", file=sys.stderr)
-            return 1
-        print("Detectando offset de sincronizacion…")
+    lap = None
+
+    if args.driver:
         try:
-            from .viz.sync import auto_sync
             _, _, lap = _load_lap(
                 args.driver,
                 _parse_map(getattr(args, "map", None)),
                 getattr(args, "lap_idx", None),
             )
+        except Exception as e:
+            print("error cargando telemetria: %s" % e, file=sys.stderr)
+            return 1
+
+    if getattr(args, "auto_sync", False):
+        if lap is None:
+            print("error: --auto-sync requiere --driver <archivo_telemetria>", file=sys.stderr)
+            return 1
+        print("Detectando offset de sincronizacion…")
+        try:
+            from .viz.sync import auto_sync
             offset = auto_sync(args.video, lap)
             print("  -> offset detectado: %.3f s" % offset)
         except ImportError as e:
@@ -196,12 +204,17 @@ def cmd_compose(args):
             print("error en auto-sync: %s" % e, file=sys.stderr)
             return 1
 
+    lap_duration = lap.laptime if lap is not None else None
+    if lap_duration:
+        print("  -> recortando vuelta: %.2f s" % lap_duration)
+
     output = args.output
     if not output:
         base = os.path.splitext(os.path.basename(args.video))[0]
         output = os.path.join(os.path.dirname(args.video) or ".", base + "_composed.mp4")
     out = compose_video(args.video, args.overlay, output,
-                        position=args.position, offset=offset, scale=args.scale)
+                        position=args.position, offset=offset, scale=args.scale,
+                        lap_duration=lap_duration)
     print("-> %s" % out)
 
 

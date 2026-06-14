@@ -15,13 +15,39 @@ POSITIONS = {
 }
 
 
-def _total_frames(ffmpeg_path, video_path):
-    """Estima el total de frames del video para calcular % de progreso."""
-    ffprobe = os.path.join(os.path.dirname(ffmpeg_path), "ffprobe")
-    if not shutil.which(ffprobe):
-        ffprobe = shutil.which("ffprobe") or ""
+def _ffprobe_path(ffmpeg_path):
+    probe = os.path.join(os.path.dirname(ffmpeg_path), "ffprobe")
+    return probe if shutil.which(probe) else (shutil.which("ffprobe") or "")
+
+
+def _video_fps(ffprobe, video_path):
+    """Devuelve los fps del video como float, o 0 si no se puede obtener."""
+    try:
+        r = subprocess.run(
+            [ffprobe, "-v", "error", "-select_streams", "v:0",
+             "-show_entries", "stream=r_frame_rate",
+             "-of", "default=noprint_wrappers=1:nokey=1", video_path],
+            capture_output=True, text=True,
+        )
+        line = r.stdout.strip()
+        num, _, den = line.partition("/")
+        return float(num) / float(den) if den else float(num)
+    except Exception:
+        return 0.0
+
+
+def _total_frames(ffmpeg_path, video_path, lap_duration=None):
+    """Estima frames totales para la barra de progreso.
+
+    Si lap_duration está disponible calcula fps * lap_duration (más preciso
+    para el modelo de recorte). Sin él cae al conteo completo del video.
+    """
+    ffprobe = _ffprobe_path(ffmpeg_path)
     if not ffprobe:
         return 0
+    if lap_duration:
+        fps = _video_fps(ffprobe, video_path)
+        return int(lap_duration * fps) if fps else 0
     try:
         r = subprocess.run(
             [ffprobe, "-v", "error", "-select_streams", "v:0",
@@ -57,7 +83,12 @@ def _nvenc_available(ffmpeg_path):
         return False
 
 
-def _build_filter(position, scale, offset):
+def _build_filter(position, scale, offset=0.0):
+    """Construye el filtro ffmpeg para superponer el overlay.
+
+    offset solo se usa en modo legacy (sin recorte). En modo recorte el seek
+    ya posicionó el video y el overlay empieza en t=0.
+    """
     px, py = POSITIONS.get(position, POSITIONS["bottom-right"])
     steps = []
     cur = "1:v"
@@ -75,17 +106,27 @@ def _build_filter(position, scale, offset):
 
 
 def compose_video(video, overlay, output, position="bottom-right",
-                  offset=0.0, scale=1.0, progress=None):
+                  offset=0.0, scale=1.0, lap_duration=None, progress=None):
     """Superpone overlay con canal alfa sobre el video de grabación.
 
+    Cuando lap_duration está disponible (recomendado) el output es un clip
+    recortado que empieza en `offset` y dura exactamente `lap_duration`
+    segundos — sin importar la duración del video original. Esto garantiza
+    tiempos de compose consistentes independientemente del largo de la sesión.
+
+    Sin lap_duration el comportamiento es el legado: offset demora el overlay
+    via setpts y el output tiene la duración completa del video.
+
     Args:
-        video:    Ruta al video de la grabación (mp4, mov, mkv…).
-        overlay:  Ruta al overlay con canal alfa (.webm VP9 o .mov ProRes 4444).
-        output:   Ruta del archivo de salida.
-        position: Posición del HUD ('bottom-right', 'top-left', etc.).
-        offset:   Segundos de delay del overlay (positivo = overlay empieza
-                  después; útil si el video arranca antes de la vuelta).
-        scale:    Factor de escala del overlay (1.0 = tamaño original).
+        video:        Ruta al video de grabación (mp4, mov, mkv…).
+        overlay:      Ruta al overlay con canal alfa (.webm VP9 o .mov ProRes).
+        output:       Ruta del archivo de salida.
+        position:     Posición del HUD en pantalla.
+        offset:       Segundos desde el inicio del video hasta la vuelta.
+        scale:        Factor de escala del HUD (1.0 = tamaño original).
+        lap_duration: Duración de la vuelta en segundos. Si se provee, el
+                      output se recorta a exactamente esa duración.
+        progress:     Callback progress(n_frames, total_frames) para UI.
 
     Returns:
         Ruta del archivo de salida.
@@ -100,27 +141,45 @@ def compose_video(video, overlay, output, position="bottom-right",
     if out_dir:
         os.makedirs(out_dir, exist_ok=True)
 
-    fc = _build_filter(position, scale, offset)
-
     use_nvenc = _nvenc_available(ffmpeg)
     if use_nvenc:
         video_enc = ["-c:v", "h264_nvenc", "-preset", "p4", "-rc", "vbr", "-cq", "18", "-b:v", "0"]
     else:
         video_enc = ["-c:v", "libx264", "-crf", "18", "-preset", "fast"]
 
-    n_frames = _total_frames(ffmpeg, video) if progress else 0
+    n_frames = _total_frames(ffmpeg, video, lap_duration) if progress else 0
 
-    cmd = [
-        ffmpeg, "-y",
-        "-i", video,
-        "-i", overlay,
-        "-filter_complex", fc,
-        "-map", "[out]",
-        "-map", "0:a?",
-        *video_enc,
-        "-c:a", "aac", "-b:a", "192k",
-        output,
-    ]
+    if lap_duration:
+        # Modo recorte: seek rápido al offset, output limitado a la vuelta.
+        # El overlay empieza en t=0 del clip resultante (no necesita setpts).
+        fc = _build_filter(position, scale, offset=0.0)
+        cmd = [
+            ffmpeg, "-y",
+            "-ss", "%.3f" % offset,
+            "-i", video,
+            "-i", overlay,
+            "-filter_complex", fc,
+            "-map", "[out]",
+            "-map", "0:a?",
+            *video_enc,
+            "-c:a", "aac", "-b:a", "192k",
+            "-t", "%.3f" % lap_duration,
+            output,
+        ]
+    else:
+        # Modo legado: overlay demora via setpts, video completo.
+        fc = _build_filter(position, scale, offset)
+        cmd = [
+            ffmpeg, "-y",
+            "-i", video,
+            "-i", overlay,
+            "-filter_complex", fc,
+            "-map", "[out]",
+            "-map", "0:a?",
+            *video_enc,
+            "-c:a", "aac", "-b:a", "192k",
+            output,
+        ]
 
     if progress:
         cmd_p = [cmd[0], "-progress", "pipe:1", "-nostats"] + cmd[1:]
