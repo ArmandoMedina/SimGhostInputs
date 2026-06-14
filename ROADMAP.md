@@ -6,14 +6,14 @@
 
 ---
 
-## Estado actual — v0.4.0 + [Unreleased]
+## Estado actual — v0.5.0
 
-El código en `master` incluye cambios sin versionar aún. El próximo release es **v0.5.0**.
+Último release: **v0.5.0** (2026-06-14). El próximo es **v0.6.0**.
 
 ---
 
 ## v0.5.0 — Estabilidad de UI y cierre del análisis offline
-> _Estado: en progreso — pendiente QA_
+> _Estado: publicado — 2026-06-14_
 
 Agrupa todos los fixes del bloque `[Unreleased]` más las correcciones de esta sesión de desarrollo.
 
@@ -252,7 +252,6 @@ Cosas que están en el código pero no tienen cobertura de QA formal ni están d
 
 | Item | Descripción |
 | :-- | :-- |
-| `__version__` en `__init__.py` | Debe actualizarse manualmente en cada release — candidato a automatizar con `bumpversion` o similar |
 | `motec_csv.py` codificación | Lee con `utf-8-sig` — CSV generados por i2 en Windows pueden tener encoding distinto en setups no-inglés |
 | Sin tests automáticos | No hay suite de tests. Todo el QA es manual con telemetría real. Para v1.0 debería haber al menos tests unitarios de `core/` |
 | Docs en `docs/` referenciadas pero no escritas | El README menciona `docs/guia-usuario.md`, `docs/hud-reference.md`, `docs/formato-datos.md` — no existen aún |
