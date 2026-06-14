@@ -158,33 +158,107 @@ Este feature pertenece a **este repositorio** (`fantasma-inputs`), no a `fantasm
 
 ---
 
-## Plan de implementación
+## Sistema de señales de audio — dos capas
 
-### Dependencias nuevas
-- `edge-tts` (es-MX o es-ES) — TTS en español, gratuito, sin API key
-- `ffmpeg` — ya es dependencia del proyecto, se reutiliza para conversión WAV
+### Fundamento fisiológico
 
-### Nueva dependencia opcional en pyproject.toml
-```toml
-[project.optional-dependencies]
-pacenotess = ["edge-tts"]
+El tiempo de reacción humano varía según el canal sensorial:
+- Señal visual (HUD, pantalla): ~300 ms
+- Señal de voz (frase hablada): ~250 ms — el cerebro procesa lenguaje antes de reaccionar
+- Tono puro (beep): ~100–150 ms — respuesta refleja entrenada, sin procesamiento semántico
+
+Los pilotos de rally explotan esto: el copiloto dice la nota y el piloto reacciona al patrón sonoro, no al significado. Con repetición, el tono se convierte en reflejo. En F1, algunos equipos usan pitidos para confirmación de cambios y puntos de frenada por la misma razón.
+
+### Capa 1 — Tonos posicionales (núcleo, sin dependencias extra)
+
+Tonos puros generados con numpy (ya dependencia del proyecto). Cada hito del `corners.json` tiene su metro exacto y su frecuencia asignada:
+
+| Hito | Metro en `corners.json` | Frecuencia sugerida | Significado |
+| :-- | :-- | :-- | :-- |
+| Punto de frenada | `milestones.brake.d` | 880 Hz (agudo) | Frena ahora |
+| Turn-in | `milestones.turn_in.d` | 660 Hz | Gira |
+| Ápex (V-Min) | `milestones.apex.d` | 440 Hz (medio) | Ápex |
+| Gas | `milestones.gas.d` | 220 Hz (grave) | Abre gas |
+| Gas 100% | `milestones.gas_100.d` | 180 Hz (grave suave) | Gas completo |
+
+El piloto aprende la escala: agudo = frena, grave = acelera. Intuitivo, sin memorizar.
+
+**Generación del tono (sin dependencias nuevas):**
+```python
+import numpy as np, wave, struct
+
+def generate_tone(freq_hz, duration_s, volume=0.8, sample_rate=24000):
+    t = np.linspace(0, duration_s, int(sample_rate * duration_s), endpoint=False)
+    # fade in/out de 10ms para evitar clicks
+    fade = int(sample_rate * 0.01)
+    envelope = np.ones(len(t))
+    envelope[:fade] = np.linspace(0, 1, fade)
+    envelope[-fade:] = np.linspace(1, 0, fade)
+    samples = (np.sin(2 * np.pi * freq_hz * t) * envelope * volume * 32767).astype(np.int16)
+    return samples  # → escribir como WAV 24kHz 16-bit mono
 ```
 
-### Nuevo comando CLI
+### Capa 2 — Voz contextual (opcional, requiere edge-tts)
+
+Mensajes de voz que se disparan antes de llegar a la curva (100–200 m antes del punto de frenada) para dar contexto. Mientras el tono actúa como reflejo, la voz enseña.
+
+| Cuándo | Qué dice | Para qué |
+| :-- | :-- | :-- |
+| 200 m antes del punto de frenada | *"Hatzenbach — frena antes"* | Preparación cognitiva |
+| En el punto de frenada | tono 880 Hz | Reacción refleja |
+| En el ápex | tono 440 Hz | Confirmación de posición |
+| En el punto de gas | tono 220 Hz | Apertura de gas |
+
+### Modos configurables
+
+```
+fantasma pacenotess --mode tones   # solo tonos (sin dependencias extra)
+fantasma pacenotess --mode voice   # solo voz (requiere edge-tts)
+fantasma pacenotess --mode both    # voz contextual + tonos en hitos exactos
+```
+
+Por defecto: `--mode tones` — máxima reacción, cero dependencias extra.
+
+### Parámetros configurables completos
+
 ```
 fantasma pacenotess \
   --corners corners.json \
   --compare salida/corners_compare.csv \
-  --top 5 \
-  --lang es-MX \
+  --top 5 \                          # solo las N curvas con más pérdida
+  --mode both \                      # tones | voice | both
+  --lang es-MX \                     # solo relevante en mode voice o both
+  --brake-freq   880 \               # Hz del tono de frenada
+  --apex-freq    440 \               # Hz del tono de ápex
+  --gas-freq     220 \               # Hz del tono de gas
+  --tone-duration 0.12 \             # segundos por tono
+  --volume 0.8 \                     # 0.0–1.0
+  --milestones brake,apex,gas \      # qué hitos generar tono
   --output-dir "C:\Users\...\Documents\CrewChiefV4\pace_notes\ams2\nurburgring"
 ```
 
-### Nuevo módulo
+### Plan de implementación
+
+**Dependencias:**
+- Capa 1 (tonos): numpy — ya en el proyecto. **Sin dependencias nuevas.**
+- Capa 2 (voz): `edge-tts` + ffmpeg para conversión WAV — ffmpeg ya existe
+
+```toml
+# pyproject.toml
+[project.optional-dependencies]
+voice = ["edge-tts"]          # pip install 'fantasma-inputs[voice]'
+```
+
+**Nuevo módulo:**
 ```
 fantasma/
   viz/
-    pacenotess.py   ← nuevo: genera WAV + metadata.json para CrewChief
+    pacenotess.py   ← generate_tone(), generate_voice(), build_pack()
+```
+
+**Nuevo comando CLI:**
+```
+fantasma pacenotess --corners ... --compare ... --mode tones --top 5 --output-dir ...
 ```
 
 ---

@@ -137,22 +137,43 @@ Ver especificación completa: [`docs/decisions-crewchief-pacenotes.md`](docs/dec
 3. Los archivos se escriben en `Documents\CrewChiefV4\pace_notes\ams2\[pista]\`
 4. El piloto activa las pace notes con un botón antes de salir del pit — CrewChief habla en el momento exacto
 
+### Dos capas de audio (ver spec completa en `docs/decisions-crewchief-pacenotes.md`)
+
+**Capa 1 — Tonos posicionales** (núcleo, sin dependencias nuevas)
+Tonos puros generados con numpy. Cada hito del `corners.json` tiene su metro y su frecuencia:
+- Punto de frenada → 880 Hz (agudo, urgente)
+- Ápex → 440 Hz (medio)
+- Gas → 220 Hz (grave, suave)
+
+El piloto aprende la escala como reflejo entrenado. Reacción ~100ms vs ~300ms visual.
+
+**Capa 2 — Voz contextual** (opcional, requiere edge-tts)
+Frases 200m antes del punto de frenada para dar contexto. La voz enseña, el tono actúa.
+
+**Modos:** `--mode tones` (default) | `--mode voice` | `--mode both`
+
 ### Cambios previstos
-- [ ] Nuevo módulo `fantasma/viz/pacenotess.py` — generador de WAV + metadata.json
-- [ ] Nuevo comando CLI `fantasma pacenotess` con parámetros `--corners`, `--compare`, `--top`, `--lang`, `--output-dir`
-- [ ] Generación de frases en español basada en los flags de `compare.py` (`early_gas`, `late_brake`, `d_vmin`, etc.)
-- [ ] Conversión WAV via ffmpeg (ya dependencia del proyecto)
+- [ ] Nuevo módulo `fantasma/viz/pacenotess.py`
+  - `generate_tone(freq, duration, volume)` → WAV 24kHz con numpy (sin dependencias extra)
+  - `generate_voice(text, lang)` → WAV via edge-tts + ffmpeg
+  - `build_pack(rows, corners, outdir, config)` → metadata.json + todos los WAV
+- [ ] Nuevo comando CLI `fantasma pacenotess --corners --compare --mode --top --output-dir`
+- [ ] Parámetros de tono configurables: `--brake-freq`, `--apex-freq`, `--gas-freq`, `--tone-duration`, `--volume`
+- [ ] Frases de voz basadas en flags de `compare.py` (`late_brake`, `early_gas`, `d_vmin`)
 - [ ] Nueva dependencia opcional: `edge-tts` → `pip install 'fantasma-inputs[voice]'`
-- [ ] Resolución del nombre de pista AMS2 — detectar del metadata del CSV o pedir al usuario
+- [ ] Resolución del nombre de pista AMS2 — detectar del campo `Venue` del CSV o pedir al usuario
 
 ### QA antes de publicar v0.8.0
-- [ ] `fantasma pacenotess` genera `metadata.json` válido con metros correctos de `corners.json`
-- [ ] Los archivos WAV se generan en formato 24kHz 32-bit float (verificar con ffprobe o Audacity)
-- [ ] CrewChief carga el pack sin errores al iniciar AMS2
-- [ ] Mensaje de audio se dispara en el metro correcto de la pista (verificar en Nordschleife)
-- [ ] Con `--top 3`: solo las 3 curvas con mayor pérdida de tiempo generan audio
-- [ ] Sin `edge-tts` instalado: error claro indicando `pip install 'fantasma-inputs[voice]'`
+- [ ] `--mode tones`: genera metadata.json + WAV de tonos sin instalar edge-tts
+- [ ] Tonos suenan en los metros correctos en una sesión real en Nordschleife
+- [ ] Escala de frecuencias distinguible sin confusión: agudo ≠ medio ≠ grave
+- [ ] `--mode voice`: genera frases coherentes con el problema detectado por curva
+- [ ] `--mode both`: voz 200m antes + tono en metro exacto, sin solapamiento
+- [ ] `--top 3`: solo las 3 curvas con más pérdida generan audio
+- [ ] `--volume 0.3`: tonos audibles pero no intrusivos junto al audio del sim
+- [ ] Sin `edge-tts` con `--mode voice`: error claro con instrucción de instalación
 - [ ] Nombre de pista incorrecto: CrewChief no carga el pack — documentar cómo encontrar el nombre correcto
+- [ ] WAV generados en formato aceptado por CrewChief: 24kHz, mono (verificar con ffprobe)
 
 ---
 
