@@ -4,6 +4,8 @@
 [![Ko-fi](https://img.shields.io/badge/Ko--fi-Buy%20me%20a%20Coffee-FF5E5B?logo=ko-fi&logoColor=white)](https://ko-fi.com/armandomedina2255)
 [![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL--3.0-blue.svg)](LICENSE)
 
+📋 [Brief de Producto](PRODUCT_BRIEF.md) · 📝 [Changelog](CHANGELOG.md) · 🤝 [Contribuir](CONTRIBUTING.md)
+
 ![HUD preview](docs/demo/overlay_hud_preview.gif)
 
 > [!WARNING]
@@ -155,12 +157,15 @@ Los nombres de curvas y sus metros son datos de la comunidad: comparte tu "track
 
 ## Cómo capturar telemetría
 
-| Sim | Ruta recomendada |
-| :-- | :-- |
-| AMS2 | [sim-to-motec](https://github.com/GeekyDeaks/sim-to-motec) (shared memory → `.ld`) → exportar CSV desde MoTeC i2 |
-| GT7 | [sim-to-motec](https://github.com/GeekyDeaks/sim-to-motec) (UDP → `.ld`) → CSV desde i2 |
-| ACC / AC / rF2 / LMU | Cualquier logger que genere `.ld` de MoTeC → CSV desde i2 |
-| Otros | CSV genérico con `--map` (ver `fantasma compare --help`) |
+| Sim | Estado | Ruta recomendada |
+| :-- | :-- | :-- |
+| AMS2 | ✅ Probado | [sim-to-motec](https://github.com/GeekyDeaks/sim-to-motec) (shared memory → `.ld`) → exportar CSV desde MoTeC i2 |
+| ACC / AC / rF2 / LMU | ⚙️ Compatible* | [sim-to-motec](https://github.com/GeekyDeaks/sim-to-motec) → `.ld` → CSV desde MoTeC i2 |
+| iRacing | ⚙️ Compatible* | [sim-to-motec](https://github.com/GeekyDeaks/sim-to-motec) → `.ld` → CSV desde MoTeC i2 |
+| GT7 | ⚙️ Compatible* | [sim-to-motec](https://github.com/GeekyDeaks/sim-to-motec) (UDP → `.ld`) → CSV desde i2 |
+| Otros | 🗺️ Manual | CSV genérico con `--map` (ver `fantasma compare --help`) |
+
+*El pipeline vía sim-to-motec → MoTeC i2 → CSV exporta columnas estándar de i2 independientemente del sim. Los canales opcionales (ABS, TCS, G-Forces) dependen de lo que cada sim exponga al logger — si no están presentes, el análisis continúa sin ellos.
 
 En el roadmap: lectura directa de `.ld` (sin pasar por i2) e iRacing `.ibt`.
 
