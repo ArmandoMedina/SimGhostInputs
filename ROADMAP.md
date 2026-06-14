@@ -242,6 +242,7 @@ Cosas que están en el código pero no tienen cobertura de QA formal ni están d
 | CSV con separador de punto y coma | `motec_csv.py` usa `csv.reader` con separador coma por defecto. Algunos exports europeos usan `;` | Media |
 | Circuitos con vuelta que cruza la línea de meta más de una vez | Circuitos en 8 o con chicane en meta podrían romper la detección de vueltas | Media |
 | Overlay con FPS distintos al de la grabación | Si el usuario elige 30 fps en el overlay pero graba a 60 fps, la composición puede quedar desincronizada | Alta |
+| `--format prores` cuelga ffmpeg en vueltas largas | En Nordschleife (~394s) el encode ProRes arranca, escribe ~4 GB de frames y luego ffmpeg se congela sin actividad CPU. El moov atom nunca se escribe y el archivo queda corrupto. Reproducido en QA 2026-06-14. Default cambiado a `webm` como mitigación; causa raíz pendiente de investigar. | Alta |
 | `fantasma compose` sin ffmpeg instalado | El error actual puede no ser claro para el usuario — mejorar mensaje | Baja |
 | Versión mínima de Python no declarada | `pyproject.toml` debería declarar `requires-python` — testeado internamente en 3.10+ | Media |
 

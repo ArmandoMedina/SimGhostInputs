@@ -155,6 +155,16 @@ def auto_sync(video_path, drv_lap):
 
     ae   = _audio_energy(video_path)
     tele = _lap_signal(drv_lap)
+
+    _MIN_AUDIO_SEC = 30
+    audio_dur = len(ae) / _CORR_HZ
+    if audio_dur < _MIN_AUDIO_SEC:
+        raise RuntimeError(
+            "auto_sync: video demasiado corto (%.0f s, mínimo %d s). "
+            "El video debe contener la vuelta completa para que la correlación "
+            "de audio tenga suficientes muestras." % (audio_dur, _MIN_AUDIO_SEC)
+        )
+
     ae_n = (ae - ae.mean()) / (ae.std() + 1e-9)
 
     corr = _corr(ae_n, tele, mode="full")
