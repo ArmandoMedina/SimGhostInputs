@@ -8,7 +8,18 @@
 
 ## Estado actual — v0.5.0
 
-Último release: **v0.5.0** (2026-06-14). El próximo es **v0.6.0**.
+Último release: **v0.5.0** (2026-06-14). El próximo es **v0.9.0**.
+
+### Camino a v1.0 (AMS2)
+
+| Versión | Foco | Estado |
+| :-- | :-- | :-- |
+| v0.5.0 | Estabilidad UI, NVENC, auto_sync robusto | ✅ publicado |
+| v0.9.0 | Sincronización robusta + flujos múltiples en UI | por construir |
+| v0.10.0 | Drill-down por curva — coaching accionable | por construir |
+| v1.0.0 | Declaración de estabilidad para AMS2 | objetivo |
+
+v0.6.0 (histórico), v0.7.0 (importadores) y v0.8.0 (Pace Notes) quedan diferidos para después de v1.0.
 
 ---
 
@@ -65,8 +76,29 @@ Agrupa todos los fixes del bloque `[Unreleased]` más las correcciones de esta s
 
 ---
 
+## v0.10.0 — Drill-down por curva
+> _Estado: por construir — spec en [PRODUCT_BRIEF.md § 10](PRODUCT_BRIEF.md)_
+
+Convierte la tabla de tiempo perdido en coaching accionable. El piloto pica en una curva y ve exactamente qué corregir, calculado desde los datos sin LLM.
+
+### Cambios previstos
+- [ ] Tabla de curvas clickeable en UI Paso 2 — click en una fila abre panel de detalle
+- [ ] Panel de detalle por curva: Δ frenada (metros), Δ intensidad de freno, progresividad, V-Min target, Δ gas, Δ G-lat, marcha/RPM
+- [ ] Síntesis en lenguaje natural: "Frenas 40 m antes con 15% menos intensidad → llegas 8 km/h más lento al ápex → pierdes 0.6 s" — aritmética pura sobre `corners_compare.csv`
+- [ ] Función `corner_coaching(row, trace)` en `core/` que produce el dict de coaching
+- [ ] Los datos ya existen en `trace` y `rows` de `compare()` — no requiere nueva telemetría
+
+### QA antes de publicar v0.10.0
+- [ ] Click en la curva con mayor pérdida → panel de detalle visible con todos los campos
+- [ ] Curva sin canal gear → panel omite el campo de marcha sin crashear
+- [ ] Curva sin glat → panel omite G-lat sin crashear
+- [ ] Síntesis en lenguaje natural coherente con los números del panel
+- [ ] Curva donde el piloto es más rápido → mensaje positivo ("ganas X s aquí")
+
+---
+
 ## v0.6.0 — Histórico entre sesiones
-> _Estado: por construir_
+> _Estado: diferido — post-v1.0_
 
 Permite comparar el rendimiento en una misma curva a lo largo de varias tandas. El piloto puede ver si progresa, retrocede o tiene un techo de mejora en una curva específica.
 
@@ -88,7 +120,7 @@ Permite comparar el rendimiento en una misma curva a lo largo de varias tandas. 
 ---
 
 ## v0.7.0 — Nuevos importadores
-> _Estado: por construir_
+> _Estado: diferido — post-v1.0 (v1.0 cubre solo AMS2)_
 
 Elimina la dependencia de MoTeC i2 como intermediario para algunos formatos.
 
@@ -108,23 +140,23 @@ Elimina la dependencia de MoTeC i2 como intermediario para algunos formatos.
 
 ---
 
-## v1.0.0 — Primera versión estable
+## v1.0.0 — Primera versión estable (AMS2)
 > _Estado: objetivo a largo plazo_
 
-El criterio para v1.0 es que el pipeline offline esté completo, documentado y probado con más de un sim y más de un circuito. No es una versión con features nuevas — es una declaración de estabilidad de API.
+El criterio para v1.0 es que el pipeline offline esté completo, documentado y probado. Alcance declarado: **AMS2 únicamente**. Importadores adicionales (iRacing, rF2, ACC) y features post-tanda avanzadas (histórico, pace notes) van después.
 
 ### Requisitos para llamarla v1.0
-- [ ] Todas las fases anteriores (v0.5, v0.6, v0.7) completadas y en producción
+- [ ] v0.9.0 y v0.10.0 completadas y en producción
 - [ ] API interna (`core/`) estabilizada — sin cambios breaking entre parches
 - [ ] Docs completas: guía de usuario, referencia de HUD, formato de datos, cómo contribuir
-- [ ] Probado con al menos 2 sims (AMS2 + uno más) y al menos 3 circuitos distintos
+- [ ] Probado con AMS2 en al menos 3 circuitos distintos
 - [ ] `setup.ps1` probado en instalación limpia de Windows 11
 - [ ] No hay `[Unreleased]` acumulado en CHANGELOG
 
 ---
 
 ## v0.8.0 — Coaching de voz via CrewChief Pace Notes
-> _Estado: investigado y validado — pendiente implementación_
+> _Estado: diferido — post-v1.0 (investigado y validado, spec completa disponible)_
 
 **Hallazgo clave (2026-06-14):** CrewChief tiene un sistema nativo llamado **Pace Notes** que reproduce archivos WAV en metros exactos de la pista. SimGhostInputs ya tiene esos metros en `corners.json`. La integración es generar los archivos correctos — sin modificar CrewChief, sin construir un sistema de voz propio.
 

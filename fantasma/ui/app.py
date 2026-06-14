@@ -871,6 +871,16 @@ elif step_idx == 4:
             _bar.progress(1.0, text="Completado")
             st.success("✓ Video guardado en:")
             st.code(_result)
+            _drv_lap = st.session_state.get("drv_lap")
+            if _drv_lap is not None:
+                def _mss(s):
+                    return "%d:%02d" % (int(s) // 60, int(s) % 60)
+                _t_end = _offset + _drv_lap.laptime
+                st.info(
+                    "El HUD aparece en el **minuto %s** del video "
+                    "y termina en el **%s** (vuelta de %.1f s)." % (
+                        _mss(_offset), _mss(_t_end), _drv_lap.laptime)
+                )
             st.balloons()
             _next_step_btn(4)
         except RuntimeError as _e:
