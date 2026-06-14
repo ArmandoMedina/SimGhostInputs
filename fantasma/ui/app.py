@@ -857,16 +857,23 @@ elif step_idx == 4:
             _base     = os.path.splitext(os.path.basename(_video_path))[0]
             _out_path = os.path.join(os.path.dirname(_video_path), _base + "_composed.mp4")
 
-        with st.spinner("Composiendo con ffmpeg… (puede tardar unos minutos)"):
-            try:
-                from fantasma.viz.compose import compose_video
-                _result = compose_video(_video_path, _overlay_path, _out_path,
-                                        position=_position, offset=_offset, scale=_scale)
-                st.success("✓ Video guardado en:")
-                st.code(_result)
-                st.balloons()
-                _next_step_btn(4)
-            except RuntimeError as _e:
-                st.error(str(_e))
-            except Exception as _e:
-                st.error("Error: %s" % _e)
+        _bar = st.progress(0, text="Iniciando composición…")
+        try:
+            from fantasma.viz.compose import compose_video
+
+            def _compose_progress(n, total):
+                pct = min(n / total, 1.0) if total else 0
+                _bar.progress(pct, text="Componiendo… frame %d / %d (%.0f%%)" % (n, total, pct * 100))
+
+            _result = compose_video(_video_path, _overlay_path, _out_path,
+                                    position=_position, offset=_offset, scale=_scale,
+                                    progress=_compose_progress)
+            _bar.progress(1.0, text="Completado")
+            st.success("✓ Video guardado en:")
+            st.code(_result)
+            st.balloons()
+            _next_step_btn(4)
+        except RuntimeError as _e:
+            st.error(str(_e))
+        except Exception as _e:
+            st.error("Error: %s" % _e)
