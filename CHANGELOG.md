@@ -4,6 +4,13 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/). Versionado
 
 ## [Unreleased]
 
+### Pendiente / Known issues
+_(ninguno)_
+
+---
+
+## [0.5.0] — 2026-06-14
+
 ### Añadido
 - **`fantasma compose` — NVENC automático**: si el sistema tiene una GPU NVIDIA con `h264_nvenc` disponible, el compose usa GPU encoding en lugar de `libx264` CPU. En una RTX 2060, un video de 70 min pasa de horas a ~19 min (3.7× tiempo real). Fallback automático a `libx264` si no hay NVENC.
 
@@ -17,8 +24,6 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/). Versionado
 ### Corregido
 - **`fantasma overlay` — marcha/glat/abs/tcs ausentes se detectan correctamente**: `_interp_lap` devolvía zeros para canales opcionales no presentes en el CSV; `drv_ch.get("gear")` nunca era `None` y la marcha aparecía siempre como «N». Ahora los canales opcionales ausentes son `None`: `_masked`, `_masked_g` y el renderizador de gear/speed los omiten limpiamente sin crashear.
 - **`fantasma overlay` — render paralelo no funcionaba en UI**: el `ProcessPoolExecutor(mp_context="spawn")` fallaba silenciosamente bajo Streamlit — el proceso hijo intentaba reimportar `__main__` del servidor de Streamlit y crasheaba en cascada, forzando el fallback a render serial (1 core). Reemplazado por `subprocess.Popen([python, -m, fantasma.viz._overlay_worker])` con un worker script independiente que tiene su propio `__main__`, arranca limpio y no hereda estado del servidor. El fix es multiplataforma sin código condicional por OS: `subprocess` siempre crea un proceso fresco, lo que también elimina el riesgo de deadlock de `fork + matplotlib` en Linux/Mac.
-
-### Corregido
 - **Charts en UI (Paso 2) — gráficas no se mostraban**: la generación de gráficas se disparaba en cada rerun de Streamlit (cualquier interacción con un widget lo provoca) y los errores dentro de `st.spinner()` desaparecen cuando el spinner cierra. Solución: las rutas de los charts se cachean en `session_state["charts_paths"]`; se regeneran solo cuando corre una comparación nueva. Los mensajes de error y de importación se muestran fuera del spinner para que persistan.
 - **`__version__` desactualizado**: `fantasma/__init__.py` reportaba `0.2.0`; corregido a `0.4.0`.
 
