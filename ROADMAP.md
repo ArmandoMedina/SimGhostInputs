@@ -55,6 +55,7 @@ Agrupa todos los fixes del bloque `[Unreleased]` más las correcciones de esta s
 - [ ] Sin GPU NVIDIA: fallback a `libx264` sin errores
 - [ ] `fantasma compose --auto-sync` con video que corresponde a la vuelta — detecta offset
 - [ ] `fantasma compose --auto-sync` con video que NO corresponde — lanza `RuntimeError` claro
+- [ ] `fantasma compose --auto-sync` con video completo Nordschleife (~6 min) — documentar comportamiento real y bugs encontrados (insumo para v0.9.0)
 
 **UI completa (Paso 0 → 4)**
 - [ ] Flujo «📊 Solo análisis» (0→1→2): completa sin errores
@@ -177,6 +178,41 @@ Frases 200m antes del punto de frenada para dar contexto. La voz enseña, el ton
 
 ---
 
+## v0.9.0 — Sincronización robusta y flujos múltiples en UI
+> _Estado: por construir — requiere audit de v0.5.0_
+
+**Decisión de arquitectura:** `compose` y `compare` procesan una vuelta por ejecución. La UI facilita encadenar múltiples flujos sin repetir el proceso manualmente.
+
+### Contexto
+El `auto_sync` actual produce un overlay o aborta con `RuntimeError` si z < 3.0σ, pero no informa al usuario qué tan bien sincronizado está ni por qué falló. Con vueltas largas (Nordschleife ~6 min) los casos de fallo son más frecuentes y menos obvios. Si el usuario pausó durante la vuelta, el offset calculado es inválido y el resultado silencioso es peor que un error.
+
+### Cambios previstos
+
+**Detección de pausa en la vuelta**
+- [ ] Detectar discontinuidades en el audio del video durante la vuelta seleccionada (silencio/salto)
+- [ ] Abortar con error claro: "Pausa detectada en X:XX — vuelta no sincronizable. Usa un video sin pausas."
+- [ ] No intentar re-sincronizar post-pausa (telemetría y video divergen irrecuperablemente)
+
+**Métrica de calidad de sync**
+- [ ] Mostrar siempre el resultado de sync: `Sync quality: 94% (z=4.7σ, offset=+1.23s) ✓`
+- [ ] Umbral mínimo configurable: `--min-sync-quality` (default: 3.0σ, equivalente al actual)
+- [ ] Si cae bajo el umbral: error explícito con el valor obtenido vs el requerido
+- [ ] En UI: badge de calidad de sync visible tras compose exitoso
+
+**UI — flujos múltiples**
+- [ ] Botón «Procesar otra vuelta» al finalizar un flujo — reinicia desde Paso 1 sin cerrar la app
+- [ ] Lista de vueltas procesadas en la sesión actual: vuelta, archivo de salida, sync quality
+- [ ] Scope de `compare` y `compose` acotado a una vuelta por ejecución (claridad en la UI)
+
+### QA antes de publicar v0.9.0
+- [ ] Video Nordschleife completo (~6 min): sync correcto, offset preciso, badge de calidad visible
+- [ ] Video con pausa en el minuto 3: error claro con timestamp de la pausa detectada
+- [ ] `--min-sync-quality 4.5`: video que pasa 3.0σ pero falla 4.5σ → error con valores mostrados
+- [ ] Procesar 3 vueltas en secuencia desde UI sin cerrar: cada una genera su clip y su badge
+- [ ] Lista de vueltas procesadas refleja los 3 clips con sus métricas de sync
+
+---
+
 ## Fuera de este repositorio — fantasma-live
 > _Repo separado, solo si Pace Notes no cubre el caso de uso_
 
@@ -222,4 +258,4 @@ Cosas que están en el código pero no tienen cobertura de QA formal ni están d
 
 ---
 
-_Última revisión: 2026-06-14 — añadida v0.8.0 Pace Notes tras investigación de CrewChief_
+_Última revisión: 2026-06-14 — añadida v0.9.0 sincronización robusta y flujos múltiples en UI; decisión: compose y compare acotados a una vuelta por ejecución_
