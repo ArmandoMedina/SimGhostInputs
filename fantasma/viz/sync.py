@@ -11,8 +11,9 @@ Metodo:
 
 Uso:
     from fantasma.viz.sync import auto_sync
-    offset = auto_sync("grabacion.mp4", drv_lap)
-    # -> offset en segundos desde inicio del video hasta inicio de la vuelta
+    offset, z = auto_sync("grabacion.mp4", drv_lap)
+    # offset en segundos desde inicio del video hasta inicio de la vuelta
+    # z es la calidad de la correlacion (sigma); mayor = mejor, minimo aceptable 3.0
 
 Requiere:
     scipy (extra [sync]): pip install 'fantasma-inputs[sync]'
@@ -120,6 +121,37 @@ def _lap_signal(drv_lap):
     return sum(wi * pi for wi, pi in zip(w, parts))
 
 
+_MIN_SYNC_Z      = 3.0   # sigma minimo para considerar la correlacion valida
+_PAUSE_SILENCE_S = 3.0   # segundos de silencio consecutivos para detectar pausa
+_PAUSE_THRESHOLD = 0.05  # fraccion de la energia media por debajo de la cual = silencio
+
+
+def _detect_pause(ae, start_sec, end_sec):
+    """Busca silencio prolongado dentro de la ventana [start_sec, end_sec].
+
+    Devuelve el timestamp (en segundos desde el inicio del video) del primer
+    silencio que supere _PAUSE_SILENCE_S, o None si no hay pausa.
+    """
+    i0 = max(0, int(start_sec * _CORR_HZ))
+    i1 = min(len(ae), int(end_sec * _CORR_HZ))
+    window = ae[i0:i1]
+    if len(window) == 0:
+        return None
+
+    threshold = window.mean() * _PAUSE_THRESHOLD
+    silence = (window < threshold).astype(int)
+    min_samples = int(_PAUSE_SILENCE_S * _CORR_HZ)
+
+    padded = np.concatenate([[0], silence, [0]])
+    diff = np.diff(padded)
+    starts = np.where(diff == 1)[0]
+    ends   = np.where(diff == -1)[0]
+    for s, e in zip(starts, ends):
+        if (e - s) >= min_samples:
+            return start_sec + s / _CORR_HZ
+    return None
+
+
 def auto_sync(video_path, drv_lap):
     """Detecta el offset temporal entre video y telemetria via correlacion de audio.
 
@@ -133,15 +165,15 @@ def auto_sync(video_path, drv_lap):
         drv_lap:    Lap del piloto con canales canonicos 'time', 'rpm', 'speed'
 
     Returns:
-        offset (float): segundos desde el inicio del video hasta el inicio
-            de la vuelta telemetrada. Pasa este valor como ``--offset`` (CLI)
-            o como "Retraso del HUD" en la UI al componer el video final.
+        (offset, z_score): offset en segundos desde el inicio del video hasta
+            el inicio de la vuelta; z_score es la calidad de la correlacion
+            (mayor = mejor, minimo aceptable _MIN_SYNC_Z).
 
     Raises:
         ImportError:  si scipy no esta instalado
         RuntimeError: si faltan canales de telemetria, ffmpeg no esta en PATH,
-                      o la correlacion audio/tele es insuficiente (z < 3.0 sigma) —
-                      indica que el video no corresponde a la vuelta telemetrada
+                      video demasiado corto, correlacion insuficiente (z < MIN),
+                      o se detecta una pausa en el audio durante la vuelta
     """
     try:
         import scipy  # noqa: F401
@@ -168,19 +200,32 @@ def auto_sync(video_path, drv_lap):
     ae_n = (ae - ae.mean()) / (ae.std() + 1e-9)
 
     corr = _corr(ae_n, tele, mode="full")
-    # lag > 0: vuelta empieza lag segundos DESPUES del inicio del video
-    # lag < 0: vuelta empieza |lag| segundos ANTES del inicio del video
     lags = (np.arange(len(corr)) - (len(tele) - 1)) / _CORR_HZ
     mask = np.abs(lags) <= _SEARCH_SEC
     corr_w = corr[mask]
     peak_idx = np.argmax(corr_w)
     peak_val = corr_w[peak_idx]
     z = (peak_val - corr_w.mean()) / (corr_w.std() + 1e-9)
-    if z < 3.0:
+    if z < _MIN_SYNC_Z:
         raise RuntimeError(
-            "auto_sync: pico de correlacion insuficiente (z=%.1f, minimo 3.0). "
+            "auto_sync: correlacion insuficiente (z=%.1f, mínimo %.1f σ). "
             "El video no parece corresponder a la vuelta telemetrada, o el audio "
-            "no contiene senal de motor reconocible en la banda 150-500 Hz." % z
+            "no contiene señal de motor reconocible en la banda 150-500 Hz." % (z, _MIN_SYNC_Z)
         )
+
     offset = float(lags[mask][peak_idx])
-    return offset
+
+    # Verificar que no haya pausas dentro de la ventana de la vuelta
+    lap_dur = float(getattr(drv_lap, "laptime", 0))
+    if lap_dur > 0:
+        pause_t = _detect_pause(ae, offset, offset + lap_dur)
+        if pause_t is not None:
+            m, s = int(pause_t) // 60, int(pause_t) % 60
+            raise RuntimeError(
+                "auto_sync: pausa detectada en el audio del video en %d:%02d "
+                "(silencio > %.0f s dentro de la vuelta). "
+                "El video debe grabarse sin pausas para que la sincronización sea válida." % (
+                    m, s, _PAUSE_SILENCE_S)
+            )
+
+    return offset, z

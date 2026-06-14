@@ -195,8 +195,8 @@ def cmd_compose(args):
         print("Detectando offset de sincronizacion…")
         try:
             from .viz.sync import auto_sync
-            offset = auto_sync(args.video, lap)
-            print("  -> offset detectado: %.3f s" % offset)
+            offset, z_score = auto_sync(args.video, lap)
+            print("  -> offset detectado: %.3f s  (z=%.1f σ)" % (offset, z_score))
         except ImportError as e:
             print("error: %s" % e, file=sys.stderr)
             return 1

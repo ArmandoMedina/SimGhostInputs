@@ -724,6 +724,7 @@ elif step_idx == 4:
     _col1, _col2 = st.columns(2)
     _video_path   = _col1.text_input(
         "Tu video de grabación",
+        value=st.session_state.get("last_compose_video", ""),
         placeholder=r"C:\Videos\mi_vuelta.mp4",
         help="El video que grabaste mientras corrías.",
     )
@@ -762,8 +763,9 @@ elif step_idx == 4:
                 with st.spinner("Analizando audio del video… (~30 s)"):
                     try:
                         from fantasma.viz.sync import auto_sync
-                        _det = auto_sync(_video_path, _drv_for_sync)
+                        _det, _z = auto_sync(_video_path, _drv_for_sync)
                         st.session_state["_autosync_detected"] = _det
+                        st.session_state["_autosync_z"]        = _z
                         st.session_state["compose_offset"]     = _det
                     except ImportError as _ie:
                         st.error(str(_ie))
@@ -771,9 +773,12 @@ elif step_idx == 4:
                         st.error("Error en auto-sync: %s" % _se)
 
         if "_autosync_detected" in st.session_state:
+            _off = st.session_state["_autosync_detected"]
+            _z_s = st.session_state.get("_autosync_z", 0.0)
+            _qlbl = "Excelente" if _z_s > 10 else "Muy bueno" if _z_s > 6 else "Bueno" if _z_s > 4 else "Marginal"
             st.success(
-                "Offset detectado: **%.3f s** — pre-cargado en «Retraso del HUD»." %
-                st.session_state["_autosync_detected"]
+                "Offset detectado: **%.3f s** · Sync quality: **%s** (z=%.1f σ) "
+                "— pre-cargado en «Retraso del HUD»." % (_off, _qlbl, _z_s)
             )
 
     # ── parametros de composicion ──────────────────────────────────────────────
@@ -832,8 +837,26 @@ elif step_idx == 4:
                     "duración: **%s** (%.1f s)." % (
                         _mss(_offset), _mss(_drv_lap.laptime), _drv_lap.laptime)
                 )
+            _z_score = st.session_state.get("_autosync_z")
+            if _z_score is not None:
+                _qlbl = "Excelente" if _z_score > 10 else "Muy bueno" if _z_score > 6 else "Bueno" if _z_score > 4 else "Marginal"
+                st.info("Sync quality: **%s** (z=%.1f σ, offset=%.2f s) ✓" % (_qlbl, _z_score, float(_offset)))
+            st.session_state["last_compose_video"] = _video_path
             st.balloons()
             _next_step_btn(4)
+            st.divider()
+            if st.button(
+                "🔄 Procesar otra vuelta",
+                help="Vuelve al Paso 1 para seleccionar otra vuelta. Mantiene la referencia y el video.",
+            ):
+                for _k in ["drv_lap", "drv_laps", "drv_path", "summary", "trace", "rows",
+                           "charts_paths", "last_overlay", "_autosync_detected", "_autosync_z"]:
+                    st.session_state.pop(_k, None)
+                for _k in list(st.session_state.keys()):
+                    if _k.startswith("drv_sel_") or _k == "drv_lap_tbl":
+                        st.session_state.pop(_k, None)
+                st.session_state["nav_step"] = 1
+                st.rerun()
         except RuntimeError as _e:
             st.error(str(_e))
         except Exception as _e:
