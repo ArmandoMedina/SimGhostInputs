@@ -538,6 +538,7 @@ elif step_idx == 2:
                 from fantasma.core.compare import compare
                 _t, _r, _s = compare(ref_lap, drv_lap, step=10.0, corners=corners)
                 st.session_state.update({"trace": _t, "rows": _r, "summary": _s})
+                st.session_state.pop("charts_paths", None)
             except Exception as _e:
                 st.error("Error en comparación: %s" % _e)
 
@@ -578,6 +579,7 @@ elif step_idx == 2:
                     st.session_state.update({"trace": _t, "rows": _r, "summary": _s,
                                              "charts_top": int(_charts_top),
                                              "gen_charts": _gen_charts})
+                    st.session_state.pop("charts_paths", None)
                 except Exception as _e:
                     st.error("Error: %s" % _e)
 
@@ -619,16 +621,31 @@ elif step_idx == 2:
     if _gen_charts:
         st.divider()
         st.subheader("Gráficas de análisis")
-        _charts = []
-        with st.spinner("Generando gráficas…"):
-            try:
-                _out = tempfile.mkdtemp()
-                from fantasma.viz.charts import render_charts
-                _charts = render_charts(trace, rows, corners or [], _out, top=int(_charts_top))
-            except ImportError:
+
+        # Generate once per comparison; cache invalidated by compare/recalculate.
+        # Error messages are set outside the spinner so they survive the rerun cycle.
+        if "charts_paths" not in st.session_state:
+            _charts_import_err = False
+            _charts_gen_err = None
+            with st.spinner("Generando gráficas…"):
+                try:
+                    _out = tempfile.mkdtemp()
+                    from fantasma.viz.charts import render_charts
+                    st.session_state["charts_paths"] = render_charts(
+                        trace, rows, corners or [], _out, top=int(_charts_top)
+                    )
+                except ImportError:
+                    st.session_state["charts_paths"] = []
+                    _charts_import_err = True
+                except Exception as _e:
+                    st.session_state["charts_paths"] = []
+                    _charts_gen_err = str(_e)
+            if _charts_import_err:
                 st.info("matplotlib no instalado — ejecuta: pip install 'fantasma-inputs[charts]'")
-            except Exception as _e:
-                st.error("Error en gráficas: %s" % _e)
+            if _charts_gen_err:
+                st.error("Error en gráficas: %s" % _charts_gen_err)
+
+        _charts = st.session_state.get("charts_paths", [])
 
         if _charts:
             def _show(container, path):
