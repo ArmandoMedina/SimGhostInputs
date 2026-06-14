@@ -4,9 +4,17 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/). Versionado
 
 ## [Unreleased]
 
+### Añadido
+- **`auto_sync` — detección de pausas de juego**: tras detectar el offset, verifica que no haya silencio prolongado (>3 s, energía <5% de la media) en la ventana de audio correspondiente a la vuelta. Si lo hay, lanza `RuntimeError` con el timestamp exacto de la pausa. Un video pausado durante la grabación desincroniza la telemetría y produce clips erróneos.
+- **UI Paso 4 — badge de calidad de sync**: tras «Detectar offset» muestra label descriptivo («Excelente / Muy bueno / Bueno / Marginal») con el z-score. Tras «Componer video» repite el badge si el compose provino de auto-sync.
+- **UI Paso 4 — botón «Procesar otra vuelta»**: aparece tras un compose exitoso. Limpia el estado del piloto (vuelta, overlay, sync, gráficas) sin tocar la referencia ni el video cargado; regresa al Paso 1 con el video pre-cargado para el siguiente ciclo.
+
+### Mejorado
+- **`auto_sync` — retorna `(offset, z_score)`**: ahora devuelve una tupla en lugar de solo el offset. El z-score permite al caller saber la confianza de la sincronización. CLI imprime `offset + z`; UI muestra badge de calidad sin ralentizar el flujo.
+
 ### Cambiado
 - **UI Paso 1 — selección de vuelta**: la tabla con checkboxes múltiples reemplazada por radio buttons. Una sola vuelta seleccionable por diseño; sin mensajes de error ni warnings por selección incorrecta.
-- **UI Paso 3 — overlay**: eliminado el checkbox «Generar para TODAS las vueltas». El overlay siempre se genera para la vuelta seleccionada en Paso 1. Múltiples vueltas se procesan repitiendo el flujo (con «Procesar otra vuelta», v0.9.0).
+- **UI Paso 3 — overlay**: eliminado el checkbox «Generar para TODAS las vueltas». El overlay siempre se genera para la vuelta seleccionada en Paso 1. Múltiples vueltas se procesan repitiendo el flujo (con «Procesar otra vuelta», disponible desde este release).
 - **`fantasma compose` — output recortado a la vuelta**: cuando se provee telemetría (`--driver`), el output es un clip de exactamente la duración de la vuelta en lugar del video completo. Usa seek rápido (`-ss offset`) y límite de duración (`-t laptime`). Tiempos de compose consistentes sin importar la duración de la sesión grabada (Nordschleife: 1:15 min vs 4:47 previos).
 
 ### Pendiente / Known issues
