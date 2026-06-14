@@ -20,6 +20,9 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/). Versionado
 - **Charts en UI (Paso 2) — gráficas no se mostraban**: la generación de gráficas se disparaba en cada rerun de Streamlit (cualquier interacción con un widget lo provoca) y los errores dentro de `st.spinner()` desaparecen cuando el spinner cierra. Solución: las rutas de los charts se cachean en `session_state["charts_paths"]`; se regeneran solo cuando corre una comparación nueva. Los mensajes de error y de importación se muestran fuera del spinner para que persistan.
 - **`__version__` desactualizado**: `fantasma/__init__.py` reportaba `0.2.0`; corregido a `0.4.0`.
 
+### Cambiado
+- **`__version__` — fuente única de verdad**: `fantasma/__init__.py` ya no tiene la versión hardcodeada. La lee en runtime de `pyproject.toml` via `importlib.metadata.version("fantasma-inputs")`. Elimina el riesgo de que `pyproject.toml` y `__init__.py` queden desincronizados en cada release.
+
 ### Eliminado
 - **UI Paso 2 — controles redundantes**: eliminados el slider de resolución de metros, el selector de número de curvas y el botón «Recalcular». El análisis corre siempre a máxima resolución (1 m) al entrar al paso; todas las curvas siempre aparecen en las gráficas. Los controles no aportaban valor real dado el tiempo de generación (~instantáneo en hardware objetivo).
 
