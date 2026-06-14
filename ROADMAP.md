@@ -122,23 +122,54 @@ El criterio para v1.0 es que el pipeline offline esté completo, documentado y p
 
 ---
 
+## v0.8.0 — Coaching de voz via CrewChief Pace Notes
+> _Estado: investigado y validado — pendiente implementación_
+
+**Hallazgo clave (2026-06-14):** CrewChief tiene un sistema nativo llamado **Pace Notes** que reproduce archivos WAV en metros exactos de la pista. SimGhostInputs ya tiene esos metros en `corners.json`. La integración es generar los archivos correctos — sin modificar CrewChief, sin construir un sistema de voz propio.
+
+Ver especificación completa: [`docs/decisions-crewchief-pacenotes.md`](docs/decisions-crewchief-pacenotes.md)
+
+### Cómo funciona
+1. `fantasma compare` genera el análisis: qué curvas, cuánto tiempo, qué problema específico
+2. `fantasma pacenotess` lee ese análisis y genera:
+   - Frases en español con edge-tts → MP3 → WAV (24kHz, 32-bit float)
+   - `metadata.json` con el metro exacto de cada curva (del `corners.json` existente)
+3. Los archivos se escriben en `Documents\CrewChiefV4\pace_notes\ams2\[pista]\`
+4. El piloto activa las pace notes con un botón antes de salir del pit — CrewChief habla en el momento exacto
+
+### Cambios previstos
+- [ ] Nuevo módulo `fantasma/viz/pacenotess.py` — generador de WAV + metadata.json
+- [ ] Nuevo comando CLI `fantasma pacenotess` con parámetros `--corners`, `--compare`, `--top`, `--lang`, `--output-dir`
+- [ ] Generación de frases en español basada en los flags de `compare.py` (`early_gas`, `late_brake`, `d_vmin`, etc.)
+- [ ] Conversión WAV via ffmpeg (ya dependencia del proyecto)
+- [ ] Nueva dependencia opcional: `edge-tts` → `pip install 'fantasma-inputs[voice]'`
+- [ ] Resolución del nombre de pista AMS2 — detectar del metadata del CSV o pedir al usuario
+
+### QA antes de publicar v0.8.0
+- [ ] `fantasma pacenotess` genera `metadata.json` válido con metros correctos de `corners.json`
+- [ ] Los archivos WAV se generan en formato 24kHz 32-bit float (verificar con ffprobe o Audacity)
+- [ ] CrewChief carga el pack sin errores al iniciar AMS2
+- [ ] Mensaje de audio se dispara en el metro correcto de la pista (verificar en Nordschleife)
+- [ ] Con `--top 3`: solo las 3 curvas con mayor pérdida de tiempo generan audio
+- [ ] Sin `edge-tts` instalado: error claro indicando `pip install 'fantasma-inputs[voice]'`
+- [ ] Nombre de pista incorrecto: CrewChief no carga el pack — documentar cómo encontrar el nombre correcto
+
+---
+
 ## Fuera de este repositorio — fantasma-live
-> _Repo separado, cuando el momento llegue_
+> _Repo separado, solo si Pace Notes no cubre el caso de uso_
 
-Coach de voz en tiempo real usando los datos de análisis de SimGhostInputs como referencia. Stack completamente distinto: listener UDP, TTS, latencia <200ms.
+Con la integración de Pace Notes (v0.8.0), el coaching planificado basado en análisis histórico queda cubierto en este repo. `fantasma-live` quedaría para coaching **adaptativo en tiempo real** — reacciones a eventos que no se pueden predecir de antemano (trompo, contacto, condiciones cambiantes de pista).
 
-### Evaluación pendiente antes de empezar
-- [ ] Investigar API de configuración de CrewChief — si permite recibir corner notes o alertas personalizadas via archivo, podría simplificar mucho el desarrollo
-- [ ] Canal MQTT de CrewChief — ¿es bidireccional? ¿puede recibir eventos desde fuera además de publicarlos?
-- [ ] Evaluar si SimGhostInputs puede generar un archivo de configuración que CrewChief lea (spotter pack, corner data, coach notes) — evitaría construir el sistema de voz desde cero
-- [ ] Si CrewChief no es extensible de esa forma: evaluar edge-tts (es-MX) como motor TTS standalone
+### Cuándo tiene sentido construirlo
+Solo si después de usar Pace Notes el piloto necesita algo que éstas no pueden dar: coaching que reacciona a lo que pasa en esa vuelta específica, no a lo que pasó en sesiones anteriores.
 
-### Fases tentativas (sujetas a revisión)
+### Fases tentativas (sujetas a revisión tras experiencia con v0.8.0)
 | Fase | Objetivo |
 | :-- | :-- |
 | 3.1 | Listener UDP para AMS2 — captura telemetría en tiempo real a 60 Hz |
-| 3.2 | Comparador en vivo — delta continuo por curva usando la vuelta de referencia |
-| 3.3 | Motor de voz — TTS con edge-tts o integración con CrewChief |
+| 3.2 | Comparador en vivo — delta continuo por curva vs referencia |
+| 3.3 | Motor de voz adaptativo — TTS con edge-tts, latencia <200ms |
 | 3.4 | Modos de coaching — Aprendizaje / Qualy / Carrera |
 
 ---
@@ -170,4 +201,4 @@ Cosas que están en el código pero no tienen cobertura de QA formal ni están d
 
 ---
 
-_Última revisión: 2026-06-14_
+_Última revisión: 2026-06-14 — añadida v0.8.0 Pace Notes tras investigación de CrewChief_
