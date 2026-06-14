@@ -114,11 +114,13 @@ _POS_LABELS = {
 }
 
 # ── flujos disponibles ────────────────────────────────────────────────────────
-# Cada flujo define qué pasos son relevantes y qué entregables produce.
-# Overlay (3) y Componer (4) no dependen de Comparar (2): se desbloquean desde Importar.
 _FLOWS = {
     "📊 Solo análisis": {
-        "desc": "Tabla por curva, gráficas ghost y reporte exportable. Sin video.",
+        "desc": "Tabla por curva, gráficas ghost y reporte exportable. No necesitas video.",
+        "requires": [
+            "📄 CSV de la vuelta de referencia",
+            "📄 CSV de tus vueltas",
+        ],
         "deliverables": [
             "📄 `report.md` — resumen narrativo por curva",
             "📊 `corners_compare.csv` — datos por curva en CSV",
@@ -129,7 +131,11 @@ _FLOWS = {
         "next": {1: 2, 2: None},
     },
     "🎬 Solo overlay": {
-        "desc": "HUD animado (.webm con transparencia) para pegar tú mismo en tu editor de video.",
+        "desc": "Genera el HUD transparente para pegarlo tú mismo en tu editor de video.",
+        "requires": [
+            "📄 CSV de la vuelta de referencia",
+            "📄 CSV de tus vueltas",
+        ],
         "deliverables": [
             "🎬 `overlay.webm` — HUD transparente con alfa (velocímetro, gas, freno, delta)",
         ],
@@ -138,9 +144,14 @@ _FLOWS = {
     },
     "🎥 Video con HUD": {
         "desc": "El video final ya compuesto: tu grabación con el HUD integrado, listo para subir.",
+        "requires": [
+            "📄 CSV de la vuelta de referencia",
+            "📄 CSV de tus vueltas",
+            "🎬 Tu video de grabación (.mp4/.mov) **con audio del motor activado**",
+        ],
         "deliverables": [
             "🎬 `overlay.webm` — HUD transparente con alfa",
-            "🎥 `vuelta_composed.mp4` — tu grabación con el HUD ya integrado",
+            "🎥 `vuelta_composed.mp4` — tu grabación recortada a la vuelta, con el HUD ya integrado",
         ],
         "steps": [0, 1, 3, 4],
         "next": {1: 3, 3: 4, 4: None},
@@ -226,19 +237,25 @@ if step_idx == 0:
     st.markdown('<div class="step-header">👻 Bienvenido a SimGhostInputs</div>', unsafe_allow_html=True)
     st.caption("Compara tus inputs de simracing contra una vuelta de referencia, curva a curva.")
 
-    # ── cómo exportar telemetría ──────────────────────────────────────────────
-    st.subheader("① Cómo exportar tu telemetría")
-    st.markdown(
-        "SimGhostInputs lee archivos **CSV o XLSX** exportados desde **Sim To MoTeC** "
-        "(un plugin gratuito que captura telemetría mientras corres en el sim)."
+    st.info(
+        "**Una vuelta por flujo.** Cada vez que usas la app procesas exactamente una vuelta. "
+        "Si tienes varias vueltas para analizar, al terminar el flujo el botón "
+        "**«Procesar otra vuelta»** te devuelve aquí sin tener que recargar archivos ni la referencia."
     )
 
-    with st.expander("Ver guía de exportación paso a paso", expanded=False):
+    # ── cómo exportar telemetría ──────────────────────────────────────────────
+    st.subheader("① Antes de empezar: exporta tu telemetría")
+    st.markdown(
+        "SimGhostInputs necesita **archivos CSV** con los datos de la sesión. "
+        "Se exportan desde **MoTeC i2** después de cada tanda usando el plugin gratuito **Sim To MoTeC**."
+    )
+
+    with st.expander("📋 Ver guía de exportación paso a paso", expanded=False):
         st.markdown("### 1. Instalar y abrir Sim To MoTeC")
         st.markdown(
             "Descarga e instala **[Sim To MoTeC](https://github.com/GeekyDeaks/sim-to-motec/releases)** "
-            "(AMS2 logger). Compatible con AMS2, ACC, iRacing, rFactor 2 y más. "
-            "Una vez instalado, ábrelo antes de arrancar el sim."
+            "(compatible con AMS2, ACC, iRacing, rFactor 2 y más). "
+            "Ábrelo **antes** de arrancar el sim — captura en segundo plano mientras corres."
         )
         _img_or_placeholder("docs/guide/s2m_01_install.png",
                             "AMS2 logger v1.8.6 — la app lista antes de iniciar la sesión")
@@ -246,16 +263,15 @@ if step_idx == 0:
         st.markdown("### 2. Configurar y arrancar la captura")
         st.markdown(
             "Ajusta **Sampling Frequency a 20 Hz** y haz clic en **Start**. "
-            "El logger queda en espera hasta que AMS2 arranque — "
-            "verás los campos Vehicle, Venue y Lap rellenarse automáticamente al entrar en pista."
+            "Los campos Vehicle, Venue y Lap se rellenan solos cuando entras en pista."
         )
         _img_or_placeholder("docs/guide/s2m_02_config.png",
                             "Sampling Frequency: 20 Hz · Log File: Not Started · Start activado")
 
-        st.markdown("### 3. Después de la sesión: abrir MoTeC i2")
+        st.markdown("### 3. Abrir MoTeC i2 después de la sesión")
         st.markdown(
             "Abre **MoTeC i2 Standard** (se instala junto con Sim To MoTeC). "
-            "Ve a **File → Open Log File** y abre el `.ld` generado por el logger "
+            "Ve a **File → Open Log File** y abre el `.ld` que generó el logger "
             "(normalmente en `Documentos/MoTeC/`)."
         )
         _img_or_placeholder("docs/guide/s2m_03_i2_main.png",
@@ -276,15 +292,18 @@ if step_idx == 0:
                             "File → Export Data → opciones recomendadas → Export")
 
         st.info(
-            "💡 Exporta dos archivos: uno con la **vuelta de referencia** "
-            "(tu mejor tiempo, o la de un coach) y otro con **tus vueltas de la sesión**."
+            "💡 Exporta **dos archivos**: uno con la vuelta de referencia "
+            "(tu mejor tiempo anterior, o la de un coach) y otro con **tus vueltas de la sesión de hoy**."
         )
 
     st.divider()
 
     # ── ¿qué quieres obtener hoy? ─────────────────────────────────────────────
     st.subheader("② ¿Qué quieres obtener hoy?")
-    st.caption("Elige tu objetivo y la UI te guiará solo por los pasos que necesitas.")
+    st.caption(
+        "Elige el flujo que mejor describe tu objetivo. "
+        "La UI se adapta y solo te muestra los pasos que necesitas."
+    )
 
     _flow_keys = list(_FLOWS.keys())
     _cols = st.columns(len(_flow_keys))
@@ -293,11 +312,14 @@ if step_idx == 0:
             _selected = st.session_state["flow_key"] == _fk
             _border   = "2px solid #00c853" if _selected else "1px solid #3d4450"
             st.markdown(
-                "<div style='border:%s; border-radius:10px; padding:1rem; min-height:200px'>" % _border,
+                "<div style='border:%s; border-radius:10px; padding:1rem; min-height:260px'>" % _border,
                 unsafe_allow_html=True,
             )
             st.markdown("### %s" % _fk)
             st.caption(_fv["desc"])
+            st.markdown("**Necesitas:**")
+            for _r in _fv["requires"]:
+                st.markdown("- %s" % _r)
             st.markdown("**Obtienes:**")
             for _d in _fv["deliverables"]:
                 st.markdown("- %s" % _d)
@@ -320,18 +342,26 @@ if step_idx == 0:
 # ══════════════════════════════════════════════════════════════════════════════
 elif step_idx == 1:
     st.markdown('<div class="step-header">Paso 1 — Importar telemetría</div>', unsafe_allow_html=True)
-    st.caption("Sube dos archivos: la vuelta de referencia y la tuya. El resto es automático.")
+    st.caption(
+        "Sube los dos archivos CSV. La app detecta automáticamente las vueltas y pre-selecciona "
+        "la más rápida completa de cada archivo — puedes cambiarla en el desplegable si quieres otra."
+    )
 
     # ── ① Referencia ─────────────────────────────────────────────────────────
     st.subheader("① Vuelta de referencia")
     st.caption(
-        "La vuelta contra la que te comparas — tu mejor tiempo anterior, "
-        "la de un coach, o cualquier referencia que quieras superar."
+        "La vuelta que quieres superar. Puede ser tu mejor tiempo anterior, "
+        "la de un coach, o la de otro piloto. Este archivo se mantiene fijo durante todo el flujo."
     )
-    ref_file = st.file_uploader("Archivo de referencia (CSV o XLSX)", type=["csv", "xlsx"], key="ref_upload")
+    ref_file = st.file_uploader(
+        "Archivo CSV de la referencia",
+        type=["csv", "xlsx"],
+        key="ref_upload",
+        help="El CSV exportado de MoTeC i2 con la vuelta de referencia.",
+    )
 
     if not ref_file:
-        st.info("⬆️ Sube la vuelta de referencia para continuar.")
+        st.info("⬆️ Sube el archivo de referencia para continuar.")
         st.stop()
 
     _rc = _cache_file(ref_file)
@@ -345,10 +375,15 @@ elif step_idx == 1:
     _ref_sel_i  = st.session_state.get("ref_sel_%s" % ref_file.file_id, _ref_auto_i)
     _ref_sel_i  = min(_ref_sel_i, len(_ref_laps) - 1)
 
-    st.success("✓ **Referencia:** %s" % _fmt_lap(_ref_laps[_ref_sel_i].laptime))
+    st.success("✓ **Referencia cargada:** %s  (%d vueltas en el archivo)" % (
+        _fmt_lap(_ref_laps[_ref_sel_i].laptime), len(_ref_laps)))
 
     if len(_ref_laps) > 1:
-        with st.expander("Cambiar vuelta de referencia (%d vueltas en el archivo)" % len(_ref_laps)):
+        with st.expander("Cambiar vuelta de referencia — %d vueltas disponibles" % len(_ref_laps)):
+            st.caption(
+                "🏆 = la más rápida completa (pre-seleccionada)  ·  "
+                "✓ = completa  ·  ⚠️ = incompleta (salida de pista, pit, etc.)"
+            )
             _ref_tbl = _lap_table(_ref_laps, editor_key="ref_lap_tbl")
             _ref_sel_i = _ref_tbl[0]
             st.session_state["ref_sel_%s" % ref_file.file_id] = _ref_sel_i
@@ -357,9 +392,17 @@ elif step_idx == 1:
 
     # ── ② Tu telemetría ───────────────────────────────────────────────────────
     st.divider()
-    st.subheader("② Tu archivo de telemetría")
-    st.caption("Tus vueltas de la sesión. Se usa automáticamente la más rápida.")
-    drv_file = st.file_uploader("Tu archivo de telemetría (CSV o XLSX)", type=["csv", "xlsx"], key="drv_upload")
+    st.subheader("② Tu vuelta de hoy")
+    st.caption(
+        "Tus vueltas de la sesión de hoy. Se pre-selecciona automáticamente la más rápida completa. "
+        "Si quieres analizar otra vuelta del mismo archivo, cambia la selección abajo."
+    )
+    drv_file = st.file_uploader(
+        "Tu archivo CSV de telemetría",
+        type=["csv", "xlsx"],
+        key="drv_upload",
+        help="El CSV exportado de MoTeC i2 con tus vueltas de hoy.",
+    )
 
     if not drv_file:
         st.info("⬆️ Sube tu archivo de telemetría para continuar.")
@@ -372,39 +415,56 @@ elif step_idx == 1:
 
     _drv_laps = _dc["laps"]
     if not _drv_laps:
-        st.warning("No se detectaron vueltas en el archivo.")
+        st.warning("No se detectaron vueltas en el archivo. Verifica que el CSV incluye distancia y tiempo.")
         st.stop()
 
     _drv_auto_i = _best_lap_index(_drv_laps)
     _drv_sel_i  = st.session_state.get("drv_sel_%s" % drv_file.file_id, _drv_auto_i)
     _drv_sel_i  = min(_drv_sel_i, len(_drv_laps) - 1)
 
-    st.success("✓ **Tu vuelta:** %s" % _fmt_lap(_drv_laps[_drv_sel_i].laptime))
+    st.success("✓ **Tu vuelta cargada:** %s  (%d vueltas en el archivo)" % (
+        _fmt_lap(_drv_laps[_drv_sel_i].laptime), len(_drv_laps)))
 
     if len(_drv_laps) > 1:
-        with st.expander("Cambiar vuelta (%d vueltas en el archivo)" % len(_drv_laps)):
+        with st.expander("Cambiar vuelta — %d vueltas disponibles" % len(_drv_laps)):
+            st.caption(
+                "🏆 = la más rápida completa (pre-seleccionada)  ·  "
+                "✓ = completa  ·  ⚠️ = incompleta (salida de pista, pit, etc.)"
+            )
             _drv_tbl = _lap_table(_drv_laps, editor_key="drv_lap_tbl")
             _drv_sel_i = _drv_tbl[0]
             st.session_state["drv_sel_%s" % drv_file.file_id] = _drv_sel_i
             if _drv_tbl[0] != _drv_auto_i:
                 st.info("Usando Vuelta #%d — %s" % (_drv_tbl[0], _fmt_lap(_drv_laps[_drv_tbl[0]].laptime)))
 
+    if len(_drv_laps) > 1:
+        st.caption(
+            "💡 **¿Tienes más vueltas para analizar?** Procesa esta primero. "
+            "Al final del flujo, el botón **«Procesar otra vuelta»** te devuelve aquí "
+            "para elegir la siguiente — sin recargar nada."
+        )
+
     # ── Opciones avanzadas ────────────────────────────────────────────────────
     _ref_col_map  = None
     _corners_file = None
     _flow_has_analysis = 2 in _flow["steps"]
-    with st.expander("⚙️ Opciones avanzadas — curvas y mapeo de columnas"):
-        st.markdown("**Nombres de curvas** *(opcional)*")
-        if _flow_has_analysis:
-            st.caption("Si tienes un corners.json o quieres detectarlos, el reporte y el HUD mostrarán los nombres reales.")
-        else:
-            st.caption("Si tienes un corners.json o quieres detectarlos, los nombres aparecerán en los paneles del HUD.")
+    with st.expander("⚙️ Opciones avanzadas — nombres de curvas y mapeo de columnas"):
+        st.markdown("**Nombres de curvas** *(opcional pero recomendado)*")
+        st.caption(
+            "Por defecto las curvas se llaman C01, C02… "
+            "Si les das nombres reales (Karussell, Adenauer Forst…) aparecen en el reporte y en el HUD."
+        )
         _col_cj, _col_cd = st.columns(2)
         with _col_cj:
-            _corners_file = st.file_uploader("Subir corners.json", type=["json"], key="corners_upload")
+            _corners_file = st.file_uploader(
+                "Subir corners.json",
+                type=["json"],
+                key="corners_upload",
+                help="Archivo JSON con los nombres de curvas que hayas definido antes.",
+            )
         with _col_cd:
             st.write(" ")
-            if st.button("Detectar curvas automáticamente"):
+            if st.button("Detectar curvas automáticamente", help="Analiza la vuelta de referencia y detecta dónde están las curvas."):
                 with st.spinner("Analizando vuelta de referencia…"):
                     try:
                         from fantasma.core.normalize import fastest_lap as _fl
@@ -413,7 +473,7 @@ elif step_idx == 1:
                         _cdet   = _em(_fl(_ref_laps), _evs)
                         st.session_state["corners"]          = _cdet
                         st.session_state["corners_editable"] = True
-                        st.success("✓ %d curvas detectadas." % len(_cdet))
+                        st.success("✓ %d curvas detectadas. Edita los nombres en la tabla de abajo." % len(_cdet))
                     except Exception as _e:
                         st.error("Error: %s" % _e)
 
@@ -423,12 +483,12 @@ elif step_idx == 1:
                 {"ID": c["id"], "Nombre": c.get("name", ""), "Metro": c["milestones"]["apex"]["d"]}
                 for c in st.session_state["corners"]
             ]
-            st.caption("Edita los nombres directamente:")
+            st.caption("Haz clic en la celda «Nombre» para editar:")
             _edited = st.data_editor(
                 _pd2.DataFrame(_c_data),
                 column_config={
                     "ID":     st.column_config.TextColumn("ID", disabled=True, width="small"),
-                    "Metro":  st.column_config.NumberColumn("Metro", disabled=True, width="small"),
+                    "Metro":  st.column_config.NumberColumn("Metro ápex", disabled=True, width="small"),
                     "Nombre": st.column_config.TextColumn("Nombre de la curva", width="medium"),
                 },
                 hide_index=True, use_container_width=True, key="corners_editor",
@@ -439,6 +499,10 @@ elif step_idx == 1:
 
         st.divider()
         st.markdown("**Mapeo de columnas** *(solo si el archivo no se leyó correctamente)*")
+        st.caption(
+            "Si el CSV viene de un logger diferente a MoTeC i2 y las columnas no tienen "
+            "los nombres estándar, mapéalas aquí con el formato `columna_original = canal`."
+        )
         _pairs = st.text_area(
             "Columnas", key="ref_map",
             placeholder="Ejemplo:\n  mi_distancia = dist\n  tiempo_s = time\n  velocidad = speed",
@@ -492,6 +556,10 @@ elif step_idx == 1:
 # ══════════════════════════════════════════════════════════════════════════════
 elif step_idx == 2:
     st.markdown('<div class="step-header">Paso 2 — Análisis por curva</div>', unsafe_allow_html=True)
+    st.caption(
+        "Compara tu vuelta contra la referencia metro a metro. "
+        "La tabla muestra cuánto tiempo pierdes o ganas en cada curva y por qué."
+    )
 
     if "ref_lap" not in st.session_state:
         st.warning("Primero carga los archivos en el Paso 1.")
@@ -537,14 +605,15 @@ elif step_idx == 2:
     st.divider()
     st.subheader("¿Dónde estás perdiendo tiempo?")
     st.caption(
-        "**Vel. mínima** = velocidad en el ápex. "
-        "**Diferencia km/h** = cuánto más rápido/lento vs referencia. "
-        "**Tiempo ganado/perdido** = impacto en el crono."
+        "**Vel. mínima en ápex** = la velocidad más baja que alcanzas en el punto más cerrado de la curva. "
+        "**Diferencia km/h** = cuánto más rápido (+) o más lento (−) que la referencia en ese ápex. "
+        "**Tiempo ganado/perdido**: positivo = pierdes tiempo, negativo = ganas tiempo. "
+        "Las curvas están ordenadas por impacto en el crono."
     )
     if rows:
         import pandas as pd
         df = pd.DataFrame(rows)[["name", "apex_d", "ref_vmin", "drv_vmin", "d_vmin", "time_lost", "flags"]]
-        df.columns = ["Curva", "Ápex (m)", "Vel. mín. ref. (km/h)", "Tu vel. mín. (km/h)",
+        df.columns = ["Curva", "Ápex (m)", "Ref. vel. mín. (km/h)", "Tu vel. mín. (km/h)",
                       "Diferencia (km/h)", "Tiempo ganado/perdido (s)", "Avisos"]
         st.dataframe(df.style.format({
             "Tiempo ganado/perdido (s)": "{:+.3f}",
@@ -553,9 +622,12 @@ elif step_idx == 2:
 
     st.divider()
     st.subheader("Gráficas de análisis")
+    st.caption(
+        "**delta_map** = mapa de la vuelta coloreado por dónde ganas y pierdes tiempo. "
+        "**time_loss_bar** = barras por curva ordenadas de mayor a menor pérdida. "
+        "**curva_*** = detalle de gas / freno / volante / delta en cada curva con pérdida."
+    )
 
-    # Generate once per comparison; cache invalidated when summary changes.
-    # Error messages are set outside the spinner so they survive the rerun cycle.
     if "charts_paths" not in st.session_state:
         _charts_import_err = False
         _charts_gen_err = None
@@ -590,7 +662,6 @@ elif step_idx == 2:
         def _charts_of(prefix):
             return [p for p in _charts if os.path.basename(p).startswith(prefix)]
 
-        # -- Resumen de vuelta: delta map + time loss bar (side by side)
         _overview = _charts_of("delta_map") + _charts_of("time_loss_bar")
         if _overview:
             st.markdown("**Resumen de vuelta**")
@@ -598,20 +669,17 @@ elif step_idx == 2:
             for _i, _p in enumerate(_overview):
                 _show(_ov_cols[_i], _p)
 
-        # -- Círculo de fricción G-G (centrado)
         _gg = _charts_of("gg_diagram")
         if _gg:
             st.markdown("**Círculo de fricción (G-G)**")
             _, _gc, _ = st.columns([1, 2, 1])
             _show(_gc, _gg[0])
 
-        # -- Vista multi-canal de vuelta completa (ancho completo)
         _full = _charts_of("full_lap")
         if _full:
             st.markdown("**Vista completa de la vuelta — todos los canales**")
             _show(st, _full[0])
 
-        # -- Curvas: grid 2 columnas
         _corners_charts = _charts_of("curva_")
         if _corners_charts:
             st.markdown("**Curvas con mayor pérdida de tiempo**")
@@ -619,7 +687,6 @@ elif step_idx == 2:
             for _i, _p in enumerate(_corners_charts):
                 _show(_cc[_i % 2], _p)
 
-        # -- Zonas de frenada: grid 2 columnas
         _brakes = _charts_of("frenada_")
         if _brakes:
             st.markdown("**Detalle de zonas de frenada**")
@@ -637,8 +704,10 @@ elif step_idx == 2:
 elif step_idx == 3:
     st.markdown('<div class="step-header">Paso 3 — Generar overlay HUD</div>', unsafe_allow_html=True)
     st.caption(
-        "Genera un video transparente con el HUD animado (velocímetro, barras de gas/freno, delta). "
-        "En el Paso 4 lo pegas encima de tu grabación."
+        "Genera el **HUD animado** sincronizado con tu vuelta. "
+        "Es un archivo de video **transparente** (como un sticker animado) que en el Paso 4 "
+        "se pega encima de tu grabación. Muestra: barras de gas y freno, delta acumulado, "
+        "velocidad, marcha, volante y G-lateral."
     )
 
     if "ref_lap" not in st.session_state:
@@ -653,35 +722,47 @@ elif step_idx == 3:
 
     if "last_overlay" in st.session_state:
         st.success("✓ Ya tienes un overlay generado: `%s`" % st.session_state["last_overlay"])
+        st.caption("Si quieres regenerarlo con distintos parámetros, usa las opciones de abajo.")
         _next_step_btn(3)
         st.divider()
 
     out_dir = st.text_input(
-        "Carpeta de salida",
+        "Carpeta donde guardar el overlay",
         value=os.path.join(os.path.expanduser("~"), "fantasma_salida"),
-        help="Se crea automáticamente si no existe.",
+        help="Se crea automáticamente si no existe. Anota esta ruta — la necesitarás en el Paso 4.",
+    )
+    st.caption(
+        "📌 Anota la ruta de arriba — la necesitarás en el Paso 4 para indicarle dónde está el overlay."
     )
 
-    with st.expander("⚙️ Opciones avanzadas"):
+    with st.expander("⚙️ Opciones de render"):
         _col_a, _col_b = st.columns(2)
         _fps = _col_a.selectbox(
-            "Fotogramas por segundo (FPS)", [24, 30, 60], index=1,
-            help="Usa el mismo valor que tiene tu grabación.",
+            "FPS del overlay", [24, 30, 60], index=1,
+            help=(
+                "Usa el mismo valor que tiene tu video de grabación. "
+                "Si no sabes, 30 fps es el estándar más común. "
+                "Un overlay a 30 sobre un video a 60 funciona bien; lo contrario puede verse entrecortado."
+            ),
         )
         _fmt = _col_b.selectbox(
             "Formato del overlay", ["webm", "prores", "png"], index=0,
             help=(
-                "webm — Recomendado: compatible con cualquier editor.\n"
-                "prores — Para Final Cut Pro o DaVinci Resolve en Mac.\n"
-                "png — Solo fotogramas sin codificar (uso avanzado)."
+                "webm — Recomendado. Compatible con DaVinci Resolve, Kdenlive, Premiere y cualquier editor moderno.\n"
+                "prores — Para Final Cut Pro en Mac o si necesitas máxima calidad sin compresión.\n"
+                "png — Solo frames sueltos (una imagen por fotograma). Para uso avanzado."
             ),
         )
 
-    st.info("El render puede tardar 15–30 min por vuelta. Tu PC seguirá disponible, solo más lenta.")
+    st.info(
+        "⏱️ **Tiempo estimado de render:** entre 5 y 30 minutos dependiendo de la duración de la vuelta "
+        "y el número de cores de tu PC. El render usa todos los cores disponibles en paralelo. "
+        "Tu PC seguirá disponible mientras renderiza, solo irá más lenta."
+    )
 
     if st.button("Generar overlay", type="primary"):
         os.makedirs(out_dir, exist_ok=True)
-        _bar = st.progress(0, text="Iniciando…")
+        _bar = st.progress(0, text="Iniciando render…")
 
         def _progress(n, total, status=None):
             pct = min(n / total, 1.0) if total else 0
@@ -694,16 +775,22 @@ elif step_idx == 3:
                                      fps=_fps, fmt=_fmt, progress=_progress)]
 
             _bar.progress(1.0, text="Completado")
-            st.success("✓ Overlay generado en:")
+            st.success("✓ Overlay generado:")
             for _w in _webms:
                 st.code(_w)
+            st.caption(
+                "Copia esa ruta — la necesitarás en el campo «Overlay» del Paso 4."
+            )
             st.session_state["last_overlay"] = _webms[0]
             st.divider()
             _next_step_btn(3)
         except ImportError:
-            st.error("Faltan dependencias. Ejecuta: pip install 'fantasma-inputs[overlay]'")
+            st.error(
+                "Faltan dependencias del render. Ejecuta en la terminal: "
+                "`pip install 'fantasma-inputs[overlay]'`"
+            )
         except Exception as _e:
-            st.error("Error: %s" % _e)
+            st.error("Error en el render: %s" % _e)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -713,41 +800,67 @@ elif step_idx == 4:
     st.markdown('<div class="step-header">Paso 4 — Componer video final</div>', unsafe_allow_html=True)
     st.caption(
         "Junta el overlay del Paso 3 con tu video de grabación. "
-        "El resultado es un MP4 con el HUD ya integrado."
+        "El resultado es un **clip MP4 recortado exactamente a la duración de tu vuelta**, "
+        "con el HUD ya integrado y listo para subir."
     )
-    st.info(
-        "📂 Escribe la ruta completa de cada archivo. "
-        "Si no sabes la ruta, abre la carpeta en el Explorador de Windows, "
-        "haz clic en la barra de dirección y copia el texto."
+
+    # ── dos hechos clave que el usuario debe saber antes de empezar ────────────
+    _col_k1, _col_k2 = st.columns(2)
+    _col_k1.warning(
+        "🎙️ **El video debe tener audio del motor activado.**  \n"
+        "La detección automática de sincronía analiza el sonido del motor para saber exactamente "
+        "en qué segundo cruzaste la línea de meta. Sin audio del motor tendrás que calcular el "
+        "offset manualmente y escribirlo a mano."
+    )
+    _col_k2.info(
+        "✂️ **El output no es el video completo de tu sesión.**  \n"
+        "Se genera un clip recortado: solo los segundos de tu vuelta, desde que cruzas la meta "
+        "hasta que la terminas. Mucho más rápido de procesar y más fácil de compartir."
+    )
+
+    st.divider()
+    st.markdown("**① Archivos de entrada**")
+    st.caption(
+        "Escribe las rutas completas de los archivos. "
+        "Tip: en el Explorador de Windows, haz clic en la barra de dirección de la carpeta, "
+        "copia la ruta y añade el nombre del archivo al final."
     )
 
     _col1, _col2 = st.columns(2)
-    _video_path   = _col1.text_input(
+    _video_path = _col1.text_input(
         "Tu video de grabación",
         value=st.session_state.get("last_compose_video", ""),
-        placeholder=r"C:\Videos\mi_vuelta.mp4",
-        help="El video que grabaste mientras corrías.",
+        placeholder=r"C:\Videos\mi_sesion_nordschleife.mp4",
+        help=(
+            "El video que grabaste mientras corrías. "
+            "IMPORTANTE: debe tener el audio del sim activado (el sonido del motor). "
+            "Sin audio la detección automática de sync no funciona."
+        ),
     )
     _overlay_path = _col2.text_input(
-        "El overlay generado en el Paso 3",
+        "El overlay del HUD (del Paso 3)",
         value=st.session_state.get("last_overlay", ""),
         placeholder=r"C:\Users\TuNombre\fantasma_salida\overlay.webm",
+        help="El archivo .webm (o .mov) generado en el Paso 3.",
     )
 
-    # ── auto-sync ─────────────────────────────────────────────────────────────
+    # ── auto-sync — protagonista, no opcional ────────────────────────────────
     st.divider()
-    with st.expander("🔍 Detectar sincronía automáticamente *(opcional — requiere scipy)*"):
-        st.caption(
-            "Compara el audio del video con los canales RPM/velocidad de la telemetría "
-            "para calcular el offset exacto. Precisión ~0.5 s. "
-            "Si ya cargaste telemetría en el Paso 1 se usa directamente."
-        )
+    st.markdown("**② ¿En qué segundo del video empieza tu vuelta?**")
+    st.caption(
+        "La detección automática escucha el sonido del motor en tu video y lo compara con los "
+        "datos de RPM de la telemetría para encontrar el segundo exacto en que cruzaste la meta. "
+        "Precisión ~0.5 s. Tarda ~30 segundos."
+    )
+
+    with st.expander("🔍 Detectar sincronía automáticamente *(recomendado — requiere scipy)*", expanded=True):
         _drv_for_sync = st.session_state.get("drv_lap")
         _sc_col1, _sc_col2 = st.columns([2, 1])
         with _sc_col1:
             if _drv_for_sync is None:
+                st.caption("No hay telemetría cargada del Paso 1. Sube aquí el CSV del piloto:")
                 _sync_up = st.file_uploader(
-                    "Telemetría del piloto (CSV o XLSX)", type=["csv", "xlsx"],
+                    "CSV del piloto para sync", type=["csv", "xlsx"],
                     key="sync_drv_upload",
                 )
                 if _sync_up:
@@ -755,11 +868,18 @@ elif step_idx == 4:
                     if _sc["ok"] and _sc["laps"]:
                         from fantasma.core.normalize import fastest_lap as _fl
                         _drv_for_sync = _fl(_sc["laps"])
+                        st.success("✓ Telemetría cargada para sync.")
             else:
-                st.info("Usando vuelta cargada en el Paso 1.")
+                st.success(
+                    "✓ Usando la vuelta del Paso 1 (%s). "
+                    "Pulsa «Detectar» cuando tengas el video cargado." %
+                    _fmt_lap(_drv_for_sync.laptime)
+                )
         with _sc_col2:
             _can_sync = bool(_video_path and _drv_for_sync)
-            if st.button("Detectar offset", disabled=not _can_sync, key="btn_autosync"):
+            if not _can_sync:
+                st.caption("Necesitas el video y la telemetría para detectar.")
+            if st.button("Detectar", disabled=not _can_sync, key="btn_autosync", type="primary" if _can_sync else "secondary"):
                 with st.spinner("Analizando audio del video… (~30 s)"):
                     try:
                         from fantasma.viz.sync import auto_sync
@@ -777,36 +897,76 @@ elif step_idx == 4:
             _z_s = st.session_state.get("_autosync_z", 0.0)
             _qlbl = "Excelente" if _z_s > 10 else "Muy bueno" if _z_s > 6 else "Bueno" if _z_s > 4 else "Marginal"
             st.success(
-                "Offset detectado: **%.3f s** · Sync quality: **%s** (z=%.1f σ) "
-                "— pre-cargado en «Retraso del HUD»." % (_off, _qlbl, _z_s)
+                "✓ Offset detectado: **%.3f s** desde el inicio del video hasta el cruce de meta.  \n"
+                "Sync quality: **%s** (z=%.1f σ) — pre-cargado en el campo de abajo." % (_off, _qlbl, _z_s)
             )
 
-    # ── parametros de composicion ──────────────────────────────────────────────
+    # ── parámetros de composición ─────────────────────────────────────────────
     st.divider()
+    st.markdown("**③ Parámetros del HUD**")
     _col3, _col4, _col5 = st.columns(3)
-    _pos_sel  = _col3.selectbox("Posición del HUD en pantalla", list(_POS_LABELS.keys()))
+    _pos_sel  = _col3.selectbox(
+        "Posición del HUD en pantalla",
+        list(_POS_LABELS.keys()),
+        help="Dónde se coloca el HUD dentro del frame del video.",
+    )
     _position = _POS_LABELS[_pos_sel]
     _offset   = _col4.number_input(
-        "Retraso del HUD (segundos)",
+        "Offset (segundos desde el inicio del video hasta la meta)",
         value=st.session_state.get("compose_offset", 0.0),
         step=0.1,
         key="compose_offset",
         help=(
-            "Cuántos segundos pasan desde el inicio del video hasta que empieza la vuelta. "
-            "Ejemplo: si empiezas a grabar 10 s antes de cruzar la meta, pon 10. "
-            "«Detectar offset» rellena este campo automáticamente."
+            "El segundo del video en que tu auto cruza la línea de meta por primera vez. "
+            "Ejemplo: si empiezas a grabar 12 segundos antes de cruzar la meta, escribe 12. "
+            "Si usaste «Detectar sincronía» este campo se rellena solo — no necesitas tocarlo."
         ),
     )
-    _scale = _col5.slider("Tamaño del HUD", 0.25, 1.5, 1.0, 0.05,
-                           help="1.0 = tamaño original.")
-
-    _out_path = st.text_input(
-        "Archivo de salida *(opcional)*",
-        placeholder=r"C:\Videos\mi_vuelta_con_hud.mp4",
-        help="Si lo dejas vacío se guarda junto al video con el sufijo _composed.",
+    _scale = _col5.slider(
+        "Tamaño del HUD",
+        0.25, 1.5, 1.0, 0.05,
+        help="1.0 = tamaño completo del render. 0.7 = más pequeño, si el HUD tapa algo importante.",
     )
 
     st.divider()
+    st.markdown("**④ Archivo de salida** *(opcional)*")
+    _out_path = st.text_input(
+        "Ruta del video final",
+        placeholder=r"C:\Videos\nordschleife_lap1_con_hud.mp4",
+        help=(
+            "Si lo dejas vacío, el archivo se guarda en la misma carpeta que el video "
+            "original con el sufijo `_composed.mp4`."
+        ),
+    )
+
+    # ── resumen pre-compose ───────────────────────────────────────────────────
+    _drv_lap = st.session_state.get("drv_lap")
+    if _video_path and _overlay_path and _drv_lap is not None:
+        def _mss(s):
+            return "%d:%02d" % (int(s) // 60, int(s) % 60)
+        st.info(
+            "**Resumen de lo que se va a generar:**  \n"
+            "- Video fuente: `%s`  \n"
+            "- Overlay: `%s`  \n"
+            "- Clip de salida: desde **%s min** del video → duración **%s** (%.0f s)  \n"
+            "- HUD posición: %s · escala: %.0f%%  \n"
+            "- Codec: NVENC (GPU) si hay GPU NVIDIA disponible, libx264 (CPU) si no." % (
+                os.path.basename(_video_path),
+                os.path.basename(_overlay_path),
+                _mss(float(st.session_state.get("compose_offset", 0.0))),
+                _mss(_drv_lap.laptime),
+                _drv_lap.laptime,
+                _pos_sel,
+                _scale * 100,
+            )
+        )
+
+    st.divider()
+    if not _video_path:
+        st.caption("⬆️ Escribe la ruta de tu video para habilitar el botón.")
+    elif not _overlay_path:
+        st.caption("⬆️ Escribe la ruta del overlay del Paso 3 para habilitar el botón.")
+
     if st.button("Componer video", type="primary", disabled=not (_video_path and _overlay_path)):
         if not _out_path:
             _base     = os.path.splitext(os.path.basename(_video_path))[0]
@@ -820,7 +980,6 @@ elif step_idx == 4:
                 pct = min(n / total, 1.0) if total else 0
                 _bar.progress(pct, text="Componiendo… frame %d / %d (%.0f%%)" % (n, total, pct * 100))
 
-            _drv_lap     = st.session_state.get("drv_lap")
             _lap_duration = _drv_lap.laptime if _drv_lap is not None else None
             _result = compose_video(_video_path, _overlay_path, _out_path,
                                     position=_position, offset=_offset, scale=_scale,
