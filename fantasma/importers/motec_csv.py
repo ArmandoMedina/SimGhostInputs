@@ -10,7 +10,25 @@ Estructura del export de i2:
 import csv
 import os
 
-from ..core.lap import Lap, MOTEC_MAP
+from ..core.lap import Lap
+
+MOTEC_MAP = {
+    "Time": "time", "Distance": "dist", "Ground Speed": "speed",
+    "Throttle Pos": "throttle", "Brake Pos": "brake", "Steering Pos": "steering",
+    "Gear": "gear", "G Force Lat": "glat", "G Force Long": "glong",
+    "Engine RPM": "rpm", "Altitude": "alt",
+    "Lap Number": "lap_number", "BR2 Beacon Number": "beacon",
+    "Speed": "speed", "THROTTLE": "throttle", "BRAKE": "brake", "STEERANGLE": "steering",
+    "Tyre Speed FL": "ts_fl", "Tyre Speed FR": "ts_fr",
+    "Tyre Speed RL": "ts_rl", "Tyre Speed RR": "ts_rr",
+    "Tyre Temp FL": "tt_fl", "Tyre Temp FR": "tt_fr",
+    "Tyre Temp RL": "tt_rl", "Tyre Temp RR": "tt_rr",
+    "Brake Temp FL": "bt_fl", "Brake Temp FR": "bt_fr",
+    "Brake Temp RL": "bt_rl", "Brake Temp RR": "bt_rr",
+    "ABS Active": "abs", "TCS Active": "tcs",
+    "Fuel Level": "fuel", "Clutch Pos": "clutch", "Brake Bias Setting": "bias",
+    "Track Temp": "track_temp", "Ambient Temp": "ambient_temp",
+}
 
 
 class NotMotecFormat(Exception):

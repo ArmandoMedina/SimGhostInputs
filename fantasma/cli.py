@@ -4,7 +4,7 @@ import json
 import sys
 
 from . import importers
-from .core.normalize import split_laps, fastest_lap
+from .core.normalize import fastest_lap
 from .core.corners import detect_corners, extract_milestones
 from .core.compare import compare
 from .viz.report import write_outputs
@@ -21,21 +21,17 @@ def _parse_map(pairs):
 
 
 def _load_lap(path, column_map=None, lap_index=None):
-    outing = importers.load(path, column_map)
-    laps = split_laps(outing)
-    if lap_index is not None:
-        lap = laps[lap_index]
-    else:
-        lap = fastest_lap(laps)
-    return outing, laps, lap
+    laps = importers.load_laps(path, column_map)
+    lap = laps[lap_index] if lap_index is not None else fastest_lap(laps)
+    return laps, lap
 
 
 def cmd_laps(args):
-    outing, laps, best = _load_lap(args.file, _parse_map(args.map))
+    laps, best = _load_lap(args.file, _parse_map(args.map))
     print("Archivo: %s" % args.file)
     for k in ("Venue", "Vehicle", "Driver"):
-        if k in outing.meta:
-            print("  %s: %s" % (k, outing.meta[k]))
+        if k in best.meta:
+            print("  %s: %s" % (k, best.meta[k]))
     print("\n  #  duracion   longitud   completa")
     for i, l in enumerate(laps):
         mark = " <- mas rapida" if l is best else ""
@@ -44,7 +40,7 @@ def cmd_laps(args):
 
 
 def cmd_detect(args):
-    _, _, lap = _load_lap(args.file, _parse_map(args.map), args.lap)
+    _, lap = _load_lap(args.file, _parse_map(args.map), args.lap)
     events, _ = detect_corners(lap)
     corners = extract_milestones(lap, events)
     print("Vuelta: %.2fs, %.0fm — %d curvas detectadas" % (lap.laptime, lap.length, len(corners)))
@@ -63,8 +59,8 @@ def cmd_detect(args):
 
 
 def cmd_compare(args):
-    _, _, ref = _load_lap(args.reference, _parse_map(args.map))
-    _, _, drv = _load_lap(args.driver, _parse_map(args.map), args.lap)
+    _, ref = _load_lap(args.reference, _parse_map(args.map))
+    _, drv = _load_lap(args.driver, _parse_map(args.map), args.lap)
     corners = None
     if args.corners:
         with open(args.corners, encoding="utf-8") as f:
@@ -94,8 +90,8 @@ def cmd_overlay(args):
     import os
     from .viz.overlay import render_overlay
 
-    _, ref_laps, ref = _load_lap(args.reference, _parse_map(args.map))
-    _, drv_laps, drv = _load_lap(args.driver, _parse_map(args.map), args.lap)
+    ref_laps, ref = _load_lap(args.reference, _parse_map(args.map))
+    drv_laps, drv = _load_lap(args.driver, _parse_map(args.map), args.lap)
 
     corners = None
     if args.corners:
@@ -179,7 +175,7 @@ def cmd_compose(args):
 
     if args.driver:
         try:
-            _, _, lap = _load_lap(
+            _, lap = _load_lap(
                 args.driver,
                 _parse_map(getattr(args, "map", None)),
                 getattr(args, "lap_idx", None),

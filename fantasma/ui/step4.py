@@ -1,0 +1,279 @@
+"""Paso 4 — Componer: superponer overlay sobre la grabación."""
+import os
+
+import streamlit as st
+
+from ._helpers import (
+    _cache_file, _fmt_lap, _go, _next_step_btn,
+    _pick_file, _pick_folder, _POS_LABELS,
+    _render_widget, _start_bg_render, _sync_quality_label,
+)
+
+
+def render():
+    st.markdown('<div class="step-header">Paso 4 — Componer video final</div>', unsafe_allow_html=True)
+    st.caption(
+        "Junta el overlay del Paso 3 con tu video de grabación. "
+        "El resultado es un **clip MP4 recortado exactamente a la duración de tu vuelta**, "
+        "con el HUD ya integrado y listo para subir."
+    )
+
+    _col_k1, _col_k2 = st.columns(2)
+    _col_k1.warning(
+        "🎙️ **El video DEBE tener audio del motor activado.**  \n"
+        "La sincronía automática analiza el sonido del motor para encontrar el segundo exacto "
+        "en que cruzaste la meta. Sin audio tendrás que calcular el offset manualmente."
+    )
+    _col_k2.info(
+        "✂️ **El output no es el video completo de tu sesión.**  \n"
+        "Se genera un clip recortado exactamente a tu vuelta: desde la meta hasta que la terminas. "
+        "Mucho más rápido de procesar y más fácil de compartir."
+    )
+
+    st.divider()
+
+    # ── ① Archivos de entrada ─────────────────────────────────────────────────
+    st.markdown("**① Archivos de entrada**")
+    st.caption("Usa el botón «Explorar…» para abrir el selector de archivos del sistema.")
+
+    if "_compose_video_pending" in st.session_state:
+        st.session_state["_compose_video_input"] = st.session_state.pop("_compose_video_pending")
+    _vc1, _vc2 = st.columns([5, 1])
+    _video_path = _vc1.text_input(
+        "Tu video de grabación",
+        value=st.session_state.get("last_compose_video", ""),
+        placeholder=r"C:\Videos\mi_sesion_nordschleife.mp4",
+        key="_compose_video_input",
+    )
+    if _vc2.button("Explorar…", key="_btn_pick_video"):
+        _p = _pick_file("Seleccionar video de grabación",
+                        [("Video", "*.mp4 *.mov *.mkv *.avi"), ("Todos", "*.*")])
+        if _p:
+            st.session_state["last_compose_video"] = _p
+            st.session_state["_compose_video_pending"] = _p
+            st.rerun()
+
+    _def_overlay = st.session_state.get("last_overlay", "")
+    if "_compose_overlay_pending" in st.session_state:
+        st.session_state["_compose_overlay_input"] = st.session_state.pop("_compose_overlay_pending")
+    _oc1, _oc2 = st.columns([5, 1])
+    _overlay_path = _oc1.text_input(
+        "Overlay del HUD (generado en el Paso 3)",
+        value=_def_overlay,
+        placeholder=r"C:\Users\TuNombre\fantasma_salida\overlay.webm",
+        key="_compose_overlay_input",
+    )
+    if _oc2.button("Explorar…", key="_btn_pick_overlay"):
+        _p = _pick_file("Seleccionar overlay",
+                        [("WebM / MOV", "*.webm *.mov"), ("Todos", "*.*")])
+        if _p:
+            st.session_state["last_overlay"] = _p
+            st.session_state["_compose_overlay_pending"] = _p
+            st.rerun()
+
+    # ── ② Sincronía ───────────────────────────────────────────────────────────
+    st.divider()
+    st.markdown("**② Sincronía: ¿en qué segundo del video empieza tu vuelta?**")
+    st.caption(
+        "SimGhostInputs escucha el sonido del motor en tu video y lo compara con los RPM de la "
+        "telemetría para encontrar automáticamente el segundo exacto en que cruzaste la meta. "
+        "Precisión ~0.5 s · tarda ~30 segundos · necesitas **scipy** instalado."
+    )
+
+    _drv_for_sync = st.session_state.get("drv_lap")
+    if _drv_for_sync is None:
+        st.caption("No hay telemetría cargada. Sube aquí el CSV del piloto para poder detectar:")
+        _sync_up = st.file_uploader(
+            "CSV del piloto para sync", type=["csv", "xlsx"],
+            key="sync_drv_upload",
+        )
+        if _sync_up:
+            _sc = _cache_file(_sync_up)
+            if _sc["ok"] and _sc["laps"]:
+                from fantasma.core.normalize import fastest_lap as _fl
+                _drv_for_sync = _fl(_sc["laps"])
+                st.success("✓ Telemetría cargada.")
+    else:
+        st.caption("Usando la vuelta del Paso 1 (%s)." % _fmt_lap(_drv_for_sync.laptime))
+
+    _can_sync = bool(_video_path and _drv_for_sync)
+    _sc1, _sc2 = st.columns([3, 1])
+    with _sc2:
+        if not _can_sync:
+            st.caption("Necesitas el video y la telemetría.")
+        if st.button("Detectar sincronía", disabled=not _can_sync,
+                     type="primary" if _can_sync else "secondary", key="btn_autosync"):
+            with st.spinner("Analizando audio… (~30 s)"):
+                try:
+                    from fantasma.viz.sync import auto_sync
+                    _det, _z = auto_sync(_video_path, _drv_for_sync)
+                    st.session_state["_autosync_detected"] = _det
+                    st.session_state["_autosync_z"]        = _z
+                    st.session_state["compose_offset"]     = _det
+                    st.rerun()
+                except ImportError as _ie:
+                    st.error(str(_ie))
+                except Exception as _se:
+                    st.error("Error en auto-sync: %s" % _se)
+
+    with _sc1:
+        if "_autosync_detected" in st.session_state:
+            _off  = st.session_state["_autosync_detected"]
+            _z_s  = st.session_state.get("_autosync_z", 0.0)
+            _qlbl = _sync_quality_label(_z_s)
+            st.success(
+                "✓ **Offset detectado: %.3f s** desde el inicio del video hasta el cruce de meta.  \n"
+                "Calidad de sincronía: **%s** — el valor se cargó en el campo de abajo." % (_off, _qlbl)
+            )
+
+    with st.expander("⚙️ Sincronizar manualmente (avanzado)"):
+        st.warning(
+            "⚠️ Usa esto solo si la detección automática falló o el video no tiene audio del motor. "
+            "Necesitarás reproducir el video y anotar el segundo exacto en que cruzas la meta."
+        )
+        st.markdown(
+            "**Cómo encontrar el offset manualmente:**  \n"
+            "1. Abre el video en VLC.  \n"
+            "2. Busca el momento en que cruzas la línea de meta.  \n"
+            "3. Lee el tiempo en la barra de reproducción (p. ej. `0:00:17`).  \n"
+            "4. Escribe ese valor en segundos abajo (p. ej. `17`)."
+        )
+
+    # ── ③ Parámetros del HUD ──────────────────────────────────────────────────
+    st.divider()
+    st.markdown("**③ Parámetros del HUD**")
+    _col3, _col4, _col5 = st.columns(3)
+    _pos_sel  = _col3.selectbox(
+        "Posición del HUD en pantalla",
+        list(_POS_LABELS.keys()),
+        help="Dónde se coloca el HUD dentro del frame del video.",
+    )
+    _position = _POS_LABELS[_pos_sel]
+    _offset   = _col4.number_input(
+        "Offset (s desde inicio del video hasta la meta)",
+        value=float(st.session_state.get("compose_offset", 0.0)),
+        step=0.1,
+        key="compose_offset",
+        help=(
+            "El segundo del video en que tu auto cruza la línea de meta. "
+            "Si usaste «Detectar sincronía» este campo se rellena solo."
+        ),
+    )
+    _scale = _col5.slider(
+        "Tamaño del HUD",
+        0.25, 1.5, 1.0, 0.05,
+        help="1.0 = tamaño original del render. 0.7 = más pequeño.",
+    )
+
+    # ── ④ Carpeta de salida ───────────────────────────────────────────────────
+    st.divider()
+    st.markdown("**④ Carpeta de salida**")
+    _def_out_folder = (
+        os.path.dirname(_overlay_path) if _overlay_path and os.path.dirname(_overlay_path)
+        else os.path.dirname(_video_path) if _video_path and os.path.dirname(_video_path)
+        else os.path.expanduser("~")
+    )
+    if "_compose_out_folder_pending" in st.session_state:
+        st.session_state["_compose_out_folder_input"] = st.session_state.pop("_compose_out_folder_pending")
+    _of1, _of2 = st.columns([5, 1])
+    _out_folder = _of1.text_input(
+        "Carpeta donde guardar el video final",
+        value=st.session_state.get("_compose_out_folder", _def_out_folder),
+        key="_compose_out_folder_input",
+        help="Por defecto se usa la carpeta del overlay. Puedes cambiarlo aquí.",
+    )
+    if _of2.button("Explorar…", key="_btn_pick_compose_out"):
+        _p = _pick_folder("Carpeta de salida", initialdir=_def_out_folder)
+        if _p:
+            st.session_state["_compose_out_folder"] = _p
+            st.session_state["_compose_out_folder_pending"] = _p
+            st.rerun()
+
+    # ── resumen pre-compose ───────────────────────────────────────────────────
+    _drv_lap = st.session_state.get("drv_lap")
+    if _video_path and _overlay_path and _drv_lap is not None:
+        def _mss(s):
+            return "%d:%02d" % (int(s) // 60, int(s) % 60)
+        _offset_val = float(st.session_state.get("compose_offset", 0.0))
+        st.info(
+            "**Resumen:**  \n"
+            "- Video fuente: `%s`  \n"
+            "- Overlay: `%s`  \n"
+            "- Clip: desde **%s min** del video → duración **%s** (%.0f s)  \n"
+            "- HUD: %s · escala %.0f%%  \n"
+            "- Codec: NVENC (GPU NVIDIA) si está disponible, libx264 (CPU) si no." % (
+                os.path.basename(_video_path),
+                os.path.basename(_overlay_path),
+                _mss(_offset_val),
+                _mss(_drv_lap.laptime),
+                _drv_lap.laptime,
+                _pos_sel,
+                _scale * 100,
+            )
+        )
+
+    st.divider()
+    if not _video_path:
+        st.caption("⬆️ Elige tu video de grabación para habilitar el botón.")
+    elif not _overlay_path:
+        st.caption("⬆️ Elige el archivo overlay del Paso 3 para habilitar el botón.")
+
+    # ── render en curso ───────────────────────────────────────────────────────
+    _cp_done, _cp_err, _cp_result = _render_widget(4)
+    if _cp_done:
+        if _cp_err == "__CANCELLED__":
+            st.warning("Composición cancelada.")
+        elif _cp_err:
+            st.error("Error: %s" % _cp_err)
+        else:
+            def _mss(s):
+                return "%d:%02d" % (int(s) // 60, int(s) % 60)
+            st.success("✓ Video guardado en: `%s`" % _cp_result)
+            _z_score = st.session_state.get("_autosync_z")
+            if _z_score is not None:
+                st.info(
+                    "Calidad de sincronía: **%s** · offset %.2f s" % (
+                        _sync_quality_label(_z_score),
+                        float(st.session_state.get("compose_offset", 0.0)),
+                    )
+                )
+            st.session_state["last_compose_video"] = _video_path
+            st.balloons()
+            _next_step_btn(4)
+            st.divider()
+            if st.button("🔄 Procesar otra vuelta",
+                         help="Vuelve al Paso 1 para elegir otra vuelta. Mantiene la referencia y el video."):
+                for _k in ["drv_lap", "drv_laps", "drv_path", "summary", "trace", "rows",
+                           "charts_paths", "last_overlay", "_autosync_detected", "_autosync_z",
+                           "compose_offset", "corners", "corners_editable"]:
+                    st.session_state.pop(_k, None)
+                for _k in list(st.session_state.keys()):
+                    if _k.startswith("drv_sel_") or _k == "drv_lap_tbl":
+                        st.session_state.pop(_k, None)
+                st.session_state["nav_step"] = 1
+                st.rerun()
+
+    if not st.session_state.get("_render_active"):
+        if st.button("Componer video", type="primary", disabled=not (_video_path and _overlay_path)):
+            _out_folder_val = _out_folder or _def_out_folder
+            _base     = os.path.splitext(os.path.basename(_video_path))[0]
+            _out_path = os.path.join(_out_folder_val, _base + "_composed.mp4")
+            os.makedirs(_out_folder_val, exist_ok=True)
+            try:
+                from fantasma.viz.compose import compose_video as _cv
+            except ImportError as _ie:
+                st.error("ffmpeg o dependencias faltantes: %s" % _ie)
+                st.stop()
+            _lap_dur = _drv_lap.laptime if _drv_lap is not None else None
+            _start_bg_render(
+                4, _cv,
+                progress_kw="progress",
+                video=_video_path,
+                overlay=_overlay_path,
+                output=_out_path,
+                position=_position,
+                offset=float(st.session_state.get("compose_offset", 0.0)),
+                scale=_scale,
+                lap_duration=_lap_dur,
+            )
+            st.rerun()

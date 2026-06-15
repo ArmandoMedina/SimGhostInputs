@@ -15,3 +15,9 @@ def load(path, column_map=None):
                 return generic_csv.load(path, column_map)
             raise
     raise ValueError("Formato no soportado: %s" % ext)
+
+
+def load_laps(path, column_map=None):
+    """Carga un archivo y separa las vueltas. Devuelve lista de Lap."""
+    from ..core.normalize import split_laps
+    return split_laps(load(path, column_map))
