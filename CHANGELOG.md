@@ -9,6 +9,13 @@ _(ninguno)_
 
 ---
 
+## [0.6.4] — 2026-06-15
+
+### Añadido
+- **`CONTRIBUTING.md` — guía de contribución completa**: cómo reportar bugs (qué incluir, qué no subir), cómo proponer features (abrir issue primero), entorno de desarrollo paso a paso, principios de diseño del proyecto, convenciones de commits (Conventional Commits), proceso de PR y tabla de contribuciones bienvenidas vs fuera de scope.
+
+---
+
 ## [0.6.3] — 2026-06-15
 
 ### Cambiado
