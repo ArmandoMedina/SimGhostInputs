@@ -39,27 +39,24 @@ def _video_fps(ffprobe, video_path):
 def _total_frames(ffmpeg_path, video_path, lap_duration=None):
     """Estima frames totales para la barra de progreso.
 
-    Si lap_duration está disponible calcula fps * lap_duration (más preciso
-    para el modelo de recorte). Sin él cae al conteo completo del video.
+    Usa siempre fps * duración — nb_frames del contenedor es frecuentemente
+    incorrecto (mezcla pistas de audio, encoders con metadatos erróneos, etc.).
     """
     ffprobe = _ffprobe_path(ffmpeg_path)
     if not ffprobe:
         return 0
-    if lap_duration:
-        fps = _video_fps(ffprobe, video_path)
-        return int(lap_duration * fps) if fps else 0
     try:
+        if lap_duration:
+            fps = _video_fps(ffprobe, video_path)
+            return int(lap_duration * fps) if fps else 0
         r = subprocess.run(
             [ffprobe, "-v", "error", "-select_streams", "v:0",
-             "-show_entries", "stream=nb_frames,r_frame_rate",
+             "-show_entries", "stream=r_frame_rate",
              "-show_entries", "format=duration",
              "-of", "default=noprint_wrappers=1:nokey=1", video_path],
             capture_output=True, text=True,
         )
         lines = [l.strip() for l in r.stdout.splitlines() if l.strip()]
-        for line in lines:
-            if line.isdigit():
-                return int(line)
         fps_line = next((l for l in lines if "/" in l), None)
         dur_line = next((l for l in lines if "." in l), None)
         if fps_line and dur_line:
@@ -192,7 +189,11 @@ def compose_video(video, overlay, output, position="bottom-right",
                 if m and n_frames > 0:
                     f = int(m.group(1))
                     progress(f, n_frames)
-        finally:
+        except BaseException:
+            proc.kill()
+            proc.wait()
+            raise
+        else:
             proc.wait()
         if proc.returncode != 0:
             raise subprocess.CalledProcessError(proc.returncode, cmd)

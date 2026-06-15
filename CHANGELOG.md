@@ -7,16 +7,26 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/). Versionado
 ### Añadido
 - **UI — pasada exhaustiva de UX/copy**: cada campo, widget y sección tiene una explicación breve en lenguaje llano. Se añaden dos callouts prominentes al tope del Paso 4 («el video debe tener audio del motor» + «el output es un clip, no el video completo»). Las tarjetas de flujo del Paso 0 incluyen «Necesitas:» con los requisitos de cada flujo. Los selectores de formato/fps tienen ayuda contextual ampliada. El auto-sync pasa de expander colapsado a sección abierta y destacada como ruta recomendada. Se añade un bloque «Resumen de lo que se va a generar» antes del botón Componer.
 - **`auto_sync` — detección de pausas de juego**: tras detectar el offset, verifica que no haya silencio prolongado (>3 s, energía <5% de la media) en la ventana de audio correspondiente a la vuelta. Si lo hay, lanza `RuntimeError` con el timestamp exacto de la pausa. Un video pausado durante la grabación desincroniza la telemetría y produce clips erróneos.
-- **UI Paso 4 — badge de calidad de sync**: tras «Detectar offset» muestra label descriptivo («Excelente / Muy bueno / Bueno / Marginal») con el z-score. Tras «Componer video» repite el badge si el compose provino de auto-sync.
+- **UI Paso 4 — badge de calidad de sync**: tras «Detectar offset» muestra label descriptivo («Excelente / Muy bueno / Bueno / Marginal»). Tras «Componer video» repite el badge si el compose provino de auto-sync.
 - **UI Paso 4 — botón «Procesar otra vuelta»**: aparece tras un compose exitoso. Limpia el estado del piloto (vuelta, overlay, sync, gráficas) sin tocar la referencia ni el video cargado; regresa al Paso 1 con el video pre-cargado para el siguiente ciclo.
+- **UI — render con cancelación y threading**: overlay (Paso 3) y compose (Paso 4) corren en hilo de fondo con barra de progreso en tiempo real. Aparece un botón **Detener** durante el render; al pulsarlo se cancela el proceso ffmpeg limpiamente. La barra de navegación del sidebar se bloquea durante el render; si el usuario cambia de paso, el render se cancela automáticamente con un aviso.
+- **UI — selectores de archivo y carpeta nativos (tkinter)**: botones «Explorar…» junto a los campos de ruta en Paso 3 (carpeta de salida) y Paso 4 (video, overlay, carpeta de salida). Abre el explorador del SO sin copiar archivos — solo toma la ruta seleccionada.
+- **UI Paso 3 — FPS fuera del expander**: el selector de FPS pasa a ser un radio button (24 / 30 / 60, default 30) en la página principal. El formato de salida solo aparece en el flujo «Solo overlay»; en «Video con HUD» siempre se usa `webm`.
+- **UI Paso 4 — auto-sync como flujo principal**: el bloque de sincronía automática aparece directamente en la página (sin expander). La opción de offset manual pasa a un expander colapsado «Sincronizar manualmente (avanzado)» con instrucciones de cuándo y cómo usarlo.
+- **UI Paso 4 — carpeta de salida del compose**: campo de carpeta con botón «Explorar…». Por defecto toma la carpeta del overlay recién generado. Nombre de archivo auto-generado (`<nombre_video>_composed.mp4`).
 
 ### Mejorado
-- **`auto_sync` — retorna `(offset, z_score)`**: ahora devuelve una tupla en lugar de solo el offset. El z-score permite al caller saber la confianza de la sincronización. CLI imprime `offset + z`; UI muestra badge de calidad sin ralentizar el flujo.
+- **`auto_sync` — retorna `(offset, z_score)`**: ahora devuelve una tupla en lugar de solo el offset. El z-score permite al caller evaluar la confianza de la sincronización. CLI imprime `offset + z`; UI muestra badge de calidad.
+
+### Corregido
+- **`compose_video` — barra de progreso mostraba «frame 0 / 39404999 (0%)»**: `_total_frames()` consultaba `nb_frames` del contenedor, que muchos encoders rellenan con un valor incorrecto. La función ahora siempre usa `fps × duración` vía ffprobe e ignora `nb_frames`.
+- **`_run_ffmpeg` (overlay) y loop de progreso (compose) — proceso ffmpeg no se mataba al cancelar**: el bloque `finally` hacía `proc.wait()` en lugar de `proc.kill()`. Corregido con `except BaseException: proc.kill(); proc.wait(); raise`.
 
 ### Cambiado
-- **UI Paso 1 — selección de vuelta**: la tabla con checkboxes múltiples reemplazada por radio buttons. Una sola vuelta seleccionable por diseño; sin mensajes de error ni warnings por selección incorrecta.
-- **UI Paso 3 — overlay**: eliminado el checkbox «Generar para TODAS las vueltas». El overlay siempre se genera para la vuelta seleccionada en Paso 1. Múltiples vueltas se procesan repitiendo el flujo (con «Procesar otra vuelta», disponible desde este release).
-- **`fantasma compose` — output recortado a la vuelta**: cuando se provee telemetría (`--driver`), el output es un clip de exactamente la duración de la vuelta en lugar del video completo. Usa seek rápido (`-ss offset`) y límite de duración (`-t laptime`). Tiempos de compose consistentes sin importar la duración de la sesión grabada (Nordschleife: 1:15 min vs 4:47 previos).
+- **UI Paso 1 — selección de vuelta**: checkboxes múltiples reemplazados por radio buttons. Una sola vuelta por diseño.
+- **UI Paso 3 — overlay**: eliminado el checkbox «Generar para TODAS las vueltas». El overlay siempre se genera para la vuelta del Paso 1.
+- **`fantasma compose` — output recortado a la vuelta**: cuando se provee telemetría, el output es un clip de exactamente la duración de la vuelta (seek rápido `-ss` + `-t laptime`).
+- **UI Paso 4 — thresholds del badge de calidad de sync**: umbral «Excelente» bajado de z>10 a z>8 (z=9.7σ ahora muestra «Excelente»). Nuevos umbrales: Excelente z>8 · Muy bueno z>5 · Bueno z>3 · Marginal ≤3. El valor z numérico se omite del badge principal para no confundir con porcentajes.
 
 ### Pendiente / Known issues
 _(ninguno)_
