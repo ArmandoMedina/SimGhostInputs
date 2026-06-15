@@ -9,6 +9,16 @@ _(ninguno)_
 
 ---
 
+## [0.6.3] — 2026-06-15
+
+### Cambiado
+- **`importers/motec_csv.py` — `MOTEC_MAP` movido desde `core/lap.py`**: el diccionario de traducción de nombres de canal MoTeC pertenece al importer que lo usa, no al modelo de datos central. `core/lap.py` queda como modelo puro sin conocimiento de proveedores externos.
+- **`importers/__init__.py` — nueva función `load_laps(path, column_map)`**: combina `load()` + `split_laps()` en un único punto de entrada compartido. Elimina la duplicación entre CLI y UI que cada uno repetía este patrón por separado.
+- **`cli.py` — `_load_lap` simplificado**: usa `importers.load_laps()`, devuelve `(laps, lap)` en lugar de `(outing, laps, lap)`. El `outing` no era necesario porque cada vuelta hereda los metadatos del outing vía `slice_time`.
+- **`ui/app.py` — partido en módulos por paso** (de 1 237 líneas a ~100): la UI monolítica se dividió en `_helpers.py` (helpers y constantes compartidas) + `step0.py`–`step4.py` (un archivo por paso con su función `render()`). `app.py` queda como router puro: inicializa estado, renderiza el sidebar y delega en el paso activo.
+
+---
+
 ## [0.6.2] — 2026-06-15
 
 ### Cambiado
