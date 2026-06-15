@@ -647,9 +647,13 @@ elif step_idx == 1:
             try:
                 ref_lap = _ref_laps[_ref_sel_i]
                 drv_lap = _drv_laps[_drv_sel_i]
-                corners = st.session_state.get("corners")
+                # Solo usar corners cacheados si el usuario los generó/editó explícitamente
+                # en esta sesión (corners_editable=True). Evita leer corners stale de
+                # una carga anterior de JSON que quedó en session_state.
+                corners = st.session_state.get("corners") if st.session_state.get("corners_editable") else None
                 if _corners_file:
                     corners = _corners_from_json(_corners_file)
+                    st.session_state["corners_editable"] = True
                 st.session_state.update({
                     "ref_path":      _ref_path,
                     "drv_path":      _dc["path"],
@@ -701,6 +705,13 @@ elif step_idx == 2:
         with st.spinner("Comparando vuelta metro a metro…"):
             try:
                 from fantasma.core.compare import compare
+                # Si no hay corners del usuario, compare() los auto-detecta internamente.
+                # Los guardamos en session_state para que el overlay los use en Paso 3.
+                if not corners:
+                    from fantasma.core.corners import detect_corners, extract_milestones
+                    _evs, _ = detect_corners(ref_lap)
+                    corners = extract_milestones(ref_lap, _evs)
+                    st.session_state["corners"] = corners
                 _t, _r, _s = compare(ref_lap, drv_lap, step=1.0, corners=corners)
                 st.session_state.update({"trace": _t, "rows": _r, "summary": _s})
                 st.session_state.pop("charts_paths", None)
@@ -1170,7 +1181,7 @@ elif step_idx == 4:
                          help="Vuelve al Paso 1 para elegir otra vuelta. Mantiene la referencia y el video."):
                 for _k in ["drv_lap", "drv_laps", "drv_path", "summary", "trace", "rows",
                            "charts_paths", "last_overlay", "_autosync_detected", "_autosync_z",
-                           "compose_offset"]:
+                           "compose_offset", "corners", "corners_editable"]:
                     st.session_state.pop(_k, None)
                 for _k in list(st.session_state.keys()):
                     if _k.startswith("drv_sel_") or _k == "drv_lap_tbl":
