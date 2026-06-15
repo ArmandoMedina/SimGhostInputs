@@ -4,6 +4,13 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/). Versionado
 
 ## [Unreleased]
 
+### Pendiente / Known issues
+_(ninguno)_
+
+---
+
+## [0.6.0] — 2026-06-14
+
 ### Añadido
 - **UI — pasada exhaustiva de UX/copy**: cada campo, widget y sección tiene una explicación breve en lenguaje llano. Se añaden dos callouts prominentes al tope del Paso 4 («el video debe tener audio del motor» + «el output es un clip, no el video completo»). Las tarjetas de flujo del Paso 0 incluyen «Necesitas:» con los requisitos de cada flujo. Los selectores de formato/fps tienen ayuda contextual ampliada. El auto-sync pasa de expander colapsado a sección abierta y destacada como ruta recomendada. Se añade un bloque «Resumen de lo que se va a generar» antes del botón Componer.
 - **`auto_sync` — detección de pausas de juego**: tras detectar el offset, verifica que no haya silencio prolongado (>3 s, energía <5% de la media) en la ventana de audio correspondiente a la vuelta. Si lo hay, lanza `RuntimeError` con el timestamp exacto de la pausa. Un video pausado durante la grabación desincroniza la telemetría y produce clips erróneos.
@@ -27,9 +34,6 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/). Versionado
 - **UI Paso 3 — overlay**: eliminado el checkbox «Generar para TODAS las vueltas». El overlay siempre se genera para la vuelta del Paso 1.
 - **`fantasma compose` — output recortado a la vuelta**: cuando se provee telemetría, el output es un clip de exactamente la duración de la vuelta (seek rápido `-ss` + `-t laptime`).
 - **UI Paso 4 — thresholds del badge de calidad de sync**: umbral «Excelente» bajado de z>10 a z>8 (z=9.7σ ahora muestra «Excelente»). Nuevos umbrales: Excelente z>8 · Muy bueno z>5 · Bueno z>3 · Marginal ≤3. El valor z numérico se omite del badge principal para no confundir con porcentajes.
-
-### Pendiente / Known issues
-_(ninguno)_
 
 ---
 
