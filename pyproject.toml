@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "fantasma-inputs"
-version = "0.6.0"
+version = "0.6.1"
 description = "Compara tus inputs de simracing contra una vuelta de referencia, por distancia."
 readme = "README.md"
 license = "AGPL-3.0-or-later"

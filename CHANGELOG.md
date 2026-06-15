@@ -4,6 +4,13 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/). Versionado
 
 ## [Unreleased]
 
+### Pendiente / Known issues
+_(ninguno)_
+
+---
+
+## [0.6.1] — 2026-06-14
+
 ### Corregido
 - **UI Paso 3 — nombres de curvas no aparecían en el overlay con el flujo «Solo overlay»**: el flujo sin Paso 2 saltaba la auto-detección de corners que solo existía en el bloque de comparación. Paso 3 ahora auto-detecta corners desde la vuelta de referencia si no hay corners explícitos cargados (JSON o botón «Detectar curvas»). Diagnóstico confirmado: el rendering HUD sí funcionaba; el problema era que `corners_by_seg = []` porque `corners or []` era lista vacía.
 - **UI Paso 3/4 — `StreamlitAPIException` al usar «Explorar…»**: Streamlit prohíbe modificar `session_state[widget_key]` después de que el widget fue instanciado en el mismo run. Corregido con patrón pending key: el picker guarda el valor en `_*_pending`, llama `st.rerun()`, y en el siguiente run el valor se aplica al widget key vía `pop()` antes de que `text_input()` se instancie. Afecta los 4 pickers (Paso 3: carpeta overlay; Paso 4: video, overlay, carpeta salida).
