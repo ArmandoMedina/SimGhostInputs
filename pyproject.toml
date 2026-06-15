@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "fantasma-inputs"
-version = "0.6.1"
+version = "0.6.2"
 description = "Compara tus inputs de simracing contra una vuelta de referencia, por distancia."
 readme = "README.md"
 license = "AGPL-3.0-or-later"
@@ -13,17 +13,17 @@ dependencies = []
 
 [project.optional-dependencies]
 # pip install -e ".[xlsx]"      -> leer archivos .xlsx de MoTeC i2
-xlsx    = ["openpyxl"]
+xlsx    = ["openpyxl>=3,<4"]
 # pip install -e ".[overlay]"   -> generar el HUD de video (fantasma overlay)
-overlay = ["Pillow>=10", "matplotlib>=3.7", "numpy>=1.24"]
+overlay = ["Pillow>=10,<12", "matplotlib>=3.7,<4", "numpy>=1.24,<3"]
 # pip install -e ".[charts]"    -> graficas ghost y mapa de delta (fantasma compare)
-charts  = ["matplotlib>=3.7"]
+charts  = ["matplotlib>=3.7,<4"]
 # pip install -e ".[ui]"        -> interfaz grafica local (streamlit)
-ui      = ["streamlit>=1.35", "pandas"]
+ui      = ["streamlit>=1.35,<2", "pandas>=2,<3"]
 # pip install -e ".[sync]"      -> auto-deteccion de offset video/telemetria (fantasma compose --auto-sync)
-sync    = ["scipy>=1.11", "numpy>=1.24"]
+sync    = ["scipy>=1.11,<2", "numpy>=1.24,<3"]
 # pip install -e ".[full]"      -> todo lo anterior
-full    = ["openpyxl", "Pillow>=10", "matplotlib>=3.7", "numpy>=1.24", "streamlit>=1.35", "pandas", "scipy>=1.11"]
+full    = ["openpyxl>=3,<4", "Pillow>=10,<12", "matplotlib>=3.7,<4", "numpy>=1.24,<3", "streamlit>=1.35,<2", "pandas>=2,<3", "scipy>=1.11,<2"]
 
 [project.scripts]
 fantasma = "fantasma.cli:main"

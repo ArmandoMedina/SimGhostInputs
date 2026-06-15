@@ -9,6 +9,13 @@ _(ninguno)_
 
 ---
 
+## [0.6.2] — 2026-06-15
+
+### Cambiado
+- **Dependencias — cotas superiores en todos los extras**: se añaden límites de versión mayor (`<N`) a todas las dependencias opcionales (`openpyxl<4`, `Pillow<12`, `matplotlib<4`, `numpy<3`, `streamlit<2`, `pandas<3`, `scipy<2`). Evita que una versión mayor con breaking changes se instale automáticamente en instalaciones nuevas. Los entornos existentes no se ven afectados.
+
+---
+
 ## [0.6.1] — 2026-06-14
 
 ### Corregido
