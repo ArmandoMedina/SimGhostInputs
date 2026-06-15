@@ -13,6 +13,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 
 import numpy as np
 
@@ -328,12 +329,28 @@ def _render_chunk(args):
 
 # ── render paralelo vía subprocess ───────────────────────────────────────────
 
+def _kill_all(procs):
+    for p in procs:
+        try:
+            p.kill()
+        except OSError:
+            pass
+    for p in procs:
+        try:
+            p.wait()
+        except OSError:
+            pass
+
+
 def _render_parallel(chunks, base, n_frames, progress):
     """Lanza un subprocess por chunk usando python -m fantasma.viz._overlay_worker.
 
     Evita el crash de ProcessPoolExecutor(spawn) bajo Streamlit: el proceso
     hijo intentaba reimportar __main__ del servidor de Streamlit y caía en
     cascada, forzando el fallback al render serial (1 core).
+
+    Soporta cancelación: si progress() lanza cualquier excepción (ej.
+    RuntimeError("__CANCELLED__")), mata todos los workers inmediatamente.
     """
     worker_cmd = [sys.executable, "-m", "fantasma.viz._overlay_worker"]
     procs, tmp_files = [], []
@@ -351,18 +368,32 @@ def _render_parallel(chunks, base, n_frames, progress):
 
     failed = []
     done = 0
-    for p, tmp_f, (s, e) in zip(procs, tmp_files, chunks):
-        p.wait()
-        try:
-            os.unlink(tmp_f)
-        except OSError:
-            pass
-        if p.returncode != 0:
-            failed.append((s, e))
-        else:
-            done += e - s
-            if progress:
-                progress(done, n_frames)
+    try:
+        for p, tmp_f, (s, e) in zip(procs, tmp_files, chunks):
+            # Polling en lugar de p.wait() para detectar cancel entre checks.
+            while p.poll() is None:
+                time.sleep(0.5)
+                if progress:
+                    progress(done, n_frames)   # lanza si cancel_event está activo
+            try:
+                os.unlink(tmp_f)
+            except OSError:
+                pass
+            if p.returncode != 0:
+                failed.append((s, e))
+            else:
+                done += e - s
+                if progress:
+                    progress(done, n_frames)
+    except BaseException:
+        _kill_all(procs)
+        # limpiar pkls restantes
+        for f in tmp_files:
+            try:
+                os.unlink(f)
+            except OSError:
+                pass
+        raise
 
     # fallback serial para cualquier chunk que haya fallado
     for s, e in failed:
