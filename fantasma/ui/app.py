@@ -877,6 +877,7 @@ elif step_idx == 3:
         _picked = _pick_folder("Elegir carpeta de salida", initialdir=_def_out)
         if _picked:
             st.session_state["_overlay_out_dir"] = _picked
+            st.session_state["_overlay_out_dir_input"] = _picked
             st.rerun()
     out_dir = _out_dir_input
 
@@ -993,6 +994,7 @@ elif step_idx == 4:
                         [("Video", "*.mp4 *.mov *.mkv *.avi"), ("Todos", "*.*")])
         if _p:
             st.session_state["last_compose_video"] = _p
+            st.session_state["_compose_video_input"] = _p
             st.rerun()
 
     _def_overlay = st.session_state.get("last_overlay", "")
@@ -1008,6 +1010,7 @@ elif step_idx == 4:
                         [("WebM / MOV", "*.webm *.mov"), ("Todos", "*.*")])
         if _p:
             st.session_state["last_overlay"] = _p
+            st.session_state["_compose_overlay_input"] = _p
             st.rerun()
 
     # ── ② Sincronía (auto por defecto, manual opcional) ───────────────────────
@@ -1123,6 +1126,7 @@ elif step_idx == 4:
         _p = _pick_folder("Carpeta de salida", initialdir=_def_out_folder)
         if _p:
             st.session_state["_compose_out_folder"] = _p
+            st.session_state["_compose_out_folder_input"] = _p
             st.rerun()
 
     # ── resumen pre-compose ───────────────────────────────────────────────────
