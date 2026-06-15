@@ -855,7 +855,17 @@ elif step_idx == 3:
 
     ref_lap = st.session_state["ref_lap"]
     drv_lap = st.session_state["drv_lap"]
-    corners = st.session_state.get("corners")
+    corners = st.session_state.get("corners") if st.session_state.get("corners_editable") else None
+
+    # En flujos que saltan Paso 2 (ej. "Solo overlay"), auto-detectar corners si no hay.
+    if not corners:
+        try:
+            from fantasma.core.corners import detect_corners, extract_milestones as _em3
+            _evs3, _ = detect_corners(ref_lap)
+            corners  = _em3(ref_lap, _evs3)
+            st.session_state["corners"] = corners
+        except Exception:
+            corners = []
 
     if "last_overlay" in st.session_state:
         st.success("✓ Ya tienes un overlay generado: `%s`" % st.session_state["last_overlay"])

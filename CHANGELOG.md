@@ -4,8 +4,8 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/). Versionado
 
 ## [Unreleased]
 
-### Pendiente / Known issues
-_(ninguno)_
+### Corregido
+- **UI Paso 3 — nombres de curvas no aparecían en el overlay con el flujo «Solo overlay»**: el flujo sin Paso 2 saltaba la auto-detección de corners que solo existía en el bloque de comparación. Paso 3 ahora auto-detecta corners desde la vuelta de referencia si no hay corners explícitos cargados (JSON o botón «Detectar curvas»). Diagnóstico confirmado: el rendering HUD sí funcionaba; el problema era que `corners_by_seg = []` porque `corners or []` era lista vacía.
 
 ---
 
