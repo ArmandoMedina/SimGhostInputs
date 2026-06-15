@@ -388,7 +388,11 @@ def _run_ffmpeg(cmd, n_frames, progress):
                     enc = int(m.group(1))
                     progress(enc, n_frames,
                              status="Codificando video… frame %d / %d" % (enc, n_frames))
-    finally:
+    except BaseException:
+        proc.kill()
+        proc.wait()
+        raise
+    else:
         proc.wait()
     if proc.returncode != 0:
         raise subprocess.CalledProcessError(proc.returncode, cmd)
