@@ -876,6 +876,8 @@ elif step_idx == 3:
     # ── carpeta de salida ─────────────────────────────────────────────────────
     _def_out = st.session_state.get("_overlay_out_dir",
                                     os.path.join(os.path.expanduser("~"), "fantasma_salida"))
+    if "_overlay_out_dir_pending" in st.session_state:
+        st.session_state["_overlay_out_dir_input"] = st.session_state.pop("_overlay_out_dir_pending")
     _oc1, _oc2 = st.columns([5, 1])
     _out_dir_input = _oc1.text_input(
         "Carpeta donde guardar el overlay",
@@ -887,7 +889,7 @@ elif step_idx == 3:
         _picked = _pick_folder("Elegir carpeta de salida", initialdir=_def_out)
         if _picked:
             st.session_state["_overlay_out_dir"] = _picked
-            st.session_state["_overlay_out_dir_input"] = _picked
+            st.session_state["_overlay_out_dir_pending"] = _picked
             st.rerun()
     out_dir = _out_dir_input
 
@@ -992,6 +994,8 @@ elif step_idx == 4:
     st.markdown("**① Archivos de entrada**")
     st.caption("Usa el botón «Explorar…» para abrir el selector de archivos del sistema.")
 
+    if "_compose_video_pending" in st.session_state:
+        st.session_state["_compose_video_input"] = st.session_state.pop("_compose_video_pending")
     _vc1, _vc2 = st.columns([5, 1])
     _video_path = _vc1.text_input(
         "Tu video de grabación",
@@ -1004,10 +1008,12 @@ elif step_idx == 4:
                         [("Video", "*.mp4 *.mov *.mkv *.avi"), ("Todos", "*.*")])
         if _p:
             st.session_state["last_compose_video"] = _p
-            st.session_state["_compose_video_input"] = _p
+            st.session_state["_compose_video_pending"] = _p
             st.rerun()
 
     _def_overlay = st.session_state.get("last_overlay", "")
+    if "_compose_overlay_pending" in st.session_state:
+        st.session_state["_compose_overlay_input"] = st.session_state.pop("_compose_overlay_pending")
     _oc1, _oc2 = st.columns([5, 1])
     _overlay_path = _oc1.text_input(
         "Overlay del HUD (generado en el Paso 3)",
@@ -1020,7 +1026,7 @@ elif step_idx == 4:
                         [("WebM / MOV", "*.webm *.mov"), ("Todos", "*.*")])
         if _p:
             st.session_state["last_overlay"] = _p
-            st.session_state["_compose_overlay_input"] = _p
+            st.session_state["_compose_overlay_pending"] = _p
             st.rerun()
 
     # ── ② Sincronía (auto por defecto, manual opcional) ───────────────────────
@@ -1125,6 +1131,8 @@ elif step_idx == 4:
         else os.path.dirname(_video_path) if _video_path and os.path.dirname(_video_path)
         else os.path.expanduser("~")
     )
+    if "_compose_out_folder_pending" in st.session_state:
+        st.session_state["_compose_out_folder_input"] = st.session_state.pop("_compose_out_folder_pending")
     _of1, _of2 = st.columns([5, 1])
     _out_folder = _of1.text_input(
         "Carpeta donde guardar el video final",
@@ -1136,7 +1144,7 @@ elif step_idx == 4:
         _p = _pick_folder("Carpeta de salida", initialdir=_def_out_folder)
         if _p:
             st.session_state["_compose_out_folder"] = _p
-            st.session_state["_compose_out_folder_input"] = _p
+            st.session_state["_compose_out_folder_pending"] = _p
             st.rerun()
 
     # ── resumen pre-compose ───────────────────────────────────────────────────
