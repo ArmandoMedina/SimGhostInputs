@@ -4,6 +4,8 @@
 
 Gracias por considerar contribuir. Este documento explica cómo reportar bugs, proponer mejoras y enviar código.
 
+> Convenciones base de método: [project-starter](https://github.com/ArmandoMedina/project-starter).
+
 Al contribuir aceptas que tu código se publique bajo **AGPL-3.0-or-later**.
 
 ---
