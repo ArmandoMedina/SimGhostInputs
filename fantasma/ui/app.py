@@ -86,11 +86,19 @@ if _render_active and st.session_state.get("_render_step") != st.session_state.g
 
 # ── sidebar ───────────────────────────────────────────────────────────────────
 
+# El sidebar se bloquea solo mientras el hilo de render sigue corriendo. El flag
+# _render_active permanece True hasta que _render_widget reporta el resultado en
+# el paso (orden: sidebar → routing), así que usar _render_active aquí dejaría el
+# sidebar bloqueado un run de más al terminar/cancelar. _render_busy lo libera en
+# cuanto el hilo marca done.
+_pd_busy = st.session_state.get("_progress_data")
+_render_busy = _render_active and not (_pd_busy and _pd_busy.get("done"))
+
 with st.sidebar:
     st.title("👻 SimGhostInputs")
     st.caption("Análisis de inputs de simracing por distancia")
     st.divider()
-    if _render_active:
+    if _render_busy:
         st.warning("⏳ Render en curso…  \nNavega al terminar o presiona **Detener** en la pantalla principal.")
     for _i, _lbl in enumerate(_STEPS):
         _current  = st.session_state["nav_step"] == _i
@@ -101,7 +109,7 @@ with st.sidebar:
         _suffix   = "" if _in_flow else "  *(opcional)*"
         if st.button(
             "%s  %d · %s%s" % (_icon, _i, _lbl, _suffix),
-            disabled=not _unlocked or _render_active,
+            disabled=not _unlocked or _render_busy,
             use_container_width=True,
             key="nav_%d" % _i,
         ):
