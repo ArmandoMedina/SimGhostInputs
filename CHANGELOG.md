@@ -4,6 +4,13 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/). Versionado
 
 ## [Unreleased]
 
+### Pendiente / Known issues
+_(ninguno)_
+
+---
+
+## [0.6.5] — 2026-06-16
+
 ### Añadido
 - **UI Paso 4 (Componer) — autónomo, sin depender de los Pasos 1 ni 3**: el Paso 4 ya no requiere haber generado un overlay en la sesión ni haber importado telemetría. Solo necesita video + overlay; puede apuntar a un `overlay.webm` existente con «Explorar…». La telemetría sigue siendo útil pero opcional: habilita el sync automático por audio y el recorte exacto a la vuelta. El CSV que se sube en la sección de sincronía del propio Paso 4 ahora alimenta **ambos** (sync y recorte), no solo el sync — antes el recorte solo funcionaba con telemetría del Paso 1. Sin telemetría, se compone con offset manual y duración completa (modo legado de `compose_video`, ya soportado). Si el usuario llega desde el flujo de importar, el Paso 4 reutiliza la vuelta del Paso 1 sin volver a pedir el archivo.
 
@@ -15,9 +22,6 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/). Versionado
 - **UI Paso 2 — el nombre de archivo mostraba el temporal (`tmp3sj8t8k1.csv`) en vez del real**: el upload se guarda en un `NamedTemporaryFile` y la cabecera de referencia/piloto mostraba el basename del temporal. Ahora `_cache_file` cachea también el nombre original del upload (`uploaded_file.name`), el Paso 1 lo guarda en `session_state` (`ref_name`/`drv_name`) y el Paso 2 lo muestra (con fallback al basename del path).
 - **UI — el sidebar no se desbloqueaba al cancelar (o terminar) un render**: la barra de navegación se bloquea mientras corre un render (overlay/compose). Al cancelar, el flag `_render_active` se limpiaba *dentro* del paso (`_render_widget`), que corre **después** del sidebar en el mismo run, dejando los botones bloqueados hasta la siguiente interacción. Ahora el sidebar se bloquea según si el hilo sigue corriendo (`_render_busy = activo y no done`), liberándose en el mismo run en que el hilo marca `done`. Afecta a los Pasos 3 y 4 (lógica compartida en `app.py`).
 - **`compose` — NVENC falso positivo en equipos sin GPU NVIDIA usable**: `_nvenc_available()` solo hacía `grep` de `-encoders`, que lista `h264_nvenc` aunque no funcione en runtime (`Cannot load nvcuda.dll`). El compose intentaba GPU, fallaba con exit -1 y no caía al fallback de CPU. Ahora hace un probe real (encode de 1 frame contra un source sintético) y solo usa NVENC si termina en 0; si no, usa `libx264`. Además, el path con progreso (UI) capturaba el `stderr` de ffmpeg en `DEVNULL`, dejando solo un código de salida críptico; ahora reporta las últimas líneas del error real.
-
-### Pendiente / Known issues
-_(ninguno)_
 
 ---
 
