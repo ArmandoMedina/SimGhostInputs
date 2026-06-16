@@ -15,8 +15,8 @@ Flujos predefinidos (el usuario elige en el Paso 0):
 """
 import streamlit as st
 
-from ._helpers import _DEFAULT_FLOW, _FLOWS, _STEPS, _go
-from . import step0, step1, step2, step3, step4
+from fantasma.ui._helpers import _DEFAULT_FLOW, _FLOWS, _STEPS, _go
+from fantasma.ui import step0, step1, step2, step3, step4
 
 st.set_page_config(
     page_title="SimGhostInputs",

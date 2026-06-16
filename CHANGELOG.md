@@ -4,6 +4,9 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/). Versionado
 
 ## [Unreleased]
 
+### Corregido
+- **`ui/app.py` — `ImportError: attempted relative import with no known parent package` al lanzar `fantasma ui`**: el refactor 0.6.3 partió la UI en módulos (`step0`–`step4`, `_helpers`) pero `app.py` conservó imports relativos (`from ._helpers import …`, `from . import step0…`). Streamlit ejecuta `app.py` como script suelto (`__main__`), sin paquete padre, por lo que los imports relativos fallaban antes de renderizar nada. Cambiados a imports absolutos (`from fantasma.ui._helpers import …`, `from fantasma.ui import step0…`); los submódulos siguen resolviendo sus propios imports relativos dentro del paquete instalado. La UI no se había probado tras el split.
+
 ### Pendiente / Known issues
 _(ninguno)_
 
