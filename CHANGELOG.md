@@ -4,8 +4,12 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/). Versionado
 
 ## [Unreleased]
 
+### Añadido
+- **UI Paso 4 (Componer) — autónomo, sin depender de los Pasos 1 ni 3**: el Paso 4 ya no requiere haber generado un overlay en la sesión ni haber importado telemetría. Solo necesita video + overlay; puede apuntar a un `overlay.webm` existente con «Explorar…». La telemetría sigue siendo útil pero opcional: habilita el sync automático por audio y el recorte exacto a la vuelta. El CSV que se sube en la sección de sincronía del propio Paso 4 ahora alimenta **ambos** (sync y recorte), no solo el sync — antes el recorte solo funcionaba con telemetría del Paso 1. Sin telemetría, se compone con offset manual y duración completa (modo legado de `compose_video`, ya soportado). Si el usuario llega desde el flujo de importar, el Paso 4 reutiliza la vuelta del Paso 1 sin volver a pedir el archivo.
+
 ### Corregido
 - **`ui/app.py` — `ImportError: attempted relative import with no known parent package` al lanzar `fantasma ui`**: el refactor 0.6.3 partió la UI en módulos (`step0`–`step4`, `_helpers`) pero `app.py` conservó imports relativos (`from ._helpers import …`, `from . import step0…`). Streamlit ejecuta `app.py` como script suelto (`__main__`), sin paquete padre, por lo que los imports relativos fallaban antes de renderizar nada. Cambiados a imports absolutos (`from fantasma.ui._helpers import …`, `from fantasma.ui import step0…`); los submódulos siguen resolviendo sus propios imports relativos dentro del paquete instalado. La UI no se había probado tras el split.
+- **UI Paso 2 — el nombre de archivo mostraba el temporal (`tmp3sj8t8k1.csv`) en vez del real**: el upload se guarda en un `NamedTemporaryFile` y la cabecera de referencia/piloto mostraba el basename del temporal. Ahora `_cache_file` cachea también el nombre original del upload (`uploaded_file.name`), el Paso 1 lo guarda en `session_state` (`ref_name`/`drv_name`) y el Paso 2 lo muestra (con fallback al basename del path).
 
 ### Pendiente / Known issues
 _(ninguno)_

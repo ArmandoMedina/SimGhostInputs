@@ -63,7 +63,12 @@ def _step_unlocked(i):
     if i <= 1:  return True
     if i == 2:  return "ref_lap"      in st.session_state
     if i == 3:  return "ref_lap"      in st.session_state
-    if i == 4:  return "last_overlay" in st.session_state
+    # Paso 4 (Componer) solo necesita video + overlay. La telemetría es
+    # opcional: habilita el sync automático y el recorte a la vuelta, pero
+    # sin ella se compone con offset manual y duración completa (modo legado
+    # de compose_video). Siempre accesible — apunta a un overlay.webm existente
+    # con «Explorar…».
+    if i == 4:  return True
     return False
 
 

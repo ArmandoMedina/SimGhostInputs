@@ -190,23 +190,30 @@ def render():
             st.rerun()
 
     # ── resumen pre-compose ───────────────────────────────────────────────────
-    _drv_lap = st.session_state.get("drv_lap")
-    if _video_path and _overlay_path and _drv_lap is not None:
+    # _drv_for_sync unifica la telemetría del Paso 1 y la subida aquí en el Paso 4,
+    # así el recorte a la vuelta funciona también con el CSV cargado en este paso.
+    _drv_lap = _drv_for_sync
+    if _video_path and _overlay_path:
         def _mss(s):
             return "%d:%02d" % (int(s) // 60, int(s) % 60)
         _offset_val = float(st.session_state.get("compose_offset", 0.0))
+        if _drv_lap is not None:
+            _clip_line = "- Clip: desde **%s min** del video → recortado a la vuelta **%s** (%.0f s)  \n" % (
+                _mss(_offset_val), _mss(_drv_lap.laptime), _drv_lap.laptime)
+        else:
+            _clip_line = (
+                "- Clip: overlay aplicado desde **%s min** del video → **duración completa** "
+                "(sin telemetría no se recorta a la vuelta)  \n" % _mss(_offset_val))
         st.info(
             "**Resumen:**  \n"
             "- Video fuente: `%s`  \n"
             "- Overlay: `%s`  \n"
-            "- Clip: desde **%s min** del video → duración **%s** (%.0f s)  \n"
+            "%s"
             "- HUD: %s · escala %.0f%%  \n"
             "- Codec: NVENC (GPU NVIDIA) si está disponible, libx264 (CPU) si no." % (
                 os.path.basename(_video_path),
                 os.path.basename(_overlay_path),
-                _mss(_offset_val),
-                _mss(_drv_lap.laptime),
-                _drv_lap.laptime,
+                _clip_line,
                 _pos_sel,
                 _scale * 100,
             )
