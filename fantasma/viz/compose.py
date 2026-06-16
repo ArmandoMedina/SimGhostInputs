@@ -3,6 +3,7 @@ import os
 import re
 import shutil
 import subprocess
+import tempfile
 
 POSITIONS = {
     "top-left":      ("0",        "0"),
@@ -69,13 +70,21 @@ def _total_frames(ffmpeg_path, video_path, lap_duration=None):
 
 
 def _nvenc_available(ffmpeg_path):
-    """Devuelve True si h264_nvenc está disponible en este ffmpeg."""
+    """Devuelve True si h264_nvenc realmente funciona en este equipo.
+
+    Grep de `-encoders` da falsos positivos: el encoder puede estar compilado
+    en ffmpeg pero fallar en runtime si no hay GPU NVIDIA o `nvcuda.dll` no
+    carga (p. ej. equipos sin tarjeta NVIDIA). Probamos con un encode real de
+    1 frame contra un source sintético; solo devolvemos True si termina en 0.
+    """
     try:
         r = subprocess.run(
-            [ffmpeg_path, "-hide_banner", "-encoders"],
+            [ffmpeg_path, "-hide_banner", "-loglevel", "error",
+             "-f", "lavfi", "-i", "color=black:s=64x64:d=1",
+             "-frames:v", "1", "-c:v", "h264_nvenc", "-f", "null", "-"],
             capture_output=True, text=True,
         )
-        return "h264_nvenc" in r.stdout
+        return r.returncode == 0
     except Exception:
         return False
 
@@ -181,8 +190,11 @@ def compose_video(video, overlay, output, position="bottom-right",
     if progress:
         cmd_p = [cmd[0], "-progress", "pipe:1", "-nostats"] + cmd[1:]
         pat = re.compile(r"^frame=(\d+)")
+        # stderr a un archivo temporal para poder reportar el motivo real del
+        # fallo (antes iba a DEVNULL y solo quedaba un exit code críptico).
+        err_f = tempfile.TemporaryFile(mode="w+")
         proc = subprocess.Popen(cmd_p, stdout=subprocess.PIPE,
-                                stderr=subprocess.DEVNULL, text=True)
+                                stderr=err_f, text=True)
         try:
             for line in proc.stdout:
                 m = pat.match(line.strip())
@@ -192,11 +204,17 @@ def compose_video(video, overlay, output, position="bottom-right",
         except BaseException:
             proc.kill()
             proc.wait()
+            err_f.close()
             raise
         else:
             proc.wait()
         if proc.returncode != 0:
-            raise subprocess.CalledProcessError(proc.returncode, cmd)
+            err_f.seek(0)
+            tail = "".join(err_f.readlines()[-15:]).strip()
+            err_f.close()
+            raise RuntimeError(
+                "ffmpeg falló (código %d). Últimas líneas:\n%s" % (proc.returncode, tail))
+        err_f.close()
     else:
         subprocess.run(cmd, check=True)
 
