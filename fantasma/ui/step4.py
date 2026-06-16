@@ -82,19 +82,26 @@ def render():
 
     _drv_for_sync = st.session_state.get("drv_lap")
     if _drv_for_sync is None:
-        st.caption("No hay telemetría cargada. Sube aquí el CSV del piloto para poder detectar:")
+        st.warning(
+            "⚠️ **Sube TU telemetría — la misma vuelta que grabaste en el video.**  \n"
+            "**No** subas aquí la de referencia: el sync compara el audio de *tu* motor con *tus* "
+            "RPM, así que tiene que ser la vuelta que se ve en el video. La de referencia es otro "
+            "motor/otra vuelta y el sync fallaría."
+        )
         _sync_up = st.file_uploader(
-            "CSV del piloto para sync", type=["csv", "xlsx"],
+            "Tu CSV — la vuelta del video (NO la de referencia)", type=["csv", "xlsx"],
             key="sync_drv_upload",
+            help="El mismo CSV de tus vueltas que usarías en el Paso 1. La sincronía necesita "
+                 "los RPM de la vuelta que estás viendo en el video, no los de la referencia.",
         )
         if _sync_up:
             _sc = _cache_file(_sync_up)
             if _sc["ok"] and _sc["laps"]:
                 from fantasma.core.normalize import fastest_lap as _fl
                 _drv_for_sync = _fl(_sc["laps"])
-                st.success("✓ Telemetría cargada.")
+                st.success("✓ Tu telemetría cargada.")
     else:
-        st.caption("Usando la vuelta del Paso 1 (%s)." % _fmt_lap(_drv_for_sync.laptime))
+        st.caption("Usando tu vuelta del Paso 1 (%s) — la que corresponde al video." % _fmt_lap(_drv_for_sync.laptime))
 
     _can_sync = bool(_video_path and _drv_for_sync)
     _sc1, _sc2 = st.columns([3, 1])
