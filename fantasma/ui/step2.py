@@ -39,11 +39,11 @@ def render():
             except Exception as _e:
                 st.error("Error en comparación: %s" % _e)
 
+    _ref_name = st.session_state.get("ref_name") or os.path.basename(st.session_state.get("ref_path", "—"))
+    _drv_name = st.session_state.get("drv_name") or os.path.basename(st.session_state.get("drv_path", "—"))
     _c1, _c2 = st.columns(2)
-    _c1.info("🏁 **Referencia:** %s · %s" % (
-        os.path.basename(st.session_state.get("ref_path", "—")), _fmt_lap(ref_lap.laptime)))
-    _c2.info("🧑‍💻 **Tu vuelta:** %s · %s" % (
-        os.path.basename(st.session_state.get("drv_path", "—")), _fmt_lap(drv_lap.laptime)))
+    _c1.info("🏁 **Referencia:** %s · %s" % (_ref_name, _fmt_lap(ref_lap.laptime)))
+    _c2.info("🧑‍💻 **Tu vuelta:** %s · %s" % (_drv_name, _fmt_lap(drv_lap.laptime)))
 
     if "summary" not in st.session_state:
         st.info("Los resultados aparecerán aquí una vez completado el análisis.")

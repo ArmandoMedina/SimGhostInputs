@@ -104,7 +104,8 @@ def _cache_file(uploaded_file):
             try:
                 path = _save_upload(uploaded_file, os.path.splitext(uploaded_file.name)[1])
                 laps = _load_laps(path)
-                st.session_state[ck] = {"path": path, "laps": laps, "ok": True}
+                st.session_state[ck] = {"path": path, "name": uploaded_file.name,
+                                        "laps": laps, "ok": True}
             except Exception as _e:
                 st.session_state[ck] = {"path": "", "laps": [], "ok": False, "err": str(_e)}
     return st.session_state[ck]

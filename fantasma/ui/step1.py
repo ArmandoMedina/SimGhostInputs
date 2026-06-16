@@ -195,6 +195,8 @@ def render(flow):
                 st.session_state.update({
                     "ref_path":    _ref_path,
                     "drv_path":    _dc["path"],
+                    "ref_name":    _rc.get("name") or ref_file.name,
+                    "drv_name":    _dc.get("name") or drv_file.name,
                     "ref_laps":    _ref_laps,
                     "drv_laps":    _drv_laps,
                     "ref_lap":     ref_lap,
