@@ -85,7 +85,7 @@ fantasma/
   cli.py        punto de entrada de comandos
 ```
 
-No hay suite de tests automatizados todavía — las contribuciones que añadan tests son especialmente bienvenidas.
+No hay suite de tests automatizados todavía — las contribuciones que añadan tests son especialmente bienvenidas. El enfoque acordado (framework, estructura, fixtures sintéticas y prioridades) está documentado en [`docs/decisions-testing.md`](docs/decisions-testing.md).
 
 ---
 
