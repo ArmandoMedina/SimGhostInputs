@@ -12,6 +12,8 @@
 
 Con v0.9.0 entregada, **el drill-down por curva (antes v0.10.0) se difiere a post-1.0**. Eso reenfoca la 1.0: ya no es "construir una feature nueva primero", sino **estabilizar, testear, documentar y validar en AMS2 el pipeline offline que ya existe**. El camino a la 1.0 es ahora mayormente QA manual + cierre de release.
 
+> **▶️ Para la próxima sesión (Armando):** revisar **meticulosamente el overlay y la UI** buscando detalles visuales y de usabilidad por pulir. Incluye verificar si hay desync real de FPS con un video de 60 fps (ver gaps técnicos — el análisis de código dice que NO debería desincronizar; falta confirmarlo con video real). Con eso + el QA de AMS2 (≥3 circuitos) + `setup.ps1` en Windows limpio, se corta la 1.0.
+
 ### Camino a v1.0 (AMS2)
 
 | Versión | Foco | Estado |
@@ -293,7 +295,7 @@ Cosas que están en el código pero no tienen cobertura de QA formal ni están d
 | Comportamiento con vueltas muy cortas | ¿Qué pasa si el piloto sale de pista y la vuelta tiene solo 500 m? | Media |
 | ~~CSV con separador de punto y coma~~ ✅ | Resuelto: `importers/_util.py` detecta el separador (`;`) y parsea coma decimal europea. Pendiente validar con un export europeo real de i2 (cubierto con fixtures sintéticos) | — |
 | Circuitos con vuelta que cruza la línea de meta más de una vez | Circuitos en 8 o con chicane en meta podrían romper la detección de vueltas | Media |
-| Overlay con FPS distintos al de la grabación | Si el usuario elige 30 fps en el overlay pero graba a 60 fps, la composición puede quedar desincronizada | Alta |
+| ~~Overlay con FPS distintos al de la grabación~~ 🔍 | Investigado (2026-06-17): **no reproduce desync**. Los frames se generan en `t = n/fps`, así que la duración real del `overlay.webm` = duración de la vuelta sea cual sea el fps; ffmpeg compone por PTS (duplica/descarta frames por timestamp, no desincroniza). El único efecto real de un fps bajo es un HUD más "a saltos" (suavidad visual), no desfase. La guía ya recomienda `--fps 60` para igualar la grabación. Pendiente solo: si en el QA visual aparece un desync real, capturar repro. | Baja |
 | `--format prores` cuelga ffmpeg en vueltas largas | En Nordschleife (~394s) el encode ProRes arranca, escribe ~4 GB de frames y luego ffmpeg se congela sin actividad CPU. El moov atom nunca se escribe y el archivo queda corrupto. Reproducido en QA 2026-06-14. Default cambiado a `webm` como mitigación; causa raíz pendiente de investigar. | Alta |
 | `fantasma compose` sin ffmpeg instalado | El error actual puede no ser claro para el usuario — mejorar mensaje | Baja |
 | Versión mínima de Python no declarada | ~~`pyproject.toml` debería declarar `requires-python`~~ ✅ ya declara `requires-python = ">=3.10"` | — |
