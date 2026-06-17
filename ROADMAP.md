@@ -8,7 +8,9 @@
 
 ## Estado actual — v0.6.5
 
-Último release: **v0.6.5** (2026-06-16). Las tandas 0.6.0–0.6.5 entregaron, entre otras cosas, el grueso de lo planeado para v0.9.0 (detección de pausa, badge de calidad de sync, «Procesar otra vuelta», una vuelta por ejecución). El próximo bloque de valor es **v0.10.0**.
+Último release: **v0.6.5** (2026-06-16). Las tandas 0.6.0–0.6.5 entregaron, entre otras cosas, el grueso de lo planeado para v0.9.0 (detección de pausa, badge de calidad de sync, «Procesar otra vuelta», una vuelta por ejecución).
+
+Con v0.9.0 entregada, **el drill-down por curva (antes v0.10.0) se difiere a post-1.0**. Eso reenfoca la 1.0: ya no es "construir una feature nueva primero", sino **estabilizar, testear, documentar y validar en AMS2 el pipeline offline que ya existe**. El camino a la 1.0 es ahora mayormente QA manual + cierre de release.
 
 ### Camino a v1.0 (AMS2)
 
@@ -17,10 +19,9 @@
 | v0.5.0 | Estabilidad UI, NVENC, auto_sync robusto | ✅ publicado |
 | 0.6.x | UI, NVENC real, sync robusto, suite de tests + CI | ✅ publicado |
 | v0.9.0 | Sincronización robusta + flujos múltiples en UI | ✅ entregada en 0.6.x (extras descartados/diferidos) |
-| v0.10.0 | Drill-down por curva — coaching accionable | por construir |
-| v1.0.0 | Declaración de estabilidad para AMS2 | objetivo |
+| v1.0.0 | Estabilizar, testear, documentar y validar el pipeline offline en AMS2 | objetivo |
 
-v0.6.0 (histórico entre sesiones), v0.7.0 (importadores) y v0.8.0 (Pace Notes) quedan diferidos para después de v1.0. (Nota: los números 0.6.x ya se usaron para releases reales; el "v0.6.0 histórico" del plan original se renumerará cuando se retome.)
+El drill-down por curva (antes v0.10.0), v0.6.0 (histórico entre sesiones), v0.7.0 (importadores) y v0.8.0 (Pace Notes) quedan diferidos para después de v1.0. (Nota: los números 0.6.x/0.10.0 ya quedaron desfasados respecto a los releases reales; se renumerarán cuando se retomen.)
 
 > **Orden de este documento:** primero las versiones del **camino a la 1.0** (en orden de entrega), luego las **diferidas a post-1.0**, y al final los temas **transversales** (gaps técnicos y deuda).
 
@@ -118,10 +119,33 @@ El `auto_sync` actual produce un overlay o aborta con `RuntimeError` si z < 3.0�
 
 ---
 
-## v0.10.0 — Drill-down por curva
-> _Estado: por construir — spec en [PRODUCT_BRIEF.md § 10](PRODUCT_BRIEF.md)_
+## v1.0.0 — Primera versión estable (AMS2)
+> _Estado: objetivo a largo plazo_
 
-Convierte la tabla de tiempo perdido en coaching accionable. El piloto pica en una curva y ve exactamente qué corregir, calculado desde los datos sin LLM.
+El criterio para v1.0 es que el pipeline offline esté completo, documentado y probado. Alcance declarado: **AMS2 únicamente**. Importadores adicionales (iRacing, rF2, ACC) y features post-tanda avanzadas (drill-down por curva, histórico, pace notes) van después.
+
+### Requisitos para llamarla v1.0
+- [x] v0.9.0 completada y en producción (el drill-down se difiere a post-1.0)
+- [x] Suite de tests automatizados de `core/` + CI (cumple el requisito de "tests unitarios de core/")
+- [ ] API interna (`core/`) estabilizada — sin cambios breaking entre parches (revisión, no código nuevo)
+- [ ] Docs completas: guía de usuario, referencia de HUD, formato de datos, cómo contribuir (los 4 ya existen — falta repasar que estén al día)
+- [ ] **Decidir si los gaps `Alta` bloquean la 1.0**: overlay con FPS ≠ grabación (desincroniza) y `--format prores` que cuelga ffmpeg. El prores ya está mitigado (default `webm`); el FPS es el candidato real a corregir antes de 1.0
+- [ ] 👤 Probado con AMS2 en al menos 3 circuitos distintos
+- [ ] 👤 `setup.ps1` probado en instalación limpia de Windows 11
+- [ ] No hay `[Unreleased]` acumulado en CHANGELOG (cortar el release)
+
+---
+
+# ⏸️ Diferido — post-v1.0
+
+> Fuera del alcance de la 1.0 (solo AMS2). Se retoman después de declarar estable el pipeline offline.
+
+---
+
+## Drill-down por curva (era v0.10.0)
+> _Estado: diferido — post-v1.0. Spec en [PRODUCT_BRIEF.md § 10](PRODUCT_BRIEF.md)_
+
+Convierte la tabla de tiempo perdido en coaching accionable. El piloto pica en una curva y ve exactamente qué corregir, calculado desde los datos sin LLM. Se difiere porque la 1.0 prioriza estabilizar y validar el pipeline que ya existe, no añadir features.
 
 ### Cambios previstos
 - [ ] Tabla de curvas clickeable en UI Paso 2 — click en una fila abre panel de detalle
@@ -130,33 +154,12 @@ Convierte la tabla de tiempo perdido en coaching accionable. El piloto pica en u
 - [ ] Función `corner_coaching(row, trace)` en `core/` que produce el dict de coaching
 - [ ] Los datos ya existen en `trace` y `rows` de `compare()` — no requiere nueva telemetría
 
-### QA antes de publicar v0.10.0
+### QA antes de publicar
 - [ ] Click en la curva con mayor pérdida → panel de detalle visible con todos los campos
 - [ ] Curva sin canal gear → panel omite el campo de marcha sin crashear
 - [ ] Curva sin glat → panel omite G-lat sin crashear
 - [ ] Síntesis en lenguaje natural coherente con los números del panel
 - [ ] Curva donde el piloto es más rápido → mensaje positivo ("ganas X s aquí")
-
----
-
-## v1.0.0 — Primera versión estable (AMS2)
-> _Estado: objetivo a largo plazo_
-
-El criterio para v1.0 es que el pipeline offline esté completo, documentado y probado. Alcance declarado: **AMS2 únicamente**. Importadores adicionales (iRacing, rF2, ACC) y features post-tanda avanzadas (histórico, pace notes) van después.
-
-### Requisitos para llamarla v1.0
-- [ ] v0.9.0 y v0.10.0 completadas y en producción
-- [ ] API interna (`core/`) estabilizada — sin cambios breaking entre parches
-- [ ] Docs completas: guía de usuario, referencia de HUD, formato de datos, cómo contribuir
-- [ ] Probado con AMS2 en al menos 3 circuitos distintos
-- [ ] `setup.ps1` probado en instalación limpia de Windows 11
-- [ ] No hay `[Unreleased]` acumulado en CHANGELOG
-
----
-
-# ⏸️ Diferido — post-v1.0
-
-> Fuera del alcance de la 1.0 (solo AMS2). Se retoman después de declarar estable el pipeline offline.
 
 ---
 
@@ -307,4 +310,4 @@ Cosas que están en el código pero no tienen cobertura de QA formal ni están d
 
 ---
 
-_Última revisión: 2026-06-17 — reordenadas las versiones (camino a 1.0 ascendente → diferidas → transversales); v0.9.0 marcada completa; estado real reconciliado a v0.6.5; corregidas deudas ya resueltas (docs, requires-python)._
+_Última revisión: 2026-06-17 — drill-down (era v0.10.0) diferido a post-1.0; la 1.0 se reenfoca a estabilizar/testear/documentar/validar el pipeline offline existente en AMS2. Antes: reordenadas las versiones; v0.9.0 marcada completa; estado reconciliado a v0.6.5; deudas resueltas (docs, requires-python)._
