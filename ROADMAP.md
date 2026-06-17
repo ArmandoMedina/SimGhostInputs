@@ -271,7 +271,7 @@ Cosas que están en el código pero no tienen cobertura de QA formal ni están d
 | :-- | :-- | :-- |
 | Test de degradación por canales ausentes | No hay prueba sistemática de qué pasa cuando faltan glat, glong, gear, abs, tcs en distintas combinaciones | Alta |
 | Comportamiento con vueltas muy cortas | ¿Qué pasa si el piloto sale de pista y la vuelta tiene solo 500 m? | Media |
-| CSV con separador de punto y coma | `motec_csv.py` usa `csv.reader` con separador coma por defecto. Algunos exports europeos usan `;` | Media |
+| ~~CSV con separador de punto y coma~~ ✅ | Resuelto: `importers/_util.py` detecta el separador (`;`) y parsea coma decimal europea. Pendiente validar con un export europeo real de i2 (cubierto con fixtures sintéticos) | — |
 | Circuitos con vuelta que cruza la línea de meta más de una vez | Circuitos en 8 o con chicane en meta podrían romper la detección de vueltas | Media |
 | Overlay con FPS distintos al de la grabación | Si el usuario elige 30 fps en el overlay pero graba a 60 fps, la composición puede quedar desincronizada | Alta |
 | `--format prores` cuelga ffmpeg en vueltas largas | En Nordschleife (~394s) el encode ProRes arranca, escribe ~4 GB de frames y luego ffmpeg se congela sin actividad CPU. El moov atom nunca se escribe y el archivo queda corrupto. Reproducido en QA 2026-06-14. Default cambiado a `webm` como mitigación; causa raíz pendiente de investigar. | Alta |
@@ -285,7 +285,7 @@ Cosas que están en el código pero no tienen cobertura de QA formal ni están d
 | Item | Descripción |
 | :-- | :-- |
 | `motec_csv.py` codificación | Lee con `utf-8-sig` — CSV generados por i2 en Windows pueden tener encoding distinto en setups no-inglés |
-| Tests automáticos (en progreso) | Primer PR de la suite implementado: 37 tests (Tier 1 `core/` + regresiones + smoke de UI + Tier 2/3) con pytest y fixtures sintéticas. Cumple el requisito de v1.0 de "tests unitarios de `core/`". Pendiente: resto de Tier 3 (`sync`), Tier 2 ampliado y CI. Estrategia y estado en [`docs/decisions-testing.md`](docs/decisions-testing.md) |
+| Tests automáticos (en progreso) | Suite implementada: 48 tests (Tier 1 `core/` + Tier 2 importadores + Tier 3 `compose`/`sync` + smoke de UI) con pytest y fixtures sintéticas, y **CI en GitHub Actions** (Windows, Python 3.10–3.12). Cumple el requisito de v1.0 de "tests unitarios de `core/`". Pendiente: ampliar cobertura conforme crezca el código. Estrategia y estado en [`docs/decisions-testing.md`](docs/decisions-testing.md) |
 | Docs en `docs/` referenciadas pero no escritas | El README menciona `docs/guia-usuario.md`, `docs/hud-reference.md`, `docs/formato-datos.md` — no existen aún |
 
 ---

@@ -200,8 +200,8 @@ pueden venir en PRs siguientes.
 
 ## Estado de implementación
 
-Primer PR de la suite (rama `test/suite-core-tier1`). Se corre con `pip install -e ".[test]"`
-y luego `pytest`. **37 tests** (36 pasan, 1 `xfail` que documenta el gap del separador `;`).
+Suite implementada. Se corre con `pip install -e ".[test]"` y luego `pytest`. **48 tests** verdes.
+CI en GitHub Actions corre la suite en cada push/PR sobre Windows con Python 3.10–3.12.
 
 ```
 tests/
@@ -213,16 +213,20 @@ tests/
     test_wear.py                   # calibrate/slip con y sin canales de rueda; conteo de ABS
   importers/
     fixtures/motec_mini.csv        # único dato versionado (24 filas sintéticas, layout i2)
-    test_motec_csv.py              # mapeo de canales, metadatos, beacons, split, ';' (xfail)
+    test_motec_csv.py              # mapeo de canales, metadatos, beacons, split, separador ';' + coma decimal
+    test_generic_csv.py            # auto-detección de columnas (GUESS), mapeo manual, valores inválidos→0
   viz/
     test_compose.py                # _build_filter (regresión filtro) + _nvenc_available (regresión fallback)
+    test_sync.py                   # _lap_signal, _detect_pause (silencio), _read_wav_mono — sin ffmpeg/scipy
   ui/
     test_app_smoke.py              # AppTest: app.py arranca sin excepción (omitido si falta streamlit)
 ```
 
 **Bugs blindados con regresión:** ImportError de arranque de UI (smoke), falso positivo
 de NVENC (`test_nvenc_available_false_on_nonzero`), construcción del filtro ffmpeg
-(`test_build_filter_scale_has_multiply_operator`), degradación sin gear/glat (Tier 1).
+(`test_build_filter_scale_has_multiply_operator`), degradación sin gear/glat (Tier 1),
+separador `;` / coma decimal europea (`importers/_util.py`).
 
-**Pendiente para PRs siguientes:** resto de Tier 3 (`sync`), Tier 2 ampliado (encoding,
-columnas ausentes), y CI en `.github/workflows/tests.yml` (pytest en Windows, Python 3.10–3.12).
+**Pendiente para PRs siguientes:** ampliar Tier 2 (encoding no-inglés, más combinaciones de
+columnas ausentes) y Tier 3 (`sync` con señales sintéticas más realistas) conforme crezca el
+código. El render real de `overlay`/`compose` y el auto-sync con video siguen en QA manual.

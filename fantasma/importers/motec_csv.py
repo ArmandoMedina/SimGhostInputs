@@ -11,6 +11,7 @@ import csv
 import os
 
 from ..core.lap import Lap
+from ._util import detect_delimiter, pfloat
 
 MOTEC_MAP = {
     "Time": "time", "Distance": "dist", "Ground Speed": "speed",
@@ -36,8 +37,9 @@ class NotMotecFormat(Exception):
 
 
 def _rows_from_csv(path):
+    delimiter = detect_delimiter(path)
     with open(path, newline="", encoding="utf-8-sig", errors="replace") as f:
-        for row in csv.reader(f):
+        for row in csv.reader(f, delimiter=delimiter):
             yield row
 
 
@@ -84,7 +86,7 @@ def load(path):
         # tras el header: la fila de unidades y filas vacias hasta el primer dato
         if not data_started:
             try:
-                float(first)
+                pfloat(first)
                 data_started = True
             except ValueError:
                 continue
@@ -93,7 +95,7 @@ def load(path):
             bad = False
             for i, cn in cols:
                 try:
-                    vals[cn] = float(row[i]) if i < len(row) and str(row[i]).strip() != "" else 0.0
+                    vals[cn] = pfloat(row[i]) if i < len(row) and str(row[i]).strip() != "" else 0.0
                 except (ValueError, TypeError):
                     vals[cn] = 0.0
                     if cn in ("time", "dist"):

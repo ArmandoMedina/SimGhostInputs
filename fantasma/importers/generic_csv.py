@@ -7,6 +7,7 @@ Si no se da, intenta adivinar por nombres comunes (case-insensitive).
 import csv
 
 from ..core.lap import Lap
+from ._util import detect_delimiter, pfloat
 
 GUESS = {
     "time": "time", "sessiontime": "time", "t": "time",
@@ -31,7 +32,7 @@ GUESS = {
 def load(path, column_map=None):
     lap = Lap(meta={"source_file": path, "beacons": []})
     with open(path, newline="", encoding="utf-8-sig", errors="replace") as f:
-        reader = csv.reader(f)
+        reader = csv.reader(f, delimiter=detect_delimiter(path))
         header = next(reader)
         cols = []
         for i, name in enumerate(header):
@@ -53,7 +54,7 @@ def load(path, column_map=None):
                 continue
             for i, cn in cols:
                 try:
-                    lap.channels[cn].append(float(row[i]))
+                    lap.channels[cn].append(pfloat(row[i]))
                 except (ValueError, IndexError):
                     lap.channels[cn].append(0.0)
     return lap

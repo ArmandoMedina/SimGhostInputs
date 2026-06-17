@@ -67,9 +67,8 @@ def test_load_laps_splits_by_lap_number():
     assert len(laps) == 2
 
 
-@pytest.mark.xfail(reason="gap conocido (ROADMAP): separador ';' de exports europeos aún no soportado",
-                   strict=True)
 def test_semicolon_separator_supported(tmp_path):
+    # export europeo con separador ';' (decimales con punto)
     csv_text = (
         '"Venue";"X"\n'
         '"Time";"Distance";"Ground Speed"\n'
@@ -82,3 +81,22 @@ def test_semicolon_separator_supported(tmp_path):
     p.write_text(csv_text, encoding="utf-8")
     lap = motec_csv.load(str(p))
     assert lap.col("speed")[0] == 100.0
+    assert len(lap) == 2
+
+
+def test_semicolon_with_decimal_comma(tmp_path):
+    # export europeo: separador ';' Y coma decimal ('100,5')
+    csv_text = (
+        '"Venue";"X"\n'
+        '"Time";"Distance";"Ground Speed"\n'
+        '"s";"m";"km/h"\n'
+        '\n'
+        '"0,000";"0";"100,5"\n'
+        '"0,020";"2,5";"101,250"\n'
+    )
+    p = tmp_path / "euro_comma.csv"
+    p.write_text(csv_text, encoding="utf-8")
+    lap = motec_csv.load(str(p))
+    assert lap.col("speed")[0] == 100.5
+    assert lap.col("dist")[1] == 2.5
+    assert lap.col("time")[1] == 0.02
