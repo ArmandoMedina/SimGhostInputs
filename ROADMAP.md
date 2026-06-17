@@ -6,20 +6,21 @@
 
 ---
 
-## Estado actual — v0.5.0
+## Estado actual — v0.6.5
 
-Último release: **v0.5.0** (2026-06-14). El próximo es **v0.9.0**.
+Último release: **v0.6.5** (2026-06-16). Las tandas 0.6.0–0.6.5 entregaron, entre otras cosas, el grueso de lo planeado para v0.9.0 (detección de pausa, badge de calidad de sync, «Procesar otra vuelta», una vuelta por ejecución). El próximo bloque de valor es **v0.10.0**.
 
 ### Camino a v1.0 (AMS2)
 
 | Versión | Foco | Estado |
 | :-- | :-- | :-- |
 | v0.5.0 | Estabilidad UI, NVENC, auto_sync robusto | ✅ publicado |
-| v0.9.0 | Sincronización robusta + flujos múltiples en UI | por construir |
+| 0.6.x | UI, NVENC real, sync robusto, suite de tests + CI | ✅ publicado |
+| v0.9.0 | Sincronización robusta + flujos múltiples en UI | ✅ entregada en 0.6.x (extras descartados/diferidos) |
 | v0.10.0 | Drill-down por curva — coaching accionable | por construir |
 | v1.0.0 | Declaración de estabilidad para AMS2 | objetivo |
 
-v0.6.0 (histórico), v0.7.0 (importadores) y v0.8.0 (Pace Notes) quedan diferidos para después de v1.0.
+v0.6.0 (histórico entre sesiones), v0.7.0 (importadores) y v0.8.0 (Pace Notes) quedan diferidos para después de v1.0. (Nota: los números 0.6.x ya se usaron para releases reales; el "v0.6.0 histórico" del plan original se renumerará cuando se retome.)
 
 ---
 
@@ -211,7 +212,7 @@ Frases 200m antes del punto de frenada para dar contexto. La voz enseña, el ton
 ---
 
 ## v0.9.0 — Sincronización robusta y flujos múltiples en UI
-> _Estado: por construir — requiere audit de v0.5.0_
+> _Estado: **completa** — el contenido se entregó en la tanda 0.6.0. Los extras (umbral configurable, lista de vueltas) se descartan/difieren; ver abajo._
 
 **Decisión de arquitectura:** `compose` y `compare` procesan una vuelta por ejecución. La UI facilita encadenar múltiples flujos sin repetir el proceso manualmente.
 
@@ -220,28 +221,28 @@ El `auto_sync` actual produce un overlay o aborta con `RuntimeError` si z < 3.0�
 
 ### Cambios previstos
 
-**Detección de pausa en la vuelta**
-- [ ] Detectar discontinuidades en el audio del video durante la vuelta seleccionada (silencio/salto)
-- [ ] Abortar con error claro: "Pausa detectada en X:XX — vuelta no sincronizable. Usa un video sin pausas."
-- [ ] No intentar re-sincronizar post-pausa (telemetría y video divergen irrecuperablemente)
+**Detección de pausa en la vuelta** ✅ (en 0.6.0)
+- [x] Detectar discontinuidades en el audio del video durante la vuelta seleccionada (silencio/salto) — `sync._detect_pause`
+- [x] Abortar con error claro: "Pausa detectada en X:XX…" — `sync.auto_sync` lanza `RuntimeError` con timestamp
+- [x] No intentar re-sincronizar post-pausa (telemetría y video divergen irrecuperablemente)
 
 **Métrica de calidad de sync**
-- [ ] Mostrar siempre el resultado de sync: `Sync quality: 94% (z=4.7σ, offset=+1.23s) ✓`
-- [ ] Umbral mínimo configurable: `--min-sync-quality` (default: 3.0σ, equivalente al actual)
-- [ ] Si cae bajo el umbral: error explícito con el valor obtenido vs el requerido
-- [ ] En UI: badge de calidad de sync visible tras compose exitoso
+- [x] Mostrar el resultado de sync: CLI imprime offset + z σ; UI muestra badge de calidad
+- [~] ~~Umbral mínimo configurable: `--min-sync-quality`~~ → **descartado**. El único caso que justificaría bajar el umbral (auto-sync rechaza un video legítimo, p. ej. coche eléctrico sin banda de motor) ya está cubierto por el **offset manual** existente (`step4.py` «Sincronizar manualmente»). Sería una perilla para un problema ya resuelto.
+- [x] Si cae bajo el umbral: error explícito — `auto_sync` lanza si z < 3.0σ
+- [x] En UI: badge de calidad de sync visible — `_sync_quality_label` (Excelente / Muy bueno / Bueno / Marginal)
 
 **UI — flujos múltiples**
-- [ ] Botón «Procesar otra vuelta» al finalizar un flujo — reinicia desde Paso 1 sin cerrar la app
-- [ ] Lista de vueltas procesadas en la sesión actual: vuelta, archivo de salida, sync quality
-- [ ] Scope de `compare` y `compose` acotado a una vuelta por ejecución (claridad en la UI)
+- [x] Botón «Procesar otra vuelta» al finalizar un flujo — reinicia desde Paso 1 sin cerrar la app
+- [~] ~~Lista de vueltas procesadas en la sesión actual~~ → **diferido a post-v1.0** (comodidad, no corrección; ver abajo)
+- [x] Scope de `compare` y `compose` acotado a una vuelta por ejecución (radio buttons, una vuelta por diseño)
 
-### QA antes de publicar v0.9.0
+### QA antes de publicar v0.9.0 (validación con video real — QA manual)
 - [ ] Video Nordschleife completo (~6 min): sync correcto, offset preciso, badge de calidad visible
 - [ ] Video con pausa en el minuto 3: error claro con timestamp de la pausa detectada
-- [ ] `--min-sync-quality 4.5`: video que pasa 3.0σ pero falla 4.5σ → error con valores mostrados
-- [ ] Procesar 3 vueltas en secuencia desde UI sin cerrar: cada una genera su clip y su badge
-- [ ] Lista de vueltas procesadas refleja los 3 clips con sus métricas de sync
+
+### Diferido a post-v1.0
+- **Lista de vueltas procesadas en la sesión** (vuelta + archivo de salida + sync quality acumulados en una tabla): es conveniencia para quien procesa varias vueltas seguidas sin cerrar la app. El producto funciona sin ella; se separa para no bloquear la 1.0.
 
 ---
 
