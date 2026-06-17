@@ -4,6 +4,9 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/). Versionado
 
 ## [Unreleased]
 
+### Añadido
+- **Suite de pruebas automatizadas (primer PR) — pytest**: arranca la suite definida en `docs/decisions-testing.md`. Nuevo extra `pip install -e ".[test]"` y config en `pyproject.toml`. 37 tests (36 pasan, 1 `xfail` que documenta el gap conocido del separador `;`). Cubre: **Tier 1** `core/` puro (normalización, comparación con los signos confirmados del producto —piloto más lento = delta positivo, ápex más rápido = `d_vmin` positivo—, detección de curvas y desgaste, incluyendo degradación graceful sin `gear`/`glat`), **Tier 2** importador MoTeC CSV con un fixture sintético diminuto (único dato versionado), **Tier 3** helpers puros de `compose` (regresión del filtro ffmpeg y del falso positivo de NVENC, sin invocar ffmpeg) y **Tier 4** smoke de la UI (`AppTest`: `app.py` arranca sin excepción —blinda el `ImportError` del refactor 0.6.3). Fixtures sintéticas deterministas vía `make_lap` (sin telemetría real). Documentada también la directiva «qué se automatiza vs qué se prueba a mano».
+
 ### Pendiente / Known issues
 _(ninguno)_
 

@@ -285,7 +285,7 @@ Cosas que están en el código pero no tienen cobertura de QA formal ni están d
 | Item | Descripción |
 | :-- | :-- |
 | `motec_csv.py` codificación | Lee con `utf-8-sig` — CSV generados por i2 en Windows pueden tener encoding distinto en setups no-inglés |
-| Sin tests automáticos | No hay suite de tests. Todo el QA es manual con telemetría real. Para v1.0 debería haber al menos tests unitarios de `core/`. Estrategia documentada (por implementar) en [`docs/decisions-testing.md`](docs/decisions-testing.md) |
+| Tests automáticos (en progreso) | Primer PR de la suite implementado: 37 tests (Tier 1 `core/` + regresiones + smoke de UI + Tier 2/3) con pytest y fixtures sintéticas. Cumple el requisito de v1.0 de "tests unitarios de `core/`". Pendiente: resto de Tier 3 (`sync`), Tier 2 ampliado y CI. Estrategia y estado en [`docs/decisions-testing.md`](docs/decisions-testing.md) |
 | Docs en `docs/` referenciadas pero no escritas | El README menciona `docs/guia-usuario.md`, `docs/hud-reference.md`, `docs/formato-datos.md` — no existen aún |
 
 ---

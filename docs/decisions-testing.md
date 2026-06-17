@@ -1,8 +1,9 @@
 # Decisiones de diseño: estrategia de pruebas automatizadas
 
-> **Estado: propuesto — sin implementar.** Este documento fija el enfoque acordado
-> para la futura suite de tests. El código de tests se escribirá después; aquí queda
-> la decisión razonada para no improvisarla en el momento.
+> **Estado: en implementación.** Este documento fija el enfoque acordado para la
+> suite de tests. El primer PR (Tier 1 `core/` + regresiones + smoke de UI + Tier 2/3)
+> ya está implementado; ver [§ Estado de implementación](#estado-de-implementación)
+> al final. La decisión razonada queda aquí para no improvisarla en el momento.
 
 ## Problema
 
@@ -34,6 +35,40 @@ Heredados de `CONTRIBUTING.md` §4:
    sus tests no deben necesitar matplotlib, ffmpeg ni streamlit.
 4. **Degradación graceful.** Falta de canales opcionales (gear, glat, abs…) es un
    caso de primera clase, no un error — y por tanto algo que **hay que testear**.
+
+---
+
+## Qué se automatiza vs qué se prueba a mano (directiva)
+
+La regla de oro: **automatiza la lógica determinista; prueba a mano lo que depende
+del entorno, lo visual y lo subjetivo.** "Determinista" = misma entrada, misma
+salida, sin GPU/ffmpeg/red/ojo humano.
+
+| Parte del proyecto | Quién verifica | Por qué |
+| :-- | :-- | :-- |
+| `core/` (compare, normalize, corners, wear) | 🤖 Automática | Aritmética pura. Es el valor del producto. |
+| `importers/` (motec_csv, generic_csv) | 🤖 Automática | Parsear texto → datos es determinista. |
+| `viz/` **helpers puros** (`_build_filter`, `_nvenc_available`, aritmética de `sync`) | 🤖 Automática | Construir un comando o calcular un offset es determinista; **sin invocar ffmpeg**. |
+| `ui/app.py` — arranque | 🤖 Smoke mínimo | Solo "¿levanta sin excepción?". |
+| `ui/` — navegación, copy, layout, que un botón "se sienta" bien | 👤 Manual | Criterio humano; automatizarlo es caro y frágil. |
+| Render real de overlay (`.webm` se ve bien, alfa correcto) | 👤 Manual | Ojo humano sobre el resultado. |
+| Composición ffmpeg + NVENC real, auto-sync con video real | 👤 Manual | Depende de GPU/drivers/video; el entorno manda. |
+
+**El matiz clave:** la UI se parte en dos. *La lógica detrás* de la UI vive en `core/`
+y **sí** se automatiza (si la pantalla muestra un número, ese número lo calculó una
+función testeada). *La presentación* — que se vea y se entienda bien — siempre es
+verificación manual. Como la UI es una capa delgada sobre el CLI ("CLI primero"),
+casi todo el "cerebro" ya es testeable.
+
+**Cómo decidir un caso nuevo (3 preguntas):**
+1. ¿La respuesta correcta es un valor exacto (número, string, lista)? → 🤖 Automática.
+2. ¿Necesito ver/oír/sentir si está bien? → 👤 Manual.
+3. ¿Depende de GPU/ffmpeg/video/drivers/red? → 👤 Manual (o automatiza solo el
+   pedazo determinista, como el comando que se construye).
+
+El QA manual no desaparece: **se aligera**. Se deja de gastar tiempo verificando
+matemáticas (lo hace la máquina) y se concentra en lo único que un humano puede
+juzgar: lo visual y lo experiencial.
 
 ---
 
@@ -160,3 +195,34 @@ pueden venir en PRs siguientes.
 - **Tests E2E que invoquen ffmpeg/matplotlib** — descartado como base: lentos, frágiles
   y dependientes del entorno. La robustez de `compose`/`overlay` se cubre testeando sus
   helpers puros; el render real se sigue validando en el QA manual con video real.
+
+---
+
+## Estado de implementación
+
+Primer PR de la suite (rama `test/suite-core-tier1`). Se corre con `pip install -e ".[test]"`
+y luego `pytest`. **37 tests** (36 pasan, 1 `xfail` que documenta el gap del separador `;`).
+
+```
+tests/
+  conftest.py                      # make_lap: constructor de Lap sintética determinista
+  core/
+    test_normalize.py              # rejilla, interpolación lineal, gear discreto, split, fastest_lap
+    test_compare.py                # delta=0 idénticas; lento→delta+; ápex rápido→d_vmin+; sin gear/glat
+    test_corners.py                # nº de curvas por valle; ValueError sin speed; dirección; sin glat
+    test_wear.py                   # calibrate/slip con y sin canales de rueda; conteo de ABS
+  importers/
+    fixtures/motec_mini.csv        # único dato versionado (24 filas sintéticas, layout i2)
+    test_motec_csv.py              # mapeo de canales, metadatos, beacons, split, ';' (xfail)
+  viz/
+    test_compose.py                # _build_filter (regresión filtro) + _nvenc_available (regresión fallback)
+  ui/
+    test_app_smoke.py              # AppTest: app.py arranca sin excepción (omitido si falta streamlit)
+```
+
+**Bugs blindados con regresión:** ImportError de arranque de UI (smoke), falso positivo
+de NVENC (`test_nvenc_available_false_on_nonzero`), construcción del filtro ffmpeg
+(`test_build_filter_scale_has_multiply_operator`), degradación sin gear/glat (Tier 1).
+
+**Pendiente para PRs siguientes:** resto de Tier 3 (`sync`), Tier 2 ampliado (encoding,
+columnas ausentes), y CI en `.github/workflows/tests.yml` (pytest en Windows, Python 3.10–3.12).

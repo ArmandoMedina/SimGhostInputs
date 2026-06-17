@@ -85,7 +85,17 @@ fantasma/
   cli.py        punto de entrada de comandos
 ```
 
-No hay suite de tests automatizados todavía — las contribuciones que añadan tests son especialmente bienvenidas. El enfoque acordado (framework, estructura, fixtures sintéticas y prioridades) está documentado en [`docs/decisions-testing.md`](docs/decisions-testing.md).
+La suite de tests está arrancada (pytest). Instálala y córrela con:
+
+```powershell
+pip install -e ".[test]"
+pytest
+```
+
+Los tests usan datos sintéticos deterministas (`make_lap` en `tests/conftest.py`) —
+nunca telemetría real. El enfoque, la estructura y la directiva de qué se automatiza
+vs qué se prueba a mano están en [`docs/decisions-testing.md`](docs/decisions-testing.md).
+Ampliar la cobertura (resto de `viz/`, importadores, CI) es especialmente bienvenido.
 
 ---
 
