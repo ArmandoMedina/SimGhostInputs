@@ -22,6 +22,12 @@
 
 v0.6.0 (histórico entre sesiones), v0.7.0 (importadores) y v0.8.0 (Pace Notes) quedan diferidos para después de v1.0. (Nota: los números 0.6.x ya se usaron para releases reales; el "v0.6.0 histórico" del plan original se renumerará cuando se retome.)
 
+> **Orden de este documento:** primero las versiones del **camino a la 1.0** (en orden de entrega), luego las **diferidas a post-1.0**, y al final los temas **transversales** (gaps técnicos y deuda).
+
+---
+
+# ▶️ Camino a la v1.0
+
 ---
 
 ## v0.5.0 — Estabilidad de UI y cierre del análisis offline
@@ -77,6 +83,41 @@ Agrupa todos los fixes del bloque `[Unreleased]` más las correcciones de esta s
 
 ---
 
+## v0.9.0 — Sincronización robusta y flujos múltiples en UI
+> _Estado: **completa** — el contenido se entregó en la tanda 0.6.0. Los extras (umbral configurable, lista de vueltas) se descartan/difieren; ver abajo._
+
+**Decisión de arquitectura:** `compose` y `compare` procesan una vuelta por ejecución. La UI facilita encadenar múltiples flujos sin repetir el proceso manualmente.
+
+### Contexto
+El `auto_sync` actual produce un overlay o aborta con `RuntimeError` si z < 3.0σ, pero no informa al usuario qué tan bien sincronizado está ni por qué falló. Con vueltas largas (Nordschleife ~6 min) los casos de fallo son más frecuentes y menos obvios. Si el usuario pausó durante la vuelta, el offset calculado es inválido y el resultado silencioso es peor que un error.
+
+### Cambios previstos
+
+**Detección de pausa en la vuelta** ✅ (en 0.6.0)
+- [x] Detectar discontinuidades en el audio del video durante la vuelta seleccionada (silencio/salto) — `sync._detect_pause`
+- [x] Abortar con error claro: "Pausa detectada en X:XX…" — `sync.auto_sync` lanza `RuntimeError` con timestamp
+- [x] No intentar re-sincronizar post-pausa (telemetría y video divergen irrecuperablemente)
+
+**Métrica de calidad de sync**
+- [x] Mostrar el resultado de sync: CLI imprime offset + z σ; UI muestra badge de calidad
+- [~] ~~Umbral mínimo configurable: `--min-sync-quality`~~ → **descartado**. El único caso que justificaría bajar el umbral (auto-sync rechaza un video legítimo, p. ej. coche eléctrico sin banda de motor) ya está cubierto por el **offset manual** existente (`step4.py` «Sincronizar manualmente»). Sería una perilla para un problema ya resuelto.
+- [x] Si cae bajo el umbral: error explícito — `auto_sync` lanza si z < 3.0σ
+- [x] En UI: badge de calidad de sync visible — `_sync_quality_label` (Excelente / Muy bueno / Bueno / Marginal)
+
+**UI — flujos múltiples**
+- [x] Botón «Procesar otra vuelta» al finalizar un flujo — reinicia desde Paso 1 sin cerrar la app
+- [~] ~~Lista de vueltas procesadas en la sesión actual~~ → **diferido a post-v1.0** (comodidad, no corrección; ver abajo)
+- [x] Scope de `compare` y `compose` acotado a una vuelta por ejecución (radio buttons, una vuelta por diseño)
+
+### QA antes de publicar v0.9.0 (validación con video real — QA manual)
+- [ ] Video Nordschleife completo (~6 min): sync correcto, offset preciso, badge de calidad visible
+- [ ] Video con pausa en el minuto 3: error claro con timestamp de la pausa detectada
+
+### Diferido a post-v1.0
+- **Lista de vueltas procesadas en la sesión** (vuelta + archivo de salida + sync quality acumulados en una tabla): es conveniencia para quien procesa varias vueltas seguidas sin cerrar la app. El producto funciona sin ella; se separa para no bloquear la 1.0.
+
+---
+
 ## v0.10.0 — Drill-down por curva
 > _Estado: por construir — spec en [PRODUCT_BRIEF.md § 10](PRODUCT_BRIEF.md)_
 
@@ -95,6 +136,27 @@ Convierte la tabla de tiempo perdido en coaching accionable. El piloto pica en u
 - [ ] Curva sin glat → panel omite G-lat sin crashear
 - [ ] Síntesis en lenguaje natural coherente con los números del panel
 - [ ] Curva donde el piloto es más rápido → mensaje positivo ("ganas X s aquí")
+
+---
+
+## v1.0.0 — Primera versión estable (AMS2)
+> _Estado: objetivo a largo plazo_
+
+El criterio para v1.0 es que el pipeline offline esté completo, documentado y probado. Alcance declarado: **AMS2 únicamente**. Importadores adicionales (iRacing, rF2, ACC) y features post-tanda avanzadas (histórico, pace notes) van después.
+
+### Requisitos para llamarla v1.0
+- [ ] v0.9.0 y v0.10.0 completadas y en producción
+- [ ] API interna (`core/`) estabilizada — sin cambios breaking entre parches
+- [ ] Docs completas: guía de usuario, referencia de HUD, formato de datos, cómo contribuir
+- [ ] Probado con AMS2 en al menos 3 circuitos distintos
+- [ ] `setup.ps1` probado en instalación limpia de Windows 11
+- [ ] No hay `[Unreleased]` acumulado en CHANGELOG
+
+---
+
+# ⏸️ Diferido — post-v1.0
+
+> Fuera del alcance de la 1.0 (solo AMS2). Se retoman después de declarar estable el pipeline offline.
 
 ---
 
@@ -138,21 +200,6 @@ Elimina la dependencia de MoTeC i2 como intermediario para algunos formatos.
 - [ ] CSV de SimHub para AMS2 — auto-detectado sin `--map`
 - [ ] CSV de ACC vía sim-to-motec — importado correctamente con degradación graceful en ABS/TCS
 - [ ] Tabla de compatibilidad en README actualizada con estado real probado
-
----
-
-## v1.0.0 — Primera versión estable (AMS2)
-> _Estado: objetivo a largo plazo_
-
-El criterio para v1.0 es que el pipeline offline esté completo, documentado y probado. Alcance declarado: **AMS2 únicamente**. Importadores adicionales (iRacing, rF2, ACC) y features post-tanda avanzadas (histórico, pace notes) van después.
-
-### Requisitos para llamarla v1.0
-- [ ] v0.9.0 y v0.10.0 completadas y en producción
-- [ ] API interna (`core/`) estabilizada — sin cambios breaking entre parches
-- [ ] Docs completas: guía de usuario, referencia de HUD, formato de datos, cómo contribuir
-- [ ] Probado con AMS2 en al menos 3 circuitos distintos
-- [ ] `setup.ps1` probado en instalación limpia de Windows 11
-- [ ] No hay `[Unreleased]` acumulado en CHANGELOG
 
 ---
 
@@ -211,41 +258,6 @@ Frases 200m antes del punto de frenada para dar contexto. La voz enseña, el ton
 
 ---
 
-## v0.9.0 — Sincronización robusta y flujos múltiples en UI
-> _Estado: **completa** — el contenido se entregó en la tanda 0.6.0. Los extras (umbral configurable, lista de vueltas) se descartan/difieren; ver abajo._
-
-**Decisión de arquitectura:** `compose` y `compare` procesan una vuelta por ejecución. La UI facilita encadenar múltiples flujos sin repetir el proceso manualmente.
-
-### Contexto
-El `auto_sync` actual produce un overlay o aborta con `RuntimeError` si z < 3.0σ, pero no informa al usuario qué tan bien sincronizado está ni por qué falló. Con vueltas largas (Nordschleife ~6 min) los casos de fallo son más frecuentes y menos obvios. Si el usuario pausó durante la vuelta, el offset calculado es inválido y el resultado silencioso es peor que un error.
-
-### Cambios previstos
-
-**Detección de pausa en la vuelta** ✅ (en 0.6.0)
-- [x] Detectar discontinuidades en el audio del video durante la vuelta seleccionada (silencio/salto) — `sync._detect_pause`
-- [x] Abortar con error claro: "Pausa detectada en X:XX…" — `sync.auto_sync` lanza `RuntimeError` con timestamp
-- [x] No intentar re-sincronizar post-pausa (telemetría y video divergen irrecuperablemente)
-
-**Métrica de calidad de sync**
-- [x] Mostrar el resultado de sync: CLI imprime offset + z σ; UI muestra badge de calidad
-- [~] ~~Umbral mínimo configurable: `--min-sync-quality`~~ → **descartado**. El único caso que justificaría bajar el umbral (auto-sync rechaza un video legítimo, p. ej. coche eléctrico sin banda de motor) ya está cubierto por el **offset manual** existente (`step4.py` «Sincronizar manualmente»). Sería una perilla para un problema ya resuelto.
-- [x] Si cae bajo el umbral: error explícito — `auto_sync` lanza si z < 3.0σ
-- [x] En UI: badge de calidad de sync visible — `_sync_quality_label` (Excelente / Muy bueno / Bueno / Marginal)
-
-**UI — flujos múltiples**
-- [x] Botón «Procesar otra vuelta» al finalizar un flujo — reinicia desde Paso 1 sin cerrar la app
-- [~] ~~Lista de vueltas procesadas en la sesión actual~~ → **diferido a post-v1.0** (comodidad, no corrección; ver abajo)
-- [x] Scope de `compare` y `compose` acotado a una vuelta por ejecución (radio buttons, una vuelta por diseño)
-
-### QA antes de publicar v0.9.0 (validación con video real — QA manual)
-- [ ] Video Nordschleife completo (~6 min): sync correcto, offset preciso, badge de calidad visible
-- [ ] Video con pausa en el minuto 3: error claro con timestamp de la pausa detectada
-
-### Diferido a post-v1.0
-- **Lista de vueltas procesadas en la sesión** (vuelta + archivo de salida + sync quality acumulados en una tabla): es conveniencia para quien procesa varias vueltas seguidas sin cerrar la app. El producto funciona sin ella; se separa para no bloquear la 1.0.
-
----
-
 ## Fuera de este repositorio — fantasma-live
 > _Repo separado, solo si Pace Notes no cubre el caso de uso_
 
@@ -264,20 +276,24 @@ Solo si después de usar Pace Notes el piloto necesita algo que éstas no pueden
 
 ---
 
+# 🔧 Transversal
+
+---
+
 ## Gaps técnicos identificados
 
 Cosas que están en el código pero no tienen cobertura de QA formal ni están documentadas:
 
 | Gap | Descripción | Prioridad |
 | :-- | :-- | :-- |
-| Test de degradación por canales ausentes | No hay prueba sistemática de qué pasa cuando faltan glat, glong, gear, abs, tcs en distintas combinaciones | Alta |
+| Test de degradación por canales ausentes | No hay prueba sistemática de qué pasa cuando faltan glat, glong, gear, abs, tcs en distintas combinaciones (parcialmente cubierto ya por la suite de tests) | Media |
 | Comportamiento con vueltas muy cortas | ¿Qué pasa si el piloto sale de pista y la vuelta tiene solo 500 m? | Media |
 | ~~CSV con separador de punto y coma~~ ✅ | Resuelto: `importers/_util.py` detecta el separador (`;`) y parsea coma decimal europea. Pendiente validar con un export europeo real de i2 (cubierto con fixtures sintéticos) | — |
 | Circuitos con vuelta que cruza la línea de meta más de una vez | Circuitos en 8 o con chicane en meta podrían romper la detección de vueltas | Media |
 | Overlay con FPS distintos al de la grabación | Si el usuario elige 30 fps en el overlay pero graba a 60 fps, la composición puede quedar desincronizada | Alta |
 | `--format prores` cuelga ffmpeg en vueltas largas | En Nordschleife (~394s) el encode ProRes arranca, escribe ~4 GB de frames y luego ffmpeg se congela sin actividad CPU. El moov atom nunca se escribe y el archivo queda corrupto. Reproducido en QA 2026-06-14. Default cambiado a `webm` como mitigación; causa raíz pendiente de investigar. | Alta |
 | `fantasma compose` sin ffmpeg instalado | El error actual puede no ser claro para el usuario — mejorar mensaje | Baja |
-| Versión mínima de Python no declarada | `pyproject.toml` debería declarar `requires-python` — testeado internamente en 3.10+ | Media |
+| Versión mínima de Python no declarada | ~~`pyproject.toml` debería declarar `requires-python`~~ ✅ ya declara `requires-python = ">=3.10"` | — |
 
 ---
 
@@ -287,8 +303,8 @@ Cosas que están en el código pero no tienen cobertura de QA formal ni están d
 | :-- | :-- |
 | `motec_csv.py` codificación | Lee con `utf-8-sig` — CSV generados por i2 en Windows pueden tener encoding distinto en setups no-inglés |
 | Tests automáticos (en progreso) | Suite implementada: 48 tests (Tier 1 `core/` + Tier 2 importadores + Tier 3 `compose`/`sync` + smoke de UI) con pytest y fixtures sintéticas, y **CI en GitHub Actions** (Windows, Python 3.10–3.12). Cumple el requisito de v1.0 de "tests unitarios de `core/`". Pendiente: ampliar cobertura conforme crezca el código. Estrategia y estado en [`docs/decisions-testing.md`](docs/decisions-testing.md) |
-| Docs en `docs/` referenciadas pero no escritas | El README menciona `docs/guia-usuario.md`, `docs/hud-reference.md`, `docs/formato-datos.md` — no existen aún |
+| ~~Docs en `docs/` referenciadas pero no escritas~~ ✅ | Resuelto: `docs/guia-usuario.md` (131 líneas), `docs/hud-reference.md` (138) y `docs/formato-datos.md` (88) ya existen con contenido. Pendiente solo mantenerlas al día con los cambios de UI/HUD |
 
 ---
 
-_Última revisión: 2026-06-14 — añadida v0.9.0 sincronización robusta y flujos múltiples en UI; decisión: compose y compare acotados a una vuelta por ejecución_
+_Última revisión: 2026-06-17 — reordenadas las versiones (camino a 1.0 ascendente → diferidas → transversales); v0.9.0 marcada completa; estado real reconciliado a v0.6.5; corregidas deudas ya resueltas (docs, requires-python)._
