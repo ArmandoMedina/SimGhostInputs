@@ -19,6 +19,24 @@ def _rolling_lap(ratio=1.0, n=200, speed=120.0):
     return lap
 
 
+def _slip_lap(speed=120.0):
+    """Vuelta con 3 tramos: rodadura libre (calibra ratio=1.0), bloqueo en frenada
+    (rueda 20% más lenta = slip negativo) y patinaje en tracción (rueda 20% más
+    rápida = slip positivo). Sirve para verificar el signo y que el índice da > 0."""
+    lap = Lap()
+    n_free, n_lock, n_spin = 120, 40, 40
+    n = n_free + n_lock + n_spin
+    lap.channels["time"] = [i * 0.1 for i in range(n)]
+    lap.channels["dist"] = [i * 5.0 for i in range(n)]
+    lap.channels["speed"] = [speed] * n
+    lap.channels["brake"] = [0.0] * n_free + [50.0] * n_lock + [0.0] * n_spin
+    lap.channels["glong"] = [0.0] * n_free + [-1.0] * n_lock + [1.0] * n_spin
+    ts = [speed] * n_free + [speed * 0.8] * n_lock + [speed * 1.2] * n_spin
+    for w in wear.WHEELS:
+        lap.channels["ts_" + w] = list(ts)
+    return lap
+
+
 def test_calibrate_returns_none_without_wheel_channels():
     lap = make_lap()  # no tiene ts_fl..rr
     assert wear.calibrate(lap) is None
@@ -38,6 +56,19 @@ def test_clean_rolling_has_low_slip_index():
     idx = wear.slip_index(lap)
     assert idx is not None
     assert idx == 0.0  # sin deslizamiento real, por debajo de la banda muerta
+
+
+def test_slip_series_signs_locking_and_spinning():
+    s = wear.slip_series(_slip_lap())
+    assert s is not None
+    assert min(s) < -10   # bloqueo en frenada: rueda más lenta -> slip negativo
+    assert max(s) > 10    # patinaje en tracción: rueda más rápida -> slip positivo
+
+
+def test_slip_index_positive_with_real_slip():
+    idx = wear.slip_index(_slip_lap())
+    assert idx is not None
+    assert idx > 0        # con deslizamiento real por encima de la banda muerta
 
 
 def test_assist_count_counts_rising_edges():
