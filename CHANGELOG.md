@@ -4,6 +4,13 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/). Versionado
 
 ## [Unreleased]
 
+### Pendiente / Known issues
+_(ninguno)_
+
+---
+
+## [0.7.0] — 2026-06-21
+
 ### Añadido
 - **`fantasma wear` — medidor de desgaste de goma acumulable** (implementa el ADR 0004): nuevo comando CLI y función pura `wear_budget` en `core/wear.py`. Acumula el `slip_index` de las vueltas de un stint, da estado (`ok`/`yellow`/`red`/`burst`) y estima cuántas vueltas faltan para el reventón, estilo medidor de gasolina. Umbrales configurables (`--yellow`/`--red`/`--burst`, default 30/40/50 — a calibrar con datos reales). El número es un proxy en unidades arbitrarias, no % físico.
 - **ADR — registro de decisiones numerado** (`docs/decisions/`): se impone la estructura `NNNN-titulo.md` con plantilla (`0000-plantilla.md`) e índice (`README.md`). Se migran los decision-docs planos previos a `0001-sync-offset`, `0002-crewchief-pacenotes`, `0003-testing` (con sus referencias actualizadas en ROADMAP/CHANGELOG/CONTRIBUTING). Nuevo **ADR 0004 — desgaste de llanta acumulable** (medidor tipo gasolina): reusar `slip_index` como rate por vuelta, acumularlo en el stint, umbrales configurables y vueltas estimadas a cambio (**Aceptada**). Nuevo **ADR 0005 — indicadores de estado del HUD se leen en el cursor, no por ventana** (**Aceptada**): guardarraíl para las luces ABS/TC y DESLIZ. Nuevo **ADR 0006 — jerarquía visual del HUD** (**Aceptada**): grosor uniforme, piloto siempre encima de la referencia, y colores piloto/referencia distinguibles (la regla de color queda como deuda, dirección "opción B"). Nuevo **ADR 0007 — el HUD no lleva leyenda de colores** (**Aceptada**): se documentan en `hud-reference.md` (con imagen anotada pendiente), no en pantalla.
@@ -15,9 +22,6 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/). Versionado
 - **Overlay — ABS/TC de la referencia más visibles + luz apagada en gris**: se subió el brillo de las líneas de asistencia de la referencia (`_RABS`, `_RTCS`), que casi no se veían, y el estado *apagado* de las luces ABS/TC pasó a gris (`_DIM`) para que el on/off contraste sin depender de esos colores.
 - **Overlay — se quitan los rótulos `freno+ABS` y `gas+TCS` de la franja** (ADR 0007): eran una leyenda parcial (2 de ~10 colores) que implicaba completitud falsa y ocupaba espacio; la leyenda de colores vive en `hud-reference.md`.
 - **Overlay — escala del panel de volante con más divisiones**: pasa de mostrar solo -20/0/20 a `-30/-20/-10/0/10/20/30`, igualando la densidad de escala de los paneles de gas y freno (0..100 en pasos de 20).
-
-### Pendiente / Known issues
-_(ninguno)_
 
 ---
 

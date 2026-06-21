@@ -6,9 +6,9 @@
 
 ---
 
-## Estado actual — v0.6.6
+## Estado actual — v0.7.0
 
-Último release: **v0.6.6** (2026-06-17). Las tandas 0.6.0–0.6.5 entregaron, entre otras cosas, el grueso de lo planeado para v0.9.0 (detección de pausa, badge de calidad de sync, «Procesar otra vuelta», una vuelta por ejecución). La **v0.6.6** añadió la suite de tests automatizados (48 verdes) + CI en GitHub Actions y cerró el gap del separador `;`/coma decimal europea — con eso queda cubierto el requisito de v1.0 de "tests unitarios de `core/`".
+Último release: **v0.7.0** (2026-06-21) — primera feature post-tests: `fantasma wear` (medidor de desgaste acumulable), estructura de ADR numerada (0004–0007) y una tanda de pulido del overlay (luces ABS/TC instantáneas, DESLIZ reciente, escala del volante, franja sin leyendas). Previo: **v0.6.6** (2026-06-17). Las tandas 0.6.0–0.6.5 entregaron, entre otras cosas, el grueso de lo planeado para v0.9.0 (detección de pausa, badge de calidad de sync, «Procesar otra vuelta», una vuelta por ejecución). La **v0.6.6** añadió la suite de tests automatizados (48 verdes) + CI en GitHub Actions y cerró el gap del separador `;`/coma decimal europea — con eso queda cubierto el requisito de v1.0 de "tests unitarios de `core/`".
 
 Con v0.9.0 entregada, **el drill-down por curva (antes v0.10.0) se difiere a post-1.0**. Eso reenfoca la 1.0: ya no es "construir una feature nueva primero", sino **estabilizar, testear, documentar y validar en AMS2 el pipeline offline que ya existe**. El camino a la 1.0 es ahora mayormente QA manual + cierre de release.
 
