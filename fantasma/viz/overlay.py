@@ -179,6 +179,10 @@ class _HUDFigure:
             ax.set_ylabel(ylabel, color=_FG, fontsize=9)
             ax.set_ylim(ylo, yhi)
 
+        # volante: divisiones cada 10° para igualar la densidad de escala de los
+        # paneles de gas/freno (que van 0..100 en pasos de 20), no solo -20/0/20.
+        axes[2].set_yticks([-30, -20, -10, 0, 10, 20, 30])
+
         axes[2].axhline(0, color="#444", lw=0.7)
 
         lw   = 1.8

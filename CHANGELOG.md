@@ -14,6 +14,7 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/). Versionado
 - **Overlay — DESLIZ ahora es deslizamiento reciente, no promedio de pantalla** (ADR 0005): antes promediaba el slip de toda la ventana visible (520 m, incluyendo 200 m **por delante** del cursor); ahora promedia solo una ventana corta detrás del cursor (`SLIP_WIN_M = 40 m`).
 - **Overlay — ABS/TC de la referencia más visibles + luz apagada en gris**: se subió el brillo de las líneas de asistencia de la referencia (`_RABS`, `_RTCS`), que casi no se veían, y el estado *apagado* de las luces ABS/TC pasó a gris (`_DIM`) para que el on/off contraste sin depender de esos colores.
 - **Overlay — se quitan los rótulos `freno+ABS` y `gas+TCS` de la franja** (ADR 0007): eran una leyenda parcial (2 de ~10 colores) que implicaba completitud falsa y ocupaba espacio; la leyenda de colores vive en `hud-reference.md`.
+- **Overlay — escala del panel de volante con más divisiones**: pasa de mostrar solo -20/0/20 a `-30/-20/-10/0/10/20/30`, igualando la densidad de escala de los paneles de gas y freno (0..100 en pasos de 20).
 
 ### Pendiente / Known issues
 _(ninguno)_
