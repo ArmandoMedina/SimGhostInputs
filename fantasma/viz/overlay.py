@@ -164,8 +164,6 @@ class _HUDFigure:
         fig.text(0.012, 0.97,  "GAP",       color=_DIM,  fontsize=10, **kw)
         fig.text(0.135, 0.97,  "ΔV",        color=_DIM,  fontsize=10, **kw)
         fig.text(0.225, 0.97,  "DESLIZ",    color=_DIM,  fontsize=10, **kw)
-        fig.text(0.520, 0.97,  "freno+ABS", color=_ABS,  fontsize=9,  **kw)
-        fig.text(0.585, 0.97,  "gas+TCS",   color=_TCS,  fontsize=9,  **kw)
         fig.text(0.635, 0.97,  "MARCHA",    color=_DIM,  fontsize=9,  **kw)
         fig.text(0.730, 0.97,  "m",         color=_DIM,  fontsize=9,  **kw)
         fig.text(0.812, 0.97,  "km/h",      color=_DIM,  fontsize=9,  **kw)
