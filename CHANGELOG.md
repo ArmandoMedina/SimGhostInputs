@@ -4,6 +4,14 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/). Versionado
 
 ## [Unreleased]
 
+### Añadido
+- **`fantasma wear` — medidor de desgaste de goma acumulable** (implementa el ADR 0004): nuevo comando CLI y función pura `wear_budget` en `core/wear.py`. Acumula el `slip_index` de las vueltas de un stint, da estado (`ok`/`yellow`/`red`/`burst`) y estima cuántas vueltas faltan para el reventón, estilo medidor de gasolina. Umbrales configurables (`--yellow`/`--red`/`--burst`, default 30/40/50 — a calibrar con datos reales). El número es un proxy en unidades arbitrarias, no % físico.
+- **ADR — registro de decisiones numerado** (`docs/decisions/`): se impone la estructura `NNNN-titulo.md` con plantilla (`0000-plantilla.md`) e índice (`README.md`). Se migran los decision-docs planos previos a `0001-sync-offset`, `0002-crewchief-pacenotes`, `0003-testing` (con sus referencias actualizadas en ROADMAP/CHANGELOG/CONTRIBUTING). Nuevo **ADR 0004 — desgaste de llanta acumulable** (medidor tipo gasolina): reusar `slip_index` como rate por vuelta, acumularlo en el stint, umbrales configurables y vueltas estimadas a cambio. Estado: Propuesta.
+
+### Corregido
+- **Overlay — indicadores ABS/TC ahora son luces instantáneas, no conteo por ventana**: el texto "ABS"/"TC" de la franja mostraba un conteo de activaciones acumulado sobre los ~520 m visibles, así que no "prendía y apagaba" con la activación real. Ahora cada luz lee el flag del piloto **en el cursor** (`_flag_recent_grid` en `viz/overlay.py`) y se enciende en su color (ABS ámbar, TC violeta) cuando está activo, con retención corta (`HOLD_M = 8 m`) para no parpadear a 30/60 fps. Se añade además la luz **TC** que antes no existía como texto.
+- **Overlay — espaciado de la franja de datos**: se separa la etiqueta «MARCHA» del número de marcha (estaban pegados) y se acerca «km/h» a «m» (sobraba aire entre ambos).
+
 ### Pendiente / Known issues
 _(ninguno)_
 
@@ -12,7 +20,7 @@ _(ninguno)_
 ## [0.6.6] — 2026-06-17
 
 ### Añadido
-- **Suite de pruebas automatizadas — pytest**: arranca la suite definida en `docs/decisions-testing.md`. Nuevo extra `pip install -e ".[test]"` y config en `pyproject.toml`. **48 tests** verdes. Cubre: **Tier 1** `core/` puro (normalización, comparación con los signos confirmados del producto —piloto más lento = delta positivo, ápex más rápido = `d_vmin` positivo—, detección de curvas y desgaste, incluyendo degradación graceful sin `gear`/`glat`), **Tier 2** importadores MoTeC CSV y CSV genérico con fixtures sintéticos diminutos (auto-detección de columnas, mapeo manual, separador `;`, coma decimal), **Tier 3** helpers puros de `compose` (regresión del filtro ffmpeg y del falso positivo de NVENC) y de `sync` (señal de telemetría, detección de pausa por silencio, lectura de WAV) —todo sin invocar ffmpeg— y **Tier 4** smoke de la UI (`AppTest`: `app.py` arranca sin excepción —blinda el `ImportError` del refactor 0.6.3). Fixtures sintéticas deterministas vía `make_lap` (sin telemetría real). Documentada también la directiva «qué se automatiza vs qué se prueba a mano».
+- **Suite de pruebas automatizadas — pytest**: arranca la suite definida en `docs/decisions/0003-testing.md`. Nuevo extra `pip install -e ".[test]"` y config en `pyproject.toml`. **48 tests** verdes. Cubre: **Tier 1** `core/` puro (normalización, comparación con los signos confirmados del producto —piloto más lento = delta positivo, ápex más rápido = `d_vmin` positivo—, detección de curvas y desgaste, incluyendo degradación graceful sin `gear`/`glat`), **Tier 2** importadores MoTeC CSV y CSV genérico con fixtures sintéticos diminutos (auto-detección de columnas, mapeo manual, separador `;`, coma decimal), **Tier 3** helpers puros de `compose` (regresión del filtro ffmpeg y del falso positivo de NVENC) y de `sync` (señal de telemetría, detección de pausa por silencio, lectura de WAV) —todo sin invocar ffmpeg— y **Tier 4** smoke de la UI (`AppTest`: `app.py` arranca sin excepción —blinda el `ImportError` del refactor 0.6.3). Fixtures sintéticas deterministas vía `make_lap` (sin telemetría real). Documentada también la directiva «qué se automatiza vs qué se prueba a mano».
 - **CI — GitHub Actions** (`.github/workflows/tests.yml`): corre `pytest` en cada push y PR a `master`, sobre **Windows** (plataforma objetivo) con Python 3.10, 3.11 y 3.12. Instala con extras `[test,ui,sync]` para ejercitar todas las capas; ffmpeg no es necesario porque ningún test lo invoca.
 
 ### Corregido
@@ -146,7 +154,7 @@ _(ninguno)_
 ### Añadido
 - **`fantasma compose --auto-sync`**: detecta automáticamente el offset temporal entre el video de grabación y el overlay de telemetría mediante correlación cruzada de audio. Extrae la energía espectral del motor (banda 150–500 Hz) del audio del video y la correlaciona contra RPM + velocidad de la telemetría. Precisión ~0.5 s. Extra opcional: `pip install 'fantasma-inputs[sync]'`. Parámetros: `--auto-sync --driver <tele.csv> [--lap-idx N] [--map col=canal]`.
 - **UI Paso 4 — Detectar sincronía**: expander «Detectar sincronía automáticamente» en el Paso 4 de `fantasma ui`. Si hay una vuelta cargada del Paso 1 la usa directamente; si no, permite subir la telemetría. El offset detectado se pre-rellena en el campo «Retraso del HUD».
-- **`docs/decisions-sync-offset.md`**: documento que registra las 5 opciones evaluadas para la detección de offset (correlación de audio, FFT con numpy, OCR del velocímetro, timestamps de metadata y guía manual) con razonamiento de descarte para cada opción rechazada.
+- **`docs/decisions/0001-sync-offset.md`**: documento que registra las 5 opciones evaluadas para la detección de offset (correlación de audio, FFT con numpy, OCR del velocímetro, timestamps de metadata y guía manual) con razonamiento de descarte para cada opción rechazada.
 
 ### Mejorado
 - **`fantasma overlay` — render paralelo**: frames distribuidos en `N_cores − 1` procesos con `ProcessPoolExecutor`; cada worker crea su propio `_HUDFigure` independiente. En Xeon E5-2680 v4 (14c): ~37 min/vuelta → ~3 min/vuelta.

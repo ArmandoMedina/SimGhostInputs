@@ -6,9 +6,9 @@
 
 ---
 
-## Estado actual — v0.6.5
+## Estado actual — v0.6.6
 
-Último release: **v0.6.5** (2026-06-16). Las tandas 0.6.0–0.6.5 entregaron, entre otras cosas, el grueso de lo planeado para v0.9.0 (detección de pausa, badge de calidad de sync, «Procesar otra vuelta», una vuelta por ejecución).
+Último release: **v0.6.6** (2026-06-17). Las tandas 0.6.0–0.6.5 entregaron, entre otras cosas, el grueso de lo planeado para v0.9.0 (detección de pausa, badge de calidad de sync, «Procesar otra vuelta», una vuelta por ejecución). La **v0.6.6** añadió la suite de tests automatizados (48 verdes) + CI en GitHub Actions y cerró el gap del separador `;`/coma decimal europea — con eso queda cubierto el requisito de v1.0 de "tests unitarios de `core/`".
 
 Con v0.9.0 entregada, **el drill-down por curva (antes v0.10.0) se difiere a post-1.0**. Eso reenfoca la 1.0: ya no es "construir una feature nueva primero", sino **estabilizar, testear, documentar y validar en AMS2 el pipeline offline que ya existe**. El camino a la 1.0 es ahora mayormente QA manual + cierre de release.
 
@@ -213,7 +213,7 @@ Elimina la dependencia de MoTeC i2 como intermediario para algunos formatos.
 
 **Hallazgo clave (2026-06-14):** CrewChief tiene un sistema nativo llamado **Pace Notes** que reproduce archivos WAV en metros exactos de la pista. SimGhostInputs ya tiene esos metros en `corners.json`. La integración es generar los archivos correctos — sin modificar CrewChief, sin construir un sistema de voz propio.
 
-Ver especificación completa: [`docs/decisions-crewchief-pacenotes.md`](docs/decisions-crewchief-pacenotes.md)
+Ver especificación completa: [`docs/decisions/0002-crewchief-pacenotes.md`](docs/decisions/0002-crewchief-pacenotes.md)
 
 ### Cómo funciona
 1. `fantasma compare` genera el análisis: qué curvas, cuánto tiempo, qué problema específico
@@ -223,7 +223,7 @@ Ver especificación completa: [`docs/decisions-crewchief-pacenotes.md`](docs/dec
 3. Los archivos se escriben en `Documents\CrewChiefV4\pace_notes\ams2\[pista]\`
 4. El piloto activa las pace notes con un botón antes de salir del pit — CrewChief habla en el momento exacto
 
-### Dos capas de audio (ver spec completa en `docs/decisions-crewchief-pacenotes.md`)
+### Dos capas de audio (ver spec completa en `docs/decisions/0002-crewchief-pacenotes.md`)
 
 **Capa 1 — Tonos posicionales** (núcleo, sin dependencias nuevas)
 Tonos puros generados con numpy. Cada hito del `corners.json` tiene su metro y su frecuencia:
@@ -296,7 +296,7 @@ Cosas que están en el código pero no tienen cobertura de QA formal ni están d
 | ~~CSV con separador de punto y coma~~ ✅ | Resuelto: `importers/_util.py` detecta el separador (`;`) y parsea coma decimal europea. Pendiente validar con un export europeo real de i2 (cubierto con fixtures sintéticos) | — |
 | Circuitos con vuelta que cruza la línea de meta más de una vez | Circuitos en 8 o con chicane en meta podrían romper la detección de vueltas | Media |
 | ~~Overlay con FPS distintos al de la grabación~~ 🔍 | Investigado (2026-06-17): **no reproduce desync**. Los frames se generan en `t = n/fps`, así que la duración real del `overlay.webm` = duración de la vuelta sea cual sea el fps; ffmpeg compone por PTS (duplica/descarta frames por timestamp, no desincroniza). El único efecto real de un fps bajo es un HUD más "a saltos" (suavidad visual), no desfase. La guía ya recomienda `--fps 60` para igualar la grabación. Pendiente solo: si en el QA visual aparece un desync real, capturar repro. | Baja |
-| `--format prores` cuelga ffmpeg en vueltas largas | En Nordschleife (~394s) el encode ProRes arranca, escribe ~4 GB de frames y luego ffmpeg se congela sin actividad CPU. El moov atom nunca se escribe y el archivo queda corrupto. Reproducido en QA 2026-06-14. Default cambiado a `webm` como mitigación; causa raíz pendiente de investigar. | Alta |
+| `--format prores` cuelga ffmpeg en vueltas largas | En Nordschleife (~394s) el encode ProRes arranca, escribe ~4 GB de frames y luego ffmpeg se congela sin actividad CPU. El moov atom nunca se escribe y el archivo queda corrupto. Reproducido en QA 2026-06-14. Default cambiado a `webm` como mitigación; causa raíz pendiente de investigar. **Diagnóstico de código (2026-06-21, sin reproducir el cuelgue):** (1) `_run_ffmpeg` en `viz/overlay.py` manda `stderr=subprocess.DEVNULL`, así que cuando el encode falla solo queda un `CalledProcessError` con código pelón — el motivo real de ffmpeg se descarta. Es la misma trampa que ya se corrigió en `compose.py` (v0.6.5, captura el stderr a temporal y reporta las últimas 15 líneas), pero la lección no se aplicó aquí; por eso "investigar la causa" hoy es imposible desde el log. (2) Asimetría: la rama `webm` pasa `-row-mt 1 -threads N`; la rama `prores_ks` no pasa threading. **Pendiente:** instrumentar `_run_ffmpeg` (capturar stderr) y reproducir el encode real de una vuelta larga en AMS2 para ver si es error (saldría en stderr) o cuelgue verdadero (I/O / muxer / tamaño de archivo — ojo al límite de 4 GB de FAT32/exFAT si la salida va a un disco externo). | Alta |
 | `fantasma compose` sin ffmpeg instalado | El error actual puede no ser claro para el usuario — mejorar mensaje | Baja |
 | Versión mínima de Python no declarada | ~~`pyproject.toml` debería declarar `requires-python`~~ ✅ ya declara `requires-python = ">=3.10"` | — |
 
@@ -307,9 +307,9 @@ Cosas que están en el código pero no tienen cobertura de QA formal ni están d
 | Item | Descripción |
 | :-- | :-- |
 | `motec_csv.py` codificación | Lee con `utf-8-sig` — CSV generados por i2 en Windows pueden tener encoding distinto en setups no-inglés |
-| Tests automáticos (en progreso) | Suite implementada: 48 tests (Tier 1 `core/` + Tier 2 importadores + Tier 3 `compose`/`sync` + smoke de UI) con pytest y fixtures sintéticas, y **CI en GitHub Actions** (Windows, Python 3.10–3.12). Cumple el requisito de v1.0 de "tests unitarios de `core/`". Pendiente: ampliar cobertura conforme crezca el código. Estrategia y estado en [`docs/decisions-testing.md`](docs/decisions-testing.md) |
+| Tests automáticos (en progreso) | Suite implementada: 48 tests (Tier 1 `core/` + Tier 2 importadores + Tier 3 `compose`/`sync` + smoke de UI) con pytest y fixtures sintéticas, y **CI en GitHub Actions** (Windows, Python 3.10–3.12). Cumple el requisito de v1.0 de "tests unitarios de `core/`". Pendiente: ampliar cobertura conforme crezca el código. Estrategia y estado en [`docs/decisions/0003-testing.md`](docs/decisions/0003-testing.md) |
 | ~~Docs en `docs/` referenciadas pero no escritas~~ ✅ | Resuelto: `docs/guia-usuario.md` (131 líneas), `docs/hud-reference.md` (138) y `docs/formato-datos.md` (88) ya existen con contenido. Pendiente solo mantenerlas al día con los cambios de UI/HUD |
 
 ---
 
-_Última revisión: 2026-06-17 — drill-down (era v0.10.0) diferido a post-1.0; la 1.0 se reenfoca a estabilizar/testear/documentar/validar el pipeline offline existente en AMS2. Antes: reordenadas las versiones; v0.9.0 marcada completa; estado reconciliado a v0.6.5; deudas resueltas (docs, requires-python)._
+_Última revisión: 2026-06-21 — estado reconciliado a v0.6.6 (suite de tests + CI + fix separador `;` ya en release); diagnóstico de código del gap `prores` (stderr descartado en `_run_ffmpeg`, asimetría de threading) asentado sin tocar código. Antes (2026-06-17): drill-down (era v0.10.0) diferido a post-1.0; la 1.0 se reenfoca a estabilizar/testear/documentar/validar el pipeline offline existente en AMS2; reordenadas las versiones; v0.9.0 marcada completa; deudas resueltas (docs, requires-python)._

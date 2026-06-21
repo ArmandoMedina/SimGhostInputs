@@ -94,7 +94,7 @@ pytest
 
 Los tests usan datos sintéticos deterministas (`make_lap` en `tests/conftest.py`) —
 nunca telemetría real. El enfoque, la estructura y la directiva de qué se automatiza
-vs qué se prueba a mano están en [`docs/decisions-testing.md`](docs/decisions-testing.md).
+vs qué se prueba a mano están en [`docs/decisions/0003-testing.md`](docs/decisions/0003-testing.md).
 Ampliar la cobertura (resto de `viz/`, importadores, CI) es especialmente bienvenido.
 
 ---
