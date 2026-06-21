@@ -37,6 +37,8 @@ _YEL   = "#fdd835"
 
 W_BEFORE = 320   # metros antes del cursor
 W_AFTER  = 200   # metros después del cursor
+HOLD_M   = 8     # retención de las luces ABS/TC: siguen encendidas estos metros
+                 # tras la última activación, para que no parpadeen a 30/60 fps
 _FIG_W   = 17    # pulgadas
 _FIG_H   = 5.2
 _DPI     = 110   # → ~1870 × 572 px
@@ -93,6 +95,16 @@ def _count_events(d_orig, flag_orig, lo, hi):
     return int(np.sum(np.diff(f) > 0)) if len(f) >= 2 else 0
 
 
+def _flag_recent_grid(grid, i, hold):
+    """True si el flag (rejilla 1 m) estuvo activo en los últimos `hold` m hasta
+    el cursor. Da una luz instantánea con retención corta, no un conteo de ventana."""
+    if grid is None:
+        return False
+    i = max(0, min(int(i), len(grid) - 1))
+    seg = grid[max(0, i - int(hold)):i + 1]
+    return bool(seg.size) and float(np.max(seg)) > 0.5
+
+
 def _slip_window(slip_grid, ds, lo, hi):
     """Índice de slip en la ventana visible; None si no hay serie."""
     if slip_grid is None:
@@ -134,11 +146,13 @@ class _HUDFigure:
         self.t_dv_val  = fig.text(0.158, 0.985, "",  color=_FG,    fontsize=17, weight="bold", **kw)
         self.t_sl_val  = fig.text(0.272, 0.985, "—", color=_FG,    fontsize=17, weight="bold", **kw)
         self.t_sl_ref  = fig.text(0.305, 0.978, "",  color=_DIM,   fontsize=10, **kw)
-        self.t_ab_val  = fig.text(0.405, 0.985, "",  color=_ABS,   fontsize=14, **kw)
-        self.t_ab_ref  = fig.text(0.450, 0.978, "",  color=_DIM,   fontsize=10, **kw)
-        self.t_gear_val = fig.text(0.665, 0.985, "",  color=_FG,  fontsize=17, weight="bold", **kw)
+        # luces instantáneas ABS / TC: el propio texto se enciende (color vivo)
+        # cuando el flag del piloto está activo en el cursor, y se atenúa si no.
+        self.t_abs_light = fig.text(0.385, 0.985, "ABS", color=_RABS, fontsize=15, weight="bold", **kw)
+        self.t_tc_light  = fig.text(0.448, 0.985, "TC",  color=_RTCS, fontsize=15, weight="bold", **kw)
+        self.t_gear_val = fig.text(0.690, 0.985, "",  color=_FG,  fontsize=17, weight="bold", **kw)
         self.t_dist_val = fig.text(0.755, 0.985, "",  color=_DIM, fontsize=14, **kw)
-        self.t_spd_val  = fig.text(0.855, 0.985, "",  color=_FG,  fontsize=14, **kw)
+        self.t_spd_val  = fig.text(0.835, 0.985, "",  color=_FG,  fontsize=14, **kw)
         self.t_corner  = fig.text(0.988, 0.985, "",  color=_YEL,   fontsize=15,
                                   weight="bold", va="top", ha="right", transform=fig.transFigure)
         self.t_corner2 = fig.text(0.988, 0.948, "",  color=_DIM,   fontsize=10,
@@ -148,12 +162,11 @@ class _HUDFigure:
         fig.text(0.012, 0.97,  "GAP",       color=_DIM,  fontsize=10, **kw)
         fig.text(0.135, 0.97,  "ΔV",        color=_DIM,  fontsize=10, **kw)
         fig.text(0.225, 0.97,  "DESLIZ",    color=_DIM,  fontsize=10, **kw)
-        fig.text(0.375, 0.97,  "ABS",       color=_DIM,  fontsize=10, **kw)
         fig.text(0.520, 0.97,  "freno+ABS", color=_ABS,  fontsize=9,  **kw)
         fig.text(0.585, 0.97,  "gas+TCS",   color=_TCS,  fontsize=9,  **kw)
         fig.text(0.635, 0.97,  "MARCHA",    color=_DIM,  fontsize=9,  **kw)
         fig.text(0.730, 0.97,  "m",         color=_DIM,  fontsize=9,  **kw)
-        fig.text(0.830, 0.97,  "km/h",      color=_DIM,  fontsize=9,  **kw)
+        fig.text(0.812, 0.97,  "km/h",      color=_DIM,  fontsize=9,  **kw)
 
         # ── estilo de paneles ─────────────────────────────────────────────────
         specs = [("gas %", -5, 105), ("freno %", -5, 105), ("volante °", -38, 38)]
@@ -202,7 +215,7 @@ class _HUDFigure:
         fig.tight_layout(rect=(0, 0, 1, 0.90))
 
     def update(self, cur_d, win_d, rw, dw, p75, p90,
-               gap, dv, slip_val, ref_slip_val, abs_n, ref_abs_n,
+               gap, dv, slip_val, ref_slip_val, abs_on, tcs_on,
                corner_name, corner_txt, gear=None, speed=None):
         """Actualiza datos y texto para el frame actual."""
         l = self.l
@@ -245,8 +258,8 @@ class _HUDFigure:
         else:
             self.t_sl_val.set_text("—")
             self.t_sl_ref.set_text("")
-        self.t_ab_val.set_text("●" * min(abs_n, 5))
-        self.t_ab_ref.set_text("ref %d✕" % ref_abs_n)
+        self.t_abs_light.set_color(_ABS if abs_on else _RABS)
+        self.t_tc_light.set_color(_TCS if tcs_on else _RTCS)
         if gear is not None:
             g = int(round(gear))
             self.t_gear_val.set_text("N" if g == 0 else ("R" if g < 0 else str(g)))
@@ -311,13 +324,13 @@ def _render_chunk(args):
             dv           = int(drv_v - ref_v)
             slip_val     = _slip_window(drv_slip, ds, w0, w1)
             ref_slip_val = _slip_window(ref_slip, ds, w0, w1)
-            abs_n        = _count_events(drv_d_o, drv_abs_o, w0, w1)
-            ref_abs_n    = _count_events(ref_d_o, ref_abs_o, w0, w1)
+            abs_on       = _flag_recent_grid(drv_ch.get("abs"), cur_d, HOLD_M)
+            tcs_on       = _flag_recent_grid(drv_ch.get("tcs"), cur_d, HOLD_M)
             corner_name, corner_txt = _corner_at(corners_by_seg, cur_d)
 
             gear = float(np.interp(cur_d, ds, drv_ch["gear"])) if drv_ch.get("gear") is not None else None
             hud.update(cur_d, win_d, rw, dw, p75, p90,
-                       gap, dv, slip_val, ref_slip_val, abs_n, ref_abs_n,
+                       gap, dv, slip_val, ref_slip_val, abs_on, tcs_on,
                        corner_name, corner_txt, gear=gear, speed=drv_v)
             hud.to_pil().save(out_path)
             last_png = out_path
