@@ -6,9 +6,9 @@
 
 ---
 
-## Estado actual — v0.7.2
+## Estado actual — v0.8.0
 
-Último release: **v0.7.2** (2026-06-21) — `setup.ps1` instala Python solo (winget + reabre terminal) y se pasó a ASCII puro para no romper por encoding en instalación limpia. Previo: **v0.7.1** (fix detección de dependencias), **v0.7.0** (`fantasma wear` + estructura ADR 0004–0007 + pulido del overlay). Las tandas 0.6.0–0.6.5 entregaron, entre otras cosas, el grueso de lo planeado para v0.9.0 (detección de pausa, badge de calidad de sync, «Procesar otra vuelta», una vuelta por ejecución). La **v0.6.6** añadió la suite de tests automatizados (48 verdes) + CI en GitHub Actions y cerró el gap del separador `;`/coma decimal europea — con eso queda cubierto el requisito de v1.0 de "tests unitarios de `core/`".
+Último release: **v0.8.0** (2026-06-21) — auto-sync para video de **varias vueltas** (ADR 0008): detecta un candidato por vuelta y, si son ambiguos, el usuario elige (gate bloqueante en la UI). Resuelve el caso "carrera completa" que antes pegaba el HUD sobre la vuelta equivocada en silencio. _Pendiente de QA con video real._ Previo: **v0.7.2** (`setup.ps1` auto-instala Python + ASCII), **v0.7.1** (fix deps), **v0.7.0** (`fantasma wear` + ADR 0004–0007 + pulido del overlay). Las tandas 0.6.0–0.6.5 entregaron, entre otras cosas, el grueso de lo planeado para v0.9.0 (detección de pausa, badge de calidad de sync, «Procesar otra vuelta», una vuelta por ejecución). La **v0.6.6** añadió la suite de tests automatizados (48 verdes) + CI en GitHub Actions y cerró el gap del separador `;`/coma decimal europea — con eso queda cubierto el requisito de v1.0 de "tests unitarios de `core/`".
 
 Con v0.9.0 entregada, **el drill-down por curva (antes v0.10.0) se difiere a post-1.0**. Eso reenfoca la 1.0: ya no es "construir una feature nueva primero", sino **estabilizar, testear, documentar y validar en AMS2 el pipeline offline que ya existe**. El camino a la 1.0 es ahora mayormente QA manual + cierre de release.
 
