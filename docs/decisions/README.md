@@ -16,3 +16,4 @@ bifurcación equivocada.
 | [0004](0004-desgaste-acumulable.md) | Desgaste de llanta acumulable (medidor tipo gasolina) | Aceptada | 2026-06-21 |
 | [0005](0005-indicadores-instantaneos.md) | Indicadores de estado del HUD se leen en el cursor, no por ventana | Aceptada | 2026-06-21 |
 | [0006](0006-grosor-uniforme-lineas-hud.md) | Jerarquía visual del HUD: grosor uniforme, piloto siempre encima, colores que distinguen quién | Aceptada (color difer.) | 2026-06-21 |
+| [0007](0007-hud-sin-leyenda.md) | El HUD no lleva leyenda de colores; se documentan fuera | Aceptada | 2026-06-21 |

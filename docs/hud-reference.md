@@ -56,6 +56,11 @@ está tardando más en abrir.
 
 ## Código de colores
 
+> El overlay **no** lleva leyenda de colores en pantalla (ADR 0007): el HUD se ve en
+> movimiento y una leyenda ocuparía espacio sin consultarse a mitad de vuelta. **Esta
+> sección es la leyenda.** Pendiente: añadir aquí una **imagen anotada del HUD** además de
+> las tablas (una tabla de texto se salta con facilidad).
+
 ### Panel de gas (acelerador)
 
 | Color | Quién | Qué significa |
