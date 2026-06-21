@@ -9,6 +9,13 @@ _(ninguno)_
 
 ---
 
+## [0.7.1] — 2026-06-21
+
+### Corregido
+- **`setup.ps1` — la detección de dependencias mentía en una instalación limpia**: las comprobaciones `python -c "import X"` estaban dentro de un `try/catch`, pero un ejecutable nativo que sale con código ≠ 0 **no lanza una excepción** que `catch` capture en PowerShell (reporta por `$LASTEXITCODE`). Resultado: en una máquina **sin** la dependencia, el script imprimía "ya instalado" y **no la instalaba** — fallaba justo en el caso que importa. Cambiado a comprobar `$LASTEXITCODE -eq 0` en openpyxl, Pillow y matplotlib. Validado en un venv limpio (`.[full]` instala todo desde cero, imports y CLI OK).
+
+---
+
 ## [0.7.0] — 2026-06-21
 
 ### Añadido

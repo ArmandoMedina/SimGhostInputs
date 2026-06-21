@@ -48,29 +48,32 @@ Write-OK "fantasma-inputs instalado"
 if (-not $Full) {
     Write-Step "Instalando dependencias opcionales"
 
+    # Nota: los comandos nativos (python) reportan fallo via $LASTEXITCODE, NO lanzan
+    # excepcion que atrape un try/catch. Por eso se comprueba el codigo de salida a mano.
+
     # openpyxl: para leer .xlsx exportados de MoTeC i2
-    try {
-        python -c "import openpyxl" 2>$null
+    python -c "import openpyxl" 2>$null
+    if ($LASTEXITCODE -eq 0) {
         Write-Skip "openpyxl ya instalado"
-    } catch {
+    } else {
         pip install openpyxl --quiet
         Write-OK "openpyxl instalado  (leer .xlsx)"
     }
 
     # Pillow: requerido por 'fantasma overlay'
-    try {
-        python -c "from PIL import Image" 2>$null
+    python -c "from PIL import Image" 2>$null
+    if ($LASTEXITCODE -eq 0) {
         Write-Skip "Pillow ya instalado"
-    } catch {
+    } else {
         pip install "Pillow>=10" --quiet
         Write-OK "Pillow instalado  (fantasma overlay)"
     }
 
     # matplotlib: opcional, para 'fantasma compare' con graficas
-    try {
-        python -c "import matplotlib" 2>$null
+    python -c "import matplotlib" 2>$null
+    if ($LASTEXITCODE -eq 0) {
         Write-Skip "matplotlib ya instalado"
-    } catch {
+    } else {
         $resp = Read-Host "    Instalar matplotlib para graficas ghost? (s/n)"
         if ($resp -eq "s") {
             pip install "matplotlib>=3.7" --quiet
