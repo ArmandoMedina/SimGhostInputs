@@ -120,3 +120,56 @@ def wear_summary(lap):
     if fuel and fuel[0] > 0:
         out["fuel_used"] = round(fuel[0] - fuel[-1], 2)
     return out
+
+
+def wear_budget(rates, thresholds, recent_n=1):
+    """Acumula el desgaste de un stint y proyecta vueltas restantes, estilo
+    medidor de gasolina (ver ADR 0004 — desgaste acumulable).
+
+    Args:
+        rates:      slip_index por vuelta, en orden (los None se ignoran).
+        thresholds: dict con "yellow"/"red"/"burst" — umbrales que el usuario
+                    calibra empíricamente (NO son físicos; el rate es un proxy
+                    en unidades arbitrarias).
+        recent_n:   nº de vueltas finales a promediar para el rate de proyección.
+
+    Returns:
+        dict con cumulative, status (ok/yellow/red/burst), rate_recent,
+        laps_done y —si hay umbral de reventón y rate>0— laps_to_burst y
+        est_total_laps. None si no hay datos.
+    """
+    rates = [r for r in (rates or []) if r is not None]
+    if not rates:
+        return None
+
+    cumulative = round(sum(rates), 2)
+    yellow = thresholds.get("yellow")
+    red = thresholds.get("red")
+    burst = thresholds.get("burst")
+
+    if burst is not None and cumulative >= burst:
+        status = "burst"
+    elif red is not None and cumulative >= red:
+        status = "red"
+    elif yellow is not None and cumulative >= yellow:
+        status = "yellow"
+    else:
+        status = "ok"
+
+    n = max(1, int(recent_n))
+    recent = rates[-n:]
+    rate_recent = round(sum(recent) / len(recent), 2)
+
+    out = {
+        "cumulative": cumulative,
+        "status": status,
+        "rate_recent": rate_recent,
+        "laps_done": len(rates),
+    }
+    # Proyección lineal (como gasolina). Sin umbral de reventón o sin desgaste
+    # medible no se puede estimar — se omite en vez de inventar.
+    if burst is not None and rate_recent > 0:
+        remaining = max(0.0, (burst - cumulative) / rate_recent)
+        out["laps_to_burst"] = round(remaining, 1)
+        out["est_total_laps"] = round(len(rates) + remaining, 1)
+    return out

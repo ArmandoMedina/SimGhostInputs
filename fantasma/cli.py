@@ -214,6 +214,39 @@ def cmd_compose(args):
     print("-> %s" % out)
 
 
+def cmd_wear(args):
+    """Medidor de desgaste de goma acumulable de un stint (ver ADR 0004).
+
+    Calcula el slip_index de cada vuelta completa, lo acumula y proyecta cuántas
+    vueltas faltan para el reventón, estilo medidor de gasolina.
+    """
+    from .core import wear
+
+    laps = importers.load_laps(args.file, _parse_map(args.map))
+    complete = [l for l in laps if l.meta.get("is_complete")] or laps
+
+    print("Archivo: %s" % args.file)
+    print("\n  vuelta   desgaste (slip_index)")
+    rates = []
+    for i, lap in enumerate(complete):
+        r = wear.slip_index(lap)
+        rates.append(r)
+        print("  %4d     %s" % (i, "—" if r is None else "%.2f" % r))
+
+    th = {"yellow": args.yellow, "red": args.red, "burst": args.burst}
+    b = wear.wear_budget(rates, th, recent_n=args.recent_n)
+    if b is None:
+        print("\nSin desgaste medible (¿faltan los canales de velocidad de rueda?).")
+        return
+
+    print("\nDesgaste acumulado: %.2f  [%s]" % (b["cumulative"], b["status"].upper()))
+    print("Rate reciente: %.2f / vuelta  (últimas %d)" % (b["rate_recent"], args.recent_n))
+    if "laps_to_burst" in b:
+        print("Vueltas estimadas a cambio: ~%.1f  (total del juego de gomas ~%.1f vueltas)"
+              % (b["laps_to_burst"], b["est_total_laps"]))
+    print("Umbrales: amarillo %g | rojo %g | reventón %g" % (args.yellow, args.red, args.burst))
+
+
 def main(argv=None):
     p = argparse.ArgumentParser(prog="fantasma",
                                 description="Compara tus inputs contra una vuelta de referencia, por distancia.")
@@ -258,6 +291,16 @@ def main(argv=None):
     sp.add_argument("--map", action="append")
     sp.add_argument("-o", "--output", default="salida", help="carpeta de salida")
     sp.set_defaults(func=cmd_overlay)
+
+    sp = sub.add_parser("wear", help="medidor de desgaste de goma acumulable de un stint")
+    sp.add_argument("file")
+    sp.add_argument("--yellow", type=float, default=30.0, help="umbral amarillo (default 30)")
+    sp.add_argument("--red", type=float, default=40.0, help="umbral rojo (default 40)")
+    sp.add_argument("--burst", type=float, default=50.0, help="umbral de reventón (default 50)")
+    sp.add_argument("--recent-n", type=int, default=1, dest="recent_n",
+                    help="vueltas finales a promediar para proyectar (default 1)")
+    sp.add_argument("--map", action="append", help="columna=canal para CSV generico")
+    sp.set_defaults(func=cmd_wear)
 
     sp = sub.add_parser("ui", help="abre la interfaz grafica local en el navegador (requiere streamlit)")
     sp.add_argument("--port", type=int, default=8501, help="puerto local (default: 8501)")

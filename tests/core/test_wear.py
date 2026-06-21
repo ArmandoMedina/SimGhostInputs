@@ -57,3 +57,63 @@ def test_assist_count_none_when_channel_absent():
 def test_wear_summary_empty_without_optional_channels():
     lap = make_lap()  # sin ruedas, abs, tcs, fuel
     assert wear.wear_summary(lap) == {}
+
+
+# --- wear_budget: desgaste acumulable tipo gasolina (ADR 0004) -----------------
+
+_TH = {"yellow": 30, "red": 40, "burst": 50}
+
+
+def test_wear_budget_none_without_rates():
+    assert wear.wear_budget([], _TH) is None
+    assert wear.wear_budget(None, _TH) is None
+
+
+def test_wear_budget_accumulates_and_projects():
+    b = wear.wear_budget([7.3, 7.3, 7.3], _TH)
+    assert b["cumulative"] == 21.9
+    assert b["rate_recent"] == 7.3
+    assert b["laps_done"] == 3
+    assert b["status"] == "ok"           # 21.9 < 30
+    assert b["laps_to_burst"] == 3.8     # (50 - 21.9) / 7.3
+    assert b["est_total_laps"] == 6.8    # 3 vueltas hechas + 3.8 estimadas
+
+
+def test_wear_budget_status_thresholds():
+    assert wear.wear_budget([10, 10, 15], _TH)["status"] == "yellow"   # 35
+    assert wear.wear_budget([15, 15, 15], _TH)["status"] == "red"      # 45
+    burst = wear.wear_budget([20, 20, 20], _TH)                        # 60 >= 50
+    assert burst["status"] == "burst"
+    assert burst["laps_to_burst"] == 0.0   # ya pasado el reventón, no negativo
+
+
+def test_wear_budget_recent_n_averages_last_laps():
+    b = wear.wear_budget([10, 5, 7], _TH, recent_n=2)
+    assert b["rate_recent"] == 6.0   # media de [5, 7]
+
+
+def test_wear_budget_ignores_none_rates():
+    b = wear.wear_budget([7.0, None, 7.0], _TH)
+    assert b["cumulative"] == 14.0
+    assert b["laps_done"] == 2
+
+
+def test_wear_budget_recent_n_beyond_length_uses_all():
+    b = wear.wear_budget([4.0, 6.0], _TH, recent_n=5)
+    assert b["rate_recent"] == 5.0   # media de todas las vueltas disponibles
+
+
+def test_wear_budget_partial_thresholds():
+    # solo umbral de reventón: estado ok hasta cruzarlo, y aun así proyecta
+    b = wear.wear_budget([10, 10], {"burst": 50})
+    assert b["status"] == "ok"
+    assert b["laps_to_burst"] == 3.0   # (50 - 20) / 10
+
+
+def test_wear_budget_no_projection_without_burst_or_rate():
+    # sin umbral de reventón: no se proyecta
+    assert "laps_to_burst" not in wear.wear_budget([10, 10], {"yellow": 30})
+    # sin desgaste medible (rate 0): no se proyecta, no divide por cero
+    zero = wear.wear_budget([0.0, 0.0], _TH)
+    assert zero["status"] == "ok"
+    assert "laps_to_burst" not in zero
