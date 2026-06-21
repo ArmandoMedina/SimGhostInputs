@@ -10,7 +10,7 @@ obtener el video de análisis.
 
 ```
 ┌──────────────────────────────────────────────────────────────────────┐
-│  GAP: +0.412s  │  ΔV: -8 km/h  │  SLIP: 1.23  │  ABS: 2  │ M: 3 │ 187 │ 3412m │
+│  GAP +0.41s │ ΔV -8 │ DESLIZ 1.2 │ ABS  TC │ M 3 │ 187 km/h │ 3412 m │
 │                                                                      │
 │  PANEL GAS          PANEL FRENO          PANEL VOLANTE              │
 │  ─────────────      ─────────────         ─────────────             │
@@ -31,8 +31,8 @@ obtener el video de análisis.
 | :-- | :-- | :-- |
 | **GAP** | Diferencia de tiempo acumulada respecto a la referencia en el metro actual. Positivo (rojo) = el piloto va más lento; negativo (verde) = más rápido. | Ver si estás ganando o perdiendo tiempo en cada sección. |
 | **ΔV** | Diferencia de velocidad puntual (piloto − referencia) en el metro exacto donde está el cursor. Negativo = más lento. | Identificar dónde no estás llegando a la velocidad de la referencia. |
-| **SLIP** | Índice de deslizamiento de las ruedas (velocidad de rueda vs velocidad real). Proxy de desgaste y carga lateral. | Monitorear si estás más agresivo con el neumático que la referencia. |
-| **ABS** | Activaciones del ABS en el segmento de 320m anterior al cursor. | Ver si estás bloqueando ruedas en más frenadas que la referencia. |
+| **DESLIZ** | Índice de deslizamiento de las ruedas (velocidad de rueda vs velocidad real) sobre los ~40 m **detrás** del cursor — el maltrato que la goma acaba de sufrir, no el promedio de toda la pantalla. Proxy de desgaste; muestra el del piloto y el `ref`. | Monitorear si eres más agresivo con el neumático que la referencia. Es la base del medidor `fantasma wear`. |
+| **ABS / TC** | Luces de estado: el texto se enciende en su color (ABS ámbar, TC magenta) cuando el ABS / control de tracción del piloto está activo **en el cursor**, con una retención corta (~8 m) para no parpadear. Apagado = gris. | Ver en el momento exacto si estás bloqueando (ABS) o pasándote de gas (TC). |
 | **M** / **MARCHA** | Marcha actual del piloto (1–6 / N / R). | Verificar sincronía visual: comparar con el marcador de marcha del sim. |
 | **km/h** | Velocidad instantánea del piloto. | Verificar sincronía y detectar diferencias de velocidad punta en rectas. |
 | **metros** | Distancia recorrida en la vuelta desde meta. | Referencia espacial; úsalo con el vídeo para confirmar en qué metro estás. |
@@ -63,7 +63,7 @@ está tardando más en abrir.
 | **Verde vívido** `#00c853` | Piloto | Aceleración normal |
 | **Violeta vívido** `#e040fb` | Piloto | TCS activo (el sim está limitando el gas por deslizamiento) |
 | **Gris** `#9aa0a6` | Referencia | Gas normal de la referencia |
-| **Violeta apagado** `#7b5ea7` | Referencia | TCS activo en la referencia |
+| **Violeta tenue** `#a87fd0` | Referencia | TCS activo en la referencia (subido de brillo para que se vea) |
 
 ### Panel de freno
 
@@ -72,7 +72,7 @@ está tardando más en abrir.
 | **Rojo vívido** `#ff1744` | Piloto | Frenada normal |
 | **Ámbar vívido** `#ffab00` | Piloto | ABS activo (ruedas bloqueando) |
 | **Gris** `#9aa0a6` | Referencia | Freno normal de la referencia |
-| **Ámbar apagado** `#b8860b` | Referencia | ABS activo en la referencia |
+| **Ámbar tenue** `#e0a526` | Referencia | ABS activo en la referencia (subido de brillo para que se vea) |
 
 ### Panel de volante (steering)
 

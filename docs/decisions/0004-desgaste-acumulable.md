@@ -1,6 +1,6 @@
 # ADR 0004 — Desgaste de llanta acumulable (medidor tipo gasolina)
 
-- **Estado:** Propuesta (falta validar con telemetría real de AMS2 en un stint de varias vueltas)
+- **Estado:** Aceptada (implementado en `core.wear_budget` + CLI `fantasma wear`; calibración de umbrales pendiente de QA con telemetría real)
 - **Fecha:** 2026-06-21
 
 ## Contexto
