@@ -4,8 +4,11 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/). Versionado
 
 ## [Unreleased]
 
+### Añadido
+- **Auto-sync para video de varias vueltas — candidatos + selección del usuario** (ADR 0008): el `auto_sync` antes buscaba el offset solo en ±300 s y, con un video de carrera completa, pegaba el HUD sobre la vuelta equivocada **en silencio**. Ahora `sync.sync_candidates()` busca en **todo** el video, detecta un candidato por vuelta (rankeados por calidad) y marca si son ambiguos. En CLI `compose --auto-sync`, si es ambiguo, lista los candidatos (minuto del video + calidad) y pide elegir. En la **UI (Paso 4)** el selector es **bloqueante**: con varias vueltas, no se puede componer hasta elegir cuál es la tuya. `auto_sync` se mantiene (compat) como "toma el mejor candidato". Lógica de ranking/ambigüedad cubierta con 6 tests puros.
+
 ### Pendiente / Known issues
-_(ninguno)_
+- El auto-sync multi-vuelta (ADR 0008) tiene la lógica de ranking testeada, pero el camino completo (audio real + CLI interactivo + gate de UI) está **pendiente de QA con video de carrera real**.
 
 ---
 

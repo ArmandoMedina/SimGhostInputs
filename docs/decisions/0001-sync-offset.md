@@ -129,5 +129,7 @@ Probado con:
 - Resolución de 0.5 s (determinada por `_CORR_HZ = 2 Hz`). Subir a 4 Hz duplicaría la RAM usada
   por la correlación pero daría precisión de 0.25 s.
 - La ventana de búsqueda es ±300 s. Si el video tiene más de 10 minutos de preámbulo antes de la
-  vuelta, se puede ampliar con `_SEARCH_SEC`.
+  vuelta, se puede ampliar con `_SEARCH_SEC`. **Enmendado por [ADR 0008](0008-sync-multivuelta-candidatos.md):**
+  con videos de **varias vueltas** (carrera completa) ampliar la ventana no basta — el audio no
+  distingue una vuelta de otra; ahora se detectan candidatos y, si son ambiguos, el usuario elige.
 - Si el sim no exporta RPM ni velocidad (caso muy raro), la correlación falla con un mensaje claro.

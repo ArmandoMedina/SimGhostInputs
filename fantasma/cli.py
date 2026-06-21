@@ -190,15 +190,42 @@ def cmd_compose(args):
             return 1
         print("Detectando offset de sincronizacion…")
         try:
-            from .viz.sync import auto_sync
-            offset, z_score = auto_sync(args.video, lap)
-            print("  -> offset detectado: %.3f s  (z=%.1f σ)" % (offset, z_score))
+            from .viz.sync import sync_candidates, validate_offset, _MIN_SYNC_Z
+            result = sync_candidates(args.video, lap)
         except ImportError as e:
             print("error: %s" % e, file=sys.stderr)
             return 1
         except Exception as e:
             print("error en auto-sync: %s" % e, file=sys.stderr)
             return 1
+
+        cands = result["candidates"]
+        if not cands or cands[0]["z"] < _MIN_SYNC_Z:
+            print("error en auto-sync: correlacion insuficiente; el video no parece "
+                  "corresponder a la vuelta. Usa --offset manual.", file=sys.stderr)
+            return 1
+
+        if result["ambiguous"]:
+            # ADR 0008: el video tiene varias vueltas parecidas; no adivinar, preguntar.
+            print("\nEl video parece tener varias vueltas. Candidatos (minuto del video):")
+            for i, c in enumerate(cands, 1):
+                print("  %d) %s   (calidad %.1f σ)" % (i, c["mmss"], c["z"]))
+            sel = input("¿Cual corresponde a tu vuelta? [1-%d] " % len(cands)).strip()
+            try:
+                chosen = cands[int(sel) - 1]
+            except (ValueError, IndexError):
+                print("error: seleccion invalida.", file=sys.stderr)
+                return 1
+        else:
+            chosen = cands[0]
+
+        offset = chosen["offset"]
+        pause_t = validate_offset(result, offset, lap)
+        if pause_t is not None:
+            pm, ps = int(pause_t) // 60, int(pause_t) % 60
+            print("  aviso: pausa detectada en el audio en %d:%02d dentro de la vuelta." % (pm, ps),
+                  file=sys.stderr)
+        print("  -> offset: %.3f s  (z=%.1f σ)" % (offset, chosen["z"]))
 
     lap_duration = lap.laptime if lap is not None else None
     if lap_duration:

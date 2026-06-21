@@ -111,20 +111,37 @@ def render():
         if st.button("Detectar sincronía", disabled=not _can_sync,
                      type="primary" if _can_sync else "secondary", key="btn_autosync"):
             with st.spinner("Analizando audio… (~30 s)"):
+                _res = None
                 try:
-                    from fantasma.viz.sync import auto_sync
-                    _det, _z = auto_sync(_video_path, _drv_for_sync)
-                    st.session_state["_autosync_detected"] = _det
-                    st.session_state["_autosync_z"]        = _z
-                    st.session_state["compose_offset"]     = _det
-                    st.rerun()
+                    from fantasma.viz.sync import sync_candidates, _MIN_SYNC_Z
+                    _res = sync_candidates(_video_path, _drv_for_sync)
                 except ImportError as _ie:
                     st.error(str(_ie))
                 except Exception as _se:
                     st.error("Error en auto-sync: %s" % _se)
+                if _res is not None:
+                    for _k in ("_sync_cands", "_sync_ambiguous", "_sync_resolved",
+                               "_autosync_detected", "_autosync_z", "_autosync_error"):
+                        st.session_state.pop(_k, None)
+                    _cs = _res["candidates"]
+                    if not _cs or _cs[0]["z"] < _MIN_SYNC_Z:
+                        st.session_state["_autosync_error"] = (
+                            "Correlación insuficiente: el video no parece corresponder a tu "
+                            "vuelta. Usa la sincronía manual de abajo.")
+                    elif _res["ambiguous"]:
+                        # ADR 0008: varias vueltas parecidas — selección obligatoria.
+                        st.session_state["_sync_cands"]     = _cs
+                        st.session_state["_sync_ambiguous"] = True
+                    else:
+                        st.session_state["_autosync_detected"] = _cs[0]["offset"]
+                        st.session_state["_autosync_z"]        = _cs[0]["z"]
+                        st.session_state["compose_offset"]     = _cs[0]["offset"]
+                    st.rerun()
 
     with _sc1:
-        if "_autosync_detected" in st.session_state:
+        if st.session_state.get("_autosync_error"):
+            st.error(st.session_state["_autosync_error"])
+        elif "_autosync_detected" in st.session_state and not st.session_state.get("_sync_ambiguous"):
             _off  = st.session_state["_autosync_detected"]
             _z_s  = st.session_state.get("_autosync_z", 0.0)
             _qlbl = _sync_quality_label(_z_s)
@@ -132,6 +149,30 @@ def render():
                 "✓ **Offset detectado: %.3f s** desde el inicio del video hasta el cruce de meta.  \n"
                 "Calidad de sincronía: **%s** — el valor se cargó en el campo de abajo." % (_off, _qlbl)
             )
+
+    # Selector bloqueante de vuelta (ADR 0008): con video de varias vueltas el audio
+    # no distingue cuál es la del piloto, así que el usuario DEBE elegir para continuar.
+    _sync_pending = bool(st.session_state.get("_sync_ambiguous")
+                         and not st.session_state.get("_sync_resolved"))
+    if _sync_pending:
+        _cands = st.session_state.get("_sync_cands", [])
+        st.warning(
+            "⚠️ Tu video parece tener **varias vueltas** y suenan casi igual, así que no se "
+            "puede saber solo cuál es la tuya. **Elige la vuelta para poder componer.**"
+        )
+        _idx = st.radio(
+            "¿Cuál corresponde a tu vuelta?  (minuto dentro del video)",
+            list(range(len(_cands))),
+            format_func=lambda i: "%s min    ·    calidad %.1f σ" % (_cands[i]["mmss"], _cands[i]["z"]),
+            key="_sync_choice",
+        )
+        if st.button("Confirmar esta vuelta", type="primary", key="btn_confirm_lap"):
+            _c = _cands[_idx]
+            st.session_state["compose_offset"]     = _c["offset"]
+            st.session_state["_autosync_detected"]  = _c["offset"]
+            st.session_state["_autosync_z"]         = _c["z"]
+            st.session_state["_sync_resolved"]      = True
+            st.rerun()
 
     with st.expander("⚙️ Sincronizar manualmente (avanzado)"):
         st.warning(
@@ -259,7 +300,9 @@ def render():
                          help="Vuelve al Paso 1 para elegir otra vuelta. Mantiene la referencia y el video."):
                 for _k in ["drv_lap", "drv_laps", "drv_path", "summary", "trace", "rows",
                            "charts_paths", "last_overlay", "_autosync_detected", "_autosync_z",
-                           "compose_offset", "corners", "corners_editable"]:
+                           "compose_offset", "corners", "corners_editable",
+                           "_sync_cands", "_sync_ambiguous", "_sync_resolved",
+                           "_sync_choice", "_autosync_error"]:
                     st.session_state.pop(_k, None)
                 for _k in list(st.session_state.keys()):
                     if _k.startswith("drv_sel_") or _k == "drv_lap_tbl":
@@ -268,7 +311,10 @@ def render():
                 st.rerun()
 
     if not st.session_state.get("_render_active"):
-        if st.button("Componer video", type="primary", disabled=not (_video_path and _overlay_path)):
+        if _sync_pending:
+            st.caption("🔒 Primero elige tu vuelta arriba para poder componer.")
+        if st.button("Componer video", type="primary",
+                     disabled=not (_video_path and _overlay_path) or _sync_pending):
             _out_folder_val = _out_folder or _def_out_folder
             _base     = os.path.splitext(os.path.basename(_video_path))[0]
             _out_path = os.path.join(_out_folder_val, _base + "_composed.mp4")
