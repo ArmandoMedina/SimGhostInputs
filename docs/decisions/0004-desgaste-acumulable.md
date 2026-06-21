@@ -74,3 +74,11 @@ CLI/UI consumen esta función; el cálculo no toca ffmpeg ni I/O.
 - **Pendiente para pasar de Propuesta a Aceptada:** confirmar con telemetría real de AMS2
   (stint de varias vueltas) que `slip_index` es **consistente vuelta-a-vuelta** como para que
   la suma tenga sentido. QA manual de Armando.
+- **Hallazgo emergente (QA 2026-06-21, Nordschleife, M4 GT3 — sin conclusión cerrada):** en
+  una carrera de 9 vueltas el desgaste acumulado llegó a ~17 con umbral amarillo en 30, o
+  sea **las gomas no se acercan al amarillo porque el combustible obliga a parar antes**. Si
+  esto se repite en la mayoría de los casos, un medidor de **vida total de goma** (umbrales
+  absolutos) no es accionable: la decisión real del piloto es *"en mi parada obligada por
+  combustible, ¿cambio gomas o no?"*. Eso apunta a otra métrica — **degradación de
+  rendimiento dentro del stint**, no vida restante — o a un espectro relativo al stint/tanque.
+  Replanteamiento a evaluar con más datos antes de tocar el diseño; ver ROADMAP.

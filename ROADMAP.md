@@ -132,9 +132,11 @@ El criterio para v1.0 es que el pipeline offline esté completo, documentado y p
 - [ ] API interna (`core/`) estabilizada — sin cambios breaking entre parches (revisión, no código nuevo)
 - [x] Docs completas: guía de usuario, referencia de HUD, formato de datos, cómo contribuir. Repasadas y al día a v0.7.0; la referencia de HUD ya incluye **leyenda visual** (`docs/demo/hud-leyenda.png`)
 - [x] **Decidir si los gaps `Alta` bloquean la 1.0** → **NO bloquean** (2026-06-21). El FPS≠grabación se investigó y no reproduce desync (bajado a Baja). El único gap `Alta` que queda es `--format prores`, **ya mitigado** con el default `webm`: no afecta el uso normal, solo a quien pida prores explícitamente. Se difiere a post-1.0.
-- [ ] 👤 Probado con AMS2 en al menos 3 circuitos distintos
-- [ ] 👤 `setup.ps1` probado en instalación limpia de Windows 11
+- [ ] 👤 Probado con AMS2 en al menos 3 circuitos distintos — **1/3: Nordschleife ✓** (carrera M4 GT3, 9 vueltas, 2026-06-21): el pipeline completo corrió con datos frescos (laps → wear → overlay) sin errores; el overlay confirmó frenadas más fuertes vs sesión previa. Sin conclusiones aún. **Faltan Interlagos y México** (fórmula + prototipo, ver §autos), y conseguir esas 2 telemetrías.
+- [ ] 👤 `setup.ps1` probado en instalación limpia de Windows 11 — **en curso** (Armando lo prueba en otra PC con el release v0.7.1).
 - [ ] No hay `[Unreleased]` acumulado en CHANGELOG (cortar el release)
+
+> **Hallazgo de QA a refinar (no bloquea 1.0):** el medidor de desgaste (ADR 0004) usa umbrales de **vida total de goma**, pero en el QA real las gomas no llegaron al amarillo porque **el tanque se acaba antes**. Si se repite, el espectro útil no es "vida restante" sino **degradación de rendimiento dentro del stint** / relativo al combustible. Recopilar más datos antes de rediseñar. Detalle en ADR 0004 §Consecuencias.
 
 ---
 
