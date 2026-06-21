@@ -1,11 +1,12 @@
-# setup.ps1 — instala todas las dependencias de SimGhostInputs en Windows
+# setup.ps1 - instala todas las dependencias de SimGhostInputs en Windows
 # Uso: powershell -ExecutionPolicy Bypass -File setup.ps1
 # Parametros opcionales:
 #   -Full       instala dependencias Python completas (openpyxl + Pillow + matplotlib)
 #   -SkipSystem omite instalacion de herramientas del sistema (ffmpeg, gh)
 param(
     [switch]$Full,
-    [switch]$SkipSystem
+    [switch]$SkipSystem,
+    [switch]$Relaunched   # uso interno: marca que ya se reabrio tras instalar Python (anti-bucle)
 )
 
 Set-StrictMode -Version Latest
@@ -20,12 +21,39 @@ function Write-Warn { param([string]$Msg) Write-Host "    !! $Msg" -ForegroundCo
 # 1. Python
 # -----------------------------------------------------------------------
 Write-Step "Verificando Python"
-try {
-    $pyver = python --version 2>&1
-    Write-OK $pyver
-} catch {
-    Write-Error "Python no encontrado. Instala Python 3.10+ desde python.org o ejecuta: winget install Python.Python.3.12"
-    exit 1
+if (Get-Command python -ErrorAction SilentlyContinue) {
+    Write-OK (python --version 2>&1)
+} else {
+    Write-Warn "Python no encontrado."
+    if (-not (Get-Command winget -ErrorAction SilentlyContinue)) {
+        Write-Error "Tampoco hay winget. Instala Python 3.10+ a mano desde https://python.org (marca 'Add Python to PATH') y vuelve a correr setup.ps1."
+        exit 1
+    }
+    $resp = Read-Host "    Instalar Python 3.12 via winget ahora? (s/n)"
+    if ($resp -ne "s") {
+        Write-Error "Python es obligatorio. Instalalo desde https://python.org y vuelve a correr setup.ps1."
+        exit 1
+    }
+    winget install Python.Python.3.12 --accept-source-agreements --accept-package-agreements
+    # winget actualiza el PATH en el registro, pero NO en esta sesion ya abierta.
+    # Se intenta refrescar desde el registro (Machine + User).
+    $env:Path = [Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [Environment]::GetEnvironmentVariable("Path", "User")
+    if (Get-Command python -ErrorAction SilentlyContinue) {
+        Write-OK ("Python instalado: " + (python --version 2>&1))
+    } elseif ($Relaunched) {
+        # Ya se reabrio una vez y Python sigue sin aparecer: no relanzar mas (anti-bucle).
+        Write-Error "Python se instalo pero no aparece en el PATH ni tras reabrir. Reinicia la PC y vuelve a correr setup.ps1."
+        exit 1
+    } else {
+        # Una terminal NUEVA si hereda el PATH actualizado del registro. Abrimos otra,
+        # que re-corre este mismo setup con -Relaunched, y cerramos esta.
+        Write-Warn "Python instalado. Abriendo una terminal nueva con el PATH actualizado..."
+        $argList = @("-ExecutionPolicy", "Bypass", "-NoExit", "-File", "`"$PSCommandPath`"", "-Relaunched")
+        if ($Full)       { $argList += "-Full" }
+        if ($SkipSystem) { $argList += "-SkipSystem" }
+        Start-Process powershell -ArgumentList $argList
+        exit 0
+    }
 }
 
 # -----------------------------------------------------------------------
@@ -97,7 +125,7 @@ if ($SkipSystem) {
     if (Get-Command ffmpeg -ErrorAction SilentlyContinue) {
         Write-Skip "ffmpeg ya instalado  ($(ffmpeg -version 2>&1 | Select-Object -First 1))"
     } else {
-        Write-Warn "ffmpeg no encontrado — el overlay generara frames PNG en lugar de video"
+        Write-Warn "ffmpeg no encontrado - el overlay generara frames PNG en lugar de video"
         $resp = Read-Host "    Instalar ffmpeg via winget? (s/n)"
         if ($resp -eq "s") {
             winget install Gyan.FFmpeg --accept-source-agreements --accept-package-agreements

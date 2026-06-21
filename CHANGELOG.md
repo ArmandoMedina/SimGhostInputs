@@ -9,6 +9,16 @@ _(ninguno)_
 
 ---
 
+## [0.7.2] — 2026-06-21
+
+### Añadido
+- **`setup.ps1` instala Python solo si falta**: si no hay `python`, ofrece instalarlo vía winget. Como el PATH recién instalado no aplica a la terminal en curso, el script **abre una terminal nueva** (que sí hereda el PATH actualizado) y re-corre el setup, cerrando la anterior. Guarda anti-bucle (`-Relaunched`) para no reabrir indefinidamente; si tras reabrir sigue sin aparecer, pide reiniciar la PC.
+
+### Corregido
+- **`setup.ps1` — caracteres no-ASCII rompían el script en instalación limpia**: el archivo tenía `—` (em dash) y acentos; PowerShell 5.1 lee un `.ps1` sin BOM con la codepage del sistema (Windows-1252), corrompía esos caracteres y el parser fallaba con "falta cadena en el terminador". Convertido a **ASCII puro** para ser inmune al encoding en cualquier PC. Validado con el parser de PowerShell.
+
+---
+
 ## [0.7.1] — 2026-06-21
 
 ### Corregido

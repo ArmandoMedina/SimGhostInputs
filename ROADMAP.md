@@ -6,9 +6,9 @@
 
 ---
 
-## Estado actual — v0.7.1
+## Estado actual — v0.7.2
 
-Último release: **v0.7.1** (2026-06-21) — fix del `setup.ps1` (detección de dependencias rota en instalación limpia; validado en venv). Previo: **v0.7.0** (2026-06-21) — `fantasma wear` (medidor de desgaste acumulable), estructura de ADR numerada (0004–0007) y pulido del overlay (luces ABS/TC instantáneas, DESLIZ reciente, escala del volante, franja sin leyendas). Las tandas 0.6.0–0.6.5 entregaron, entre otras cosas, el grueso de lo planeado para v0.9.0 (detección de pausa, badge de calidad de sync, «Procesar otra vuelta», una vuelta por ejecución). La **v0.6.6** añadió la suite de tests automatizados (48 verdes) + CI en GitHub Actions y cerró el gap del separador `;`/coma decimal europea — con eso queda cubierto el requisito de v1.0 de "tests unitarios de `core/`".
+Último release: **v0.7.2** (2026-06-21) — `setup.ps1` instala Python solo (winget + reabre terminal) y se pasó a ASCII puro para no romper por encoding en instalación limpia. Previo: **v0.7.1** (fix detección de dependencias), **v0.7.0** (`fantasma wear` + estructura ADR 0004–0007 + pulido del overlay). Las tandas 0.6.0–0.6.5 entregaron, entre otras cosas, el grueso de lo planeado para v0.9.0 (detección de pausa, badge de calidad de sync, «Procesar otra vuelta», una vuelta por ejecución). La **v0.6.6** añadió la suite de tests automatizados (48 verdes) + CI en GitHub Actions y cerró el gap del separador `;`/coma decimal europea — con eso queda cubierto el requisito de v1.0 de "tests unitarios de `core/`".
 
 Con v0.9.0 entregada, **el drill-down por curva (antes v0.10.0) se difiere a post-1.0**. Eso reenfoca la 1.0: ya no es "construir una feature nueva primero", sino **estabilizar, testear, documentar y validar en AMS2 el pipeline offline que ya existe**. El camino a la 1.0 es ahora mayormente QA manual + cierre de release.
 
