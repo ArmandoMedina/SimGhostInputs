@@ -130,8 +130,8 @@ El criterio para v1.0 es que el pipeline offline esté completo, documentado y p
 - [x] v0.9.0 completada y en producción (el drill-down se difiere a post-1.0)
 - [x] Suite de tests automatizados de `core/` + CI (cumple el requisito de "tests unitarios de core/")
 - [ ] API interna (`core/`) estabilizada — sin cambios breaking entre parches (revisión, no código nuevo)
-- [ ] Docs completas: guía de usuario, referencia de HUD, formato de datos, cómo contribuir (los 4 ya existen — falta repasar que estén al día)
-- [ ] **Decidir si los gaps `Alta` bloquean la 1.0**: overlay con FPS ≠ grabación (desincroniza) y `--format prores` que cuelga ffmpeg. El prores ya está mitigado (default `webm`); el FPS es el candidato real a corregir antes de 1.0
+- [x] Docs completas: guía de usuario, referencia de HUD, formato de datos, cómo contribuir. Repasadas y al día a v0.7.0; la referencia de HUD ya incluye **leyenda visual** (`docs/demo/hud-leyenda.png`)
+- [x] **Decidir si los gaps `Alta` bloquean la 1.0** → **NO bloquean** (2026-06-21). El FPS≠grabación se investigó y no reproduce desync (bajado a Baja). El único gap `Alta` que queda es `--format prores`, **ya mitigado** con el default `webm`: no afecta el uso normal, solo a quien pida prores explícitamente. Se difiere a post-1.0.
 - [ ] 👤 Probado con AMS2 en al menos 3 circuitos distintos
 - [ ] 👤 `setup.ps1` probado en instalación limpia de Windows 11
 - [ ] No hay `[Unreleased]` acumulado en CHANGELOG (cortar el release)

@@ -58,8 +58,17 @@ está tardando más en abrir.
 
 > El overlay **no** lleva leyenda de colores en pantalla (ADR 0007): el HUD se ve en
 > movimiento y una leyenda ocuparía espacio sin consultarse a mitad de vuelta. **Esta
-> sección es la leyenda.** Pendiente: añadir aquí una **imagen anotada del HUD** además de
-> las tablas (una tabla de texto se salta con facilidad).
+> sección es la leyenda.**
+
+Frame de referencia (BMW M4 GT3, Nordschleife) para ubicar cada elemento — la franja de
+datos arriba, y debajo los tres paneles (gas / freno / volante) con piloto vs referencia:
+
+![Leyenda visual del HUD](demo/hud-leyenda.png)
+
+En este frame se ve: el **GAP** en rojo (piloto detrás de la referencia), las **luces ABS/TC**
+(ABS ámbar encendido, TC gris apagado), el segmento **ámbar** dentro de la línea de freno
+(ABS actuando), el **magenta** en la línea de gas (TCS actuando) y la línea **gris** de la
+referencia bajo la del piloto en cada panel. Las tablas siguientes detallan cada color.
 
 ### Panel de gas (acelerador)
 

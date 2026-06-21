@@ -1,6 +1,6 @@
 # ADR 0007 — El HUD no lleva leyenda de colores; se documentan fuera
 
-- **Estado:** Aceptada (con pendiente: la leyenda visual en `hud-reference.md`).
+- **Estado:** Aceptada (leyenda visual ya añadida en `hud-reference.md`, ver `docs/demo/hud-leyenda.png`).
 - **Fecha:** 2026-06-21
 
 ## Contexto
@@ -45,5 +45,5 @@ magenta = TCS, etc.). El overlay se mira **en movimiento**, superpuesto sobre el
 - HUD más limpio y con más aire en la franja.
 - **Costo:** un video exportado es opaco para quien no haya visto la documentación. Se mitiga
   con la leyenda visual en `hud-reference.md` + un frame-leyenda opcional para compartir.
-- **Pendiente:** crear la leyenda visual (imagen anotada del HUD) en `hud-reference.md`; hoy
-  solo existe la tabla de colores en texto.
+- **Resuelto:** la leyenda visual (frame del HUD, `docs/demo/hud-leyenda.png`) ya está
+  incrustada en `hud-reference.md` junto a las tablas de color.
