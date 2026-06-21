@@ -27,8 +27,8 @@ _FRENO = "#ff1744"
 _VOL   = "#40c4ff"
 _ABS   = "#ffab00"
 _TCS   = "#e040fb"
-_RABS  = "#b8860b"
-_RTCS  = "#7b5ea7"
+_RABS  = "#e0a526"   # ABS de la referencia: más visible que antes, aún por debajo del piloto
+_RTCS  = "#a87fd0"   # TCS de la referencia: idem
 _GMED  = "#fdd835"
 _GMAX  = "#ff6d00"
 _RGMED = "#6b5e00"
@@ -39,6 +39,8 @@ W_BEFORE = 320   # metros antes del cursor
 W_AFTER  = 200   # metros después del cursor
 HOLD_M   = 8     # retención de las luces ABS/TC: siguen encendidas estos metros
                  # tras la última activación, para que no parpadeen a 30/60 fps
+SLIP_WIN_M = 40  # ventana CORTA detrás del cursor para DESLIZ: el deslizamiento
+                 # que la goma acaba de sufrir, no el promedio de toda la pantalla
 _FIG_W   = 17    # pulgadas
 _FIG_H   = 5.2
 _DPI     = 110   # → ~1870 × 572 px
@@ -148,8 +150,8 @@ class _HUDFigure:
         self.t_sl_ref  = fig.text(0.305, 0.978, "",  color=_DIM,   fontsize=10, **kw)
         # luces instantáneas ABS / TC: el propio texto se enciende (color vivo)
         # cuando el flag del piloto está activo en el cursor, y se atenúa si no.
-        self.t_abs_light = fig.text(0.385, 0.985, "ABS", color=_RABS, fontsize=15, weight="bold", **kw)
-        self.t_tc_light  = fig.text(0.448, 0.985, "TC",  color=_RTCS, fontsize=15, weight="bold", **kw)
+        self.t_abs_light = fig.text(0.385, 0.985, "ABS", color=_DIM, fontsize=15, weight="bold", **kw)
+        self.t_tc_light  = fig.text(0.448, 0.985, "TC",  color=_DIM, fontsize=15, weight="bold", **kw)
         self.t_gear_val = fig.text(0.690, 0.985, "",  color=_FG,  fontsize=17, weight="bold", **kw)
         self.t_dist_val = fig.text(0.755, 0.985, "",  color=_DIM, fontsize=14, **kw)
         self.t_spd_val  = fig.text(0.835, 0.985, "",  color=_FG,  fontsize=14, **kw)
@@ -258,8 +260,8 @@ class _HUDFigure:
         else:
             self.t_sl_val.set_text("—")
             self.t_sl_ref.set_text("")
-        self.t_abs_light.set_color(_ABS if abs_on else _RABS)
-        self.t_tc_light.set_color(_TCS if tcs_on else _RTCS)
+        self.t_abs_light.set_color(_ABS if abs_on else _DIM)
+        self.t_tc_light.set_color(_TCS if tcs_on else _DIM)
         if gear is not None:
             g = int(round(gear))
             self.t_gear_val.set_text("N" if g == 0 else ("R" if g < 0 else str(g)))
@@ -322,8 +324,9 @@ def _render_chunk(args):
             ref_v        = float(np.interp(cur_d, ds, ref_ch["speed"]))
             drv_v        = float(np.interp(cur_d, ds, drv_ch["speed"]))
             dv           = int(drv_v - ref_v)
-            slip_val     = _slip_window(drv_slip, ds, w0, w1)
-            ref_slip_val = _slip_window(ref_slip, ds, w0, w1)
+            slip_d0      = max(0.0, cur_d - SLIP_WIN_M)   # ventana corta detrás del cursor
+            slip_val     = _slip_window(drv_slip, ds, slip_d0, cur_d)
+            ref_slip_val = _slip_window(ref_slip, ds, slip_d0, cur_d)
             abs_on       = _flag_recent_grid(drv_ch.get("abs"), cur_d, HOLD_M)
             tcs_on       = _flag_recent_grid(drv_ch.get("tcs"), cur_d, HOLD_M)
             corner_name, corner_txt = _corner_at(corners_by_seg, cur_d)
