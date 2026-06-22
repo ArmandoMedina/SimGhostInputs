@@ -18,3 +18,4 @@ bifurcación equivocada.
 | [0006](0006-grosor-uniforme-lineas-hud.md) | Jerarquía visual del HUD: grosor uniforme, piloto siempre encima, colores que distinguen quién | Aceptada (color difer.) | 2026-06-21 |
 | [0007](0007-hud-sin-leyenda.md) | El HUD no lleva leyenda de colores; se documentan fuera | Aceptada | 2026-06-21 |
 | [0008](0008-sync-multivuelta-candidatos.md) | Auto-sync multi-vuelta: candidatos + selección obligatoria del usuario (enmienda 0001) | Aceptada | 2026-06-21 |
+| [0009](0009-unidad-desgaste-acumulado.md) | Unidad del desgaste acumulado: carga de deslizamiento (integral), no el promedio | Aceptada (pend. implementar) | 2026-06-22 |

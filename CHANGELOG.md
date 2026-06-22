@@ -6,6 +6,7 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/). Versionado
 
 ### Decidido (pendiente de implementar)
 - **Desgaste acumulado en dos vistas** (enmienda de los ADR 0004 y 0005): el HUD del overlay llevará un acumulado *de la vuelta* (suma del exceso de slip, piloto vs ref) además del DESLIZ instantáneo; el acumulado de *stint* entre vueltas vive en las gráficas (Producto 1) + `fantasma wear`. Sin código todavía.
+- **Unidad del desgaste acumulado** (ADR 0009): la base de acumulación será la *carga de deslizamiento* (slip integrado sobre la distancia, cantidad extensiva y aditiva), no el promedio `slip_index` (que se queda como intensidad). Hace que el acumulado sume curva → vuelta → stint. Recalibra los umbrales del ADR 0004. Sin código todavía.
 
 ### Pendiente / Known issues
 _(ninguno)_
