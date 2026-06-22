@@ -1,6 +1,6 @@
 # 👻 SimGhostInputs
 
-[![Estado](https://img.shields.io/badge/estado-pre--release%20v0.6-orange)](CHANGELOG.md)
+[![Estado](https://img.shields.io/badge/estado-pre--release%20v0.x-orange)](CHANGELOG.md)
 [![tests](https://github.com/ArmandoMedina/SimGhostInputs/actions/workflows/tests.yml/badge.svg)](https://github.com/ArmandoMedina/SimGhostInputs/actions/workflows/tests.yml)
 [![Ko-fi](https://img.shields.io/badge/Ko--fi-Buy%20me%20a%20Coffee-FF5E5B?logo=ko-fi&logoColor=white)](https://ko-fi.com/armandomedina2255)
 [![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL--3.0-blue.svg)](LICENSE)

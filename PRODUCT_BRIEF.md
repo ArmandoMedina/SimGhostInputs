@@ -131,7 +131,7 @@ Ambos productos comparten el mismo motor de importación, normalización y compa
 | Auto-sincronización | Detección de offset por correlación audio/telemetría |
 | Interfaz gráfica local | Streamlit en localhost, sin hosting, datos siempre locales |
 | Nuevos importadores | iRacing `.ibt`, `.ld` directo, SimHub CSV, otros formatos |
-| Historial entre sesiones | Comparación de tendencias entre tandas (Fase 2.4, pendiente) |
+| Historial entre sesiones | Comparación de tendencias entre tandas (diferido a post-v1.0) |
 
 ### Está fuera de este repositorio
 
@@ -150,9 +150,9 @@ Ambos productos comparten el mismo motor de importación, normalización y compa
 
 **Lo que falta por construir aquí:**
 
-| Fase | Objetivo |
+| Pendiente (post-v1.0) | Objetivo |
 | :-- | :-- |
-| 2.4 — Histórico entre sesiones | Comparar el rendimiento en una curva a lo largo de varias tandas. Ver si se progresa o se retrocede |
+| Histórico entre sesiones | Comparar el rendimiento en una curva a lo largo de varias tandas. Ver si se progresa o se retrocede |
 
 Eso completa el scope de `fantasma-inputs`. Una vez ahí, el motor offline es funcional para el 80/20 que motivó el proyecto.
 

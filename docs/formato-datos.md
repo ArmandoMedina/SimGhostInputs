@@ -41,7 +41,7 @@ Todo importador convierte a este modelo (`fantasma/core/lap.py`):
 2. **Kink**: pico de |G lateral| > 2.2 sostenido, sin V-Min en ±80m (curvas rápidas sin frenada).
 3. **Segmentación**: cada curva solo analiza su tramo (punto medio con las curvas vecinas, máx. ±450m) — evita contaminarse con la frenada de la curva siguiente.
 4. **Frenada real**: último bloque de freno con pico ≥50%; los blips del trail braking no cuentan como inicio de frenada.
-5. Hitos: `brake_start`, `turn_in` (|volante|>8° hacia el lado de la curva), `brake_release` (<2%), `throttle_on` (>5%), `apex` (V-Min), `full_throttle` (≥98% sostenido), `g_lat_max`, `lift` (en curvas sin freno). Cada hito lleva `d` (m), `t` (s), `v` (km/h).
+5. Hitos: `brake_start`, `turn_in` (|volante|>8° hacia el lado de la curva), `brake_release` (<2%), `throttle_on` (>5%), `apex` (V-Min), `full_throttle` (≥98% sostenido), `g_lat_max`, `lift` (en curvas sin freno) y `exit` (fin del segmento de la curva). Cada hito lleva `d` (m), `t` (s), `v` (km/h).
 6. **Overlap**: si `throttle_on.d < brake_release.d`, se registra `overlap_m` (solape gas/freno).
 7. **Pendiente**: si hay canal `alt`, gradiente ±100m alrededor del ápex → `slope` (subida/bajada/plano) y `slope_pct`.
 

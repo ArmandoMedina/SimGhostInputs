@@ -19,6 +19,7 @@ Al contribuir aceptas que tu código se publique bajo **AGPL-3.0-or-later**.
 5. [Convenciones de commits](#5-convenciones-de-commits)
 6. [Proceso de Pull Request](#6-proceso-de-pull-request)
 7. [Qué contribuciones son bienvenidas](#7-qué-contribuciones-son-bienvenidas)
+8. [Mantenimiento de documentación](#8-mantenimiento-de-documentación)
 
 ---
 
@@ -95,7 +96,7 @@ pytest
 Los tests usan datos sintéticos deterministas (`make_lap` en `tests/conftest.py`) —
 nunca telemetría real. El enfoque, la estructura y la directiva de qué se automatiza
 vs qué se prueba a mano están en [`docs/decisions/0003-testing.md`](docs/decisions/0003-testing.md).
-Ampliar la cobertura (resto de `viz/`, importadores, CI) es especialmente bienvenido.
+Ampliar la cobertura (resto de `viz/`, importadores) es especialmente bienvenido.
 
 ---
 
@@ -167,3 +168,49 @@ docs: añadir guía de exportación para iRacing
 - Cambios de estilo sin impacto funcional
 - Dependencias nuevas sin justificación clara
 - Refactors grandes sin issue previo
+
+---
+
+## 8. Mantenimiento de documentación
+
+La documentación está repartida en varias piezas con responsabilidades distintas, y **un solo cambio de código suele tocar más de un documento**. Dejar docs desincronizados es la causa #1 de deriva en este repo. Esta sección es el mapa para evitarlo: úsala como checklist al cerrar cualquier cambio.
+
+### Quién es la fuente de verdad (SSOT) de qué
+
+Cada hecho vive en **un** documento. Los demás enlazan, no duplican.
+
+| Documento | Es dueño de |
+| :-- | :-- |
+| `pyproject.toml` | Versión, dependencias y extras (`fantasma/__init__.py` lee la versión de aquí — no se duplica) |
+| `CHANGELOG.md` | Historial de cambios por versión (Keep a Changelog) |
+| `ROADMAP.md` | Estado vivo, camino a v1.0, gaps técnicos y deuda |
+| `README.md` | Vitrina: qué hace, instalación, uso rápido, tabla de colores del HUD, tabla de sims, badge de estado |
+| `PRODUCT_BRIEF.md` | El norte: alcance (dentro/fuera), nicho, principios de diseño, landscape |
+| `docs/guia-usuario.md` | Flujo de usuario de punta a punta (CLI + UI) |
+| `docs/hud-reference.md` | Anatomía y código de colores del HUD |
+| `docs/formato-datos.md` | Modelo canónico de datos, esquema `corners` JSON, salidas CSV, algoritmo de detección |
+| `CONTRIBUTING.md` | Estructura del proyecto, entorno dev, convenciones y este mapa |
+| `docs/decisions/` + su `README.md` | El porqué de cada decisión (un ADR por decisión) + índice |
+
+### Blast radius — al hacer este cambio, revisa estos documentos
+
+> `CHANGELOG.md` se actualiza **siempre** que el cambio sea liberable; se omite abajo por brevedad.
+
+| Cambio | Documentos a actualizar |
+| :-- | :-- |
+| Flag/comando CLI nuevo, o cambio de comportamiento de uno | `README` (uso rápido) · `guia-usuario` · `formato-datos` si cambian las salidas |
+| Cambio visual del HUD/overlay (color, panel, franja de datos) | `hud-reference` · `README` (tabla de colores) · **ADR nuevo** + `docs/decisions/README.md` |
+| Cambio en `core/` (detección de curvas, comparación, `wear`, normalización) | `formato-datos` (algoritmo + JSON + CSV) · `tests/` si cambian números/signos · ADR si es una decisión |
+| Dependencia o extra nuevo | `pyproject.toml` · `README` (tabla de deps + instalación) · §3 de este doc · `setup.ps1` |
+| Importador o formato de entrada nuevo | `README` (tabla de sims) · `guia-usuario` · `formato-datos` (canales) · §7 (bienvenidas) |
+| Cambio de alcance o de un principio de diseño | `PRODUCT_BRIEF` · `ROADMAP` · §4 de este doc si aplica |
+| Release / bump de versión | `pyproject.toml` · `CHANGELOG` (`[Unreleased]` → versión con fecha) · `ROADMAP` (estado actual + footer) · `README` (badge) · tag git anotado |
+| Decisión de arquitectura/diseño | **ADR nuevo** en `docs/decisions/` · su `README.md` (índice) · el documento que la decisión afecta |
+
+### Regla de consistencia de vocabulario
+
+El mismo concepto debe llamarse **igual** en todos los documentos. Si renombras algo (un color, un campo de salida, una fase), búscalo en el resto de la documentación antes de cerrar el cambio. Vocabularios que deben coincidir entre docs:
+
+- Nombres de colores del HUD → `README` ↔ `docs/hud-reference.md`
+- Nombres de versiones/fases → `ROADMAP` ↔ `PRODUCT_BRIEF`
+- Nombres de campos de salida → `docs/formato-datos.md` ↔ el código que los emite
