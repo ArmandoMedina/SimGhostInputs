@@ -98,6 +98,14 @@ nunca telemetría real. El enfoque, la estructura y la directiva de qué se auto
 vs qué se prueba a mano están en [`docs/decisions/0003-testing.md`](docs/decisions/0003-testing.md).
 Ampliar la cobertura (resto de `viz/`, importadores) es especialmente bienvenido.
 
+**Pruebas — cuándo, cómo y qué hacer si falla o falta:**
+
+- **Cuándo:** corre `pytest` **antes de cerrar cualquier cambio que toque comportamiento**. Verde es condición para commitear/pushear.
+- **El test es parte del cambio:** si añades o cambias lógica determinista (`core/`, `importers/`, helpers puros de `viz/`), **el cambio incluye su test** — no es opcional ni "para después".
+- **Cómo / qué se automatiza vs qué es manual:** ver [`docs/decisions/0003-testing.md`](docs/decisions/0003-testing.md).
+- **Si el escenario no existe:** créalo (blinda el comportamiento nuevo o el bug, para que no reaparezca).
+- **Si un test está mal o desactualizado:** corrígelo — pero **primero entiende por qué falla**. Un rojo suele ser el test atrapando una regresión real, no un estorbo; ajustarlo para que pase sin diagnosticar es apagar la alarma de humo.
+
 ---
 
 ## 4. Principios de diseño

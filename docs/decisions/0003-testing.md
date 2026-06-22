@@ -72,6 +72,26 @@ juzgar: lo visual y lo experiencial.
 
 ---
 
+## Cuándo se corren y se añaden (regla operativa)
+
+Lo de arriba dice *qué* y *cómo*; esta es la regla de *cuándo* (para que ninguna sesión
+futura tenga que preguntarla):
+
+- **Antes de cerrar un cambio de comportamiento, corre `pytest`.** Verde es condición
+  para commitear/pushear; un rojo se **diagnostica**, no se silencia.
+- **Si añades o cambias lógica determinista, el cambio incluye su test.** No es un paso
+  "para después": el test es parte del cambio — es lo que permite auditar por
+  verificación sin leer el código.
+- **Si el escenario no existe, créalo;** si un bug se cuela, se blinda con un test de
+  regresión (un bug que no se detecta vuelve — ver §Tests de regresión).
+- **Si un test está mal o quedó desactualizado, corrígelo — pero primero entiende por
+  qué falla.** Un rojo suele ser el test haciendo su trabajo (atrapando una regresión
+  real). Ajustar un test para que pase sin entender el rojo es apagar la alarma de humo.
+
+Esta regla vive también, en corto, en `CONTRIBUTING.md` §3 (la cara para contribuidores).
+
+---
+
 ## Enfoque elegido
 
 ### Framework y estructura
