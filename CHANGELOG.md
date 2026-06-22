@@ -4,15 +4,25 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/). Versionado
 
 ## [Unreleased]
 
+### Pendiente
+- **Gráfica de desgaste acumulado del stint** (Producto 1): el acumulado entre vueltas se ve hoy en `fantasma wear` (CLI); falta la vista gráfica. Decidido en el ADR 0004 (enmienda).
+
+---
+
+## [0.9.0] — 2026-06-22
+
 ### Añadido
-- **Glosario** (`docs/glosario.md`): definición canónica de los términos del proyecto (métricas de desgaste, hitos de curva, términos de overlay y telemetría). Enlazado desde el README y registrado como SSOT de vocabulario en `CONTRIBUTING.md` §8. Aclara explícitamente que **DESLIZ** (intensidad instantánea) y el **desgaste acumulado** (cantidad) no son lo mismo.
 - **Desgaste acumulado de la vuelta en el HUD (campo `GASTO`)**: nuevo readout en el overlay que muestra la *carga de deslizamiento* acumulada de la vuelta (piloto vs `ref`), distinta del DESLIZ instantáneo. Función pura `core.wear.slip_load` (slip integrado sobre la distancia: cantidad extensiva y aditiva). Implementa los ADR 0004 (enmienda) y 0009.
+- **Glosario** (`docs/glosario.md`): definición canónica de los términos del proyecto (métricas de desgaste, hitos de curva, términos de overlay y telemetría). Enlazado desde el README y registrado como SSOT de vocabulario en `CONTRIBUTING.md` §8. Aclara explícitamente que **DESLIZ** (intensidad instantánea) y el **desgaste acumulado** (cantidad) no son lo mismo.
+- **Matriz de mantenimiento de docs** (`CONTRIBUTING.md` §8): qué documento es dueño de qué (SSOT) y qué docs tocar en cada tipo de cambio (blast radius), más la regla de consistencia de vocabulario.
+- **Regla operativa de pruebas** (CONTRIBUTING §3 + ADR 0003): cuándo correr `pytest`, que el test es parte del cambio, y qué hacer si el escenario falta o un test falla.
 
 ### Cambiado
 - **`fantasma wear` ahora acumula la carga de deslizamiento** (`slip_load`) en vez del promedio `slip_index`, para ser consistente con el acumulado del overlay (ADR 0009). Los umbrales `--yellow/--red/--burst` ya no traen valor por defecto: la carga escala con la longitud del circuito y se calibran con datos reales.
 
-### Pendiente / Known issues
-- **Gráfica de desgaste acumulado del stint** (Producto 1): el acumulado entre vueltas se ve hoy en `fantasma wear` (CLI); falta la vista gráfica. Decidido en el ADR 0004 (enmienda).
+### Documentación
+- **ADRs 0004 y 0005 enmendados** (desgaste acumulado en dos vistas: overlay = vuelta, gráficas = stint) y **ADR 0009 nuevo** (unidad: carga de deslizamiento, no el promedio).
+- Sincronización doc↔código tras pasada de verificación (`formato-datos.md`, `hud-reference.md`): hito fantasma `exit` eliminado, columnas reales de los CSV, vocabulario de color del HUD.
 
 ---
 

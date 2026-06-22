@@ -8,11 +8,13 @@
 
 ---
 
-## Estado actual — v0.8.0
+## Estado actual — v0.9.0
 
-Último release: **v0.8.0** (2026-06-21) — auto-sync para video de **varias vueltas** (ADR 0008): detecta un candidato por vuelta y, si son ambiguos, el usuario elige (gate bloqueante en la UI). Resuelve el caso "carrera completa" que antes pegaba el HUD sobre la vuelta equivocada en silencio. _Pendiente de QA con video real._ Previo: **v0.7.2** (`setup.ps1` auto-instala Python + ASCII), **v0.7.1** (fix deps), **v0.7.0** (`fantasma wear` + ADR 0004–0007 + pulido del overlay). Las tandas 0.6.0–0.6.5 entregaron, entre otras cosas, el grueso de lo planeado para v0.9.0 (detección de pausa, badge de calidad de sync, «Procesar otra vuelta», una vuelta por ejecución). La **v0.6.6** añadió la suite de tests automatizados (48 verdes) + CI en GitHub Actions y cerró el gap del separador `;`/coma decimal europea — con eso queda cubierto el requisito de v1.0 de "tests unitarios de `core/`".
+Último release: **v0.9.0** (2026-06-22) — campo **GASTO** en el HUD del overlay: desgaste acumulado *de la vuelta* (carga de deslizamiento, ADR 0009), distinto del DESLIZ instantáneo; `fantasma wear` migrado a la misma carga extensiva. Además: **glosario** del proyecto, **matriz de mantenimiento de docs** (CONTRIBUTING §8), ADRs 0004/0005 enmendados y 0009 nuevo, y regla operativa de pruebas. _GASTO pendiente de QA con video real._ Previo: **v0.8.0** (auto-sync multi-vuelta, ADR 0008), **v0.7.x** (`fantasma wear`, ADR 0004–0007, `setup.ps1`), **v0.6.6** (suite de tests + CI, requisito de "tests unitarios de `core/`" cubierto).
 
-Con v0.9.0 entregada, **el drill-down por curva (antes v0.10.0) se difiere a post-1.0**. Eso reenfoca la 1.0: ya no es "construir una feature nueva primero", sino **estabilizar, testear, documentar y validar en AMS2 el pipeline offline que ya existe**. El camino a la 1.0 es ahora mayormente QA manual + cierre de release.
+> **Nota de numeración:** los números de versión **reales** (CHANGELOG/tags, ahora en v0.9.0) y las etiquetas de *hito* del «camino a v1.0» de abajo (v0.5.0, 0.6.x, «v0.9.0»…) son **dos esquemas distintos que ya divergieron** — manda el CHANGELOG. Los hitos conceptuales se renumerarán cuando se retomen.
+
+El **drill-down por curva** (antes hito «v0.10.0») se difiere a post-1.0. Eso reenfoca la 1.0: ya no es "construir una feature nueva primero", sino **estabilizar, testear, documentar y validar en AMS2 el pipeline offline que ya existe**. El camino a la 1.0 es ahora mayormente QA manual + cierre de release.
 
 > **▶️ Para la próxima sesión (Armando):** revisar **meticulosamente el overlay y la UI** buscando detalles visuales y de usabilidad por pulir. Incluye verificar si hay desync real de FPS con un video de 60 fps (ver gaps técnicos — el análisis de código dice que NO debería desincronizar; falta confirmarlo con video real). Con eso + el QA de AMS2 (≥3 circuitos) + `setup.ps1` en Windows limpio, se corta la 1.0.
 
@@ -322,4 +324,4 @@ Cosas que están en el código pero no tienen cobertura de QA formal ni están d
 
 ---
 
-_Última revisión: 2026-06-22 — estado al día con **v0.8.0** (auto-sync multivuelta ADR 0008; `setup.ps1` ASCII + auto-instala Python; `fantasma wear` + ADRs 0004–0008). Antes (2026-06-21): suite de tests + CI + fix separador `;` en release; diagnóstico de código del gap `prores` (stderr descartado en `_run_ffmpeg`, asimetría de threading) asentado sin tocar código. (2026-06-17): drill-down (era v0.10.0) diferido a post-1.0; la 1.0 se reenfoca a estabilizar/testear/documentar/validar el pipeline offline existente en AMS2; reordenadas las versiones; v0.9.0 marcada completa; deudas resueltas (docs, requires-python)._
+_Última revisión: 2026-06-22 — release **v0.9.0** (campo GASTO + carga de deslizamiento ADR 0009; glosario; matriz de docs CONTRIBUTING §8; regla de pruebas). Antes: **v0.8.0** (auto-sync multivuelta ADR 0008; `setup.ps1` ASCII + auto-instala Python; `fantasma wear` + ADRs 0004–0008). Antes (2026-06-21): suite de tests + CI + fix separador `;` en release; diagnóstico de código del gap `prores` (stderr descartado en `_run_ffmpeg`, asimetría de threading) asentado sin tocar código. (2026-06-17): drill-down (era v0.10.0) diferido a post-1.0; la 1.0 se reenfoca a estabilizar/testear/documentar/validar el pipeline offline existente en AMS2; reordenadas las versiones; v0.9.0 marcada completa; deudas resueltas (docs, requires-python)._
