@@ -39,9 +39,9 @@ Todo importador convierte a este modelo (`fantasma/core/lap.py`):
 
 1. **V-Min**: mínimo local de velocidad con prominencia ≥3 km/h en ventana de ±1.2s.
 2. **Kink**: pico de |G lateral| > 2.2 sostenido, sin V-Min en ±80m (curvas rápidas sin frenada).
-3. **Segmentación**: cada curva solo analiza su tramo (punto medio con las curvas vecinas, máx. ±450m) — evita contaminarse con la frenada de la curva siguiente.
+3. **Segmentación**: cada curva solo analiza su tramo (punto medio con las curvas vecinas, con tope de 450 m hacia atrás y 350 m hacia adelante) — evita contaminarse con la frenada de la curva siguiente.
 4. **Frenada real**: último bloque de freno con pico ≥50%; los blips del trail braking no cuentan como inicio de frenada.
-5. Hitos: `brake_start`, `turn_in` (|volante|>8° hacia el lado de la curva), `brake_release` (<2%), `throttle_on` (>5%), `apex` (V-Min), `full_throttle` (≥98% sostenido), `g_lat_max`, `lift` (en curvas sin freno) y `exit` (fin del segmento de la curva). Cada hito lleva `d` (m), `t` (s), `v` (km/h).
+5. Hitos: `brake_start`, `turn_in` (|volante|>8° hacia el lado de la curva), `brake_release` (<2%), `throttle_on` (>5%), `apex` (V-Min), `full_throttle` (≥98% sostenido), `g_lat_max`, `lift` (en curvas sin freno). Cada hito lleva `d` (m), `t` (s), `v` (km/h).
 6. **Overlap**: si `throttle_on.d < brake_release.d`, se registra `overlap_m` (solape gas/freno).
 7. **Pendiente**: si hay canal `alt`, gradiente ±100m alrededor del ápex → `slope` (subida/bajada/plano) y `slope_pct`.
 
@@ -70,8 +70,7 @@ Todo importador convierte a este modelo (`fantasma/core/lap.py`):
         "throttle_on": {"d": 7220, "t": 135.2, "v": 90, "throttle_pct": 17},
         "apex":        {"d": 7233, "t": 135.6, "v": 76, "gear": 1, "g_lat": 2.42},
         "full_throttle":{"d": 7349, "t": 139.1, "v": 118, "gear": 2},
-        "g_lat_max":   {"d": 7230, "g_lat": 2.5},
-        "exit":        {"d": 7487, "t": 142.6, "v": 152, "gear": 3}
+        "g_lat_max":   {"d": 7230, "g_lat": 2.5}
       },
       "tolerances": {"brake_start_m": 10, "vmin_kmh": 4}   // opcional, para avisos
     }
@@ -83,6 +82,6 @@ Campos extra (`voice_name`, `description`, `coaching_priority`...) se conservan 
 
 ## Salidas de `compare`
 
-**`delta.csv`** — una fila por paso de la rejilla: `dist`, `delta_t` (s, positivo = el piloto pierde), y `ref_*`/`drv_*` para `speed`, `throttle`, `brake`, `steering`, `gear`.
+**`delta.csv`** — una fila por paso de la rejilla: `dist`, `delta_t` (s, positivo = el piloto pierde), y `ref_*`/`drv_*` para `speed`, `throttle`, `brake`, `steering`, `gear` y, si están presentes en el archivo, `glat`/`glong`. Solo se escriben las columnas de los canales que existen.
 
-**`corners_compare.csv`** — una fila por curva: `id`, `name`, `apex_d`, `ref_vmin`, `drv_vmin`, `d_vmin`, `ref_brake_d`, `drv_brake_d`, `d_brake_m` (positivo = el piloto frena más tarde), `d_gas100_m`, `time_lost` (s, delta acumulado entre los extremos del segmento), `flags`.
+**`corners_compare.csv`** — una fila por curva: `id`, `name`, `apex_d`, `ref_vmin`, `drv_vmin`, `d_vmin`, `ref_brake_d`, `drv_brake_d`, `d_brake_m` (positivo = el piloto frena más tarde), `d_gas100_m`, `time_lost` (s, delta acumulado entre los extremos del segmento), `flags`; y, cuando el archivo trae canales de rueda/ABS, `ref_slip`/`drv_slip` (proxy de desgaste por curva) y `ref_abs`/`drv_abs` (activaciones de ABS en el segmento). Las columnas dependen de los datos disponibles.

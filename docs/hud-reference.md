@@ -36,6 +36,7 @@ obtener el video de análisis.
 | **M** / **MARCHA** | Marcha actual del piloto (1–6 / N / R). | Verificar sincronía visual: comparar con el marcador de marcha del sim. |
 | **km/h** | Velocidad instantánea del piloto. | Verificar sincronía y detectar diferencias de velocidad punta en rectas. |
 | **metros** | Distancia recorrida en la vuelta desde meta. | Referencia espacial; úsalo con el vídeo para confirmar en qué metro estás. |
+| **Curva / V-Min objetivo** (arriba a la derecha) | Nombre de la curva actual —del track pack, si lo cargaste con `--corners`; si no, el `id` `C01`…— y debajo su **V-Min objetivo** (la velocidad de paso de la referencia en esa curva) en km/h. | Saber en qué curva vas y a qué velocidad de paso apuntar. |
 
 ---
 
