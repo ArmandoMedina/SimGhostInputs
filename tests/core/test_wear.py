@@ -71,6 +71,32 @@ def test_slip_index_positive_with_real_slip():
     assert idx > 0        # con deslizamiento real por encima de la banda muerta
 
 
+# --- slip_load: carga de deslizamiento extensiva (ADR 0009) --------------------
+
+def test_slip_load_none_without_wheels():
+    assert wear.slip_load(make_lap()) is None
+
+
+def test_slip_load_zero_clean_rolling():
+    assert wear.slip_load(_rolling_lap(ratio=1.0)) == 0.0
+
+
+def test_slip_load_positive_with_real_slip():
+    assert wear.slip_load(_slip_lap()) > 0
+
+
+def test_slip_load_is_additive_over_distance():
+    """La carga es EXTENSIVA: la de dos tramos contiguos suma la del total
+    (a diferencia de slip_index, que es un promedio y no se puede sumar)."""
+    lap = _slip_lap()
+    d = lap.col("dist")
+    mid = (d[len(d) // 2] + d[len(d) // 2 + 1]) / 2.0   # punto entre dos muestras
+    whole = wear.slip_load(lap)
+    part1 = wear.slip_load(lap, 0, mid)
+    part2 = wear.slip_load(lap, mid, d[-1])
+    assert abs((part1 + part2) - whole) < 0.05
+
+
 def test_assist_count_counts_rising_edges():
     lap = Lap()
     n = 10

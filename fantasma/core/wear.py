@@ -75,6 +75,29 @@ def slip_index(lap, d0=None, d1=None, slip=None, ratios=None):
     return round(sum(vals) / len(vals), 2)
 
 
+def slip_load(lap, d0=None, d1=None, slip=None, ratios=None):
+    """Carga de deslizamiento de un tramo (ADR 0009): el slip **integrado sobre la
+    distancia** — Σ (exceso de |slip| sobre la banda muerta / 100) × Δdistancia.
+
+    A diferencia de `slip_index` (que es el PROMEDIO = intensidad), esto es una
+    cantidad **extensiva y aditiva**: la carga de dos tramos contiguos es la suma de
+    sus cargas (curva → vuelta → stint suman). Aproxima los metros de patinaje
+    equivalente de la goma. None si no hay serie de slip.
+    """
+    slip = slip if slip is not None else slip_series(lap, ratios)
+    if slip is None:
+        return None
+    d = lap.col("dist")
+    total = 0.0
+    for i in range(1, len(slip)):
+        dd = d[i] - d[i - 1]
+        if dd <= 0:
+            continue
+        if (d0 is None or d0 <= d[i]) and (d1 is None or d[i] <= d1):
+            total += max(0.0, abs(slip[i]) - DEADBAND_PCT) / 100.0 * dd
+    return round(total, 2)
+
+
 def assist_count(lap, channel, d0=None, d1=None):
     """Numero de activaciones (flancos de subida) de abs/tcs en un tramo."""
     c = lap.col(channel)

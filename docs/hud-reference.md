@@ -10,7 +10,7 @@ obtener el video de análisis.
 
 ```
 ┌──────────────────────────────────────────────────────────────────────┐
-│  GAP +0.41s │ ΔV -8 │ DESLIZ 1.2 │ ABS  TC │ M 3 │ 187 km/h │ 3412 m │
+│  GAP +0.41s │ ΔV -8 │ DESLIZ 1.2 │ ABS TC │ GASTO 12 │ M 3 │ 187 km/h │ 3412 m │
 │                                                                      │
 │  PANEL GAS          PANEL FRENO          PANEL VOLANTE              │
 │  ─────────────      ─────────────         ─────────────             │
@@ -33,6 +33,7 @@ obtener el video de análisis.
 | **ΔV** | Diferencia de velocidad puntual (piloto − referencia) en el metro exacto donde está el cursor. Negativo = más lento. | Identificar dónde no estás llegando a la velocidad de la referencia. |
 | **DESLIZ** | Índice de deslizamiento de las ruedas (velocidad de rueda vs velocidad real) sobre los ~40 m **detrás** del cursor — el maltrato que la goma acaba de sufrir, no el promedio de toda la pantalla. Proxy de desgaste; muestra el del piloto y el `ref`. | Monitorear si eres más agresivo con el neumático que la referencia. Es la base del medidor `fantasma wear`. |
 | **ABS / TC** | Luces de estado: el texto se enciende en su color (ABS ámbar, TC violeta) cuando el ABS / control de tracción del piloto está activo **en el cursor**, con una retención corta (~8 m) para no parpadear. Apagado = gris. | Ver en el momento exacto si estás bloqueando (ABS) o pasándote de gas (TC). |
+| **GASTO** | Desgaste **acumulado de la vuelta** (la *carga de deslizamiento*): cuánto ha gastado la goma desde meta hasta el cursor (piloto y `ref`). **No es DESLIZ** — DESLIZ es *intensidad* (qué tan duro castigas la goma **ahora**); GASTO es *cantidad* acumulada (cuánto llevas gastado). Solo crece a lo largo de la vuelta. | Ver cuánta goma llevas gastada y si gastas más que la referencia. |
 | **M** / **MARCHA** | Marcha actual del piloto (1–6 / N / R). | Verificar sincronía visual: comparar con el marcador de marcha del sim. |
 | **km/h** | Velocidad instantánea del piloto. | Verificar sincronía y detectar diferencias de velocidad punta en rectas. |
 | **metros** | Distancia recorrida en la vuelta desde meta. | Referencia espacial; úsalo con el vídeo para confirmar en qué metro estás. |

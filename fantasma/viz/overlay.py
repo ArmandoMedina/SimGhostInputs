@@ -148,6 +148,11 @@ class _HUDFigure:
         self.t_dv_val  = fig.text(0.158, 0.985, "",  color=_FG,    fontsize=17, weight="bold", **kw)
         self.t_sl_val  = fig.text(0.272, 0.985, "—", color=_FG,    fontsize=17, weight="bold", **kw)
         self.t_sl_ref  = fig.text(0.305, 0.978, "",  color=_DIM,   fontsize=10, **kw)
+        # GASTO = desgaste acumulado DE LA VUELTA (carga de deslizamiento, ADR 0009).
+        # Es CANTIDAD, no intensidad: crece a lo largo de la vuelta, NO se reinicia por
+        # curva como DESLIZ. Las dos coexisten a propósito (ADR 0005, enmienda).
+        self.t_load_val = fig.text(0.515, 0.985, "—", color=_FG,  fontsize=15, weight="bold", **kw)
+        self.t_load_ref = fig.text(0.555, 0.978, "",  color=_DIM, fontsize=10, **kw)
         # luces instantáneas ABS / TC: el propio texto se enciende (color vivo)
         # cuando el flag del piloto está activo en el cursor, y se atenúa si no.
         self.t_abs_light = fig.text(0.385, 0.985, "ABS", color=_DIM, fontsize=15, weight="bold", **kw)
@@ -164,6 +169,7 @@ class _HUDFigure:
         fig.text(0.012, 0.97,  "GAP",       color=_DIM,  fontsize=10, **kw)
         fig.text(0.135, 0.97,  "ΔV",        color=_DIM,  fontsize=10, **kw)
         fig.text(0.225, 0.97,  "DESLIZ",    color=_DIM,  fontsize=10, **kw)
+        fig.text(0.470, 0.97,  "GASTO",     color=_DIM,  fontsize=9,  **kw)
         fig.text(0.635, 0.97,  "MARCHA",    color=_DIM,  fontsize=9,  **kw)
         fig.text(0.730, 0.97,  "m",         color=_DIM,  fontsize=9,  **kw)
         fig.text(0.812, 0.97,  "km/h",      color=_DIM,  fontsize=9,  **kw)
@@ -220,7 +226,8 @@ class _HUDFigure:
 
     def update(self, cur_d, win_d, rw, dw, p75, p90,
                gap, dv, slip_val, ref_slip_val, abs_on, tcs_on,
-               corner_name, corner_txt, gear=None, speed=None):
+               corner_name, corner_txt, gear=None, speed=None,
+               load_val=None, ref_load_val=None):
         """Actualiza datos y texto para el frame actual."""
         l = self.l
 
@@ -269,6 +276,12 @@ class _HUDFigure:
             self.t_gear_val.set_text("N" if g == 0 else ("R" if g < 0 else str(g)))
         self.t_dist_val.set_text("%d" % int(cur_d))
         self.t_spd_val.set_text("%d" % int(speed) if speed is not None else "")
+        if load_val is not None:
+            self.t_load_val.set_text("%.0f" % load_val)
+            self.t_load_ref.set_text("ref %.0f" % ref_load_val if ref_load_val is not None else "")
+        else:
+            self.t_load_val.set_text("—")
+            self.t_load_ref.set_text("")
         self.t_corner.set_text(corner_name)
         self.t_corner2.set_text(corner_txt)
 
@@ -298,7 +311,8 @@ def _render_chunk(args):
      ref_d_o, ref_abs_o, drv_d_o, drv_abs_o,
      trace, n_tr, step,
      t_arr, d_arr, corners_by_seg,
-     frames_dir, fps, t_start) = args
+     frames_dir, fps, t_start,
+     ref_load_cum, drv_load_cum) = args
 
     hud      = _HUDFigure()
     last_png = None
@@ -334,9 +348,19 @@ def _render_chunk(args):
             corner_name, corner_txt = _corner_at(corners_by_seg, cur_d)
 
             gear = float(np.interp(cur_d, ds, drv_ch["gear"])) if drv_ch.get("gear") is not None else None
+
+            def _load_at(cum):
+                if cum is None:
+                    return None
+                j = max(0, min(int(cur_d), len(cum) - 1))
+                return float(cum[j])
+            load_val     = _load_at(drv_load_cum)
+            ref_load_val = _load_at(ref_load_cum)
+
             hud.update(cur_d, win_d, rw, dw, p75, p90,
                        gap, dv, slip_val, ref_slip_val, abs_on, tcs_on,
-                       corner_name, corner_txt, gear=gear, speed=drv_v)
+                       corner_name, corner_txt, gear=gear, speed=drv_v,
+                       load_val=load_val, ref_load_val=ref_load_val)
             hud.to_pil().save(out_path)
             last_png = out_path
     finally:
@@ -489,6 +513,16 @@ def render_overlay(ref, drv, corners, outdir, fps=30, fmt="webm",
     ref_slip = _to_grid(ref)
     drv_slip = _to_grid(drv)
 
+    # carga de deslizamiento acumulada DE LA VUELTA (ADR 0009): cantidad extensiva,
+    # Σ (exceso de slip / 100) × Δdist. Como ds tiene paso de 1 m, es cumsum del exceso.
+    def _load_cum(slip_grid):
+        if slip_grid is None:
+            return None
+        excess = np.maximum(0.0, np.abs(slip_grid) - wear.DEADBAND_PCT) / 100.0
+        return np.cumsum(excess)   # Δds = 1 m
+    ref_load_cum = _load_cum(ref_slip)
+    drv_load_cum = _load_cum(drv_slip)
+
     # ABS originales (sin interpolar) para conteo de flancos preciso
     def _orig_flags(lap, ch):
         d = np.array(lap.col("dist"), dtype=float)
@@ -526,7 +560,8 @@ def render_overlay(ref, drv, corners, outdir, fps=30, fmt="webm",
             ref_d_o, ref_abs_o, drv_d_o, drv_abs_o,
             trace, n_tr, step,
             t_arr, d_arr, corners_by_seg,
-            frames_dir, fps, t_start)
+            frames_dir, fps, t_start,
+            ref_load_cum, drv_load_cum)
 
     if n_workers <= 1:
         _render_chunk((0, n_frames, *base))

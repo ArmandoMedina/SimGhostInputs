@@ -96,18 +96,18 @@ El promedio del exceso de slip en un tramo (una curva o una vuelta entera). Mism
 que DESLIZ pero sobre el tramo que se le pida. Es una *intensidad*, no una cantidad: **no se
 puede sumar** entre curvas.
 
-**Carga de deslizamiento** — **cantidad acumulable** *(planeado, [ADR 0009](decisions/0009-unidad-desgaste-acumulado.md))*
+**Carga de deslizamiento** — **cantidad acumulable** (ver [ADR 0009](decisions/0009-unidad-desgaste-acumulado.md))
 El slip **integrado sobre la distancia** (`Σ exceso de slip × metros`). A diferencia del
 promedio, **sí es aditiva**: la carga de la curva 1 + la de la curva 2 = la de las dos
 juntas. Es la base del medidor acumulado (cuánto has gastado). Físicamente ≈ distancia de
 patinaje de la goma.
 
-**Desgaste acumulado de la vuelta** *(planeado — overlay)*
-La carga de deslizamiento corrida desde meta hasta el cursor, en el HUD. Crece a lo largo de
-la vuelta. Es el "medidor de gasolina" de **una** vuelta.
+**Desgaste acumulado de la vuelta** — campo **GASTO** del HUD
+La carga de deslizamiento corrida desde meta hasta el cursor, en el HUD (piloto y `ref`).
+Crece a lo largo de la vuelta. Es el "medidor de gasolina" de **una** vuelta.
 
 **Desgaste acumulado del stint** (`fantasma wear`)
-La carga acumulada **entre vueltas** de un stint, con estado (`ok`/`yellow`/`red`/`burst`) y
+La carga acumulada **entre vueltas** de un stint —la misma unidad que el GASTO del overlay—, con estado (`ok`/`yellow`/`red`/`burst`) y
 estimación de vueltas que faltan para el reventón, estilo medidor de gasolina. Los umbrales
 los calibras tú: el número es un proxy en unidades arbitrarias, no un % físico de goma.
 

@@ -242,10 +242,12 @@ def cmd_compose(args):
 
 
 def cmd_wear(args):
-    """Medidor de desgaste de goma acumulable de un stint (ver ADR 0004).
+    """Medidor de desgaste de goma acumulable de un stint (ver ADR 0004 y 0009).
 
-    Calcula el slip_index de cada vuelta completa, lo acumula y proyecta cuántas
-    vueltas faltan para el reventón, estilo medidor de gasolina.
+    Calcula la carga de deslizamiento (slip_load) de cada vuelta completa, la
+    acumula y proyecta cuántas vueltas faltan para el reventón, estilo medidor de
+    gasolina. La carga es una cantidad extensiva (aditiva entre vueltas), no el
+    promedio slip_index — así es consistente con el acumulado del overlay (ADR 0009).
     """
     from .core import wear
 
@@ -253,10 +255,10 @@ def cmd_wear(args):
     complete = [l for l in laps if l.meta.get("is_complete")] or laps
 
     print("Archivo: %s" % args.file)
-    print("\n  vuelta   desgaste (slip_index)")
+    print("\n  vuelta   carga (slip_load)")
     rates = []
     for i, lap in enumerate(complete):
-        r = wear.slip_index(lap)
+        r = wear.slip_load(lap)
         rates.append(r)
         print("  %4d     %s" % (i, "—" if r is None else "%.2f" % r))
 
@@ -266,12 +268,19 @@ def cmd_wear(args):
         print("\nSin desgaste medible (¿faltan los canales de velocidad de rueda?).")
         return
 
-    print("\nDesgaste acumulado: %.2f  [%s]" % (b["cumulative"], b["status"].upper()))
+    print("\nCarga acumulada: %.2f  [%s]" % (b["cumulative"], b["status"].upper()))
     print("Rate reciente: %.2f / vuelta  (últimas %d)" % (b["rate_recent"], args.recent_n))
     if "laps_to_burst" in b:
         print("Vueltas estimadas a cambio: ~%.1f  (total del juego de gomas ~%.1f vueltas)"
               % (b["laps_to_burst"], b["est_total_laps"]))
-    print("Umbrales: amarillo %g | rojo %g | reventón %g" % (args.yellow, args.red, args.burst))
+    shown = " | ".join("%s %g" % (k, v) for k, v in
+                       (("amarillo", args.yellow), ("rojo", args.red), ("reventón", args.burst))
+                       if v is not None)
+    if shown:
+        print("Umbrales: " + shown)
+    else:
+        print("Umbrales: sin definir — la carga escala con la longitud del circuito; "
+              "calíbralos con tus datos reales (--burst, --red, --yellow).")
 
 
 def main(argv=None):
@@ -321,9 +330,9 @@ def main(argv=None):
 
     sp = sub.add_parser("wear", help="medidor de desgaste de goma acumulable de un stint")
     sp.add_argument("file")
-    sp.add_argument("--yellow", type=float, default=30.0, help="umbral amarillo (default 30)")
-    sp.add_argument("--red", type=float, default=40.0, help="umbral rojo (default 40)")
-    sp.add_argument("--burst", type=float, default=50.0, help="umbral de reventón (default 50)")
+    sp.add_argument("--yellow", type=float, default=None, help="umbral amarillo (empírico; sin default, la carga escala con el circuito)")
+    sp.add_argument("--red", type=float, default=None, help="umbral rojo (empírico; sin default)")
+    sp.add_argument("--burst", type=float, default=None, help="umbral de reventón (empírico; sin default)")
     sp.add_argument("--recent-n", type=int, default=1, dest="recent_n",
                     help="vueltas finales a promediar para proyectar (default 1)")
     sp.add_argument("--map", action="append", help="columna=canal para CSV generico")

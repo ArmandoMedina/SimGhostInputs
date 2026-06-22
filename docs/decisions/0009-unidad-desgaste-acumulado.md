@@ -1,6 +1,6 @@
 # ADR 0009 — Unidad de medida del desgaste acumulado: carga de deslizamiento (integral), no el promedio
 
-- **Estado:** Aceptada (pendiente de implementar)
+- **Estado:** Aceptada (implementada 2026-06-22)
 - **Fecha:** 2026-06-22
 
 ## Contexto
@@ -75,4 +75,16 @@ sobre la distancia** (metros), no el promedio.
   instantánea: *qué tan duro castigas la goma AHORA*) de la **carga acumulada** (*cuánto
   llevas gastado*), porque es fácil que el usuario las confunda. Riesgo señalado por Armando
   el 2026-06-22.
-- **Pendiente de implementar** — este ADR fija la unidad; no hay código aún.
+## Implementación (2026-06-22)
+
+- `core.wear.slip_load(lap, d0, d1)` — función pura que calcula la carga (extensiva,
+  integrada sobre distancia). Test de aditividad incluido (`tests/core/test_wear.py`).
+- **Overlay:** campo **GASTO** en la franja del HUD (acumulado de la vuelta, piloto vs
+  `ref`); cumsum de la carga sobre la rejilla de 1 m en `viz/overlay.py`.
+- **`fantasma wear`:** migrado de `slip_index` (promedio) a `slip_load` (carga) —
+  **cierra la consideración abierta de unidades**: ahora el acumulado de stint y el del
+  overlay usan la misma base. Los umbrales `--yellow/--red/--burst` pierden su default
+  (la carga escala con la longitud del circuito; se calibran empíricamente).
+- Validado con telemetría real (BMW M4 GT3, Nordschleife): GASTO ~257 vs ref ~237 al
+  final de la vuelta, frente a DESLIZ ~1.8 — las escalas confirman que cantidad e
+  intensidad no se confunden.
