@@ -1,6 +1,8 @@
 # Roadmap — SimGhostInputs
 
 > Estado vivo del proyecto. Cada versión tiene su lista de cambios y su checklist de QA antes de publicarse. El criterio para cerrar una versión es que **todos** los puntos de QA estén verificados con telemetría real.
+>
+> **Para retomar en frío** (dónde va y qué sigue): lee «Estado actual» y «▶️ Para la próxima sesión» aquí abajo. El **porqué** de cada decisión vive en [`docs/decisions/`](docs/decisions/README.md); qué documentos tocar al hacer un cambio, en [`CONTRIBUTING.md` §8](CONTRIBUTING.md#8-mantenimiento-de-documentación).
 
 📋 [Brief de Producto](PRODUCT_BRIEF.md) · 📝 [Changelog](CHANGELOG.md)
 
@@ -132,7 +134,7 @@ El criterio para v1.0 es que el pipeline offline esté completo, documentado y p
 - [ ] API interna (`core/`) estabilizada — sin cambios breaking entre parches (revisión, no código nuevo)
 - [x] Docs completas: guía de usuario, referencia de HUD, formato de datos, cómo contribuir. Repasadas y al día a v0.7.0; la referencia de HUD ya incluye **leyenda visual** (`docs/demo/hud-leyenda.png`)
 - [x] **Decidir si los gaps `Alta` bloquean la 1.0** → **NO bloquean** (2026-06-21). El FPS≠grabación se investigó y no reproduce desync (bajado a Baja). El único gap `Alta` que queda es `--format prores`, **ya mitigado** con el default `webm`: no afecta el uso normal, solo a quien pida prores explícitamente. Se difiere a post-1.0.
-- [ ] 👤 Probado con AMS2 en al menos 3 circuitos distintos — **1/3: Nordschleife ✓** (carrera M4 GT3, 9 vueltas, 2026-06-21): el pipeline completo corrió con datos frescos (laps → wear → overlay) sin errores; el overlay confirmó frenadas más fuertes vs sesión previa. Sin conclusiones aún. **Faltan Interlagos y México** (fórmula + prototipo, ver §autos), y conseguir esas 2 telemetrías.
+- [ ] 👤 Probado con AMS2 en al menos 3 circuitos distintos — **1/3: Nordschleife ✓** (carrera M4 GT3, 9 vueltas, 2026-06-21): el pipeline completo corrió con datos frescos (laps → wear → overlay) sin errores; el overlay confirmó frenadas más fuertes vs sesión previa. Sin conclusiones aún. **Faltan Interlagos y México**, que se eligieron para cubrir clases de auto distintas al GT3 ya probado (fórmula y prototipo) y así ejercitar el pipeline con perfiles de telemetría diferentes; falta conseguir esas 2 telemetrías.
 - [ ] 👤 `setup.ps1` probado en instalación limpia de Windows 11 — **en curso** (Armando lo prueba en otra PC con el release v0.7.1).
 - [ ] No hay `[Unreleased]` acumulado en CHANGELOG (cortar el release)
 
