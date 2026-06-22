@@ -191,6 +191,7 @@ Cada hecho vive en **un** documento. Los demás enlazan, no duplican.
 | `docs/formato-datos.md` | Modelo canónico de datos, esquema `corners` JSON, salidas CSV, algoritmo de detección |
 | `CONTRIBUTING.md` | Estructura del proyecto, entorno dev, convenciones y este mapa |
 | `docs/decisions/` + su `README.md` | El porqué de cada decisión (un ADR por decisión) + índice |
+| `docs/glosario.md` | Definición canónica de los términos del proyecto (vocabulario) |
 
 ### Blast radius — al hacer este cambio, revisa estos documentos
 
@@ -206,6 +207,7 @@ Cada hecho vive en **un** documento. Los demás enlazan, no duplican.
 | Cambio de alcance o de un principio de diseño | `PRODUCT_BRIEF` · `ROADMAP` · §4 de este doc si aplica |
 | Release / bump de versión | `pyproject.toml` · `CHANGELOG` (`[Unreleased]` → versión con fecha) · `ROADMAP` (estado actual + footer) · `README` (badge) · tag git anotado |
 | Decisión de arquitectura/diseño | **ADR nuevo** en `docs/decisions/` · su `README.md` (índice) · el documento que la decisión afecta |
+| Término o concepto nuevo (o renombrado) | `docs/glosario.md` (definición canónica) · busca el término en los demás docs para dejarlo consistente |
 
 ### Regla de consistencia de vocabulario
 
