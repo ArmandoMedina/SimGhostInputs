@@ -4,6 +4,9 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/). Versionado
 
 ## [Unreleased]
 
+### Decidido (pendiente de implementar)
+- **Desgaste acumulado en dos vistas** (enmienda de los ADR 0004 y 0005): el HUD del overlay llevará un acumulado *de la vuelta* (suma del exceso de slip, piloto vs ref) además del DESLIZ instantáneo; el acumulado de *stint* entre vueltas vive en las gráficas (Producto 1) + `fantasma wear`. Sin código todavía.
+
 ### Pendiente / Known issues
 _(ninguno)_
 

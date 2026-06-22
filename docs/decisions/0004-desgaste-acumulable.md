@@ -82,3 +82,28 @@ CLI/UI consumen esta función; el cálculo no toca ffmpeg ni I/O.
   combustible, ¿cambio gomas o no?"*. Eso apunta a otra métrica — **degradación de
   rendimiento dentro del stint**, no vida restante — o a un espectro relativo al stint/tanque.
   Replanteamiento a evaluar con más datos antes de tocar el diseño; ver ROADMAP.
+
+## Enmienda (2026-06-22) — dónde vive cada acumulado
+
+Tras el QA del overlay (Armando vio el campo **DESLIZ** "reiniciarse" curva a curva y
+esperaba un acumulado): se aclara que el medidor acumulable de este ADR **nunca estuvo en
+el HUD** — solo en `fantasma wear` (CLI, que acumula `slip_index` entre **vueltas** del
+stint). El DESLIZ del HUD es instantáneo por diseño (ADR 0005). Decisión de dónde mostrar
+cada acumulado:
+
+- **Overlay (HUD): acumulado *de la vuelta*.** Nuevo readout que suma el **exceso de slip**
+  desde meta hasta el cursor —cantidad **extensiva**, NO el promedio que es `slip_index`—,
+  piloto vs referencia. Crece monótono a lo largo de la vuelta ("gasolina gastada en ESTA
+  vuelta"). El overlay es de una sola vuelta, así que no arrastra stint.
+- **Stint / sesión completa: gráficas (Producto 1), no el overlay.** La acumulación entre
+  vueltas es análisis post-tanda multi-vuelta → su casa son las **gráficas** + el
+  `fantasma wear` existente (p. ej. un medidor a lo largo de las vueltas).
+
+**Consideración abierta (consistencia de unidades):** el readout de la vuelta usa una
+cantidad **extensiva** (Σ exceso de slip), pero `wear_budget` hoy acumula **promedios**
+(`slip_index`) por vuelta. Si se quiere que la gráfica de stint sea consistente con el
+overlay (que el acumulado al final de una vuelta = lo que esa vuelta aporta al stint), ambos
+deben usar la **misma unidad base**. Decidir al implementar; no resuelto aquí.
+
+**Implica enmendar el ADR 0005** (el HUD pasa a llevar un indicador acumulado *además* de
+los instantáneos).

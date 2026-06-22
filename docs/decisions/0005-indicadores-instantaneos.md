@@ -18,7 +18,7 @@ Los **indicadores de estado** reflejan el momento del cursor, no la ventana:
 
 - **Luces ABS/TC**: leen el flag del piloto en el cursor y encienden con **retención corta**
   (`HOLD_M`, 8 m) para no parpadear a 30/60 fps. Apagadas = gris; encendidas = su color
-  (ABS ámbar, TC magenta).
+  (ABS ámbar, TC violeta).
 - **DESLIZ**: promedio de slip sobre una **ventana corta detrás** del cursor (`SLIP_WIN_M`,
   40 m) — el deslizamiento que la goma acaba de sufrir.
 
@@ -46,3 +46,16 @@ visible: ahí el contexto adelante/atrás aporta.
   luces como el ajuste de DESLIZ.
 - Pendiente: validar en video real que los tiempos (`HOLD_M` / `SLIP_WIN_M`) se sienten
   bien — son ajustables sin cambiar el principio.
+
+## Enmienda (2026-06-22) — excepción acumulada en el HUD
+
+El principio de este ADR (los **indicadores de estado** se leen en el cursor) **se mantiene**
+para ABS/TC y DESLIZ. Se añade una **excepción deliberada**: el HUD llevará **un** indicador
+**acumulado** — el desgaste de goma acumulado *de la vuelta* (suma corrida del exceso de slip
+desde meta hasta el cursor; ver enmienda del ADR 0004). Ese readout **no es instantáneo a
+propósito**: su valor es justamente el total corrido.
+
+⚠️ **Para la siguiente sesión/IA:** no "corregir" ese acumulado a una ventana corta creyendo
+que viola este ADR. DESLIZ (instantáneo) y el acumulado de la vuelta son **dos cosas distintas
+que coexisten**: DESLIZ responde *"¿dónde castigo la goma ahora?"*; el acumulado, *"¿cuánto
+llevo gastado en la vuelta?"*.

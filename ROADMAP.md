@@ -139,6 +139,8 @@ El criterio para v1.0 es que el pipeline offline esté completo, documentado y p
 - [ ] No hay `[Unreleased]` acumulado en CHANGELOG (cortar el release)
 
 > **Hallazgo de QA a refinar (no bloquea 1.0):** el medidor de desgaste (ADR 0004) usa umbrales de **vida total de goma**, pero en el QA real las gomas no llegaron al amarillo porque **el tanque se acaba antes**. Si se repite, el espectro útil no es "vida restante" sino **degradación de rendimiento dentro del stint** / relativo al combustible. Recopilar más datos antes de rediseñar. Detalle en ADR 0004 §Consecuencias.
+>
+> **Decidido (2026-06-22), pendiente de implementar:** el desgaste acumulado se mostrará en **dos vistas** — en el **HUD del overlay** un acumulado *de la vuelta* (suma del exceso de slip, piloto vs ref, *además* del DESLIZ instantáneo) y en las **gráficas (Producto 1)** el acumulado de *stint* entre vueltas. Enmendados los **ADR 0004 y 0005**. Detectado al sacar el video del overlay: el DESLIZ se veía "reiniciar" por curva (es instantáneo por diseño) y faltaba el medidor acumulable en el HUD.
 
 ---
 
