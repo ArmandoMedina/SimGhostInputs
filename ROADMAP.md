@@ -134,7 +134,7 @@ El criterio para v1.0 es que el pipeline offline esté completo, documentado y p
 - [x] v0.9.0 completada y en producción (el drill-down se difiere a post-1.0)
 - [x] Suite de tests automatizados de `core/` + CI (cumple el requisito de "tests unitarios de core/")
 - [ ] API interna (`core/`) estabilizada — sin cambios breaking entre parches (revisión, no código nuevo)
-- [x] Docs completas: guía de usuario, referencia de HUD, formato de datos, cómo contribuir. Repasadas y al día a v0.7.0; la referencia de HUD ya incluye **leyenda visual** (`docs/demo/hud-leyenda.png`)
+- [x] Docs completas: guía de usuario, referencia de HUD, formato de datos, cómo contribuir, **glosario**. Repasadas y al día a **v0.9.0** (matriz de mantenimiento de docs en `CONTRIBUTING.md` §8); la referencia de HUD incluye **leyenda visual** (`docs/demo/hud-leyenda.png`) y el campo **GASTO**.
 - [x] **Decidir si los gaps `Alta` bloquean la 1.0** → **NO bloquean** (2026-06-21). El FPS≠grabación se investigó y no reproduce desync (bajado a Baja). El único gap `Alta` que queda es `--format prores`, **ya mitigado** con el default `webm`: no afecta el uso normal, solo a quien pida prores explícitamente. Se difiere a post-1.0.
 - [ ] 👤 Probado con AMS2 en al menos 3 circuitos distintos — **1/3: Nordschleife ✓** (carrera M4 GT3, 9 vueltas, 2026-06-21): el pipeline completo corrió con datos frescos (laps → wear → overlay) sin errores; el overlay confirmó frenadas más fuertes vs sesión previa. Sin conclusiones aún. **Faltan Interlagos y México**, que se eligieron para cubrir clases de auto distintas al GT3 ya probado (fórmula y prototipo) y así ejercitar el pipeline con perfiles de telemetría diferentes; falta conseguir esas 2 telemetrías.
 - [ ] 👤 `setup.ps1` probado en instalación limpia de Windows 11 — **en curso** (Armando lo prueba en otra PC con el release v0.7.1).
@@ -142,7 +142,7 @@ El criterio para v1.0 es que el pipeline offline esté completo, documentado y p
 
 > **Hallazgo de QA a refinar (no bloquea 1.0):** el medidor de desgaste (ADR 0004) usa umbrales de **vida total de goma**, pero en el QA real las gomas no llegaron al amarillo porque **el tanque se acaba antes**. Si se repite, el espectro útil no es "vida restante" sino **degradación de rendimiento dentro del stint** / relativo al combustible. Recopilar más datos antes de rediseñar. Detalle en ADR 0004 §Consecuencias.
 >
-> **Decidido (2026-06-22), pendiente de implementar:** el desgaste acumulado se mostrará en **dos vistas** — en el **HUD del overlay** un acumulado *de la vuelta* (suma del exceso de slip, piloto vs ref, *además* del DESLIZ instantáneo) y en las **gráficas (Producto 1)** el acumulado de *stint* entre vueltas. Enmendados los **ADR 0004 y 0005**. Detectado al sacar el video del overlay: el DESLIZ se veía "reiniciar" por curva (es instantáneo por diseño) y faltaba el medidor acumulable en el HUD.
+> **Decidido (2026-06-22):** el desgaste acumulado se muestra en **dos vistas** (enmienda ADR 0004/0005; unidad en ADR 0009). **(1) HUD del overlay** — acumulado *de la vuelta* (campo **GASTO**, carga de deslizamiento, piloto vs ref, *además* del DESLIZ instantáneo): **✅ implementado en v0.9.0**. **(2) Gráficas (Producto 1)** — acumulado de *stint* entre vueltas: **⏳ pendiente** (hoy solo en `fantasma wear`, CLI). Detectado al sacar el video del overlay: el DESLIZ se veía "reiniciar" por curva (es instantáneo por diseño) y faltaba el medidor acumulable en el HUD.
 
 ---
 
