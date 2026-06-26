@@ -152,6 +152,35 @@ El criterio para v1.0 es que el pipeline offline esté completo, documentado y p
 
 ---
 
+## v2.0 — Front de escritorio custom (evaluación)
+> _Estado: a evaluar post-v1.0. Decisión de fondo registrada en [ADR 0010](docs/decisions/0010-framework-ui-streamlit.md)._
+
+La UI de v1.0 es Streamlit (ADR 0010). Se difiere a v2.0 **evaluar** migrar a un front
+custom, por dos límites reales de Streamlit detectados en desarrollo: **(1) personalización**
+del front topada, y **(2) fricción de instalación** — Streamlit no es doble-click, exige
+Python + terminal + `setup.ps1`. **No es una migración decidida: es una evaluación con gatillo.**
+
+> **Restricción heredada del ADR 0010:** mantener `core/` **desacoplado** de la UI (eso mantiene
+> plano el costo de migrar) y, durante v1.0, preferir tests **a prueba de migración** (AppTest de
+> flujos + snapshot de imagen del HUD) sobre Playwright-sobre-Streamlit, que se tiraría al migrar.
+
+### Qué evaluar antes de comprometerse
+- [ ] 🔬 **Benchmark de herramientas** (usa la skill `benchmark-opciones`): comparar lo que ya
+  usamos (Streamlit, `streamlit.testing.AppTest`) **y opciones nuevas** que sirvan para lo que se
+  necesita —front testeable + personalizable + **instalación doble-click**—. Candidatos a comparar:
+  - **Shell de escritorio empaquetado** (Tauri, pywebview, Electron) → da `.exe` de doble-click.
+  - **Web-en-navegador con servidor local** (FastAPI + front JS) → se compara, pero **parte en
+    desventaja**: no quita la fricción de instalación (ADR 0010, camino descartado).
+  - **Escape hatches de Streamlit** (CSS custom, `st.components.html`, componentes custom) → ¿destraban
+    la personalización sin migrar? Si sí, la migración podría no hacer falta.
+  - **Playwright** para el front nuevo (markup controlado, donde sí es estable) — no para Streamlit.
+- [ ] **Experimento barato de personalización:** probar los escape hatches de Streamlit en la pantalla
+  que más duele, para decidir *con evidencia* si migrar siquiera hace falta.
+- [ ] Con el benchmark resuelto, **registrar la arquitectura elegida como ADR nuevo** (hoy NO está
+  decidida; el ADR 0010 solo fija que se difiere y con qué restricciones).
+
+---
+
 ## Drill-down por curva (era v0.10.0)
 > _Estado: diferido — post-v1.0. Spec en [PRODUCT_BRIEF.md § 10](PRODUCT_BRIEF.md)_
 
@@ -324,4 +353,4 @@ Cosas que están en el código pero no tienen cobertura de QA formal ni están d
 
 ---
 
-_Última revisión: 2026-06-22 — release **v0.9.0** (campo GASTO + carga de deslizamiento ADR 0009; glosario; matriz de docs CONTRIBUTING §8; regla de pruebas). Antes: **v0.8.0** (auto-sync multivuelta ADR 0008; `setup.ps1` ASCII + auto-instala Python; `fantasma wear` + ADRs 0004–0008). Antes (2026-06-21): suite de tests + CI + fix separador `;` en release; diagnóstico de código del gap `prores` (stderr descartado en `_run_ffmpeg`, asimetría de threading) asentado sin tocar código. (2026-06-17): drill-down (era v0.10.0) diferido a post-1.0; la 1.0 se reenfoca a estabilizar/testear/documentar/validar el pipeline offline existente en AMS2; reordenadas las versiones; v0.9.0 marcada completa; deudas resueltas (docs, requires-python)._
+_Última revisión: 2026-06-26 — **ADR 0010** (UI = Streamlit en v1.0; front de escritorio custom diferido a v2.0) + bloque **v2.0** de evaluación de migración del front y tarea de benchmark de herramientas. Antes: 2026-06-22 — release **v0.9.0** (campo GASTO + carga de deslizamiento ADR 0009; glosario; matriz de docs CONTRIBUTING §8; regla de pruebas). Antes: **v0.8.0** (auto-sync multivuelta ADR 0008; `setup.ps1` ASCII + auto-instala Python; `fantasma wear` + ADRs 0004–0008). Antes (2026-06-21): suite de tests + CI + fix separador `;` en release; diagnóstico de código del gap `prores` (stderr descartado en `_run_ffmpeg`, asimetría de threading) asentado sin tocar código. (2026-06-17): drill-down (era v0.10.0) diferido a post-1.0; la 1.0 se reenfoca a estabilizar/testear/documentar/validar el pipeline offline existente en AMS2; reordenadas las versiones; v0.9.0 marcada completa; deudas resueltas (docs, requires-python)._
