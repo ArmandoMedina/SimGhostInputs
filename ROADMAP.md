@@ -8,18 +8,15 @@
 
 ---
 
-## Estado actual — v0.9.0
+## Estado actual — v0.10.0
 
-Último release: **v0.9.0** (2026-06-22). El pipeline offline completo (importar → comparar → overlay → componer) funciona; la UI es Streamlit ([ADR 0010](docs/decisions/0010-framework-ui-streamlit.md)).
-
-Hay trabajo **entregado pero sin cortar release** acumulado en `[Unreleased]` del CHANGELOG: linter/formatter `ruff` + job de CI, `tools/verificar.ps1` (barreras en modo aviso), hook `pre-push`, guía `docs/flujo-de-trabajo.md` y el ADR 0010. **Toca cortar una versión** para vaciar ese bloque (es uno de los requisitos de la 1.0).
+Último release: **v0.10.0** (2026-06-26) — barreras de calidad: linter/formatter `ruff` + job de CI, `tools/verificar.ps1` (modo aviso), hook `pre-push`, guía `docs/flujo-de-trabajo.md` y el ADR 0010 (UI = Streamlit en v1.0). El pipeline offline completo (importar → comparar → overlay → componer) funciona; la UI es Streamlit ([ADR 0010](docs/decisions/0010-framework-ui-streamlit.md)).
 
 La meta inmediata es **la v1.0**: no es construir features nuevas, sino **estabilizar, testear, documentar y validar en AMS2 el pipeline que ya existe**. Las versiones publicadas están en el CHANGELOG; el siguiente hito es la 1.0.
 
 > **▶️ Para la próxima sesión (Armando):**
 > 1. **Revisar overlay + UI** buscando detalles visuales y de usabilidad por pulir (ver gaps de UI abajo — DESLIZ/GASTO se confunden en el HUD).
 > 2. **Confirmar el desync de FPS con un video de 60 fps real.** El análisis de código dice que NO debería desincronizar; falta la prueba con video.
-> 3. **Cortar una versión** para vaciar el `[Unreleased]`.
 > Con eso + el QA de AMS2 (≥3 circuitos) + `setup.ps1` en Windows limpio, se corta la 1.0.
 
 ---
@@ -37,7 +34,7 @@ El criterio para llamarla v1.0 es que el pipeline offline esté **completo, docu
 - [ ] **API interna (`core/`) estabilizada** — sin cambios breaking entre parches (es revisión, no código nuevo)
 - [ ] 👤 **Probado en AMS2 en ≥3 circuitos distintos** — **1/3: Nordschleife ✓** (M4 GT3, 9 vueltas, 2026-06-21: pipeline completo sin errores). Faltan **Interlagos y México**, elegidos para cubrir clases de auto distintas al GT3 (fórmula y prototipo); falta conseguir esas 2 telemetrías
 - [ ] 👤 **`setup.ps1` probado en instalación limpia de Windows 11** — en curso (Armando lo prueba en otra PC). La detección de dependencias y el encoding ASCII ya se corrigieron (v0.7.1 / v0.7.2)
-- [ ] **Cortar release del `[Unreleased]`** acumulado (ver «Estado actual»)
+- [x] **Cortar release del `[Unreleased]`** acumulado — hecho en v0.10.0
 
 ### Notas vivas (no bloquean, a refinar)
 

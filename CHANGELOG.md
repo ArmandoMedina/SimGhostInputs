@@ -4,6 +4,8 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/). Versionado
 
 ## [Unreleased]
 
+## [0.10.0] — 2026-06-26
+
 ### Añadido
 - **Linter/formatter `ruff`** como barrera determinista pre-push (benchmark en `docs/benchmark-linter.md`): config en `pyproject.toml` (reglas `F`+`I`, alta señal y bajo ruido), extra `[dev]`, y job `lint` en CI (`ruff check`). Atrapa imports/variables sin usar y nombres indefinidos antes de subir.
 - **`tools/verificar.ps1`** — pipeline local de barreras en **modo aviso** (lint + formato + tests + doc-gate de CHANGELOG), inspirado en el patrón "no-mistakes". No bloquea; el CI sigue siendo la compuerta que sí bloquea.
@@ -18,9 +20,7 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/). Versionado
 ### Documentación
 - **ADR 0010 — Framework de UI: Streamlit en v1.0; front de escritorio custom diferido a v2.0** (Aceptada). Registra la decisión de facto nunca asentada: por qué Streamlit (reusa `core/`, sin front web que construir), qué se descartó (HTML desde cero ahora), y el gatillo para revisitar en v2.0 (limitantes de personalización + instalación doble-click). Fija las restricciones que mantienen barata la migración (mantener `core/` desacoplado; tests a prueba de migración).
 - **ROADMAP §v2.0**: bloque de evaluación de migración del front + tarea de benchmark de herramientas (actuales y nuevas).
-
-### Pendiente
-- **Gráfica de desgaste acumulado del stint** (Producto 1): el acumulado entre vueltas se ve hoy en `fantasma wear` (CLI); falta la vista gráfica. Decidido en el ADR 0004 (enmienda).
+- **ROADMAP reorganizado y depurado** (de 357 a ~65 líneas): se quita ruido estructural (doble numeración de hitos divergente, checklists de QA de versiones ya publicadas, specs largas de features diferidas) conservando los requisitos de la v1.0 verificados y las notas vivas con puntero a su ADR.
 
 ---
 
