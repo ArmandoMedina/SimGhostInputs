@@ -1,4 +1,5 @@
 """Comparacion piloto vs referencia, por distancia (no por tiempo)."""
+
 from . import wear
 from .corners import _samples, detect_corners, extract_milestones
 from .normalize import resample
@@ -12,8 +13,10 @@ def delta_trace(ref, drv, step=5.0):
     n = min(len(r.channels["dist"]), len(d.channels["dist"]))
     rows = []
     for i in range(n):
-        row = {"dist": r.channels["dist"][i],
-               "delta_t": d.channels["time"][i] - r.channels["time"][i]}
+        row = {
+            "dist": r.channels["dist"][i],
+            "delta_t": d.channels["time"][i] - r.channels["time"][i],
+        }
         for ch in ("speed", "throttle", "brake", "steering", "gear", "glat", "glong"):
             if ch in r.channels:
                 row["ref_" + ch] = r.channels[ch][i]
@@ -84,9 +87,11 @@ def compare(ref, drv, step=5.0, corners=None):
             continue
         lo, hi = _segment(c)
         row = {
-            "id": c.get("id", "?"), "name": c.get("name", c.get("id", "?")),
+            "id": c.get("id", "?"),
+            "name": c.get("name", c.get("id", "?")),
             "apex_d": m["apex"]["d"],
-            "ref_vmin": m["apex"]["v"], "drv_vmin": drv_m["vmin"],
+            "ref_vmin": m["apex"]["v"],
+            "drv_vmin": drv_m["vmin"],
             "d_vmin": drv_m["vmin"] - m["apex"]["v"],
             "time_lost": round(delta_at(hi) - delta_at(lo), 3),
         }

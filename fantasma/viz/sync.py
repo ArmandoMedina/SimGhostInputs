@@ -19,6 +19,7 @@ Requiere:
     scipy (extra [sync]): pip install 'fantasma-inputs[sync]'
     ffmpeg en PATH
 """
+
 import os
 import shutil
 import struct
@@ -27,19 +28,17 @@ import tempfile
 
 import numpy as np
 
-_ENGINE_LO  = 150   # Hz — limite inferior de la banda del motor
-_ENGINE_HI  = 500   # Hz — limite superior
-_SR         = 8000  # Hz — frecuencia de muestreo del audio extraido
-_CORR_HZ    = 2     # Hz — resolucion de la correlacion (0.5 s/muestra)
-_SEARCH_SEC = 300   # s  — lag maximo buscado en cada direccion
+_ENGINE_LO = 150  # Hz — limite inferior de la banda del motor
+_ENGINE_HI = 500  # Hz — limite superior
+_SR = 8000  # Hz — frecuencia de muestreo del audio extraido
+_CORR_HZ = 2  # Hz — resolucion de la correlacion (0.5 s/muestra)
+_SEARCH_SEC = 300  # s  — lag maximo buscado en cada direccion
 
 
 def _ffmpeg_path():
     f = shutil.which("ffmpeg")
     if not f:
-        raise RuntimeError(
-            "ffmpeg no encontrado en PATH — instala con: winget install Gyan.FFmpeg"
-        )
+        raise RuntimeError("ffmpeg no encontrado en PATH — instala con: winget install Gyan.FFmpeg")
     return f
 
 
@@ -65,9 +64,9 @@ def _audio_energy(video_path):
     tmp.close()
     try:
         subprocess.run(
-            [ff, "-y", "-i", video_path,
-             "-ac", "1", "-ar", str(_SR), "-vn", "-f", "wav", tmp.name],
-            check=True, capture_output=True,
+            [ff, "-y", "-i", video_path, "-ac", "1", "-ar", str(_SR), "-vn", "-f", "wav", tmp.name],
+            check=True,
+            capture_output=True,
         )
         audio = _read_wav_mono(tmp.name)
     finally:
@@ -94,7 +93,7 @@ def _lap_signal(drv_lap):
         raise RuntimeError("Canal 'time' no encontrado en la telemetria")
 
     t = np.asarray(t_raw, dtype=float)
-    t -= t[0]   # relativo al inicio de la vuelta (split_laps ya lo garantiza)
+    t -= t[0]  # relativo al inicio de la vuelta (split_laps ya lo garantiza)
     t_uni = np.arange(0, t[-1], 1.0 / _CORR_HZ)
 
     parts, weights = [], []
@@ -103,7 +102,7 @@ def _lap_signal(drv_lap):
     if rpm is not None:
         r = np.interp(t_uni, t, np.asarray(rpm, dtype=float))
         parts.append((r - r.mean()) / (r.std() + 1e-9))
-        weights.append(3.0)   # RPM es la senal mas discriminativa
+        weights.append(3.0)  # RPM es la senal mas discriminativa
 
     spd = ch.get("speed")
     if spd is not None:
@@ -121,8 +120,8 @@ def _lap_signal(drv_lap):
     return sum(wi * pi for wi, pi in zip(w, parts))
 
 
-_MIN_SYNC_Z      = 3.0   # sigma minimo para considerar la correlacion valida
-_PAUSE_SILENCE_S = 3.0   # segundos de silencio consecutivos para detectar pausa
+_MIN_SYNC_Z = 3.0  # sigma minimo para considerar la correlacion valida
+_PAUSE_SILENCE_S = 3.0  # segundos de silencio consecutivos para detectar pausa
 _PAUSE_THRESHOLD = 0.05  # fraccion de la energia media por debajo de la cual = silencio
 
 
@@ -145,7 +144,7 @@ def _detect_pause(ae, start_sec, end_sec):
     padded = np.concatenate([[0], silence, [0]])
     diff = np.diff(padded)
     starts = np.where(diff == 1)[0]
-    ends   = np.where(diff == -1)[0]
+    ends = np.where(diff == -1)[0]
     for s, e in zip(starts, ends):
         if (e - s) >= min_samples:
             return start_sec + s / _CORR_HZ
@@ -164,6 +163,7 @@ def _rank_candidates(corr_w, lags_w, lap_dur, max_candidates=6, ambiguous_ratio=
                   calidad que no se puede decidir automaticamente.
     """
     from scipy.signal import find_peaks
+
     mean = float(corr_w.mean())
     std = float(corr_w.std()) + 1e-9
     # picos separados por ~media vuelta: una vuelta = un pico
@@ -194,10 +194,7 @@ def sync_candidates(video_path, drv_lap, max_candidates=6):
     try:
         import scipy  # noqa: F401
     except ImportError:
-        raise ImportError(
-            "scipy es necesario para auto-sync: "
-            "pip install 'fantasma-inputs[sync]'"
-        )
+        raise ImportError("scipy es necesario para auto-sync: pip install 'fantasma-inputs[sync]'")
     from scipy.signal import correlate as _corr
 
     ae = _audio_energy(video_path)
@@ -281,8 +278,8 @@ def auto_sync(video_path, drv_lap):
         raise RuntimeError(
             "auto_sync: pausa detectada en el audio del video en %d:%02d "
             "(silencio > %.0f s dentro de la vuelta). "
-            "El video debe grabarse sin pausas para que la sincronización sea válida." % (
-                m, s, _PAUSE_SILENCE_S)
+            "El video debe grabarse sin pausas para que la sincronización sea válida."
+            % (m, s, _PAUSE_SILENCE_S)
         )
 
     return offset, z

@@ -3,6 +3,7 @@
 El fixture `motec_mini.csv` es el ÚNICO dato versionado: 24 filas sintéticas
 con el layout real de i2 (metadatos + fila 'Time' + unidades), sin datos personales.
 """
+
 import os
 
 import pytest
@@ -48,10 +49,10 @@ def test_beacon_markers_parsed_as_floats(tmp_path):
     csv_text = (
         '"Venue","X"\n'
         '"Beacon Markers","399.220 777.622 "\n'
-        '\n'
+        "\n"
         '"Time","Distance","Ground Speed"\n'
         '"s","m","km/h"\n'
-        '\n'
+        "\n"
         '"0.000","0","100"\n'
         '"0.020","2","101"\n'
     )
@@ -73,7 +74,7 @@ def test_semicolon_separator_supported(tmp_path):
         '"Venue";"X"\n'
         '"Time";"Distance";"Ground Speed"\n'
         '"s";"m";"km/h"\n'
-        '\n'
+        "\n"
         '"0.000";"0";"100"\n'
         '"0.020";"2";"101"\n'
     )
@@ -90,7 +91,7 @@ def test_semicolon_with_decimal_comma(tmp_path):
         '"Venue";"X"\n'
         '"Time";"Distance";"Ground Speed"\n'
         '"s";"m";"km/h"\n'
-        '\n'
+        "\n"
         '"0,000";"0";"100,5"\n'
         '"0,020";"2,5";"101,250"\n'
     )

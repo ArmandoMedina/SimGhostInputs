@@ -7,6 +7,7 @@ Estructura del export de i2:
     filas en blanco
     datos
 """
+
 import csv
 import os
 
@@ -14,21 +15,42 @@ from ..core.lap import Lap
 from ._util import detect_delimiter, pfloat
 
 MOTEC_MAP = {
-    "Time": "time", "Distance": "dist", "Ground Speed": "speed",
-    "Throttle Pos": "throttle", "Brake Pos": "brake", "Steering Pos": "steering",
-    "Gear": "gear", "G Force Lat": "glat", "G Force Long": "glong",
-    "Engine RPM": "rpm", "Altitude": "alt",
-    "Lap Number": "lap_number", "BR2 Beacon Number": "beacon",
-    "Speed": "speed", "THROTTLE": "throttle", "BRAKE": "brake", "STEERANGLE": "steering",
-    "Tyre Speed FL": "ts_fl", "Tyre Speed FR": "ts_fr",
-    "Tyre Speed RL": "ts_rl", "Tyre Speed RR": "ts_rr",
-    "Tyre Temp FL": "tt_fl", "Tyre Temp FR": "tt_fr",
-    "Tyre Temp RL": "tt_rl", "Tyre Temp RR": "tt_rr",
-    "Brake Temp FL": "bt_fl", "Brake Temp FR": "bt_fr",
-    "Brake Temp RL": "bt_rl", "Brake Temp RR": "bt_rr",
-    "ABS Active": "abs", "TCS Active": "tcs",
-    "Fuel Level": "fuel", "Clutch Pos": "clutch", "Brake Bias Setting": "bias",
-    "Track Temp": "track_temp", "Ambient Temp": "ambient_temp",
+    "Time": "time",
+    "Distance": "dist",
+    "Ground Speed": "speed",
+    "Throttle Pos": "throttle",
+    "Brake Pos": "brake",
+    "Steering Pos": "steering",
+    "Gear": "gear",
+    "G Force Lat": "glat",
+    "G Force Long": "glong",
+    "Engine RPM": "rpm",
+    "Altitude": "alt",
+    "Lap Number": "lap_number",
+    "BR2 Beacon Number": "beacon",
+    "Speed": "speed",
+    "THROTTLE": "throttle",
+    "BRAKE": "brake",
+    "STEERANGLE": "steering",
+    "Tyre Speed FL": "ts_fl",
+    "Tyre Speed FR": "ts_fr",
+    "Tyre Speed RL": "ts_rl",
+    "Tyre Speed RR": "ts_rr",
+    "Tyre Temp FL": "tt_fl",
+    "Tyre Temp FR": "tt_fr",
+    "Tyre Temp RL": "tt_rl",
+    "Tyre Temp RR": "tt_rr",
+    "Brake Temp FL": "bt_fl",
+    "Brake Temp FR": "bt_fr",
+    "Brake Temp RL": "bt_rl",
+    "Brake Temp RR": "bt_rr",
+    "ABS Active": "abs",
+    "TCS Active": "tcs",
+    "Fuel Level": "fuel",
+    "Clutch Pos": "clutch",
+    "Brake Bias Setting": "bias",
+    "Track Temp": "track_temp",
+    "Ambient Temp": "ambient_temp",
 }
 
 
@@ -101,13 +123,18 @@ def load(path):
                     if cn in ("time", "dist"):
                         bad = True
             # descartar filas de cierre sin tiempo/distancia validos
-            if bad or (("dist" in vals) and str(row[[i for i, c in cols if c == "dist"][0]]).strip() in ("", "None")):
+            if bad or (
+                ("dist" in vals)
+                and str(row[[i for i, c in cols if c == "dist"][0]]).strip() in ("", "None")
+            ):
                 continue
             for _, cn in cols:
                 lap.channels[cn].append(vals[cn])
 
     if header is None:
-        raise NotMotecFormat("No se encontro la fila de canales 'Time' (¿es un export de MoTeC i2?)")
+        raise NotMotecFormat(
+            "No se encontro la fila de canales 'Time' (¿es un export de MoTeC i2?)"
+        )
     lap.meta = meta
     # beacons del outing, si existen
     bm = meta.get("Beacon Markers", "")

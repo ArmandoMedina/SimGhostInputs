@@ -4,28 +4,56 @@ column_map: dict encabezado_origen -> canal canonico, p. ej.
     {"LapDist": "dist", "SessionTime": "time", "Speed_kmh": "speed"}
 Si no se da, intenta adivinar por nombres comunes (case-insensitive).
 """
+
 import csv
 
 from ..core.lap import Lap
 from ._util import detect_delimiter, pfloat
 
 GUESS = {
-    "time": "time", "sessiontime": "time", "t": "time",
-    "lap_time_s": "time", "laptime_s": "time", "laptime": "time", "lap_time": "time",
-    "dist": "dist", "distance": "dist", "lapdist": "dist", "lap_distance": "dist",
-    "dist_m": "dist", "dist_meters": "dist",
-    "speed": "speed", "speed_kmh": "speed", "kmh": "speed", "groundspeed": "speed",
-    "throttle": "throttle", "gas": "throttle",
-    "throttle_pct": "throttle", "throttlepct": "throttle", "throttle_percent": "throttle",
-    "brake": "brake", "freno": "brake",
-    "brake_pct": "brake", "brakepct": "brake", "brake_percent": "brake",
-    "steering": "steering", "steer": "steering", "steerangle": "steering",
-    "steering_deg": "steering", "steering_angle": "steering",
-    "gear": "gear", "marcha": "gear",
-    "glat": "glat", "g_lat": "glat", "lateralg": "glat",
-    "glong": "glong", "g_long": "glong",
-    "rpm": "rpm", "enginerpm": "rpm",
-    "alt": "alt", "altitude": "alt",
+    "time": "time",
+    "sessiontime": "time",
+    "t": "time",
+    "lap_time_s": "time",
+    "laptime_s": "time",
+    "laptime": "time",
+    "lap_time": "time",
+    "dist": "dist",
+    "distance": "dist",
+    "lapdist": "dist",
+    "lap_distance": "dist",
+    "dist_m": "dist",
+    "dist_meters": "dist",
+    "speed": "speed",
+    "speed_kmh": "speed",
+    "kmh": "speed",
+    "groundspeed": "speed",
+    "throttle": "throttle",
+    "gas": "throttle",
+    "throttle_pct": "throttle",
+    "throttlepct": "throttle",
+    "throttle_percent": "throttle",
+    "brake": "brake",
+    "freno": "brake",
+    "brake_pct": "brake",
+    "brakepct": "brake",
+    "brake_percent": "brake",
+    "steering": "steering",
+    "steer": "steering",
+    "steerangle": "steering",
+    "steering_deg": "steering",
+    "steering_angle": "steering",
+    "gear": "gear",
+    "marcha": "gear",
+    "glat": "glat",
+    "g_lat": "glat",
+    "lateralg": "glat",
+    "glong": "glong",
+    "g_long": "glong",
+    "rpm": "rpm",
+    "enginerpm": "rpm",
+    "alt": "alt",
+    "altitude": "alt",
 }
 
 
@@ -48,7 +76,8 @@ def load(path, column_map=None):
         if not any(c == "dist" for _, c in cols) or not any(c == "time" for _, c in cols):
             raise ValueError(
                 "El CSV necesita al menos columnas de tiempo y distancia. "
-                "Usa --map para indicar cuales son (ej. --map LapDist=dist --map SessTime=time).")
+                "Usa --map para indicar cuales son (ej. --map LapDist=dist --map SessTime=time)."
+            )
         for row in reader:
             if not row:
                 continue

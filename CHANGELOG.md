@@ -10,6 +10,7 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/). Versionado
 
 ### Cambiado
 - Imports ordenados (`ruff I`) y un import sin usar eliminado en `fantasma/ui/step4.py` — fixes seguros de ruff aplicados al adoptar; **74 tests verdes** (comportamiento preservado).
+- **Baseline de formato `ruff format`** aplicado a todo el repo (34 archivos; cambio mecánico y AST-equivalente, 74 tests verdes). El CI ahora gatea también `ruff format --check`.
 
 ### Documentación
 - **ADR 0010 — Framework de UI: Streamlit en v1.0; front de escritorio custom diferido a v2.0** (Aceptada). Registra la decisión de facto nunca asentada: por qué Streamlit (reusa `core/`, sin front web que construir), qué se descartó (HTML desde cero ahora), y el gatillo para revisitar en v2.0 (limitantes de personalización + instalación doble-click). Fija las restricciones que mantienen barata la migración (mantener `core/` desacoplado; tests a prueba de migración).

@@ -1,4 +1,5 @@
 """Compositor: superpone el overlay (canal alfa) sobre el video de grabación con ffmpeg."""
+
 import os
 import re
 import shutil
@@ -6,13 +7,13 @@ import subprocess
 import tempfile
 
 POSITIONS = {
-    "top-left":      ("0",        "0"),
-    "top-right":     ("W-w",      "0"),
-    "bottom-left":   ("0",        "H-h"),
-    "bottom-right":  ("W-w",      "H-h"),
-    "top-center":    ("(W-w)/2",  "0"),
-    "bottom-center": ("(W-w)/2",  "H-h"),
-    "center":        ("(W-w)/2",  "(H-h)/2"),
+    "top-left": ("0", "0"),
+    "top-right": ("W-w", "0"),
+    "bottom-left": ("0", "H-h"),
+    "bottom-right": ("W-w", "H-h"),
+    "top-center": ("(W-w)/2", "0"),
+    "bottom-center": ("(W-w)/2", "H-h"),
+    "center": ("(W-w)/2", "(H-h)/2"),
 }
 
 
@@ -25,10 +26,20 @@ def _video_fps(ffprobe, video_path):
     """Devuelve los fps del video como float, o 0 si no se puede obtener."""
     try:
         r = subprocess.run(
-            [ffprobe, "-v", "error", "-select_streams", "v:0",
-             "-show_entries", "stream=r_frame_rate",
-             "-of", "default=noprint_wrappers=1:nokey=1", video_path],
-            capture_output=True, text=True,
+            [
+                ffprobe,
+                "-v",
+                "error",
+                "-select_streams",
+                "v:0",
+                "-show_entries",
+                "stream=r_frame_rate",
+                "-of",
+                "default=noprint_wrappers=1:nokey=1",
+                video_path,
+            ],
+            capture_output=True,
+            text=True,
         )
         line = r.stdout.strip()
         num, _, den = line.partition("/")
@@ -51,11 +62,22 @@ def _total_frames(ffmpeg_path, video_path, lap_duration=None):
             fps = _video_fps(ffprobe, video_path)
             return int(lap_duration * fps) if fps else 0
         r = subprocess.run(
-            [ffprobe, "-v", "error", "-select_streams", "v:0",
-             "-show_entries", "stream=r_frame_rate",
-             "-show_entries", "format=duration",
-             "-of", "default=noprint_wrappers=1:nokey=1", video_path],
-            capture_output=True, text=True,
+            [
+                ffprobe,
+                "-v",
+                "error",
+                "-select_streams",
+                "v:0",
+                "-show_entries",
+                "stream=r_frame_rate",
+                "-show_entries",
+                "format=duration",
+                "-of",
+                "default=noprint_wrappers=1:nokey=1",
+                video_path,
+            ],
+            capture_output=True,
+            text=True,
         )
         lines = [l.strip() for l in r.stdout.splitlines() if l.strip()]
         fps_line = next((l for l in lines if "/" in l), None)
@@ -79,10 +101,25 @@ def _nvenc_available(ffmpeg_path):
     """
     try:
         r = subprocess.run(
-            [ffmpeg_path, "-hide_banner", "-loglevel", "error",
-             "-f", "lavfi", "-i", "color=black:s=64x64:d=1",
-             "-frames:v", "1", "-c:v", "h264_nvenc", "-f", "null", "-"],
-            capture_output=True, text=True,
+            [
+                ffmpeg_path,
+                "-hide_banner",
+                "-loglevel",
+                "error",
+                "-f",
+                "lavfi",
+                "-i",
+                "color=black:s=64x64:d=1",
+                "-frames:v",
+                "1",
+                "-c:v",
+                "h264_nvenc",
+                "-f",
+                "null",
+                "-",
+            ],
+            capture_output=True,
+            text=True,
         )
         return r.returncode == 0
     except Exception:
@@ -111,8 +148,16 @@ def _build_filter(position, scale, offset=0.0):
     return ";".join(steps)
 
 
-def compose_video(video, overlay, output, position="bottom-right",
-                  offset=0.0, scale=1.0, lap_duration=None, progress=None):
+def compose_video(
+    video,
+    overlay,
+    output,
+    position="bottom-right",
+    offset=0.0,
+    scale=1.0,
+    lap_duration=None,
+    progress=None,
+):
     """Superpone overlay con canal alfa sobre el video de grabación.
 
     Cuando lap_duration está disponible (recomendado) el output es un clip
@@ -160,30 +205,50 @@ def compose_video(video, overlay, output, position="bottom-right",
         # El overlay empieza en t=0 del clip resultante (no necesita setpts).
         fc = _build_filter(position, scale, offset=0.0)
         cmd = [
-            ffmpeg, "-y",
-            "-ss", "%.3f" % offset,
-            "-i", video,
-            "-i", overlay,
-            "-filter_complex", fc,
-            "-map", "[out]",
-            "-map", "0:a?",
+            ffmpeg,
+            "-y",
+            "-ss",
+            "%.3f" % offset,
+            "-i",
+            video,
+            "-i",
+            overlay,
+            "-filter_complex",
+            fc,
+            "-map",
+            "[out]",
+            "-map",
+            "0:a?",
             *video_enc,
-            "-c:a", "aac", "-b:a", "192k",
-            "-t", "%.3f" % lap_duration,
+            "-c:a",
+            "aac",
+            "-b:a",
+            "192k",
+            "-t",
+            "%.3f" % lap_duration,
             output,
         ]
     else:
         # Modo legado: overlay demora via setpts, video completo.
         fc = _build_filter(position, scale, offset)
         cmd = [
-            ffmpeg, "-y",
-            "-i", video,
-            "-i", overlay,
-            "-filter_complex", fc,
-            "-map", "[out]",
-            "-map", "0:a?",
+            ffmpeg,
+            "-y",
+            "-i",
+            video,
+            "-i",
+            overlay,
+            "-filter_complex",
+            fc,
+            "-map",
+            "[out]",
+            "-map",
+            "0:a?",
             *video_enc,
-            "-c:a", "aac", "-b:a", "192k",
+            "-c:a",
+            "aac",
+            "-b:a",
+            "192k",
             output,
         ]
 
@@ -193,8 +258,7 @@ def compose_video(video, overlay, output, position="bottom-right",
         # stderr a un archivo temporal para poder reportar el motivo real del
         # fallo (antes iba a DEVNULL y solo quedaba un exit code críptico).
         err_f = tempfile.TemporaryFile(mode="w+")
-        proc = subprocess.Popen(cmd_p, stdout=subprocess.PIPE,
-                                stderr=err_f, text=True)
+        proc = subprocess.Popen(cmd_p, stdout=subprocess.PIPE, stderr=err_f, text=True)
         try:
             for line in proc.stdout:
                 m = pat.match(line.strip())
@@ -213,7 +277,8 @@ def compose_video(video, overlay, output, position="bottom-right",
             tail = "".join(err_f.readlines()[-15:]).strip()
             err_f.close()
             raise RuntimeError(
-                "ffmpeg falló (código %d). Últimas líneas:\n%s" % (proc.returncode, tail))
+                "ffmpeg falló (código %d). Últimas líneas:\n%s" % (proc.returncode, tail)
+            )
         err_f.close()
     else:
         subprocess.run(cmd, check=True)

@@ -1,4 +1,5 @@
 """Paso 1 — Importar: cargar archivos de referencia y piloto."""
+
 import streamlit as st
 
 from ._helpers import (
@@ -13,7 +14,9 @@ from ._helpers import (
 
 
 def render(flow):
-    st.markdown('<div class="step-header">Paso 1 — Importar telemetría</div>', unsafe_allow_html=True)
+    st.markdown(
+        '<div class="step-header">Paso 1 — Importar telemetría</div>', unsafe_allow_html=True
+    )
     st.caption(
         "Sube los dos archivos CSV. La app detecta automáticamente las vueltas y pre-selecciona "
         "la más rápida completa de cada archivo — puedes cambiarla en el desplegable si quieres otra."
@@ -41,14 +44,16 @@ def render(flow):
         st.error("No se pudo leer el archivo: %s" % _rc.get("err", ""))
         st.stop()
 
-    _ref_laps   = _rc["laps"]
-    _ref_path   = _rc["path"]
+    _ref_laps = _rc["laps"]
+    _ref_path = _rc["path"]
     _ref_auto_i = _best_lap_index(_ref_laps)
-    _ref_sel_i  = st.session_state.get("ref_sel_%s" % ref_file.file_id, _ref_auto_i)
-    _ref_sel_i  = min(_ref_sel_i, len(_ref_laps) - 1)
+    _ref_sel_i = st.session_state.get("ref_sel_%s" % ref_file.file_id, _ref_auto_i)
+    _ref_sel_i = min(_ref_sel_i, len(_ref_laps) - 1)
 
-    st.success("✓ **Referencia cargada:** %s  (%d vueltas en el archivo)" % (
-        _fmt_lap(_ref_laps[_ref_sel_i].laptime), len(_ref_laps)))
+    st.success(
+        "✓ **Referencia cargada:** %s  (%d vueltas en el archivo)"
+        % (_fmt_lap(_ref_laps[_ref_sel_i].laptime), len(_ref_laps))
+    )
 
     if len(_ref_laps) > 1:
         with st.expander("Cambiar vuelta de referencia — %d vueltas disponibles" % len(_ref_laps)):
@@ -56,11 +61,14 @@ def render(flow):
                 "🏆 = la más rápida completa (pre-seleccionada)  ·  "
                 "✓ = completa  ·  ⚠️ = incompleta (salida de pista, pit, etc.)"
             )
-            _ref_tbl   = _lap_table(_ref_laps, editor_key="ref_lap_tbl")
+            _ref_tbl = _lap_table(_ref_laps, editor_key="ref_lap_tbl")
             _ref_sel_i = _ref_tbl[0]
             st.session_state["ref_sel_%s" % ref_file.file_id] = _ref_sel_i
             if _ref_tbl[0] != _ref_auto_i:
-                st.info("Usando Vuelta #%d — %s" % (_ref_tbl[0], _fmt_lap(_ref_laps[_ref_tbl[0]].laptime)))
+                st.info(
+                    "Usando Vuelta #%d — %s"
+                    % (_ref_tbl[0], _fmt_lap(_ref_laps[_ref_tbl[0]].laptime))
+                )
 
     # ── ② Tu telemetría ───────────────────────────────────────────────────────
     st.divider()
@@ -87,15 +95,19 @@ def render(flow):
 
     _drv_laps = _dc["laps"]
     if not _drv_laps:
-        st.warning("No se detectaron vueltas en el archivo. Verifica que el CSV incluye distancia y tiempo.")
+        st.warning(
+            "No se detectaron vueltas en el archivo. Verifica que el CSV incluye distancia y tiempo."
+        )
         st.stop()
 
     _drv_auto_i = _best_lap_index(_drv_laps)
-    _drv_sel_i  = st.session_state.get("drv_sel_%s" % drv_file.file_id, _drv_auto_i)
-    _drv_sel_i  = min(_drv_sel_i, len(_drv_laps) - 1)
+    _drv_sel_i = st.session_state.get("drv_sel_%s" % drv_file.file_id, _drv_auto_i)
+    _drv_sel_i = min(_drv_sel_i, len(_drv_laps) - 1)
 
-    st.success("✓ **Tu vuelta cargada:** %s  (%d vueltas en el archivo)" % (
-        _fmt_lap(_drv_laps[_drv_sel_i].laptime), len(_drv_laps)))
+    st.success(
+        "✓ **Tu vuelta cargada:** %s  (%d vueltas en el archivo)"
+        % (_fmt_lap(_drv_laps[_drv_sel_i].laptime), len(_drv_laps))
+    )
 
     if len(_drv_laps) > 1:
         with st.expander("Cambiar vuelta — %d vueltas disponibles" % len(_drv_laps)):
@@ -103,11 +115,14 @@ def render(flow):
                 "🏆 = la más rápida completa (pre-seleccionada)  ·  "
                 "✓ = completa  ·  ⚠️ = incompleta (salida de pista, pit, etc.)"
             )
-            _drv_tbl   = _lap_table(_drv_laps, editor_key="drv_lap_tbl")
+            _drv_tbl = _lap_table(_drv_laps, editor_key="drv_lap_tbl")
             _drv_sel_i = _drv_tbl[0]
             st.session_state["drv_sel_%s" % drv_file.file_id] = _drv_sel_i
             if _drv_tbl[0] != _drv_auto_i:
-                st.info("Usando Vuelta #%d — %s" % (_drv_tbl[0], _fmt_lap(_drv_laps[_drv_tbl[0]].laptime)))
+                st.info(
+                    "Usando Vuelta #%d — %s"
+                    % (_drv_tbl[0], _fmt_lap(_drv_laps[_drv_tbl[0]].laptime))
+                )
 
     if len(_drv_laps) > 1:
         st.caption(
@@ -117,7 +132,7 @@ def render(flow):
         )
 
     # ── Opciones avanzadas ────────────────────────────────────────────────────
-    _ref_col_map  = None
+    _ref_col_map = None
     _corners_file = None
     with st.expander("⚙️ Opciones avanzadas — nombres de curvas y mapeo de columnas"):
         st.markdown("**Nombres de curvas** *(opcional pero recomendado)*")
@@ -135,23 +150,30 @@ def render(flow):
             )
         with _col_cd:
             st.write(" ")
-            if st.button("Detectar curvas automáticamente",
-                         help="Analiza la vuelta de referencia y detecta dónde están las curvas."):
+            if st.button(
+                "Detectar curvas automáticamente",
+                help="Analiza la vuelta de referencia y detecta dónde están las curvas.",
+            ):
                 with st.spinner("Analizando vuelta de referencia…"):
                     try:
                         from fantasma.core.corners import detect_corners as _dc2
                         from fantasma.core.corners import extract_milestones as _em
                         from fantasma.core.normalize import fastest_lap as _fl
+
                         _evs, _ = _dc2(_fl(_ref_laps))
-                        _cdet   = _em(_fl(_ref_laps), _evs)
-                        st.session_state["corners"]          = _cdet
+                        _cdet = _em(_fl(_ref_laps), _evs)
+                        st.session_state["corners"] = _cdet
                         st.session_state["corners_editable"] = True
-                        st.success("✓ %d curvas detectadas. Edita los nombres en la tabla de abajo." % len(_cdet))
+                        st.success(
+                            "✓ %d curvas detectadas. Edita los nombres en la tabla de abajo."
+                            % len(_cdet)
+                        )
                     except Exception as _e:
                         st.error("Error: %s" % _e)
 
         if st.session_state.get("corners_editable") and st.session_state.get("corners"):
             import pandas as _pd2
+
             _c_data = [
                 {"ID": c["id"], "Nombre": c.get("name", ""), "Metro": c["milestones"]["apex"]["d"]}
                 for c in st.session_state["corners"]
@@ -160,11 +182,15 @@ def render(flow):
             _edited = st.data_editor(
                 _pd2.DataFrame(_c_data),
                 column_config={
-                    "ID":     st.column_config.TextColumn("ID", disabled=True, width="small"),
-                    "Metro":  st.column_config.NumberColumn("Metro ápex", disabled=True, width="small"),
+                    "ID": st.column_config.TextColumn("ID", disabled=True, width="small"),
+                    "Metro": st.column_config.NumberColumn(
+                        "Metro ápex", disabled=True, width="small"
+                    ),
                     "Nombre": st.column_config.TextColumn("Nombre de la curva", width="medium"),
                 },
-                hide_index=True, use_container_width=True, key="corners_editor",
+                hide_index=True,
+                use_container_width=True,
+                key="corners_editor",
             )
             for _i2, _row in _edited.iterrows():
                 if _row["Nombre"]:
@@ -177,16 +203,17 @@ def render(flow):
             "los nombres estándar, mapéalas aquí con el formato `columna_original = canal`."
         )
         _pairs = st.text_area(
-            "Columnas", key="ref_map",
+            "Columnas",
+            key="ref_map",
             placeholder="Ejemplo:\n  mi_distancia = dist\n  tiempo_s = time\n  velocidad = speed",
         )
         if _pairs.strip():
             _ref_col_map = dict(p.partition("=")[::2] for p in _pairs.splitlines() if "=" in p)
 
     # ── Cargar ────────────────────────────────────────────────────────────────
-    _next_1      = flow["next"].get(1)
+    _next_1 = flow["next"].get(1)
     _load_labels = {2: "Cargar y ver análisis →", 3: "Cargar y generar overlay →"}
-    _load_label  = _load_labels.get(_next_1, "Cargar →")
+    _load_label = _load_labels.get(_next_1, "Cargar →")
 
     st.divider()
     if st.button(_load_label, type="primary"):
@@ -194,34 +221,40 @@ def render(flow):
             try:
                 ref_lap = _ref_laps[_ref_sel_i]
                 drv_lap = _drv_laps[_drv_sel_i]
-                corners = st.session_state.get("corners") if st.session_state.get("corners_editable") else None
+                corners = (
+                    st.session_state.get("corners")
+                    if st.session_state.get("corners_editable")
+                    else None
+                )
                 if _corners_file:
                     corners = _corners_from_json(_corners_file)
                     st.session_state["corners_editable"] = True
-                st.session_state.update({
-                    "ref_path":    _ref_path,
-                    "drv_path":    _dc["path"],
-                    "ref_name":    _rc.get("name") or ref_file.name,
-                    "drv_name":    _dc.get("name") or drv_file.name,
-                    "ref_laps":    _ref_laps,
-                    "drv_laps":    _drv_laps,
-                    "ref_lap":     ref_lap,
-                    "drv_lap":     drv_lap,
-                    "corners":     corners,
-                    "ref_col_map": _ref_col_map,
-                })
+                st.session_state.update(
+                    {
+                        "ref_path": _ref_path,
+                        "drv_path": _dc["path"],
+                        "ref_name": _rc.get("name") or ref_file.name,
+                        "drv_name": _dc.get("name") or drv_file.name,
+                        "ref_laps": _ref_laps,
+                        "drv_laps": _drv_laps,
+                        "ref_lap": ref_lap,
+                        "drv_lap": drv_lap,
+                        "corners": corners,
+                        "ref_col_map": _ref_col_map,
+                    }
+                )
                 _go(_next_1 or 2)
             except Exception as _e:
                 st.error("Error al cargar: %s" % _e)
 
     if "ref_lap" in st.session_state:
-        _rl    = st.session_state["ref_lap"]
-        _dl    = st.session_state["drv_lap"]
+        _rl = st.session_state["ref_lap"]
+        _dl = st.session_state["drv_lap"]
         _delta = _dl.laptime - _rl.laptime
         st.divider()
         c1, c2, c3, c4 = st.columns(4)
-        c1.metric("Referencia",  _fmt_lap(_rl.laptime))
-        c2.metric("Longitud",    "%.0f m" % _rl.length)
-        c3.metric("Tu vuelta",   _fmt_lap(_dl.laptime))
-        c4.metric("Delta",       "%+.3f s" % _delta, delta=round(-_delta, 3), delta_color="normal")
+        c1.metric("Referencia", _fmt_lap(_rl.laptime))
+        c2.metric("Longitud", "%.0f m" % _rl.length)
+        c3.metric("Tu vuelta", _fmt_lap(_dl.laptime))
+        c4.metric("Delta", "%+.3f s" % _delta, delta=round(-_delta, 3), delta_color="normal")
         _next_step_btn(1)

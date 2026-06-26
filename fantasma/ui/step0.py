@@ -1,11 +1,14 @@
 """Paso 0 — Inicio: guía de exportación y selector de flujo."""
+
 import streamlit as st
 
 from ._helpers import _FLOWS, _go, _img_or_placeholder
 
 
 def render():
-    st.markdown('<div class="step-header">👻 Bienvenido a SimGhostInputs</div>', unsafe_allow_html=True)
+    st.markdown(
+        '<div class="step-header">👻 Bienvenido a SimGhostInputs</div>', unsafe_allow_html=True
+    )
     st.caption("Compara tus inputs de simracing contra una vuelta de referencia, curva a curva.")
 
     st.info(
@@ -28,16 +31,20 @@ def render():
             "(compatible con AMS2, ACC, iRacing, rFactor 2 y más). "
             "Ábrelo **antes** de arrancar el sim — captura en segundo plano mientras corres."
         )
-        _img_or_placeholder("docs/guide/s2m_01_install.png",
-                            "AMS2 logger v1.8.6 — la app lista antes de iniciar la sesión")
+        _img_or_placeholder(
+            "docs/guide/s2m_01_install.png",
+            "AMS2 logger v1.8.6 — la app lista antes de iniciar la sesión",
+        )
 
         st.markdown("### 2. Configurar y arrancar la captura")
         st.markdown(
             "Ajusta **Sampling Frequency a 20 Hz** y haz clic en **Start**. "
             "Los campos Vehicle, Venue y Lap se rellenan solos cuando entras en pista."
         )
-        _img_or_placeholder("docs/guide/s2m_02_config.png",
-                            "Sampling Frequency: 20 Hz · Log File: Not Started · Start activado")
+        _img_or_placeholder(
+            "docs/guide/s2m_02_config.png",
+            "Sampling Frequency: 20 Hz · Log File: Not Started · Start activado",
+        )
 
         st.markdown("### 3. Abrir MoTeC i2 después de la sesión")
         st.markdown(
@@ -45,8 +52,7 @@ def render():
             "Ve a **File → Open Log File** y abre el `.ld` que generó el logger "
             "(normalmente en `Documentos/MoTeC/`)."
         )
-        _img_or_placeholder("docs/guide/s2m_03_i2_main.png",
-                            "MoTeC i2 — File → Export Data...")
+        _img_or_placeholder("docs/guide/s2m_03_i2_main.png", "MoTeC i2 — File → Export Data...")
 
         st.markdown("### 4. Exportar como CSV")
         st.markdown(
@@ -59,8 +65,9 @@ def render():
             "- ✅ Include Distance Data  \n\n"
             "Haz clic en **Export** y guarda el archivo."
         )
-        _img_or_placeholder("docs/guide/s2m_04_export.gif",
-                            "File → Export Data → opciones recomendadas → Export")
+        _img_or_placeholder(
+            "docs/guide/s2m_04_export.gif", "File → Export Data → opciones recomendadas → Export"
+        )
 
         st.info(
             "💡 Exporta **dos archivos**: uno con la vuelta de referencia "
@@ -81,9 +88,10 @@ def render():
     for _ci, (_fk, _fv) in enumerate(_FLOWS.items()):
         with _cols[_ci]:
             _selected = st.session_state["flow_key"] == _fk
-            _border   = "2px solid #00c853" if _selected else "1px solid #3d4450"
+            _border = "2px solid #00c853" if _selected else "1px solid #3d4450"
             st.markdown(
-                "<div style='border:%s; border-radius:10px; padding:1rem; min-height:260px'>" % _border,
+                "<div style='border:%s; border-radius:10px; padding:1rem; min-height:260px'>"
+                % _border,
                 unsafe_allow_html=True,
             )
             st.markdown("### %s" % _fk)

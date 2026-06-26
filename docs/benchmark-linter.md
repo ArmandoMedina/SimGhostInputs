@@ -72,13 +72,13 @@ derrota el propósito.
     cuando aporte, no por default.
 - **Fixes seguros aplicados** al adoptar: 1 import sin usar + orden de imports en 17
   archivos. **74 tests verdes** después → comportamiento preservado.
-- **Formato (`ruff format`): pendiente de baseline.** Reformatearía ~34 de 38 archivos
-  (churn de todo el repo). Se deja como **decisión consciente aparte**: cuando se aplique,
-  se hace en un commit dedicado (con pytest verde como red) y recién entonces se agrega
-  `ruff format --check` al CI. Hoy el CI solo gatea `ruff check` (lint).
+- **Formato (`ruff format`): baseline aplicado.** Reformateó 34 de 38 archivos en un
+  commit dedicado (cambio mecánico y AST-equivalente; **74 tests verdes** después como
+  red). Con el baseline en su lugar, el CI ya gatea `ruff format --check` además de
+  `ruff check`.
 
 ## Dónde vive esto
 
 - Config: `pyproject.toml` (`[tool.ruff]`, `[tool.ruff.lint]`, extra `[dev]`).
-- CI: job `lint` en `.github/workflows/tests.yml` (corre `ruff check`).
+- CI: job `lint` en `.github/workflows/tests.yml` (corre `ruff check` y `ruff format --check`).
 - Local (modo aviso): `tools/verificar.ps1` (lint + formato + tests + doc-gate).

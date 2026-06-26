@@ -5,6 +5,7 @@ Aquí viven las afirmaciones que SON la promesa del producto:
 - ápex más rápido => d_vmin POSITIVO;
 - faltar un canal opcional (gear/glat) NO rompe la comparación (degradación graceful).
 """
+
 from conftest import make_lap
 
 from fantasma.core.compare import compare, delta_trace
@@ -27,10 +28,14 @@ def test_slower_driver_loses_time_positive_delta():
 
 
 def test_faster_apex_gives_positive_d_vmin():
-    ref = make_lap(valleys=[{"center": 700.0, "vmin": 70.0, "half_width": 150.0,
-                             "direction": "right"}], length_m=1500.0)
-    drv = make_lap(valleys=[{"center": 700.0, "vmin": 90.0, "half_width": 150.0,
-                             "direction": "right"}], length_m=1500.0)
+    ref = make_lap(
+        valleys=[{"center": 700.0, "vmin": 70.0, "half_width": 150.0, "direction": "right"}],
+        length_m=1500.0,
+    )
+    drv = make_lap(
+        valleys=[{"center": 700.0, "vmin": 90.0, "half_width": 150.0, "direction": "right"}],
+        length_m=1500.0,
+    )
     _, rows, _ = compare(ref, drv, step=5.0)
     assert rows  # se detectó la curva
     # piloto pasa más rápido por el ápex (90 vs 70) => d_vmin positivo

@@ -4,6 +4,7 @@ Solo se testean los helpers deterministas: la señal de telemetría, la detecci�
 de pausa por silencio y la lectura de WAV. La correlación de audio real (auto_sync
 completo) se valida en el QA manual con video real.
 """
+
 import struct
 
 import pytest
@@ -15,6 +16,7 @@ from fantasma.core.lap import Lap  # noqa: E402
 from fantasma.viz import sync  # noqa: E402
 
 # --- _lap_signal -----------------------------------------------------------
+
 
 def test_lap_signal_combines_rpm_and_speed():
     lap = make_lap()  # tiene time, rpm, speed
@@ -39,6 +41,7 @@ def test_lap_signal_requires_rpm_or_speed():
 
 # --- _detect_pause ---------------------------------------------------------
 
+
 def test_detect_pause_finds_silence_gap():
     # 100 s de energía a 2 Hz; silencio de 5 s a partir del segundo 20
     ae = np.ones(200)
@@ -54,6 +57,7 @@ def test_detect_pause_none_when_continuous():
 
 
 # --- _read_wav_mono --------------------------------------------------------
+
 
 def test_read_wav_mono_16bit(tmp_path):
     header = bytearray(44)
@@ -71,6 +75,7 @@ def test_read_wav_mono_16bit(tmp_path):
 # --- _rank_candidates: detección de candidatos y ambigüedad (ADR 0008) -------
 # Lógica pura sobre el array de correlación; no requiere video ni audio, solo scipy.
 
+
 def _corr_with_peaks(n, peaks):
     """Array de correlación plano (1.0) con picos en {indice: valor}."""
     c = np.ones(n)
@@ -81,7 +86,7 @@ def _corr_with_peaks(n, peaks):
 
 def test_rank_single_clear_peak_not_ambiguous():
     pytest.importorskip("scipy")
-    corr = _corr_with_peaks(100, {50: 20.0})       # un pico dominante = una vuelta
+    corr = _corr_with_peaks(100, {50: 20.0})  # un pico dominante = una vuelta
     lags = np.arange(100, dtype=float)
     cands, ambiguous = sync._rank_candidates(corr, lags, lap_dur=4.0)
     assert abs(cands[0]["offset"] - 50.0) < 1e-6
@@ -103,7 +108,7 @@ def test_rank_orders_by_quality_desc():
     corr = _corr_with_peaks(200, {30: 10.0, 100: 20.0, 170: 15.0})
     lags = np.arange(200, dtype=float)
     cands, _ = sync._rank_candidates(corr, lags, lap_dur=4.0)
-    assert abs(cands[0]["offset"] - 100.0) < 1e-6   # el de mayor correlación primero
+    assert abs(cands[0]["offset"] - 100.0) < 1e-6  # el de mayor correlación primero
     zs = [c["z"] for c in cands]
     assert zs == sorted(zs, reverse=True)
 
@@ -121,7 +126,7 @@ def test_rank_mmss_format_from_offset():
     pytest.importorskip("scipy")
     corr = _corr_with_peaks(100, {75: 20.0})
     lags = np.zeros(100)
-    lags[75] = 1656.0                               # 27:36 dentro del video
+    lags[75] = 1656.0  # 27:36 dentro del video
     cands, _ = sync._rank_candidates(corr, lags, lap_dur=4.0)
     assert cands[0]["mmss"] == "27:36"
 

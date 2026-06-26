@@ -1,4 +1,5 @@
 """Paso 2 — Comparar: análisis curva a curva."""
+
 import os
 import tempfile
 
@@ -8,7 +9,9 @@ from ._helpers import _fmt_lap, _go, _next_step_btn
 
 
 def render():
-    st.markdown('<div class="step-header">Paso 2 — Análisis por curva</div>', unsafe_allow_html=True)
+    st.markdown(
+        '<div class="step-header">Paso 2 — Análisis por curva</div>', unsafe_allow_html=True
+    )
     st.caption(
         "Compara tu vuelta contra la referencia metro a metro. "
         "La tabla muestra cuánto tiempo pierdes o ganas en cada curva y por qué."
@@ -28,8 +31,10 @@ def render():
         with st.spinner("Comparando vuelta metro a metro…"):
             try:
                 from fantasma.core.compare import compare
+
                 if not corners:
                     from fantasma.core.corners import detect_corners, extract_milestones
+
                     _evs, _ = detect_corners(ref_lap)
                     corners = extract_milestones(ref_lap, _evs)
                     st.session_state["corners"] = corners
@@ -39,8 +44,12 @@ def render():
             except Exception as _e:
                 st.error("Error en comparación: %s" % _e)
 
-    _ref_name = st.session_state.get("ref_name") or os.path.basename(st.session_state.get("ref_path", "—"))
-    _drv_name = st.session_state.get("drv_name") or os.path.basename(st.session_state.get("drv_path", "—"))
+    _ref_name = st.session_state.get("ref_name") or os.path.basename(
+        st.session_state.get("ref_path", "—")
+    )
+    _drv_name = st.session_state.get("drv_name") or os.path.basename(
+        st.session_state.get("drv_path", "—")
+    )
     _c1, _c2 = st.columns(2)
     _c1.info("🏁 **Referencia:** %s · %s" % (_ref_name, _fmt_lap(ref_lap.laptime)))
     _c2.info("🧑‍💻 **Tu vuelta:** %s · %s" % (_drv_name, _fmt_lap(drv_lap.laptime)))
@@ -50,15 +59,19 @@ def render():
         st.stop()
 
     summary = st.session_state["summary"]
-    rows    = st.session_state["rows"]
-    trace   = st.session_state["trace"]
+    rows = st.session_state["rows"]
+    trace = st.session_state["trace"]
 
     st.divider()
     c1, c2, c3 = st.columns(3)
     c1.metric("Tiempo referencia", _fmt_lap(summary["ref_laptime"]))
-    c2.metric("Tu tiempo",         _fmt_lap(summary["drv_laptime"]))
-    c3.metric("Diferencia total",  "%+.3f s" % summary["total_delta"],
-              delta=round(-summary["total_delta"], 3), delta_color="normal")
+    c2.metric("Tu tiempo", _fmt_lap(summary["drv_laptime"]))
+    c3.metric(
+        "Diferencia total",
+        "%+.3f s" % summary["total_delta"],
+        delta=round(-summary["total_delta"], 3),
+        delta_color="normal",
+    )
 
     st.divider()
     st.subheader("¿Dónde estás perdiendo tiempo?")
@@ -70,13 +83,29 @@ def render():
     )
     if rows:
         import pandas as pd
-        df = pd.DataFrame(rows)[["name", "apex_d", "ref_vmin", "drv_vmin", "d_vmin", "time_lost", "flags"]]
-        df.columns = ["Curva", "Ápex (m)", "Ref. vel. mín. (km/h)", "Tu vel. mín. (km/h)",
-                      "Diferencia (km/h)", "Tiempo ganado/perdido (s)", "Avisos"]
-        st.dataframe(df.style.format({
-            "Tiempo ganado/perdido (s)": "{:+.3f}",
-            "Diferencia (km/h)":         "{:+.0f}",
-        }), use_container_width=True, hide_index=True)
+
+        df = pd.DataFrame(rows)[
+            ["name", "apex_d", "ref_vmin", "drv_vmin", "d_vmin", "time_lost", "flags"]
+        ]
+        df.columns = [
+            "Curva",
+            "Ápex (m)",
+            "Ref. vel. mín. (km/h)",
+            "Tu vel. mín. (km/h)",
+            "Diferencia (km/h)",
+            "Tiempo ganado/perdido (s)",
+            "Avisos",
+        ]
+        st.dataframe(
+            df.style.format(
+                {
+                    "Tiempo ganado/perdido (s)": "{:+.3f}",
+                    "Diferencia (km/h)": "{:+.0f}",
+                }
+            ),
+            use_container_width=True,
+            hide_index=True,
+        )
 
     st.divider()
     st.subheader("Gráficas de análisis")
@@ -88,11 +117,12 @@ def render():
 
     if "charts_paths" not in st.session_state:
         _charts_import_err = False
-        _charts_gen_err    = None
+        _charts_gen_err = None
         with st.spinner("Generando gráficas…"):
             try:
                 _out = tempfile.mkdtemp()
                 from fantasma.viz.charts import render_charts
+
                 st.session_state["charts_paths"] = render_charts(
                     trace, rows, corners or [], _out, top=None
                 )
@@ -110,6 +140,7 @@ def render():
     _charts = st.session_state.get("charts_paths", [])
 
     if _charts:
+
         def _show(container, path):
             try:
                 with open(path, "rb") as _f:

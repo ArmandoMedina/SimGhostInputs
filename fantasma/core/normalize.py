@@ -1,4 +1,5 @@
 """Separacion de vueltas y remuestreo por distancia."""
+
 import bisect
 
 from .lap import Lap

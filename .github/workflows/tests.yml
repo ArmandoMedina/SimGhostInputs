@@ -8,9 +8,9 @@ on:
 
 jobs:
   lint:
-    # Barrera determinista: ruff (lint) en cada push/PR. Ver docs/benchmark-linter.md.
-    # Solo 'ruff check' (reglas F+I); el 'ruff format --check' se sumara cuando se
-    # aplique el baseline de formato (hoy reformatearia casi todo el repo).
+    # Barrera determinista: ruff (lint + formato) en cada push/PR. Ver docs/benchmark-linter.md.
+    # 'ruff check' = reglas F+I (basura real). 'ruff format --check' = formato canonico
+    # (baseline aplicado, por eso ya se puede gatear).
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -21,6 +21,8 @@ jobs:
         run: pip install -e ".[dev]"
       - name: Ruff check
         run: ruff check .
+      - name: Ruff format check
+        run: ruff format --check .
 
   pytest:
     # Windows es la plataforma objetivo del proyecto

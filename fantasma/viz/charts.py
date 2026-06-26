@@ -2,6 +2,7 @@
 
 Requiere matplotlib (opcional): pip install matplotlib
 """
+
 import math
 import os
 
@@ -9,19 +10,21 @@ import os
 def _mpl():
     try:
         import matplotlib
+
         matplotlib.use("Agg")
         import matplotlib.pyplot as plt
+
         return plt
     except ImportError:
         return None
 
 
-REF_COLOR  = "#9aa0a6"   # gris fantasma
-DRV_COLOR  = "#ff6d00"   # naranja piloto
-GAS_COLOR  = "#00c853"   # verde gas
+REF_COLOR = "#9aa0a6"  # gris fantasma
+DRV_COLOR = "#ff6d00"  # naranja piloto
+GAS_COLOR = "#00c853"  # verde gas
 BRAKE_COLOR = "#ff1744"  # rojo freno
 STEER_COLOR = "#40c4ff"  # azul volante
-GLAT_COLOR  = "#fdd835"  # amarillo G-lat
+GLAT_COLOR = "#fdd835"  # amarillo G-lat
 GLONG_COLOR = "#e040fb"  # violeta G-long
 BG = "#111418"
 FG = "#e8eaed"
@@ -41,6 +44,7 @@ def _style(ax, title=None):
 # 1. Gráfica por curva: velocidad / gas / freno / volante / G-lat
 # ---------------------------------------------------------------------------
 
+
 def plot_corner(trace, corner, row, outdir, step=5.0, pad_m=120):
     """Gráfica ghost de una curva: hasta 5 paneles (velocidad, gas, freno, volante, G-lat)."""
     plt = _mpl()
@@ -55,12 +59,13 @@ def plot_corner(trace, corner, row, outdir, step=5.0, pad_m=120):
     name = corner.get("name", corner.get("id", "?"))
 
     has_steer = any("ref_steering" in p or "drv_steering" in p for p in pts)
-    has_glat  = any("ref_glat" in p or "drv_glat" in p for p in pts)
-    n_panels  = 3 + int(has_steer) + int(has_glat)
-    heights   = [2, 1, 1] + ([1] if has_steer else []) + ([1] if has_glat else [])
+    has_glat = any("ref_glat" in p or "drv_glat" in p for p in pts)
+    n_panels = 3 + int(has_steer) + int(has_glat)
+    heights = [2, 1, 1] + ([1] if has_steer else []) + ([1] if has_glat else [])
 
     fig, axes = plt.subplots(
-        n_panels, 1,
+        n_panels,
+        1,
         figsize=(9, 2 + n_panels * 1.6),
         sharex=True,
         gridspec_kw={"height_ratios": heights},
@@ -109,9 +114,12 @@ def plot_corner(trace, corner, row, outdir, step=5.0, pad_m=120):
 
     if row is not None:
         fig.suptitle(
-            "%s   tiempo perdido: %+.3f s   ΔV-Min: %+d km/h" % (
-                name, row["time_lost"], row["d_vmin"]),
-            color=FG, fontsize=11, x=0.01, ha="left",
+            "%s   tiempo perdido: %+.3f s   ΔV-Min: %+d km/h"
+            % (name, row["time_lost"], row["d_vmin"]),
+            color=FG,
+            fontsize=11,
+            x=0.01,
+            ha="left",
         )
     fig.tight_layout(rect=(0, 0, 1, 0.95))
     safe = "".join(c if c.isalnum() or c in "-_" else "_" for c in str(corner.get("id", name)))
@@ -125,12 +133,13 @@ def plot_corner(trace, corner, row, outdir, step=5.0, pad_m=120):
 # 2. Delta map: delta acumulado vs distancia
 # ---------------------------------------------------------------------------
 
+
 def plot_delta_map(trace, corner_rows, outdir):
     """Mapa de la vuelta completa: delta acumulado vs distancia, con las mayores pérdidas marcadas."""
     plt = _mpl()
     if plt is None:
         return None
-    d  = [p["dist"] for p in trace]
+    d = [p["dist"] for p in trace]
     dt = [p["delta_t"] for p in trace]
     fig, ax = plt.subplots(figsize=(12, 4))
     fig.patch.set_facecolor(BG)
@@ -140,13 +149,21 @@ def plot_delta_map(trace, corner_rows, outdir):
     ax.set_xlabel("distancia (m)", color=FG, fontsize=8)
     losses = sorted(
         [r for r in corner_rows if r.get("time_lost", 0) > 0],
-        key=lambda r: r["time_lost"], reverse=True,
+        key=lambda r: r["time_lost"],
+        reverse=True,
     )[:5]
     for r in losses:
         x = r["apex_d"]
         i = min(range(len(d)), key=lambda j: abs(d[j] - x))
-        ax.annotate(r["name"], (x, dt[i]), color=FG, fontsize=7,
-                    textcoords="offset points", xytext=(0, 8), ha="center")
+        ax.annotate(
+            r["name"],
+            (x, dt[i]),
+            color=FG,
+            fontsize=7,
+            textcoords="offset points",
+            xytext=(0, 8),
+            ha="center",
+        )
         ax.plot([x], [dt[i]], "o", color="#fdd835", ms=4)
     fig.tight_layout()
     path = os.path.join(outdir, "delta_map.png")
@@ -159,6 +176,7 @@ def plot_delta_map(trace, corner_rows, outdir):
 # 3. Bar chart: tiempo perdido por curva
 # ---------------------------------------------------------------------------
 
+
 def plot_time_loss_bar(corner_rows, outdir):
     """Barras horizontales: tiempo perdido por curva, ordenado de mayor a menor pérdida."""
     plt = _mpl()
@@ -168,7 +186,7 @@ def plot_time_loss_bar(corner_rows, outdir):
     if not rows:
         return None
     rows = sorted(rows, key=lambda r: r["time_lost"], reverse=True)
-    names  = [r["name"] for r in rows]
+    names = [r["name"] for r in rows]
     losses = [r["time_lost"] for r in rows]
     colors = ["#ff1744" if v > 0 else "#00c853" for v in losses]
 
@@ -180,10 +198,13 @@ def plot_time_loss_bar(corner_rows, outdir):
     for bar, val in zip(bars, losses):
         offset = 0.005 if val >= 0 else -0.005
         ax.text(
-            val + offset, bar.get_y() + bar.get_height() / 2,
+            val + offset,
+            bar.get_y() + bar.get_height() / 2,
             "%+.3f s" % val,
-            va="center", ha="left" if val >= 0 else "right",
-            color=FG, fontsize=8,
+            va="center",
+            ha="left" if val >= 0 else "right",
+            color=FG,
+            fontsize=8,
         )
     ax.invert_yaxis()
     _style(ax, "tiempo perdido por curva (s)  — rojo: pierdes · verde: ganas")
@@ -199,6 +220,7 @@ def plot_time_loss_bar(corner_rows, outdir):
 # 4. G-G diagram (friction circle)
 # ---------------------------------------------------------------------------
 
+
 def plot_gg_diagram(trace, outdir):
     """Scatter G-lat vs G-long: muestra si el piloto está usando el círculo de fricción."""
     plt = _mpl()
@@ -208,12 +230,12 @@ def plot_gg_diagram(trace, outdir):
     def _col(key):
         return [p[key] for p in trace if key in p]
 
-    drv_glat  = _col("drv_glat")
+    drv_glat = _col("drv_glat")
     drv_glong = _col("drv_glong")
     if not drv_glat or not drv_glong or len(drv_glat) != len(drv_glong):
         return None
 
-    ref_glat  = _col("ref_glat")
+    ref_glat = _col("ref_glat")
     ref_glong = _col("ref_glong")
 
     all_g = drv_glat + drv_glong + ref_glat + ref_glong
@@ -239,10 +261,10 @@ def plot_gg_diagram(trace, outdir):
     ax.set_ylim(-lim, lim)
 
     for txt, x, y in [
-        ("ACELERA →",   lim * 0.60,  0),
-        ("← FRENA",    -lim * 0.60,  0),
-        ("DERECHA ↑",   0,            lim * 0.65),
-        ("↓ IZQUIERDA", 0,           -lim * 0.65),
+        ("ACELERA →", lim * 0.60, 0),
+        ("← FRENA", -lim * 0.60, 0),
+        ("DERECHA ↑", 0, lim * 0.65),
+        ("↓ IZQUIERDA", 0, -lim * 0.65),
     ]:
         ax.text(x, y, txt, color="#444", fontsize=7, ha="center", va="center", alpha=0.7)
 
@@ -261,6 +283,7 @@ def plot_gg_diagram(trace, outdir):
 # 5. Vista multi-canal de la vuelta completa
 # ---------------------------------------------------------------------------
 
+
 def plot_full_lap(trace, outdir):
     """PNG horizontal con todos los canales disponibles a lo largo de la vuelta completa."""
     plt = _mpl()
@@ -269,14 +292,14 @@ def plot_full_lap(trace, outdir):
     d = [p["dist"] for p in trace]
 
     _channels = [
-        ("delta_t",   "delta (s)",      DRV_COLOR,   BRAKE_COLOR,  None,  None),
-        ("speed",     "velocidad (km/h)", REF_COLOR,  DRV_COLOR,    None,  None),
-        ("throttle",  "gas (%)",         REF_COLOR,   GAS_COLOR,    -5,    105),
-        ("brake",     "freno (%)",        REF_COLOR,  BRAKE_COLOR,  -5,    105),
-        ("steering",  "volante (°)",      REF_COLOR,  STEER_COLOR,  None,  None),
-        ("gear",      "marcha",           REF_COLOR,  DRV_COLOR,    None,  None),
-        ("glat",      "G-lat",            REF_COLOR,  GLAT_COLOR,   None,  None),
-        ("glong",     "G-long",           REF_COLOR,  GLONG_COLOR,  None,  None),
+        ("delta_t", "delta (s)", DRV_COLOR, BRAKE_COLOR, None, None),
+        ("speed", "velocidad (km/h)", REF_COLOR, DRV_COLOR, None, None),
+        ("throttle", "gas (%)", REF_COLOR, GAS_COLOR, -5, 105),
+        ("brake", "freno (%)", REF_COLOR, BRAKE_COLOR, -5, 105),
+        ("steering", "volante (°)", REF_COLOR, STEER_COLOR, None, None),
+        ("gear", "marcha", REF_COLOR, DRV_COLOR, None, None),
+        ("glat", "G-lat", REF_COLOR, GLAT_COLOR, None, None),
+        ("glong", "G-long", REF_COLOR, GLONG_COLOR, None, None),
     ]
 
     active = []
@@ -291,7 +314,8 @@ def plot_full_lap(trace, outdir):
     n = len(active)
     heights = [2] + [1] * (n - 1)
     fig, axes = plt.subplots(
-        n, 1,
+        n,
+        1,
         figsize=(16, 1.5 + n * 1.3),
         sharex=True,
         gridspec_kw={"height_ratios": heights},
@@ -329,6 +353,7 @@ def plot_full_lap(trace, outdir):
 # 6. Detalle de zonas de frenada
 # ---------------------------------------------------------------------------
 
+
 def plot_brake_zones(trace, corner_rows, corners, outdir, top=5):
     """Zoom en las frenadas con mayor pérdida: velocidad + presión de freno + G-long."""
     plt = _mpl()
@@ -337,7 +362,8 @@ def plot_brake_zones(trace, corner_rows, corners, outdir, top=5):
     by_id = {c.get("id"): c for c in corners}
     losses = sorted(
         [r for r in corner_rows if r.get("time_lost", 0) > 0 and "ref_brake_d" in r],
-        key=lambda r: r["time_lost"], reverse=True,
+        key=lambda r: r["time_lost"],
+        reverse=True,
     )[:top]
 
     out = []
@@ -355,12 +381,13 @@ def plot_brake_zones(trace, corner_rows, corners, outdir, top=5):
         d = [p["dist"] for p in pts]
 
         has_glong = any("ref_glong" in p or "drv_glong" in p for p in pts)
-        n_panels  = 3 if has_glong else 2
-        heights   = [2, 1] + ([1] if has_glong else [])
+        n_panels = 3 if has_glong else 2
+        heights = [2, 1] + ([1] if has_glong else [])
 
         name = r["name"]
         fig, axes = plt.subplots(
-            n_panels, 1,
+            n_panels,
+            1,
             figsize=(9, 1.5 + n_panels * 1.8),
             sharex=True,
             gridspec_kw={"height_ratios": heights},
@@ -394,10 +421,13 @@ def plot_brake_zones(trace, corner_rows, corners, outdir, top=5):
             ax.axvline(drv_bd, color=DRV_COLOR, lw=1.0, ls=":", alpha=0.9, label="frenas tú")
 
         delta_m = r.get("d_brake_m")
-        suffix  = ("  (Δ%+dm)" % delta_m) if delta_m is not None else ""
+        suffix = ("  (Δ%+dm)" % delta_m) if delta_m is not None else ""
         fig.suptitle(
             "%s — frenada ref %dm · tú %dm%s" % (name, ref_bd, drv_bd, suffix),
-            color=FG, fontsize=10, x=0.01, ha="left",
+            color=FG,
+            fontsize=10,
+            x=0.01,
+            ha="left",
         )
         fig.tight_layout(rect=(0, 0, 1, 0.94))
         safe = "".join(ch if ch.isalnum() or ch in "-_" else "_" for ch in str(r["id"]))
@@ -411,6 +441,7 @@ def plot_brake_zones(trace, corner_rows, corners, outdir, top=5):
 # ---------------------------------------------------------------------------
 # Punto de entrada: genera todos los charts
 # ---------------------------------------------------------------------------
+
 
 def render_charts(trace, corner_rows, corners, outdir, top=5):
     """Genera todos los charts disponibles y devuelve la lista de rutas creadas."""
@@ -439,7 +470,8 @@ def render_charts(trace, corner_rows, corners, outdir, top=5):
     by_id = {c.get("id"): c for c in corners}
     losses = sorted(
         [r for r in corner_rows if r.get("time_lost", 0) > 0],
-        key=lambda r: r["time_lost"], reverse=True,
+        key=lambda r: r["time_lost"],
+        reverse=True,
     )[:top]
     for r in losses:
         c = by_id.get(r["id"])

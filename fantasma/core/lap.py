@@ -13,17 +13,30 @@ Canales canonicos (todos opcionales salvo time y dist):
     rpm       rpm
     alt       m      altitud
 """
+
 from dataclasses import dataclass, field
 
-CANONICAL = ["time", "dist", "speed", "throttle", "brake", "steering",
-             "gear", "glat", "glong", "rpm", "alt"]
+CANONICAL = [
+    "time",
+    "dist",
+    "speed",
+    "throttle",
+    "brake",
+    "steering",
+    "gear",
+    "glat",
+    "glong",
+    "rpm",
+    "alt",
+]
 
 
 @dataclass
 class Lap:
     """Serie de muestras por canal. Todas las listas tienen la misma longitud."""
-    channels: dict = field(default_factory=dict)   # nombre canonico -> list[float]
-    meta: dict = field(default_factory=dict)       # venue, vehicle, driver, beacons...
+
+    channels: dict = field(default_factory=dict)  # nombre canonico -> list[float]
+    meta: dict = field(default_factory=dict)  # venue, vehicle, driver, beacons...
 
     def __len__(self):
         return len(self.channels.get("time", []))

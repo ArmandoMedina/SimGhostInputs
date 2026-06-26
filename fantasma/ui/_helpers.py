@@ -1,4 +1,5 @@
 """Helpers y constantes compartidas para la UI de SimGhostInputs."""
+
 import json
 import os
 import tempfile
@@ -8,13 +9,13 @@ import time
 import streamlit as st
 
 _POS_LABELS = {
-    "Abajo derecha":    "bottom-right",
-    "Abajo izquierda":  "bottom-left",
-    "Arriba derecha":   "top-right",
+    "Abajo derecha": "bottom-right",
+    "Abajo izquierda": "bottom-left",
+    "Arriba derecha": "top-right",
     "Arriba izquierda": "top-left",
-    "Abajo centro":     "bottom-center",
-    "Arriba centro":    "top-center",
-    "Centro":           "center",
+    "Abajo centro": "bottom-center",
+    "Arriba centro": "top-center",
+    "Centro": "center",
 }
 
 _FLOWS = {
@@ -66,6 +67,7 @@ _STEPS = ["Inicio", "Importar", "Comparar", "Overlay", "Componer"]
 
 # ── navegación ────────────────────────────────────────────────────────────────
 
+
 def _go(i):
     st.session_state["nav_step"] = i
     st.rerun()
@@ -84,6 +86,7 @@ def _next_step_btn(current_step_idx):
 
 # ── archivos ──────────────────────────────────────────────────────────────────
 
+
 def _save_upload(uploaded, suffix):
     tmp = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
     tmp.write(uploaded.read())
@@ -93,6 +96,7 @@ def _save_upload(uploaded, suffix):
 
 def _load_laps(path, column_map=None):
     from fantasma import importers
+
     return importers.load_laps(path, column_map)
 
 
@@ -103,8 +107,12 @@ def _cache_file(uploaded_file):
             try:
                 path = _save_upload(uploaded_file, os.path.splitext(uploaded_file.name)[1])
                 laps = _load_laps(path)
-                st.session_state[ck] = {"path": path, "name": uploaded_file.name,
-                                        "laps": laps, "ok": True}
+                st.session_state[ck] = {
+                    "path": path,
+                    "name": uploaded_file.name,
+                    "laps": laps,
+                    "ok": True,
+                }
             except Exception as _e:
                 st.session_state[ck] = {"path": "", "laps": [], "ok": False, "err": str(_e)}
     return st.session_state[ck]
@@ -117,19 +125,24 @@ def _corners_from_json(uploaded):
 
 # ── formato ───────────────────────────────────────────────────────────────────
 
+
 def _fmt_lap(seconds):
     m, s = divmod(int(seconds), 60)
     return "%d:%05.2f" % (m, seconds - m * 60)
 
 
 def _sync_quality_label(z):
-    if z > 8:  return "Excelente"
-    if z > 5:  return "Muy bueno"
-    if z > 3:  return "Bueno"
+    if z > 8:
+        return "Excelente"
+    if z > 5:
+        return "Muy bueno"
+    if z > 3:
+        return "Bueno"
     return "Marginal"
 
 
 # ── tabla de vueltas ──────────────────────────────────────────────────────────
+
 
 def _best_lap_index(laps):
     best_i, best_t = 0, float("inf")
@@ -145,17 +158,21 @@ def _lap_table(laps, editor_key):
     for i, l in enumerate(laps):
         _c = l.meta.get("is_complete", False)
         estado = "🏆 Más rápida" if i == best_i else ("✓ Completa" if _c else "⚠️ Incompleta")
-        options.append("#%d  ·  %s  ·  %dm  ·  %s" % (i, _fmt_lap(l.laptime), int(l.length), estado))
+        options.append(
+            "#%d  ·  %s  ·  %dm  ·  %s" % (i, _fmt_lap(l.laptime), int(l.length), estado)
+        )
     sel = st.radio("", options, index=best_i, key=editor_key, label_visibility="collapsed")
     return [options.index(sel)]
 
 
 # ── selectores de archivo/carpeta nativos ─────────────────────────────────────
 
+
 def _pick_file(title="Seleccionar archivo", filetypes=None):
     try:
         import tkinter as tk
         from tkinter import filedialog
+
         root = tk.Tk()
         root.withdraw()
         root.wm_attributes("-topmost", 1)
@@ -173,6 +190,7 @@ def _pick_folder(title="Seleccionar carpeta", initialdir=None):
     try:
         import tkinter as tk
         from tkinter import filedialog
+
         root = tk.Tk()
         root.withdraw()
         root.wm_attributes("-topmost", 1)
@@ -196,10 +214,10 @@ def _img_or_placeholder(rel_path, caption):
 
 # ── render en background ──────────────────────────────────────────────────────
 
+
 def _start_bg_render(step_idx, fn, progress_kw="progress", **kwargs):
     cancel = threading.Event()
-    pd = {"n": 0, "total": 0, "status": "Iniciando…", "done": False,
-          "error": None, "result": None}
+    pd = {"n": 0, "total": 0, "status": "Iniciando…", "done": False, "error": None, "result": None}
 
     def _cb(n, total, status=None):
         if cancel.is_set():
@@ -221,13 +239,15 @@ def _start_bg_render(step_idx, fn, progress_kw="progress", **kwargs):
 
     t = threading.Thread(target=_run, daemon=True)
     t.start()
-    st.session_state.update({
-        "_render_active": True,
-        "_render_step":   step_idx,
-        "_cancel_event":  cancel,
-        "_progress_data": pd,
-        "_render_thread": t,
-    })
+    st.session_state.update(
+        {
+            "_render_active": True,
+            "_render_step": step_idx,
+            "_cancel_event": cancel,
+            "_progress_data": pd,
+            "_render_thread": t,
+        }
+    )
 
 
 def _render_widget(step_idx):

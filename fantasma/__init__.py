@@ -1,4 +1,5 @@
 """SimGhostInputs: compara tus inputs contra una vuelta de referencia, por distancia."""
+
 from importlib.metadata import PackageNotFoundError, version
 
 try:

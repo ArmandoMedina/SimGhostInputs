@@ -12,14 +12,30 @@ Metodologia (validada contra telemetria real del Nordschleife):
 
 
 def _samples(lap):
-    keys = [k for k in ("time", "dist", "speed", "throttle", "brake",
-                        "steering", "gear", "glat", "glong", "rpm", "alt") if lap.has(k)]
+    keys = [
+        k
+        for k in (
+            "time",
+            "dist",
+            "speed",
+            "throttle",
+            "brake",
+            "steering",
+            "gear",
+            "glat",
+            "glong",
+            "rpm",
+            "alt",
+        )
+        if lap.has(k)
+    ]
     n = len(lap)
     return [{k: lap.col(k)[i] for k in keys} for i in range(n)], keys
 
 
-def detect_corners(lap, vmin_window_s=1.2, vmin_prominence_kmh=3.0,
-                   kink_glat=2.2, sample_rate_hint=None):
+def detect_corners(
+    lap, vmin_window_s=1.2, vmin_prominence_kmh=3.0, kink_glat=2.2, sample_rate_hint=None
+):
     """Devuelve lista de eventos: [{'kind': 'vmin'|'kink', 'i': indice}] ordenada por distancia."""
     data, keys = _samples(lap)
     if "speed" not in keys:
@@ -31,10 +47,12 @@ def detect_corners(lap, vmin_window_s=1.2, vmin_prominence_kmh=3.0,
     i = W
     while i < len(data) - W:
         v = data[i]["speed"]
-        win = data[i - W:i + W + 1]
-        if v == min(s["speed"] for s in win) and \
-           data[i - W]["speed"] > v + vmin_prominence_kmh and \
-           data[i + W]["speed"] > v + vmin_prominence_kmh:
+        win = data[i - W : i + W + 1]
+        if (
+            v == min(s["speed"] for s in win)
+            and data[i - W]["speed"] > v + vmin_prominence_kmh
+            and data[i + W]["speed"] > v + vmin_prominence_kmh
+        ):
             events.append(("vmin", i))
             i += W
         else:
@@ -44,7 +62,7 @@ def detect_corners(lap, vmin_window_s=1.2, vmin_prominence_kmh=3.0,
         i = Wk
         while i < len(data) - Wk:
             g = abs(data[i]["glat"])
-            if g > kink_glat and g == max(abs(s["glat"]) for s in data[i - Wk:i + Wk + 1]):
+            if g > kink_glat and g == max(abs(s["glat"]) for s in data[i - Wk : i + Wk + 1]):
                 d = data[i]["dist"]
                 if not any(abs(data[j]["dist"] - d) < 80 for _, j in events):
                     events.append(("kink", i))
@@ -55,8 +73,9 @@ def detect_corners(lap, vmin_window_s=1.2, vmin_prominence_kmh=3.0,
     return events, data
 
 
-def extract_milestones(lap, events=None, brake_on=10, brake_strong=50,
-                       throttle_on=5, full_throttle=98, turn_in_deg=8):
+def extract_milestones(
+    lap, events=None, brake_on=10, brake_strong=50, throttle_on=5, full_throttle=98, turn_in_deg=8
+):
     """Extrae los hitos de cada curva, con segmentacion por curva.
     Devuelve lista de dicts estilo corners.json."""
     if events is None:
@@ -93,7 +112,10 @@ def extract_milestones(lap, events=None, brake_on=10, brake_strong=50,
             blk = strong[-1] if strong else blocks[-1]
             bs, bmax = blk[0], max(blk, key=lambda s: s["brake"])
             ms["brake_start"] = _pt(bs, brake_pct=round(bmax["brake"]))
-            rel = next((s for s in seg if s["time"] > blk[-1]["time"] - 0.02 and s.get("brake", 0) < 2), None)
+            rel = next(
+                (s for s in seg if s["time"] > blk[-1]["time"] - 0.02 and s.get("brake", 0) < 2),
+                None,
+            )
             if rel:
                 ms["brake_release"] = _pt(rel)
         elif pre and "throttle" in pre[0]:
@@ -104,11 +126,20 @@ def extract_milestones(lap, events=None, brake_on=10, brake_strong=50,
         if "steering" in ap:
             sign = 1 if ap["steering"] > 0 else -1
             t0 = ms["brake_start"]["t"] if "brake_start" in ms else pre[0]["time"]
-            ti = next((s for s in pre if s["time"] >= t0 and s["steering"] * sign > turn_in_deg), None)
+            ti = next(
+                (s for s in pre if s["time"] >= t0 and s["steering"] * sign > turn_in_deg), None
+            )
             if ti and ti["time"] < ap["time"]:
                 ms["turn_in"] = _pt(ti)
         # gas
-        g0 = next((s for s in seg if s["time"] >= ap["time"] - 0.6 and s.get("throttle", 0) > throttle_on), None)
+        g0 = next(
+            (
+                s
+                for s in seg
+                if s["time"] >= ap["time"] - 0.6 and s.get("throttle", 0) > throttle_on
+            ),
+            None,
+        )
         if g0:
             ms["throttle_on"] = _pt(g0, throttle_pct=round(g0["throttle"]))
             if "brake_release" in ms and g0["dist"] < ms["brake_release"]["d"]:
@@ -116,16 +147,19 @@ def extract_milestones(lap, events=None, brake_on=10, brake_strong=50,
         ms["apex"] = _pt(ap, g_lat=ap.get("glat"))
         g100 = None
         for j, s in enumerate(post):
-            if s.get("throttle", 0) >= full_throttle and \
-               all(x.get("throttle", 0) >= 90 for x in post[j:j + 15]):
+            if s.get("throttle", 0) >= full_throttle and all(
+                x.get("throttle", 0) >= 90 for x in post[j : j + 15]
+            ):
                 g100 = s
                 break
         if g100:
             ms["full_throttle"] = _pt(g100)
         near = [s for s in seg if ap["time"] - 2.0 <= s["time"] <= ap["time"] + 1.5]
         c = {
-            "id": "C%02d" % (n + 1), "kind": kind,
-            "milestones": ms, "no_brake": no_brake,
+            "id": "C%02d" % (n + 1),
+            "kind": kind,
+            "milestones": ms,
+            "no_brake": no_brake,
             "segment_m": [round(lo), round(hi)],
             "delta_s": round(seg[-1]["time"] - seg[0]["time"], 2),
         }

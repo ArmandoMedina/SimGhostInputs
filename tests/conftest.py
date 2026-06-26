@@ -10,6 +10,7 @@ Convenciones de dominio horneadas aquí (confirmadas con el producto):
 - El tiempo se **integra** a partir de distancia/velocidad: ir más lento cuesta
   más tiempo, igual que en pista. Esto es lo que hace válidos los tests de delta.
 """
+
 import pytest
 
 from fantasma.core.lap import Lap
@@ -38,8 +39,9 @@ def _active_valley(d, valleys):
     return None
 
 
-def make_lap(length_m=1500.0, step_m=1.0, base_speed=180.0,
-             valleys=None, channels=OPTIONAL, meta=None):
+def make_lap(
+    length_m=1500.0, step_m=1.0, base_speed=180.0, valleys=None, channels=OPTIONAL, meta=None
+):
     """Construye una `Lap` sintética.
 
     Args:
@@ -111,8 +113,16 @@ def make_lap(length_m=1500.0, step_m=1.0, base_speed=180.0,
         rpm.append(3000.0 + vi * 30.0)
         alt.append(100.0)
 
-    derived = {"throttle": throttle, "brake": brake, "steering": steering,
-               "gear": gear, "glat": glat, "glong": glong, "rpm": rpm, "alt": alt}
+    derived = {
+        "throttle": throttle,
+        "brake": brake,
+        "steering": steering,
+        "gear": gear,
+        "glat": glat,
+        "glong": glong,
+        "rpm": rpm,
+        "alt": alt,
+    }
     for name in OPTIONAL:
         if name in chans:
             lap.channels[name] = derived[name]

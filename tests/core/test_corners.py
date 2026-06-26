@@ -1,4 +1,5 @@
 """Tier 1 — detección de curvas e hitos sobre trazados sintéticos de valles conocidos."""
+
 import pytest
 from conftest import make_lap
 

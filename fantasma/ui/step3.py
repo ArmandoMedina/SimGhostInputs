@@ -1,4 +1,5 @@
 """Paso 3 — Overlay: generar el HUD animado."""
+
 import os
 
 import streamlit as st
@@ -7,7 +8,9 @@ from ._helpers import _go, _next_step_btn, _pick_folder, _render_widget, _start_
 
 
 def render():
-    st.markdown('<div class="step-header">Paso 3 — Generar overlay HUD</div>', unsafe_allow_html=True)
+    st.markdown(
+        '<div class="step-header">Paso 3 — Generar overlay HUD</div>', unsafe_allow_html=True
+    )
     st.caption(
         "Genera el **HUD animado** sincronizado con tu vuelta. "
         "Es un archivo de video **transparente** (como un sticker animado) que en el Paso 4 "
@@ -28,6 +31,7 @@ def render():
     if not corners:
         try:
             from fantasma.core.corners import detect_corners, extract_milestones
+
             _evs, _ = detect_corners(ref_lap)
             corners = extract_milestones(ref_lap, _evs)
             st.session_state["corners"] = corners
@@ -41,10 +45,13 @@ def render():
         st.divider()
 
     # ── carpeta de salida ─────────────────────────────────────────────────────
-    _def_out = st.session_state.get("_overlay_out_dir",
-                                    os.path.join(os.path.expanduser("~"), "fantasma_salida"))
+    _def_out = st.session_state.get(
+        "_overlay_out_dir", os.path.join(os.path.expanduser("~"), "fantasma_salida")
+    )
     if "_overlay_out_dir_pending" in st.session_state:
-        st.session_state["_overlay_out_dir_input"] = st.session_state.pop("_overlay_out_dir_pending")
+        st.session_state["_overlay_out_dir_input"] = st.session_state.pop(
+            "_overlay_out_dir_pending"
+        )
     _oc1, _oc2 = st.columns([5, 1])
     _out_dir_input = _oc1.text_input(
         "Carpeta donde guardar el overlay",
@@ -68,7 +75,9 @@ def render():
         "Un overlay a 30 sobre un video a 60 funciona bien; al revés puede verse entrecortado."
     )
     _fps_opt = st.radio(
-        "FPS", [24, 30, 60], index=1,
+        "FPS",
+        [24, 30, 60],
+        index=1,
         horizontal=True,
         label_visibility="collapsed",
         key="_overlay_fps",
@@ -80,7 +89,9 @@ def render():
     if "Solo overlay" in _flow_key:
         with st.expander("⚙️ Formato de salida"):
             _fmt = st.selectbox(
-                "Formato del overlay", ["webm", "prores", "png"], index=0,
+                "Formato del overlay",
+                ["webm", "prores", "png"],
+                index=0,
                 help=(
                     "webm — Recomendado. Compatible con DaVinci Resolve, Kdenlive, Premiere.\n"
                     "prores — Para Final Cut Pro en Mac o máxima calidad sin compresión.\n"
@@ -123,9 +134,14 @@ def render():
                 st.error("Faltan dependencias. Ejecuta: `pip install 'fantasma-inputs[overlay]'`")
                 st.stop()
             _start_bg_render(
-                3, _ro,
+                3,
+                _ro,
                 progress_kw="progress",
-                ref=ref_lap, drv=drv_lap, corners=corners or [],
-                outdir=out_dir, fps=_fps, fmt=_fmt,
+                ref=ref_lap,
+                drv=drv_lap,
+                corners=corners or [],
+                outdir=out_dir,
+                fps=_fps,
+                fmt=_fmt,
             )
             st.rerun()

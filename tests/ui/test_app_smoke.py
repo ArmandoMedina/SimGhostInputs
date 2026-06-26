@@ -4,6 +4,7 @@ Barato y de alto valor: este test habría atrapado en CI el ImportError del
 refactor 0.6.3 (imports relativos en app.py ejecutado como script por Streamlit).
 Si streamlit no está instalado, se omite.
 """
+
 from pathlib import Path
 
 import pytest

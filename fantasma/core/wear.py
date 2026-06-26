@@ -10,7 +10,7 @@ No existe canal de desgaste directo en los exports tipicos; se estima con:
 """
 
 WHEELS = ("fl", "fr", "rl", "rr")
-DEADBAND_PCT = 2.0   # slip menor a esto es ruido de medicion
+DEADBAND_PCT = 2.0  # slip menor a esto es ruido de medicion
 
 
 def calibrate(lap):
@@ -27,8 +27,11 @@ def calibrate(lap):
         ts = lap.col("ts_" + w)
         if ts is None:
             return None
-        vals = [ts[i] / spd[i] for i in range(n)
-                if spd[i] > 80 and brk[i] < 1 and abs(glong[i]) < 0.2 and ts[i] > 0]
+        vals = [
+            ts[i] / spd[i]
+            for i in range(n)
+            if spd[i] > 80 and brk[i] < 1 and abs(glong[i]) < 0.2 and ts[i] > 0
+        ]
         if len(vals) < 50:
             return None
         vals.sort()
@@ -68,8 +71,11 @@ def slip_index(lap, d0=None, d1=None, slip=None, ratios=None):
     if slip is None:
         return None
     d = lap.col("dist")
-    vals = [max(0.0, abs(slip[i]) - DEADBAND_PCT) for i in range(len(slip))
-            if (d0 is None or d0 <= d[i]) and (d1 is None or d[i] <= d1)]
+    vals = [
+        max(0.0, abs(slip[i]) - DEADBAND_PCT)
+        for i in range(len(slip))
+        if (d0 is None or d0 <= d[i]) and (d1 is None or d[i] <= d1)
+    ]
     if not vals:
         return None
     return round(sum(vals) / len(vals), 2)
@@ -120,8 +126,11 @@ def tyre_temp_avg(lap, d0=None, d1=None):
     if any(c is None for c in cols):
         return None
     d = lap.col("dist")
-    vals = [sum(c[i] for c in cols) / 4.0 for i in range(len(d))
-            if (d0 is None or d0 <= d[i]) and (d1 is None or d[i] <= d1)]
+    vals = [
+        sum(c[i] for c in cols) / 4.0
+        for i in range(len(d))
+        if (d0 is None or d0 <= d[i]) and (d1 is None or d[i] <= d1)
+    ]
     return round(sum(vals) / len(vals), 1) if vals else None
 
 

@@ -1,4 +1,5 @@
 """Tier 1 — indicadores de desgaste: slip y conteo de asistencias, con y sin canales."""
+
 from conftest import make_lap
 
 from fantasma.core import wear
@@ -61,17 +62,18 @@ def test_clean_rolling_has_low_slip_index():
 def test_slip_series_signs_locking_and_spinning():
     s = wear.slip_series(_slip_lap())
     assert s is not None
-    assert min(s) < -10   # bloqueo en frenada: rueda más lenta -> slip negativo
-    assert max(s) > 10    # patinaje en tracción: rueda más rápida -> slip positivo
+    assert min(s) < -10  # bloqueo en frenada: rueda más lenta -> slip negativo
+    assert max(s) > 10  # patinaje en tracción: rueda más rápida -> slip positivo
 
 
 def test_slip_index_positive_with_real_slip():
     idx = wear.slip_index(_slip_lap())
     assert idx is not None
-    assert idx > 0        # con deslizamiento real por encima de la banda muerta
+    assert idx > 0  # con deslizamiento real por encima de la banda muerta
 
 
 # --- slip_load: carga de deslizamiento extensiva (ADR 0009) --------------------
+
 
 def test_slip_load_none_without_wheels():
     assert wear.slip_load(make_lap()) is None
@@ -90,7 +92,7 @@ def test_slip_load_is_additive_over_distance():
     (a diferencia de slip_index, que es un promedio y no se puede sumar)."""
     lap = _slip_lap()
     d = lap.col("dist")
-    mid = (d[len(d) // 2] + d[len(d) // 2 + 1]) / 2.0   # punto entre dos muestras
+    mid = (d[len(d) // 2] + d[len(d) // 2 + 1]) / 2.0  # punto entre dos muestras
     whole = wear.slip_load(lap)
     part1 = wear.slip_load(lap, 0, mid)
     part2 = wear.slip_load(lap, mid, d[-1])
@@ -131,22 +133,22 @@ def test_wear_budget_accumulates_and_projects():
     assert b["cumulative"] == 21.9
     assert b["rate_recent"] == 7.3
     assert b["laps_done"] == 3
-    assert b["status"] == "ok"           # 21.9 < 30
-    assert b["laps_to_burst"] == 3.8     # (50 - 21.9) / 7.3
-    assert b["est_total_laps"] == 6.8    # 3 vueltas hechas + 3.8 estimadas
+    assert b["status"] == "ok"  # 21.9 < 30
+    assert b["laps_to_burst"] == 3.8  # (50 - 21.9) / 7.3
+    assert b["est_total_laps"] == 6.8  # 3 vueltas hechas + 3.8 estimadas
 
 
 def test_wear_budget_status_thresholds():
-    assert wear.wear_budget([10, 10, 15], _TH)["status"] == "yellow"   # 35
-    assert wear.wear_budget([15, 15, 15], _TH)["status"] == "red"      # 45
-    burst = wear.wear_budget([20, 20, 20], _TH)                        # 60 >= 50
+    assert wear.wear_budget([10, 10, 15], _TH)["status"] == "yellow"  # 35
+    assert wear.wear_budget([15, 15, 15], _TH)["status"] == "red"  # 45
+    burst = wear.wear_budget([20, 20, 20], _TH)  # 60 >= 50
     assert burst["status"] == "burst"
-    assert burst["laps_to_burst"] == 0.0   # ya pasado el reventón, no negativo
+    assert burst["laps_to_burst"] == 0.0  # ya pasado el reventón, no negativo
 
 
 def test_wear_budget_recent_n_averages_last_laps():
     b = wear.wear_budget([10, 5, 7], _TH, recent_n=2)
-    assert b["rate_recent"] == 6.0   # media de [5, 7]
+    assert b["rate_recent"] == 6.0  # media de [5, 7]
 
 
 def test_wear_budget_ignores_none_rates():
@@ -157,14 +159,14 @@ def test_wear_budget_ignores_none_rates():
 
 def test_wear_budget_recent_n_beyond_length_uses_all():
     b = wear.wear_budget([4.0, 6.0], _TH, recent_n=5)
-    assert b["rate_recent"] == 5.0   # media de todas las vueltas disponibles
+    assert b["rate_recent"] == 5.0  # media de todas las vueltas disponibles
 
 
 def test_wear_budget_partial_thresholds():
     # solo umbral de reventón: estado ok hasta cruzarlo, y aun así proyecta
     b = wear.wear_budget([10, 10], {"burst": 50})
     assert b["status"] == "ok"
-    assert b["laps_to_burst"] == 3.0   # (50 - 20) / 10
+    assert b["laps_to_burst"] == 3.0  # (50 - 20) / 10
 
 
 def test_wear_budget_no_projection_without_burst_or_rate():

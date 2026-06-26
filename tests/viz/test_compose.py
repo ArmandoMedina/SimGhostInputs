@@ -4,9 +4,11 @@ Tests de regresión de bugs ya corregidos:
 - construcción del filtro ffmpeg (el bug de los operadores en `scale`);
 - `_nvenc_available` como contrato del fallback CPU (el falso positivo de NVENC).
 """
+
 from fantasma.viz import compose
 
 # --- _build_filter ---------------------------------------------------------
+
 
 def test_build_filter_scale_has_multiply_operator():
     # regresión: el filtro de escala debe llevar 'scale=iw*<f>:ih*<f>'
@@ -36,6 +38,7 @@ def test_build_filter_unknown_position_falls_back_to_bottom_right():
 
 # --- _nvenc_available (contrato del fallback) ------------------------------
 
+
 class _FakeProc:
     def __init__(self, returncode):
         self.returncode = returncode
@@ -55,5 +58,6 @@ def test_nvenc_available_false_on_nonzero(monkeypatch):
 def test_nvenc_available_false_on_exception(monkeypatch):
     def boom(*a, **k):
         raise OSError("ffmpeg no está")
+
     monkeypatch.setattr(compose.subprocess, "run", boom)
     assert compose._nvenc_available("ffmpeg") is False

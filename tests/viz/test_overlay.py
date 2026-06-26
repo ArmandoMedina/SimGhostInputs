@@ -4,6 +4,7 @@
 activo en los últimos `hold` m hasta el cursor. Es lo que da el comportamiento de
 luz instantánea con retención corta en vez del viejo conteo por ventana.
 """
+
 import pytest
 
 np = pytest.importorskip("numpy")
