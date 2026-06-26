@@ -5,9 +5,9 @@ Aquí viven las afirmaciones que SON la promesa del producto:
 - ápex más rápido => d_vmin POSITIVO;
 - faltar un canal opcional (gear/glat) NO rompe la comparación (degradación graceful).
 """
-from fantasma.core.compare import delta_trace, compare
-
 from conftest import make_lap
+
+from fantasma.core.compare import compare, delta_trace
 
 
 def test_identical_laps_have_zero_delta():

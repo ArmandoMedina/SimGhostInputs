@@ -7,7 +7,7 @@ import os
 
 import pytest
 
-from fantasma.importers import motec_csv, load_laps
+from fantasma.importers import load_laps, motec_csv
 
 FIXTURES = os.path.join(os.path.dirname(__file__), "fixtures")
 MINI = os.path.join(FIXTURES, "motec_mini.csv")

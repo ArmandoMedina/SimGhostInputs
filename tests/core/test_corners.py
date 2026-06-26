@@ -1,10 +1,9 @@
 """Tier 1 — detección de curvas e hitos sobre trazados sintéticos de valles conocidos."""
 import pytest
-
-from fantasma.core.lap import Lap
-from fantasma.core.corners import detect_corners, extract_milestones
-
 from conftest import make_lap
+
+from fantasma.core.corners import detect_corners, extract_milestones
+from fantasma.core.lap import Lap
 
 
 def test_detects_one_event_per_valley():

@@ -4,9 +4,9 @@ import json
 import sys
 
 from . import importers
-from .core.normalize import fastest_lap
-from .core.corners import detect_corners, extract_milestones
 from .core.compare import compare
+from .core.corners import detect_corners, extract_milestones
+from .core.normalize import fastest_lap
 from .viz.report import write_outputs
 
 
@@ -88,6 +88,7 @@ def cmd_compare(args):
 
 def cmd_overlay(args):
     import os
+
     from .viz.overlay import render_overlay
 
     ref_laps, ref = _load_lap(args.reference, _parse_map(args.map))
@@ -137,7 +138,10 @@ def cmd_overlay(args):
 
 def _concat_videos(paths, output, fmt):
     """Concatena varios archivos de video con ffmpeg."""
-    import shutil, subprocess, tempfile, os
+    import os
+    import shutil
+    import subprocess
+    import tempfile
     ffmpeg = shutil.which("ffmpeg")
     if not ffmpeg:
         print("aviso: ffmpeg no disponible, no se pudo concatenar")
@@ -157,7 +161,9 @@ def _concat_videos(paths, output, fmt):
 
 
 def cmd_ui(args):
-    import shutil, subprocess, os
+    import os
+    import shutil
+    import subprocess
     if not shutil.which("streamlit"):
         print("error: streamlit no instalado — ejecuta: pip install 'fantasma-inputs[ui]'",
               file=sys.stderr)
@@ -168,6 +174,7 @@ def cmd_ui(args):
 
 def cmd_compose(args):
     import os
+
     from .viz.compose import compose_video
 
     offset = args.offset
@@ -190,7 +197,7 @@ def cmd_compose(args):
             return 1
         print("Detectando offset de sincronizacion…")
         try:
-            from .viz.sync import sync_candidates, validate_offset, _MIN_SYNC_Z
+            from .viz.sync import _MIN_SYNC_Z, sync_candidates, validate_offset
             result = sync_candidates(args.video, lap)
         except ImportError as e:
             print("error: %s" % e, file=sys.stderr)

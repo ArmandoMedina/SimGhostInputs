@@ -4,9 +4,15 @@ import os
 import streamlit as st
 
 from ._helpers import (
-    _cache_file, _fmt_lap, _go, _next_step_btn,
-    _pick_file, _pick_folder, _POS_LABELS,
-    _render_widget, _start_bg_render, _sync_quality_label,
+    _POS_LABELS,
+    _cache_file,
+    _fmt_lap,
+    _next_step_btn,
+    _pick_file,
+    _pick_folder,
+    _render_widget,
+    _start_bg_render,
+    _sync_quality_label,
 )
 
 
@@ -113,7 +119,7 @@ def render():
             with st.spinner("Analizando audio… (~30 s)"):
                 _res = None
                 try:
-                    from fantasma.viz.sync import sync_candidates, _MIN_SYNC_Z
+                    from fantasma.viz.sync import _MIN_SYNC_Z, sync_candidates
                     _res = sync_candidates(_video_path, _drv_for_sync)
                 except ImportError as _ie:
                     st.error(str(_ie))

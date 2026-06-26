@@ -1,7 +1,7 @@
 """Comparacion piloto vs referencia, por distancia (no por tiempo)."""
-from .normalize import resample
-from .corners import detect_corners, extract_milestones, _samples
 from . import wear
+from .corners import _samples, detect_corners, extract_milestones
+from .normalize import resample
 
 
 def delta_trace(ref, drv, step=5.0):

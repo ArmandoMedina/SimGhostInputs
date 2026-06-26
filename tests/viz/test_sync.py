@@ -9,11 +9,10 @@ import struct
 import pytest
 
 np = pytest.importorskip("numpy")
-from fantasma.viz import sync  # noqa: E402
-from fantasma.core.lap import Lap  # noqa: E402
-
 from conftest import make_lap  # noqa: E402
 
+from fantasma.core.lap import Lap  # noqa: E402
+from fantasma.viz import sync  # noqa: E402
 
 # --- _lap_signal -----------------------------------------------------------
 

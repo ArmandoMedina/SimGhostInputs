@@ -6,7 +6,6 @@ Tests de regresión de bugs ya corregidos:
 """
 from fantasma.viz import compose
 
-
 # --- _build_filter ---------------------------------------------------------
 
 def test_build_filter_scale_has_multiply_operator():

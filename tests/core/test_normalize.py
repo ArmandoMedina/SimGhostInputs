@@ -1,8 +1,8 @@
 """Tier 1 — normalización por distancia: rejilla, interpolación, separación de vueltas."""
-from fantasma.core.lap import Lap
-from fantasma.core.normalize import resample, split_laps, fastest_lap
-
 from conftest import make_lap
+
+from fantasma.core.lap import Lap
+from fantasma.core.normalize import fastest_lap, resample, split_laps
 
 
 def test_resample_grid_spacing():

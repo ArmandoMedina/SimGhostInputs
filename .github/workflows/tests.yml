@@ -7,6 +7,21 @@ on:
     branches: [master]
 
 jobs:
+  lint:
+    # Barrera determinista: ruff (lint) en cada push/PR. Ver docs/benchmark-linter.md.
+    # Solo 'ruff check' (reglas F+I); el 'ruff format --check' se sumara cuando se
+    # aplique el baseline de formato (hoy reformatearia casi todo el repo).
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install ruff
+        run: pip install -e ".[dev]"
+      - name: Ruff check
+        run: ruff check .
+
   pytest:
     # Windows es la plataforma objetivo del proyecto
     runs-on: windows-latest

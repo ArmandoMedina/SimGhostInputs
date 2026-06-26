@@ -6,7 +6,6 @@ Tener __main__ propio evita que spawn reimporte el servidor de Streamlit.
 import pickle
 import sys
 
-
 if __name__ == "__main__":
     import matplotlib
     matplotlib.use("Agg")

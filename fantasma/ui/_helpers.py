@@ -7,7 +7,6 @@ import time
 
 import streamlit as st
 
-
 _POS_LABELS = {
     "Abajo derecha":    "bottom-right",
     "Abajo izquierda":  "bottom-left",

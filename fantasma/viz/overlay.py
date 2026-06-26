@@ -483,8 +483,8 @@ def render_overlay(ref, drv, corners, outdir, fps=30, fmt="webm",
             "pip install 'fantasma-inputs[overlay]'"
         )
 
-    from ..core.compare import delta_trace
     from ..core import wear
+    from ..core.compare import delta_trace
 
     # ── rejilla uniforme de distancias (1 m) ─────────────────────────────────
     d_max = max(ref.col("dist")[-1], drv.col("dist")[-1])

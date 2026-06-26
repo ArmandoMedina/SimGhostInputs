@@ -3,7 +3,7 @@ import os
 
 import streamlit as st
 
-from ._helpers import _go, _next_step_btn, _pick_folder, _start_bg_render, _render_widget
+from ._helpers import _go, _next_step_btn, _pick_folder, _render_widget, _start_bg_render
 
 
 def render():

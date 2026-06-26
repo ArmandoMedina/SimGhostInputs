@@ -2,8 +2,13 @@
 import streamlit as st
 
 from ._helpers import (
-    _cache_file, _corners_from_json, _best_lap_index, _lap_table,
-    _fmt_lap, _go, _next_step_btn,
+    _best_lap_index,
+    _cache_file,
+    _corners_from_json,
+    _fmt_lap,
+    _go,
+    _lap_table,
+    _next_step_btn,
 )
 
 
@@ -134,8 +139,9 @@ def render(flow):
                          help="Analiza la vuelta de referencia y detecta dónde están las curvas."):
                 with st.spinner("Analizando vuelta de referencia…"):
                     try:
+                        from fantasma.core.corners import detect_corners as _dc2
+                        from fantasma.core.corners import extract_milestones as _em
                         from fantasma.core.normalize import fastest_lap as _fl
-                        from fantasma.core.corners import detect_corners as _dc2, extract_milestones as _em
                         _evs, _ = _dc2(_fl(_ref_laps))
                         _cdet   = _em(_fl(_ref_laps), _evs)
                         st.session_state["corners"]          = _cdet

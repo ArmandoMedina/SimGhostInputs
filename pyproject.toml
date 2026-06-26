@@ -26,6 +26,8 @@ sync    = ["scipy>=1.11,<2", "numpy>=1.24,<3"]
 full    = ["openpyxl>=3,<4", "Pillow>=10,<12", "matplotlib>=3.7,<4", "numpy>=1.24,<3", "streamlit>=1.35,<2", "pandas>=2,<3", "scipy>=1.11,<2"]
 # pip install -e ".[test]"      -> suite de pruebas automatizadas (solo desarrollo)
 test    = ["pytest>=8,<9"]
+# pip install -e ".[dev]"       -> herramientas de desarrollo: linter + formatter (solo desarrollo)
+dev     = ["ruff>=0.15,<1"]
 
 [project.scripts]
 fantasma = "fantasma.cli:main"
@@ -36,3 +38,18 @@ include = ["fantasma*"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q"
+
+[tool.ruff]
+target-version = "py310"
+line-length = 100
+
+[tool.ruff.lint]
+# Conjunto de reglas a proposito CORTO y de alta senal (ver docs/benchmark-linter.md):
+#   F = pyflakes  -> imports/variables sin usar, nombres indefinidos, f-strings vacios.
+#                    Es la "basura" real que queremos atajar antes de subir.
+#   I = isort     -> orden de imports, auto-arreglable y sin drama.
+# El formateo de espacios/comillas lo hace `ruff format`, NO las reglas E/W de
+# pycodestyle: por eso NO se activan E701/E741, que sobre codigo que ya funciona
+# solo serian ruido (one-liners y nombres de una letra intencionales). Ampliar a
+# B (bugbear) o UP (pyupgrade) cuando aporte, no por default.
+select = ["F", "I"]
