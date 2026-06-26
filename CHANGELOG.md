@@ -7,6 +7,8 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/). Versionado
 ### Añadido
 - **Linter/formatter `ruff`** como barrera determinista pre-push (benchmark en `docs/benchmark-linter.md`): config en `pyproject.toml` (reglas `F`+`I`, alta señal y bajo ruido), extra `[dev]`, y job `lint` en CI (`ruff check`). Atrapa imports/variables sin usar y nombres indefinidos antes de subir.
 - **`tools/verificar.ps1`** — pipeline local de barreras en **modo aviso** (lint + formato + tests + doc-gate de CHANGELOG), inspirado en el patrón "no-mistakes". No bloquea; el CI sigue siendo la compuerta que sí bloquea.
+- **Hook `pre-push`** (`.githooks/pre-push`) en modo aviso: dispara `tools/verificar.ps1` automáticamente antes de cada push. Se enciende una vez por clon con `git config core.hooksPath .githooks`.
+- **`docs/flujo-de-trabajo.md`** — guía completa (desde cero) del sistema de barreras y del flujo explorar→commit→push: glosario, las piezas, paso a paso, dónde acaba la máquina (límite semántico), local vs nube, mapa del repo. Registrada como SSOT en `CONTRIBUTING.md` §8.
 
 ### Cambiado
 - Imports ordenados (`ruff I`) y un import sin usar eliminado en `fantasma/ui/step4.py` — fixes seguros de ruff aplicados al adoptar; **74 tests verdes** (comportamiento preservado).

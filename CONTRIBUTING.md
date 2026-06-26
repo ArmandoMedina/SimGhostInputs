@@ -200,6 +200,8 @@ Cada hecho vive en **un** documento. Los demás enlazan, no duplican.
 | `CONTRIBUTING.md` | Estructura del proyecto, entorno dev, convenciones y este mapa |
 | `docs/decisions/` + su `README.md` | El porqué de cada decisión (un ADR por decisión) + índice |
 | `docs/glosario.md` | Definición canónica de los términos del proyecto (vocabulario) |
+| `docs/flujo-de-trabajo.md` | El sistema de barreras y el flujo explorar→commit→push (linter, formato, tests, hook, CI, doc-gate) explicado desde cero |
+| `docs/benchmark-linter.md` | Por qué `ruff` y no las alternativas; cómo se configuró |
 
 ### Blast radius — al hacer este cambio, revisa estos documentos
 
@@ -216,6 +218,7 @@ Cada hecho vive en **un** documento. Los demás enlazan, no duplican.
 | Release / bump de versión | `pyproject.toml` · `CHANGELOG` (`[Unreleased]` → versión con fecha) · `ROADMAP` (estado actual + footer) · `README` (badge) · tag git anotado |
 | Decisión de arquitectura/diseño | **ADR nuevo** en `docs/decisions/` · su `README.md` (índice) · el documento que la decisión afecta |
 | Término o concepto nuevo (o renombrado) | `docs/glosario.md` (definición canónica) · busca el término en los demás docs para dejarlo consistente |
+| Cambio en las barreras o la gobernanza (linter, formato, hook, CI, tests, doc-gate) | `docs/flujo-de-trabajo.md` · `docs/benchmark-linter.md` si cambia la herramienta · `.github/workflows/tests.yml` si cambia el CI |
 
 ### Regla de consistencia de vocabulario
 

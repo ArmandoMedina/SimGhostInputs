@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+# Hook pre-push en MODO AVISO (no bloquea). Corre el verificador local antes de
+# subir a GitHub. El CI es la barrera que SI bloquea: aqui solo se avisa, para
+# que puedas cancelar (Ctrl-C) y arreglar antes de subir si quieres.
+# Filosofia: "avisa temprano, bloquea al final" (ver docs/flujo-de-trabajo.md).
+#
+# Encender (una sola vez por clon):  git config core.hooksPath .githooks
+# Saltarlo a proposito (raro):        git push --no-verify
+#
+# git entrega por stdin las refs a empujar; este hook no las usa (corre el
+# verificador completo). Sale 0 SIEMPRE para no bloquear el push.
+
+if command -v powershell.exe >/dev/null 2>&1; then
+  powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools/verificar.ps1
+else
+  echo "  [pre-push] powershell.exe no encontrado; me salto el verificador local."
+  echo "             No pasa nada: el CI en GitHub valida igual al recibir el push."
+fi
+
+exit 0

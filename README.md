@@ -145,7 +145,7 @@ Salida de `overlay`:
 
   La franja de datos muestra: GAP acumulado · ΔV en el metro actual · índice de deslizamiento (proxy de desgaste) · activaciones de ABS por segmento · **marcha actual** (1–6 / N / R) · **velocidad en km/h** · **distancia en metros**. Los tres últimos campos son útiles para verificar la sincronía visualmente comparando con el velocímetro y el marcador de marcha del sim.
 
-Documentación completa en [`docs/`](docs/): [guía de usuario](docs/guia-usuario.md) · [referencia del HUD](docs/hud-reference.md) · [formato de datos](docs/formato-datos.md) · [glosario](docs/glosario.md) · [cómo contribuir](CONTRIBUTING.md).
+Documentación completa en [`docs/`](docs/): [guía de usuario](docs/guia-usuario.md) · [referencia del HUD](docs/hud-reference.md) · [formato de datos](docs/formato-datos.md) · [glosario](docs/glosario.md) · [flujo de trabajo](docs/flujo-de-trabajo.md) · [cómo contribuir](CONTRIBUTING.md).
 
 > **Demo:** descarga [`sample_60s_nordschleife.mp4`](https://github.com/ArmandoMedina/SimGhostInputs/releases/latest/download/sample_60s_nordschleife.mp4) para ver el HUD en acción sobre grabación real (AMS2 · BMW M4 GT3 · Nordschleife).
 
