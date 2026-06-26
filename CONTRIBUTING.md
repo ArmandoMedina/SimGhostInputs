@@ -106,6 +106,27 @@ Ampliar la cobertura (resto de `viz/`, importadores) es especialmente bienvenido
 - **Si el escenario no existe:** créalo (blinda el comportamiento nuevo o el bug, para que no reaparezca).
 - **Si un test está mal o desactualizado:** corrígelo — pero **primero entiende por qué falla**. Un rojo suele ser el test atrapando una regresión real, no un estorbo; ajustarlo para que pase sin diagnosticar es apagar la alarma de humo.
 
+**Puesta a punto del clon (hazla una vez):**
+
+Las barreras locales **viven en el repo pero no se encienden solas** (git, por seguridad, no
+ejecuta hooks de un clon sin que tú lo autorices). Actívalas al clonar:
+
+```powershell
+# 1. Instala las herramientas de desarrollo (linter + tests)
+pip install -e ".[dev,test,ui,sync]"
+
+# 2. Enciende el hook que corre las validaciones antes de cada push
+git config core.hooksPath .githooks
+```
+
+A partir de ahí, cada `git push` dispara `tools/verificar.ps1` (lint + formato + tests +
+doc-gate) en **modo aviso**: te avisa antes de subir, pero **no bloquea** (puedes cancelar y
+arreglar, o seguir bajo tu responsabilidad). La barrera que **sí bloquea** es el CI en GitHub
+(corre solo en cada push/PR; nadie la puede saltar desde su máquina). El sistema completo —qué
+corre cuándo y qué avisa vs qué bloquea— está explicado desde cero en
+[`docs/flujo-de-trabajo.md`](docs/flujo-de-trabajo.md). **Saltarse esto solo es posible a
+propósito** (`git push --no-verify`), nunca por desconocimiento.
+
 ---
 
 ## 4. Principios de diseño
@@ -152,6 +173,7 @@ docs: añadir guía de exportación para iRacing
 4. **Describe qué problema resuelve el PR**, no solo qué archivos tocaste
 5. Si tocas el detector o el comparador, incluye un antes/después con datos reales (basta el `report.md`)
 6. **Prueba manualmente** con telemetría real antes de enviar
+7. **El CI debe quedar en verde para mergear.** En tu PR corren solos el `lint` (`ruff check` + `ruff format --check`) y los `tests` (`pytest` en Python 3.10–3.12). Un PR en rojo no se mezcla — la barrera es automática, no depende de que alguien se acuerde de revisar.
 
 ---
 

@@ -350,6 +350,7 @@ Cosas que están en el código pero no tienen cobertura de QA formal ni están d
 | `motec_csv.py` codificación | Lee con `utf-8-sig` — CSV generados por i2 en Windows pueden tener encoding distinto en setups no-inglés |
 | Tests automáticos (en progreso) | Suite implementada: 48 tests (Tier 1 `core/` + Tier 2 importadores + Tier 3 `compose`/`sync` + smoke de UI) con pytest y fixtures sintéticas, y **CI en GitHub Actions** (Windows, Python 3.10–3.12). Cumple el requisito de v1.0 de "tests unitarios de `core/`". Pendiente: ampliar cobertura conforme crezca el código. Estrategia y estado en [`docs/decisions/0003-testing.md`](docs/decisions/0003-testing.md) |
 | ~~Docs en `docs/` referenciadas pero no escritas~~ ✅ | Resuelto: `docs/guia-usuario.md` (131 líneas), `docs/hud-reference.md` (138) y `docs/formato-datos.md` (88) ya existen con contenido. Pendiente solo mantenerlas al día con los cambios de UI/HUD |
+| Branch protection en `master` (para colaboradores) | Hoy el CI **avisa** (verde/rojo) pero no **bloquea el merge** sin branch protection — single-author no lo necesita. Al sumar al primer colaborador: activar en GitHub «requiere PR + checks `lint` y `pytest` en verde», para que el CI sea barrera **obligatoria** para todos. Ya documentado como expectativa en `CONTRIBUTING.md` §6 y el flujo en `docs/flujo-de-trabajo.md`. |
 
 ---
 

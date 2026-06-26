@@ -280,6 +280,11 @@ git push --no-verify
 
 > **La regla de oro:** lo local **avisa rápido pero es opcional** (fácil de olvidar encender el
 > hook); el **CI es la barrera automática**. Aunque olvides el hook, **el CI te atrapa al push.**
+>
+> **Para que el CI *bloquee* (no solo avise) en colaboración:** hoy reporta verde/rojo pero no
+> impide mergear. Con **branch protection** en GitHub (requiere PR + checks `lint`/`pytest` en
+> verde) pasa a **detener a cualquiera** que no cumpla las reglas. Es el paso pendiente para
+> cuando el repo tenga colaboradores (apuntado en el ROADMAP); single-author no lo necesita.
 
 ---
 

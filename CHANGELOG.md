@@ -9,6 +9,7 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/). Versionado
 - **`tools/verificar.ps1`** — pipeline local de barreras en **modo aviso** (lint + formato + tests + doc-gate de CHANGELOG), inspirado en el patrón "no-mistakes". No bloquea; el CI sigue siendo la compuerta que sí bloquea.
 - **Hook `pre-push`** (`.githooks/pre-push`) en modo aviso: dispara `tools/verificar.ps1` automáticamente antes de cada push. Se enciende una vez por clon con `git config core.hooksPath .githooks`.
 - **`docs/flujo-de-trabajo.md`** — guía completa (desde cero) del sistema de barreras y del flujo explorar→commit→push: glosario, las piezas, paso a paso, dónde acaba la máquina (límite semántico), local vs nube, mapa del repo. Registrada como SSOT en `CONTRIBUTING.md` §8.
+- **CONTRIBUTING §3 y §6**: especifican la **puesta a punto del clon** (instalar `[dev]` + `git config core.hooksPath .githooks`) y que **el CI debe quedar en verde para mergear** — para que saltarse las barreras solo sea posible **a propósito**, nunca por desconocimiento. La **branch protection** (que vuelve el CI bloqueante para colaboradores) queda apuntada en el ROADMAP.
 
 ### Cambiado
 - Imports ordenados (`ruff I`) y un import sin usar eliminado en `fantasma/ui/step4.py` — fixes seguros de ruff aplicados al adoptar; **74 tests verdes** (comportamiento preservado).
