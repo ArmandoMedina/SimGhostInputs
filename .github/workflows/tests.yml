@@ -13,8 +13,10 @@ jobs:
     # (baseline aplicado, por eso ya se puede gatear).
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      # actions en Node 24 (checkout@v7, setup-python@v6); las v4/v5 quedaban en
+      # Node 20 (deprecado). Aviso visto en el run de CI del 2026-06-26.
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
       - name: Install ruff
@@ -33,10 +35,10 @@ jobs:
         python-version: ["3.10", "3.11", "3.12"]
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
           cache: pip
