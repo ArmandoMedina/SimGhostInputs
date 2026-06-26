@@ -1,0 +1,142 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800" font-family="Segoe UI, Arial, sans-serif" font-size="13" fill="#0f172a">
+  <defs>
+    <marker id="ah" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L7,3 L0,6 Z" fill="#475569"/>
+    </marker>
+    <marker id="ahg" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L7,3 L0,6 Z" fill="#94a3b8"/>
+    </marker>
+  </defs>
+
+  <text x="600" y="30" text-anchor="middle" font-size="20" font-weight="bold">Flujo de trabajo — SimGhostInputs</text>
+  <text x="600" y="52" text-anchor="middle" font-size="12" fill="#475569">barreras deterministas · avisa temprano, bloquea al final · determinismo bloquea, juicio aconseja</text>
+
+  <!-- Carriles -->
+  <rect x="0" y="72" width="1200" height="212" fill="#eff6ff" stroke="#cbd5e1"/>
+  <rect x="0" y="284" width="1200" height="212" fill="#fefce8" stroke="#cbd5e1"/>
+  <rect x="0" y="496" width="1200" height="212" fill="#fef2f2" stroke="#cbd5e1"/>
+  <rect x="0" y="72" width="40" height="212" fill="#dbeafe" stroke="#cbd5e1"/>
+  <rect x="0" y="284" width="40" height="212" fill="#fef9c3" stroke="#cbd5e1"/>
+  <rect x="0" y="496" width="40" height="212" fill="#fee2e2" stroke="#cbd5e1"/>
+  <text x="20" y="178" transform="rotate(-90 20 178)" text-anchor="middle" font-weight="bold" fill="#1e40af">JUICIO · aconseja</text>
+  <text x="20" y="390" transform="rotate(-90 20 390)" text-anchor="middle" font-weight="bold" fill="#92400e">LOCAL · avisa</text>
+  <text x="20" y="602" transform="rotate(-90 20 602)" text-anchor="middle" font-weight="bold" fill="#991b1b">NUBE · bloquea</text>
+
+  <!-- ===== JUICIO ===== -->
+  <circle cx="78" cy="168" r="22" fill="#ffffff" stroke="#2563eb" stroke-width="2.5"/>
+  <text x="78" y="172" text-anchor="middle" font-size="10">Explorar</text>
+  <text x="78" y="204" text-anchor="middle" font-size="9" fill="#475569">rama · nada corre</text>
+  <polygon points="172,142 200,168 172,194 144,168" fill="#ffffff" stroke="#ca8a04" stroke-width="1.6"/>
+  <text x="172" y="165" text-anchor="middle" font-size="9">¿se</text>
+  <text x="172" y="177" text-anchor="middle" font-size="9">queda?</text>
+  <line x1="100" y1="168" x2="142" y2="168" stroke="#475569" marker-end="url(#ah)"/>
+  <path d="M172,142 V126 H78 V148" fill="none" stroke="#475569" marker-end="url(#ah)"/>
+  <text x="120" y="121" text-anchor="middle" font-size="9" fill="#475569">no</text>
+  <rect x="236" y="140" width="176" height="56" rx="8" fill="#ffffff" stroke="#64748b"/>
+  <text x="324" y="163" text-anchor="middle">Consolidar el cambio</text>
+  <text x="324" y="180" text-anchor="middle" font-size="11.5">+ su test</text>
+  <line x1="200" y1="168" x2="234" y2="168" stroke="#475569" marker-end="url(#ah)"/>
+  <text x="218" y="160" text-anchor="middle" font-size="9" fill="#16a34a">sí = commit</text>
+  <polygon points="470,142 500,168 470,194 440,168" fill="#ffffff" stroke="#ca8a04" stroke-width="1.6"/>
+  <text x="470" y="165" text-anchor="middle" font-size="9">¿fue</text>
+  <text x="470" y="177" text-anchor="middle" font-size="9">decisión?</text>
+  <line x1="412" y1="168" x2="438" y2="168" stroke="#475569" marker-end="url(#ah)"/>
+  <rect x="540" y="118" width="150" height="42" rx="8" fill="#eff6ff" stroke="#2563eb"/>
+  <text x="615" y="135" text-anchor="middle" font-size="12">registrar ADR</text>
+  <text x="615" y="150" text-anchor="middle" font-size="9" fill="#475569">skill adr-helper</text>
+  <line x1="486" y1="156" x2="538" y2="138" stroke="#475569" marker-end="url(#ah)"/>
+  <text x="512" y="150" text-anchor="middle" font-size="9" fill="#16a34a">sí</text>
+  <rect x="540" y="196" width="165" height="48" rx="8" fill="#eff6ff" stroke="#2563eb" stroke-dasharray="5 3"/>
+  <text x="622" y="216" text-anchor="middle" font-size="12">/code-review</text>
+  <text x="622" y="232" text-anchor="middle" font-size="9.5" fill="#475569">IA · aconseja (no bloquea)</text>
+  <line x1="498" y1="178" x2="538" y2="206" stroke="#475569" marker-end="url(#ah)"/>
+  <text x="512" y="196" text-anchor="middle" font-size="9" fill="#475569">no</text>
+  <line x1="615" y1="160" x2="615" y2="194" stroke="#475569" marker-end="url(#ah)"/>
+  <line x1="622" y1="244" x2="622" y2="338" stroke="#475569" marker-end="url(#ah)"/>
+
+  <!-- ===== LOCAL ===== -->
+  <rect x="577" y="340" width="90" height="44" rx="8" fill="#ffffff" stroke="#64748b"/>
+  <text x="622" y="367" text-anchor="middle">git push</text>
+  <rect x="690" y="330" width="200" height="38" rx="6" fill="#ffffff" stroke="#94a3b8" stroke-dasharray="4 3"/>
+  <text x="790" y="346" text-anchor="middle" font-size="9.5" fill="#475569">1 vez: git config</text>
+  <text x="790" y="360" text-anchor="middle" font-size="9.5" fill="#475569">core.hooksPath .githooks</text>
+  <line x1="688" y1="352" x2="669" y2="358" stroke="#94a3b8" stroke-dasharray="3 2"/>
+  <rect x="690" y="376" width="200" height="32" rx="6" fill="#ffffff" stroke="#94a3b8" stroke-dasharray="4 3"/>
+  <text x="790" y="396" text-anchor="middle" font-size="9.5" fill="#475569">escape: git push --no-verify</text>
+  <line x1="688" y1="388" x2="669" y2="376" stroke="#94a3b8" stroke-dasharray="3 2"/>
+  <rect x="345" y="346" width="150" height="56" rx="8" fill="#fef9c3" stroke="#ca8a04"/>
+  <text x="420" y="368" text-anchor="middle" font-weight="bold">hook pre-push</text>
+  <text x="420" y="386" text-anchor="middle" font-size="11.5">▶ tools/verificar.ps1</text>
+  <line x1="576" y1="362" x2="497" y2="362" stroke="#475569" marker-end="url(#ah)"/>
+  <text x="980" y="362" text-anchor="middle" font-size="11" font-style="italic" fill="#92400e">AVISA · sale 0</text>
+  <!-- checks -->
+  <line x1="420" y1="402" x2="420" y2="412" stroke="#ca8a04"/>
+  <line x1="169" y1="412" x2="549" y2="412" stroke="#ca8a04"/>
+  <line x1="169" y1="412" x2="169" y2="420" stroke="#ca8a04"/>
+  <line x1="315" y1="412" x2="315" y2="420" stroke="#ca8a04"/>
+  <line x1="442" y1="412" x2="442" y2="420" stroke="#ca8a04"/>
+  <line x1="549" y1="412" x2="549" y2="420" stroke="#ca8a04"/>
+  <rect x="110" y="420" width="118" height="28" rx="5" fill="#fefce8" stroke="#ca8a04"/>
+  <text x="169" y="438" text-anchor="middle" font-size="12">ruff check</text>
+  <text x="169" y="464" text-anchor="middle" font-size="9" fill="#92400e">imports/vars sin usar</text>
+  <rect x="240" y="420" width="150" height="28" rx="5" fill="#fefce8" stroke="#ca8a04"/>
+  <text x="315" y="438" text-anchor="middle" font-size="12">ruff format --check</text>
+  <text x="315" y="464" text-anchor="middle" font-size="9" fill="#92400e">estilo canónico</text>
+  <rect x="402" y="420" width="80" height="28" rx="5" fill="#fefce8" stroke="#ca8a04"/>
+  <text x="442" y="438" text-anchor="middle" font-size="12">pytest</text>
+  <text x="442" y="464" text-anchor="middle" font-size="9" fill="#92400e">lógica del motor</text>
+  <rect x="494" y="420" width="110" height="28" rx="5" fill="#fefce8" stroke="#ca8a04"/>
+  <text x="549" y="438" text-anchor="middle" font-size="12">doc-gate</text>
+  <text x="549" y="464" text-anchor="middle" font-size="9" fill="#92400e">CHANGELOG + checklist</text>
+  <line x1="315" y1="478" x2="315" y2="554" stroke="#475569" marker-end="url(#ah)"/>
+
+  <!-- ===== NUBE ===== -->
+  <text x="315" y="544" text-anchor="middle" font-size="11" font-weight="bold" fill="#991b1b">CI · tests.yml</text>
+  <rect x="212" y="556" width="206" height="44" rx="8" fill="#ffffff" stroke="#dc2626"/>
+  <text x="315" y="574" text-anchor="middle" font-size="12">job lint (Ubuntu)</text>
+  <text x="315" y="590" text-anchor="middle" font-size="10.5" fill="#475569">ruff check + format --check</text>
+  <rect x="212" y="610" width="206" height="44" rx="8" fill="#ffffff" stroke="#dc2626"/>
+  <text x="315" y="628" text-anchor="middle" font-size="12">job pytest (Windows)</text>
+  <text x="315" y="644" text-anchor="middle" font-size="10.5" fill="#475569">3.10 · 3.11 · 3.12</text>
+  <polygon points="500,575 540,605 500,635 460,605" fill="#ffffff" stroke="#ca8a04" stroke-width="2"/>
+  <text x="500" y="602" text-anchor="middle" font-size="9.5">¿todo</text>
+  <text x="500" y="615" text-anchor="middle" font-size="9.5">verde?</text>
+  <line x1="418" y1="582" x2="459" y2="600" stroke="#475569" marker-end="url(#ah)"/>
+  <line x1="418" y1="630" x2="459" y2="610" stroke="#475569" marker-end="url(#ah)"/>
+  <circle cx="668" cy="605" r="24" fill="#dcfce7" stroke="#16a34a" stroke-width="3.5"/>
+  <text x="668" y="601" text-anchor="middle" font-size="10.5">queda</text>
+  <text x="668" y="615" text-anchor="middle" font-size="10.5">en master</text>
+  <line x1="540" y1="605" x2="642" y2="605" stroke="#475569" marker-end="url(#ah)"/>
+  <text x="592" y="595" text-anchor="middle" font-size="12" font-weight="bold" fill="#16a34a">sí</text>
+  <rect x="452" y="662" width="135" height="36" rx="8" fill="#fef2f2" stroke="#dc2626" stroke-dasharray="5 3"/>
+  <text x="519" y="685" text-anchor="middle" font-size="11.5">arregla y re-push</text>
+  <line x1="500" y1="635" x2="500" y2="660" stroke="#475569" marker-end="url(#ah)"/>
+  <text x="513" y="652" font-size="11" font-weight="bold" fill="#dc2626">no</text>
+  <rect x="772" y="578" width="180" height="52" rx="8" fill="#f0fdf4" stroke="#16a34a" stroke-dasharray="5 3"/>
+  <text x="862" y="600" text-anchor="middle" font-size="12">release-helper</text>
+  <text x="862" y="617" text-anchor="middle" font-size="10.5" fill="#475569">versión vX.Y.Z</text>
+  <line x1="694" y1="605" x2="768" y2="605" stroke="#94a3b8" stroke-dasharray="4 3" marker-end="url(#ahg)"/>
+  <text x="730" y="595" text-anchor="middle" font-size="9" fill="#64748b">ocasional</text>
+
+  <!-- branch protection -->
+  <rect x="55" y="720" width="270" height="36" rx="6" fill="#ffffff" stroke="#991b1b" stroke-dasharray="4 3"/>
+  <text x="190" y="736" text-anchor="middle" font-size="10.5" fill="#991b1b">branch protection (futuro):</text>
+  <text x="190" y="750" text-anchor="middle" font-size="10.5" fill="#991b1b">bloquea el merge a colaboradores</text>
+
+  <!-- limite semantico -->
+  <rect x="912" y="88" width="278" height="104" rx="8" fill="#f8fafc" stroke="#94a3b8" stroke-dasharray="5 3"/>
+  <text x="1051" y="110" text-anchor="middle" font-weight="bold" fill="#334155">Límite semántico</text>
+  <text x="1051" y="131" text-anchor="middle" font-size="11" fill="#475569">Lo que NINGUNA barrera cubre:</text>
+  <text x="1051" y="149" text-anchor="middle" font-size="11" fill="#475569">que el HUD / overlay se vea bien</text>
+  <text x="1051" y="170" text-anchor="middle" font-size="11" font-weight="bold" fill="#334155">▶ QA manual con video real</text>
+
+  <!-- leyenda -->
+  <rect x="360" y="724" width="16" height="16" rx="3" fill="#eff6ff" stroke="#2563eb"/>
+  <text x="382" y="737" font-size="12">juicio · aconseja</text>
+  <rect x="520" y="724" width="16" height="16" rx="3" fill="#fefce8" stroke="#ca8a04"/>
+  <text x="542" y="737" font-size="12">local · avisa</text>
+  <rect x="660" y="724" width="16" height="16" rx="3" fill="#fef2f2" stroke="#dc2626"/>
+  <text x="682" y="737" font-size="12">nube · bloquea</text>
+  <rect x="820" y="724" width="16" height="16" rx="3" fill="#dcfce7" stroke="#16a34a"/>
+  <text x="842" y="737" font-size="12">fin OK</text>
+</svg>
