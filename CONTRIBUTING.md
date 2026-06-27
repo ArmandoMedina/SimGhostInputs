@@ -233,6 +233,7 @@ Cada hecho vive en **un** documento. Los demás enlazan, no duplican.
 | :-- | :-- | :-- |
 | Flag/comando CLI nuevo, o cambio de comportamiento de uno | `README` (uso rápido) · `guia-usuario` · `formato-datos` si cambian las salidas | _solo Reviewer_ |
 | Cambio visual del HUD/overlay (color, panel, franja de datos) | `hud-reference` · `README` (tabla de colores) · **ADR nuevo** + `docs/decisions/README.md` | **Mariana** (UX) |
+| Cambio de UX/layout en la UI Streamlit (`fantasma/ui/`) | `guia-usuario` | **Mariana** (UX) |
 | Cambio en `core/` (detección de curvas, comparación, `wear`, normalización) | `formato-datos` (algoritmo + JSON + CSV) · `tests/` si cambian números/signos · ADR si es una decisión | **Charbel** (telemetría) |
 | Dependencia o extra nuevo | `pyproject.toml` · `README` (tabla de deps + instalación) · §3 de este doc · `setup.ps1` | _solo Reviewer_ |
 | Importador o formato de entrada nuevo | `README` (tabla de sims) · `guia-usuario` · `formato-datos` (canales) · §7 (bienvenidas) | **Charbel** (telemetría) |
@@ -252,7 +253,7 @@ La columna de arriba enruta *quién juzga* un cambio, igual que la de en medio e
 Los especialistas se encienden solo cuando aplica su área:
 
 - **Charbel** (telemetría) — correctitud de datos. **Casi todo determinista** (tests, rangos físicos, ¿parsea el archivo?, ¿están los canales?); la IA solo juzga lo ambiguo (¿archivo malo o anomalía real?). **No** pongas la IA a "validar la telemetría" en bloque — ese asiento es de los tests.
-- **Mariana** (UX del HUD) — aceptación visual. **Casi todo juicio**: el snapshot detecta que el HUD *cambió*, pero "¿se ve bien?" es un **checkpoint que vuelve al PO**, no un auto-pase.
+- **Mariana** (UX del HUD y UI) — aceptación visual. **Casi todo juicio**: "¿el HUD se ve bien?" y "¿el layout de la UI tiene sentido?" son **checkpoints que vuelven al PO**, no un auto-pase.
 - **Architect** — decisiones técnicas (ADR). Se co-produce con el PO; se dispara por necesidad, no "todos los ADR arriba".
 - **PO** (Armando) — alcance, prioridad, release. Inicia la tarea y es el único que aprieta lo irreversible.
 

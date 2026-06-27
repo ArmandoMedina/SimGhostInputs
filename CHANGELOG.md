@@ -11,6 +11,8 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/). Versionado
   - **Skill `escribano`** (`.claude/skills/escribano/`): el rol que actualiza los docs dueños según la §8.
   - **Matriz §8 extendida** en `CONTRIBUTING.md` con la columna de roles (Charbel telemetría, Mariana UX, Reviewer, Escribano, PO, Architect).
   - `.claude/` ahora **viaja con el repo** (salvo `settings.local.json` y el marcador de review).
+  - **Orquestación y model-routing** en `flujo-de-trabajo.md`: cuándo el orquestador delega a un subagente vs lo hace en sesión, cómo elegir el modelo (haiku/sonnet/opus) según la complejidad, y el **playbook** de operación (el PO habla; el orquestador detona los subagentes).
+  - **Mariana** valida también `fantasma/ui/` (UI Streamlit), no solo `viz/` (HUD), en la §8.
 - `docs/flujo-de-trabajo.md` documenta esta capa y se corrigió donde describía el doc-gate como solo-aviso.
 
 ## [0.10.0] — 2026-06-26

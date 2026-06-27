@@ -230,6 +230,55 @@ la ideación, no en un hook.
 > **Estado honesto:** hoy disparan solos **Reviewer** y **Escribano**. **Charbel** y **Mariana** están
 > **declarados** en el router §8 pero **aún no auto-cableados** — se construyen cuando un cambio real los pida.
 
+### Orquestación: quién dispara a quién, y con qué modelo
+
+**Tú no llamas a los subagentes.** Hablas con el **agente principal** — la sesión de Claude Code que
+abres en el repo (`claude` en la terminal, dentro de SimGhostInputs). Ese agente es el **orquestador**:
+tú describes la tarea y **él decide** si la hace en sesión o si **detona un subagente** (su herramienta
+Task), y con qué modelo. Para que sea **consistente** entre sesiones, esta política vive **aquí** (no en
+tu cabeza ni en un chat).
+
+**¿En sesión o subagente?**
+- **En sesión** (el principal lo hace directo): tarea chica, que necesita el contexto de lo que vienen
+  platicando, o una edición acotada de un archivo.
+- **Subagente** (ventana propia, fría; devuelve solo la conclusión condensada): cuando la tarea
+  (1) leería muchos archivos o haría una búsqueda grande — **aislar el ruido** para no inflar el hilo
+  principal (esto es lo que pelea el **Context Rot**); (2) es autocontenida (entrada chica → salida
+  chica); o (3) querés correr **varias en paralelo**.
+
+**Calcular el esfuerzo y elegir el modelo** (model-routing, "no uses Ferrari para ir por tortillas").
+El subagente acepta `model`: `haiku` · `sonnet` · `opus`:
+- **haiku** — mecánico, reglas claras, sin razonamiento profundo: aplicar la §8 (Escribano), formatear,
+  mover ítems, buscar y condensar (Explorador), ruteo simple.
+- **sonnet** — juicio acotado que sí requiere razonar: Reviewer de bugs, juzgar una anomalía de
+  telemetría (Charbel), entender un diff.
+- **opus** — decisión profunda con trade-offs: Architect, redactar un ADR, un refactor con criterio.
+
+**Regla de calibración (sin complacencia): iguala el modelo a la COMPLEJIDAD, no al precio.** Un modelo
+barato en tarea compleja **falla y pagas doble** (re-correr). Si dudas entre dos, **sube uno**: un sonnet
+de más cuesta menos que un haiku que se equivoca. Heurística rápida: ¿la tarea es *ejecución de reglas* o
+tiene *juicio*? Solo reglas → haiku · juicio acotado → sonnet · decisión con consecuencias → opus.
+
+### Cómo se opera (playbook)
+
+El modelo de operación tiene **un solo actor humano: tú.**
+
+```
+PO (tú, humano)  ──hablas──►  Sesión principal de Claude Code (ORQUESTADOR)  ──spawnea──►  subagentes
+```
+
+- **Tú solo haces la primera flecha: hablas.** No spawneás nada a mano. Abres `claude` dentro del
+  repo, arrancas con `/arranca` (o *"lee `docs/flujo-de-trabajo.md` + `CONTRIBUTING §8` a detalle"*), y
+  describes la tarea en lenguaje normal.
+- **El orquestador hace el resto**, guiado por la política de arriba: decide si lo hace en sesión o
+  delega, con qué modelo, y dispara los subagentes. Tú **no** tocas la herramienta de subagentes —
+  eres el humano; el orquestador es quien orquesta.
+
+**Lección del primer caso real (extender Mariana a `ui/`):** el orquestador **decidió hacerlo en
+sesión, sin subagente**, porque era una edición acotada de reglas (la política: chico y mecánico → en
+sesión). Eso es la calibración funcionando: **no todo merece un subagente.** Sobre-orquestar es el
+error caro; se delega solo cuando la tarea es pesada, aislable o paralela.
+
 ### La frontera de versión (de vez en cuando)
 
 Muchos commits se acumulan; al cerrar un hito, la skill **`release-helper`** corta una **versión**
