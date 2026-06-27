@@ -271,7 +271,7 @@ El **objetivo** es el mismo en todos los repos: *sacar lo mecánico de manos no 
 lo que se cuela, avisando temprano y bloqueando al final*. Lo que **cambia entre repos** son los
 **artefactos** que se vigilan, y por tanto las herramientas:
 
-- Un repo de **documentación / mockups** (como LivoTransfer) verifica que el mockup HTML y su
+- Un repo de **documentación / mockups** (un vault de Obsidian) verifica que el mockup HTML y su
   resumen no diverjan (hash), que el grafo de enlaces no se rompa, y que las pantallas se comporten
   (Playwright E2E).
 - Este repo es **código Python**, así que verifica lo propio del código: **linter** (basura),

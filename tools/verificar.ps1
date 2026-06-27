@@ -1,7 +1,7 @@
 #Requires -Version 5
 # verificar.ps1 - Pipeline de barreras deterministas local. Se corre ANTES de subir:
 # lint (ruff) + formato (ruff format) + tests (pytest) + doc-gate.
-# Inspirado en el patron "no-mistakes" y en el hook de livotransfer.
+# Inspirado en el patron "no-mistakes" (convenciones de metodo: project-starter).
 # lint/formato/tests AVISAN (el CI los hace cumplir); el doc-drift de la seccion 8
 # (core/->formato-datos, viz/->hud-reference) BLOQUEA el push (exit 1) - poka-yoke.
 # Saltar a proposito: git push --no-verify.
