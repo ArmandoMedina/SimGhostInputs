@@ -1,8 +1,10 @@
 #Requires -Version 5
-# verificar.ps1 - Pipeline de barreras deterministas en MODO AVISO (no bloquea).
-# Inspirado en el patron "no-mistakes" y en el hook de livotransfer. Se corre ANTES
-# de subir: lint (ruff) + formato (ruff format) + tests (pytest) + doc-gate (CHANGELOG).
-# El CI es la compuerta que SI bloquea; esto es la alarma temprana local.
+# verificar.ps1 - Pipeline de barreras deterministas local. Se corre ANTES de subir:
+# lint (ruff) + formato (ruff format) + tests (pytest) + doc-gate.
+# Inspirado en el patron "no-mistakes" y en el hook de livotransfer.
+# lint/formato/tests AVISAN (el CI los hace cumplir); el doc-drift de la seccion 8
+# (core/->formato-datos, viz/->hud-reference) BLOQUEA el push (exit 1) - poka-yoke.
+# Saltar a proposito: git push --no-verify.
 #
 # Uso:  ./tools/verificar.ps1
 #
@@ -11,9 +13,11 @@
 $repo = Split-Path -Parent $PSScriptRoot
 Set-Location $repo
 $script:warn = 0
+$script:block = 0
 
-function Note($msg) { Write-Host "  [AVISO] $msg" -ForegroundColor Yellow; $script:warn++ }
-function Ok($msg)   { Write-Host "  [OK] $msg"    -ForegroundColor Green }
+function Note($msg)  { Write-Host "  [AVISO] $msg"   -ForegroundColor Yellow; $script:warn++ }
+function Block($msg) { Write-Host "  [BLOQUEA] $msg" -ForegroundColor Red;    $script:block++ }
+function Ok($msg)    { Write-Host "  [OK] $msg"      -ForegroundColor Green }
 
 Write-Host "== Verificar (modo aviso; el CI es el que bloquea) =="
 
@@ -49,10 +53,32 @@ if ($tocoCodigo -and -not $tocoChangelog) {
 }
 else { Ok "CHANGELOG al dia (o sin cambios de codigo)" }
 
+# 5. Doc-gate: blast-radius (CONTRIBUTING seccion 8, reglas mecanicas) -------
+Write-Host "`n-- Doc-gate (blast-radius seccion 8) --"
+$tocoCore     = $changed | Where-Object { $_ -like 'fantasma/core/*' }
+$tocoFormato  = $changed | Where-Object { $_ -eq 'docs/formato-datos.md' }
+$tocoViz      = $changed | Where-Object { $_ -like 'fantasma/viz/*' }
+$tocoHud      = $changed | Where-Object { $_ -eq 'docs/hud-reference.md' }
+$tocoBarreras = $changed | Where-Object { $_ -like '.githooks/*' -or $_ -like '.claude/hooks/*' -or $_ -eq '.claude/settings.json' -or $_ -eq 'tools/verificar.ps1' -or $_ -like '.github/workflows/*' }
+$tocoFlujo    = $changed | Where-Object { $_ -eq 'docs/flujo-de-trabajo.md' }
+$faltaFormato = $tocoCore     -and -not $tocoFormato
+$faltaHud     = $tocoViz      -and -not $tocoHud
+$faltaFlujo   = $tocoBarreras -and -not $tocoFlujo
+if ($faltaFormato) { Block "tocaste fantasma/core/ sin docs/formato-datos.md (algoritmo/JSON/CSV). Ver CONTRIBUTING.md seccion 8 -> pasalo al escribano." }
+if ($faltaHud)     { Block "tocaste fantasma/viz/ (HUD/overlay) sin docs/hud-reference.md. Ver CONTRIBUTING.md seccion 8 -> pasalo al escribano." }
+if ($faltaFlujo)   { Block "tocaste las barreras (hooks/gate/CI) sin docs/flujo-de-trabajo.md. Ver CONTRIBUTING.md seccion 8 -> pasalo al escribano." }
+if (-not ($faltaFormato -or $faltaHud -or $faltaFlujo)) { Ok "docs duenos al dia (o sin cambios en core/viz/barreras)" }
+
 # Resumen -------------------------------------------------------------------
 Write-Host ""
-if ($script:warn -gt 0) {
-  Write-Host "== $($script:warn) aviso(s). El commit/push NO se bloquea (el CI si lo hara). ==" -ForegroundColor Yellow
+if ($script:block -gt 0) {
+  Write-Host "== $($script:block) bloqueo(s) de doc-drift (seccion 8). PUSH DETENIDO. ==" -ForegroundColor Red
+  Write-Host "   Sincroniza los docs duenos (pasalo al escribano) y reintenta, o 'git push --no-verify' a proposito." -ForegroundColor Red
+  if ($script:warn -gt 0) { Write-Host "   (+$($script:warn) aviso[s] no bloqueante[s] arriba.)" -ForegroundColor Yellow }
+  exit 1
 }
-else { Write-Host "== Todo limpio. ==" -ForegroundColor Green }
-exit 0
+elseif ($script:warn -gt 0) {
+  Write-Host "== $($script:warn) aviso(s) no bloqueante(s). El CI hara cumplir lint/formato/tests. ==" -ForegroundColor Yellow
+  exit 0
+}
+else { Write-Host "== Todo limpio. ==" -ForegroundColor Green; exit 0 }
