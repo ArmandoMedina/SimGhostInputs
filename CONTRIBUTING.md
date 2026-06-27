@@ -229,18 +229,34 @@ Cada hecho vive en **un** documento. Los demás enlazan, no duplican.
 
 > `CHANGELOG.md` se actualiza **siempre** que el cambio sea liberable; se omite abajo por brevedad.
 
-| Cambio | Documentos a actualizar |
-| :-- | :-- |
-| Flag/comando CLI nuevo, o cambio de comportamiento de uno | `README` (uso rápido) · `guia-usuario` · `formato-datos` si cambian las salidas |
-| Cambio visual del HUD/overlay (color, panel, franja de datos) | `hud-reference` · `README` (tabla de colores) · **ADR nuevo** + `docs/decisions/README.md` |
-| Cambio en `core/` (detección de curvas, comparación, `wear`, normalización) | `formato-datos` (algoritmo + JSON + CSV) · `tests/` si cambian números/signos · ADR si es una decisión |
-| Dependencia o extra nuevo | `pyproject.toml` · `README` (tabla de deps + instalación) · §3 de este doc · `setup.ps1` |
-| Importador o formato de entrada nuevo | `README` (tabla de sims) · `guia-usuario` · `formato-datos` (canales) · §7 (bienvenidas) |
-| Cambio de alcance o de un principio de diseño | `PRODUCT_BRIEF` · `ROADMAP` · §4 de este doc si aplica |
-| Release / bump de versión | `pyproject.toml` · `CHANGELOG` (`[Unreleased]` → versión con fecha) · `ROADMAP` (estado actual + footer) · `README` (badge) · tag git anotado |
-| Decisión de arquitectura/diseño | **ADR nuevo** en `docs/decisions/` · su `README.md` (índice) · el documento que la decisión afecta |
-| Término o concepto nuevo (o renombrado) | `docs/glosario.md` (definición canónica) · busca el término en los demás docs para dejarlo consistente |
-| Cambio en las barreras o la gobernanza (linter, formato, hook, CI, tests, doc-gate) | `docs/flujo-de-trabajo.md` · `docs/benchmark-linter.md` si cambia la herramienta · `.github/workflows/tests.yml` si cambia el CI |
+| Cambio | Documentos a actualizar | Rol especialista que valida |
+| :-- | :-- | :-- |
+| Flag/comando CLI nuevo, o cambio de comportamiento de uno | `README` (uso rápido) · `guia-usuario` · `formato-datos` si cambian las salidas | _solo Reviewer_ |
+| Cambio visual del HUD/overlay (color, panel, franja de datos) | `hud-reference` · `README` (tabla de colores) · **ADR nuevo** + `docs/decisions/README.md` | **Mariana** (UX) |
+| Cambio en `core/` (detección de curvas, comparación, `wear`, normalización) | `formato-datos` (algoritmo + JSON + CSV) · `tests/` si cambian números/signos · ADR si es una decisión | **Charbel** (telemetría) |
+| Dependencia o extra nuevo | `pyproject.toml` · `README` (tabla de deps + instalación) · §3 de este doc · `setup.ps1` | _solo Reviewer_ |
+| Importador o formato de entrada nuevo | `README` (tabla de sims) · `guia-usuario` · `formato-datos` (canales) · §7 (bienvenidas) | **Charbel** (telemetría) |
+| Cambio de alcance o de un principio de diseño | `PRODUCT_BRIEF` · `ROADMAP` · §4 de este doc si aplica | **PO** + Architect |
+| Release / bump de versión | `pyproject.toml` · `CHANGELOG` (`[Unreleased]` → versión con fecha) · `ROADMAP` (estado actual + footer) · `README` (badge) · tag git anotado | **PO** (corta la versión) |
+| Decisión de arquitectura/diseño | **ADR nuevo** en `docs/decisions/` · su `README.md` (índice) · el documento que la decisión afecta | **Architect** (+ PO) |
+| Término o concepto nuevo (o renombrado) | `docs/glosario.md` (definición canónica) · busca el término en los demás docs para dejarlo consistente | _solo Reviewer_ (consistencia) |
+| Cambio en las barreras o la gobernanza (linter, formato, hook, CI, tests, doc-gate) | `docs/flujo-de-trabajo.md` · `docs/benchmark-linter.md` si cambia la herramienta · `.github/workflows/tests.yml` si cambia el CI | **PO / Architect** |
+
+### Roles que validan
+
+La columna de arriba enruta *quién juzga* un cambio, igual que la de en medio enruta *qué docs* tocar. Dos roles son **base** y por eso no se repiten por fila:
+
+- **Reviewer** — revisa **todo** cambio de código (bugs, calidad). Aplica siempre que toques `fantasma/`.
+- **Escribano** — cierra los **docs dueños** de la fila. Es el paso final de todo cambio.
+
+Los especialistas se encienden solo cuando aplica su área:
+
+- **Charbel** (telemetría) — correctitud de datos. **Casi todo determinista** (tests, rangos físicos, ¿parsea el archivo?, ¿están los canales?); la IA solo juzga lo ambiguo (¿archivo malo o anomalía real?). **No** pongas la IA a "validar la telemetría" en bloque — ese asiento es de los tests.
+- **Mariana** (UX del HUD) — aceptación visual. **Casi todo juicio**: el snapshot detecta que el HUD *cambió*, pero "¿se ve bien?" es un **checkpoint que vuelve al PO**, no un auto-pase.
+- **Architect** — decisiones técnicas (ADR). Se co-produce con el PO; se dispara por necesidad, no "todos los ADR arriba".
+- **PO** (Armando) — alcance, prioridad, release. Inicia la tarea y es el único que aprieta lo irreversible.
+
+> **Estado de cableado (sé honesto al leer esto: no todo está automatizado).** Hoy disparan solos por hook el **Reviewer** y el **Escribano** (ver `.claude/hooks/`). **Mariana** y **Charbel** están **declarados aquí** —esta tabla es su router— pero aún **no** auto-cableados; se construyen cuando un cambio real los pida. **PO** y **Architect** viven en la capa de ideación (tú + el chat), no en un hook.
 
 ### Regla de consistencia de vocabulario
 
