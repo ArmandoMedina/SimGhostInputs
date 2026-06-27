@@ -4,6 +4,15 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/). Versionado
 
 ## [Unreleased]
 
+### Añadido
+- **Sistema de roles sobre el flujo de trabajo** — validadores que disparan solos (sobre el plan de Claude Code, sin API), enrutados por la matriz §8:
+  - **Doc-gate bloqueante** en `tools/verificar.ps1`: el doc-drift de la §8 (`core/` sin `formato-datos.md`, `viz/` sin `hud-reference.md`, barreras sin `flujo-de-trabajo.md`) ahora **bloquea el push** (exit 1), no solo avisa. lint/formato/tests siguen avisando.
+  - **Hooks de sesión** (`.claude/hooks/` + `.claude/settings.json`): `escribano-stop` sincroniza los docs dueños al detectar doc-drift; `review-stop` dispara `/code-review` cuando hay código sin revisar.
+  - **Skill `escribano`** (`.claude/skills/escribano/`): el rol que actualiza los docs dueños según la §8.
+  - **Matriz §8 extendida** en `CONTRIBUTING.md` con la columna de roles (Charbel telemetría, Mariana UX, Reviewer, Escribano, PO, Architect).
+  - `.claude/` ahora **viaja con el repo** (salvo `settings.local.json` y el marcador de review).
+- `docs/flujo-de-trabajo.md` documenta esta capa y se corrigió donde describía el doc-gate como solo-aviso.
+
 ## [0.10.0] — 2026-06-26
 
 ### Añadido

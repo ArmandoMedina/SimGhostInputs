@@ -81,8 +81,14 @@ que corren en varios momentos, con autoridad creciente.
   (`.git/hooks`) que **no se versiona**. Le dijimos que los busque en `.githooks` (que **sí**
   viaja en el repo). Se enciende una vez por clon: `git config core.hooksPath .githooks`.
 - **Exit code (código de salida)**: un número que un programa devuelve al terminar. **0 = todo
-  bien**; **≠ 0 = hubo problema**. El hook local sale **0 siempre** (solo avisa). Las barreras
-  del CI salen ≠ 0 si fallan (y entonces **bloquean**).
+  bien**; **≠ 0 = hubo problema**. El verificador local sale **0 cuando solo hay avisos**
+  (lint/formato/tests/CHANGELOG), pero sale **≠ 0 y BLOQUEA el push si detecta doc-drift de la
+  §8** (código sin su doc dueño; ver abajo). Las barreras del CI salen ≠ 0 si fallan (bloquean en la nube).
+- **Hook de sesión (Claude Code `Stop`)**: distinto del git hook. Es un script que Claude Code
+  corre **cuando la IA termina de responder**; puede **frenar el cierre e instruir a la IA** que
+  corra un paso (el Reviewer o el Escribano) antes de dar por terminado. Vive en `.claude/hooks/`
+  y se registra en `.claude/settings.json`. Es lo que hace que el auto-cableado **no dependa de
+  que alguien se acuerde** de invocar el rol.
 - **CI / Integración Continua / GitHub Actions / "pipeline" / "workflow"**: una **máquina en la
   nube de GitHub** que corre comprobaciones **solas en cada push y PR**. Si una falla, el push
   queda **en rojo**. Es **la barrera que nadie puede saltar** desde su computadora. Vive en
@@ -90,7 +96,9 @@ que corren en varios momentos, con autoridad creciente.
 - **Verificador (`tools/verificar.ps1`)**: nuestro script de PowerShell que corre **las cuatro
   barreras locales de un jalón** (lint, formato, tests, doc-gate) en modo aviso.
 - **Modo aviso vs bloquea**: *avisar* = imprime el hallazgo y deja seguir; *bloquear* = detiene
-  la operación. Regla del repo: **lo local avisa; el CI bloquea.**
+  la operación. Regla del repo: **lint/formato/tests avisan local y el CI los bloquea; el
+  doc-drift de la §8 (código sin su doc dueño) BLOQUEA ya en local** — excepción deliberada,
+  porque la desincronización doc↔código es el dolor #1 de este repo y no queremos que se suba.
 
 ### 2.4 Los artefactos del repo (qué es cada cosa)
 
@@ -116,12 +124,16 @@ que corren en varios momentos, con autoridad creciente.
 | **Linter + formatter** | Marca basura (imports/vars sin usar, nombres indefinidos) y fija el formato canónico | `ruff`, config en `pyproject.toml` (`[tool.ruff]`) |
 | **Suite de tests** | Verifica la lógica determinista del motor con datos sintéticos | `tests/` (pytest); enfoque en `docs/decisions/0003-testing.md` |
 | **Verificador local** | Corre lint + formato + tests + doc-gate de un jalón, en modo aviso | `tools/verificar.ps1` |
-| **Doc-gate** | Avisa si tocaste `fantasma/` sin actualizar `CHANGELOG.md`, con checklist (¿ADR? ¿ROADMAP?) | dentro de `tools/verificar.ps1` |
-| **Hook `pre-push`** | Corre el verificador **solo**, justo antes de `git push` (avisa, no bloquea) | `.githooks/pre-push` |
+| **Doc-gate (CHANGELOG)** | Avisa si tocaste `fantasma/` sin anotar el `CHANGELOG.md` (checklist ¿ADR? ¿ROADMAP?) | dentro de `tools/verificar.ps1` |
+| **Doc-gate (blast-radius §8)** | **BLOQUEA** el push si tocaste `core/` sin `formato-datos.md`, `viz/` sin `hud-reference.md`, o las **barreras** (hooks/gate/CI) sin `flujo-de-trabajo.md` | dentro de `tools/verificar.ps1` |
+| **Hook `pre-push`** | Corre el verificador **solo**, justo antes de `git push` (avisa lint/formato/tests; **bloquea** doc-drift §8) | `.githooks/pre-push` |
 | **CI (pipeline)** | Barrera dura en la nube: lint + formato + tests en cada push/PR | `.github/workflows/tests.yml` |
 | **Decisiones (ADR)** | El porqué de todo, con su camino descartado | `docs/decisions/` + su `README.md` |
 | **Benchmark del linter** | Por qué ruff y no las alternativas (licencias verificadas) | `docs/benchmark-linter.md` |
-| **Revisión IA (consultiva)** | Lee el diff y **aconseja** correcciones; nunca bloquea | skill `/code-review` (Claude Code) |
+| **Reviewer** | Lee el diff y **aconseja** (bugs, calidad); su contenido no bloquea. **Auto-disparado** por hook de sesión cuando hay código sin revisar | `/code-review` + `.claude/hooks/review-stop.ps1` |
+| **Escribano** | Sincroniza los docs dueños (§8) tras un cambio de código. **Auto-disparado** por hook de sesión al detectar doc-drift | `.claude/skills/escribano/` + `.claude/hooks/escribano-stop.ps1` |
+| **Hooks de sesión (Claude Code)** | Frenan el cierre de la IA y disparan Reviewer/Escribano **sin que nadie los invoque** | `.claude/hooks/` + `.claude/settings.json` |
+| **Router de roles (§8 extendida)** | Mapea cada área a su doc dueño **y** su rol validador (Charbel, Mariana, Reviewer…) | `CONTRIBUTING.md` §8 |
 
 ---
 
@@ -163,12 +175,17 @@ El verificador corre, en orden:
 1. **Lint** (`ruff check`): ¿hay imports/variables sin usar, nombres indefinidos? (regla `F`+`I`).
 2. **Formato** (`ruff format --check`): ¿el código está en el formato canónico?
 3. **Tests** (`pytest`): ¿la lógica del motor sigue verde?
-4. **Doc-gate**: ¿tocaste `fantasma/` sin anotar el `CHANGELOG`? Imprime un checklist
-   (¿fue decisión? → ADR · ¿cambió el plan? → ROADMAP). *Solo el CHANGELOG se auto-detecta;
-   ADR y ROADMAP dependen de juicio, por eso checklist y no validación: forzarlos generaría
-   entradas vacías.*
+4. **Doc-gate**, dos partes:
+   - **CHANGELOG** (avisa) — ¿tocaste `fantasma/` sin anotar el `CHANGELOG`? Checklist
+     (¿fue decisión? → ADR · ¿cambió el plan? → ROADMAP); ADR y ROADMAP dependen de juicio, por
+     eso checklist y no validación (forzarlos generaría entradas vacías).
+   - **Blast-radius §8** (**BLOQUEA**, sale ≠ 0) — tocaste `core/` sin `formato-datos.md`, `viz/`
+     sin `hud-reference.md`, o las **barreras** (hooks/gate/CI) sin `flujo-de-trabajo.md`. Salir a
+     propósito: `git push --no-verify`.
 
-> Es **aviso, no barrera**: el push continúa aunque haya avisos. La barrera dura viene en el Paso 3.
+> **Mixto:** los avisos (lint/formato/tests/CHANGELOG) dejan seguir; el **doc-drift de la §8
+> bloquea ya aquí** (push detenido hasta sincronizar el doc dueño). La barrera dura de
+> lint/formato/tests sigue en el Paso 3 (CI).
 
 ### Paso 3 — Push (el CI **bloquea**)
 
@@ -190,6 +207,29 @@ push queda **en rojo**. Es el respaldo **que nadie puede saltar** desde su máqu
 
 Mismas comprobaciones, autoridad creciente. **Avisa temprano, bloquea al final.**
 
+### La capa en sesión — los roles disparan solos (sin que te acuerdes)
+
+Las barreras de arriba (git hook + CI) corren en `git push`. Antes de eso, **dentro de la sesión de
+Claude Code**, hay una capa que evita que el trabajo *llegue* sin revisar o con docs desfasados — sin
+depender de que invoques nada. La mueven los **hooks de sesión** (`Stop`) en `.claude/`:
+
+- **review-stop** → si hay código nuevo en `fantasma/` **sin revisar**, frena el cierre y dispara
+  `/code-review`. Marca el diff revisado (`.claude/.review-marker`) para no re-revisar lo mismo.
+- **escribano-stop** → si tocaste código y su **doc dueño quedó desfasado** (§8), frena el cierre y
+  dispara el **Escribano**, que lo actualiza. Cuando ya está sincronizado, deja cerrar.
+
+Ambos son **auto-terminantes**: bloquean solo mientras falte el paso. Es poka-yoke: *el sistema no te
+deja olvidar; y si algo se cuela, el bloqueo del push (doc-gate §8) + git (todo reversible) te dejan corregir.*
+
+**Los roles.** Cada cambio enciende a quien valida, según el **router de la §8 extendida**
+(`CONTRIBUTING.md`): **Reviewer** (todo código) y **Escribano** (docs) van siempre; los especialistas
+por área — **Charbel** (telemetría: `core/`/`importers/`, casi todo tests) y **Mariana** (UX del HUD:
+`viz/`, casi todo juicio, checkpoint que vuelve a ti). El **PO** (tú) y el **Architect** (ADRs) viven en
+la ideación, no en un hook.
+
+> **Estado honesto:** hoy disparan solos **Reviewer** y **Escribano**. **Charbel** y **Mariana** están
+> **declarados** en el router §8 pero **aún no auto-cableados** — se construyen cuando un cambio real los pida.
+
 ### La frontera de versión (de vez en cuando)
 
 Muchos commits se acumulan; al cerrar un hito, la skill **`release-helper`** corta una **versión**
@@ -205,7 +245,8 @@ ver **qué cubre cada una y qué NO**, porque no todo se puede atar por máquina
 | **Basura de código** | ¿imports/vars sin usar, nombres indefinidos? | `ruff check` (`F`+`I`) | avisa local · **bloquea en CI** |
 | **Formato** | ¿el código está en el estilo canónico? | `ruff format --check` | avisa local · **bloquea en CI** |
 | **Comportamiento del motor** | ¿la lógica determinista sigue dando los números correctos? | `pytest` | avisa local · **bloquea en CI** |
-| **Documentación** | ¿el cambio quedó anotado donde debe? | doc-gate (CHANGELOG) + checklist | **avisa** (ADR/ROADMAP son juicio) |
+| **Documentación (CHANGELOG)** | ¿el cambio quedó anotado? | doc-gate CHANGELOG + checklist | **avisa** (ADR/ROADMAP son juicio) |
+| **Doc-drift §8 (doc dueño)** | ¿tocaste `core/`/`viz/`/barreras sin su doc dueño? | doc-gate blast-radius | **BLOQUEA local** · el Escribano lo arregla |
 
 > **Dónde acaba la máquina — el límite semántico.** Ningún chequeo determinista garantiza que el
 > **HUD se vea bien**, que el overlay esté **visualmente correcto**, o que la sincronía de video
@@ -305,8 +346,12 @@ git push --no-verify
 
 ```
 C:\Repositorio personal\SimGhostInputs\   <- raíz del repo
-├─ .githooks/pre-push                      <- el hook (avisa al hacer push)
+├─ .githooks/pre-push                      <- el git hook (avisa lint/formato/tests; BLOQUEA doc-drift §8)
 ├─ .github/workflows/tests.yml             <- el CI (barrera en la nube: lint + pytest)
+├─ .claude/                                <- roles y auto-cableado en sesión (viaja con el repo)
+│  ├─ settings.json                        <- registra los hooks de sesión (Stop)
+│  ├─ hooks/                               <- review-stop, escribano-stop (frenan el cierre, disparan el rol)
+│  └─ skills/escribano/                    <- el rol Escribano (sincroniza docs §8)
 ├─ .gitignore                              <- qué NO se versiona
 ├─ pyproject.toml                          <- versión, deps, extras y config de ruff
 ├─ CHANGELOG.md                            <- bitácora de cambios
@@ -338,10 +383,13 @@ C:\Repositorio personal\SimGhostInputs\   <- raíz del repo
 
 ## 11. Resumen en una frase
 
-> **Exploras** (suelto, nada corre) → el **cambio incluye su test** (y un ADR si fue decisión;
-> `/code-review` te aconseja) → al hacer **push**, el **hook avisa** con `verificar.ps1` (lint +
-> formato + tests + doc-gate) → y el **CI bloquea** si lint, formato o tests fallan → y cada tanto
+> **Exploras** (suelto, nada corre) → el **cambio incluye su test** (y un ADR si fue decisión) →
+> **en sesión**, los hooks disparan solos al **Reviewer** (`/code-review`) y al **Escribano**
+> (sincroniza los docs §8) → al hacer **push**, `verificar.ps1` **avisa** lint/formato/tests y
+> **BLOQUEA si hay doc-drift §8** → el **CI bloquea** lint/formato/tests en la nube → y cada tanto
 > **`release-helper`** corta una versión.
 
-Linter + formatter + tests = barreras deterministas (avisan local, **bloquean en CI**). Doc-gate y
-`/code-review` = juicio (**avisan/aconsejan**, no bloquean). **Determinismo bloquea; juicio aconseja.**
+Linter + formatter + tests = deterministas (avisan local, **bloquean en CI**). El **doc-drift §8**
+(código sin su doc dueño) es determinista y **bloquea ya en local**. El **contenido** del Reviewer y
+del Escribano es juicio (aconseja / propone, reversible), pero **su disparo está automatizado** (hooks
+de sesión). **Determinismo bloquea; el juicio se auto-dispara, pero nunca es portero de lo irreversible.**
