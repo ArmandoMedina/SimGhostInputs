@@ -8,9 +8,9 @@
 
 ---
 
-## Estado actual — v0.10.0
+## Estado actual — v0.11.0
 
-Último release: **v0.10.0** (2026-06-26) — barreras de calidad: linter/formatter `ruff` + job de CI, `tools/verificar.ps1` (modo aviso), hook `pre-push`, guía `docs/flujo-de-trabajo.md` y el ADR 0010 (UI = Streamlit en v1.0). El pipeline offline completo (importar → comparar → overlay → componer) funciona; la UI es Streamlit ([ADR 0010](docs/decisions/0010-framework-ui-streamlit.md)).
+Último release: **v0.11.0** (2026-06-27) — sistema de roles sobre el flujo de trabajo: doc-gate bloqueante por blast-radius §8, hooks de sesión que disparan solos (`review-stop`, `escribano-stop` y `mariana-stop`), skill Escribano, y orquestación + model-routing en `docs/flujo-de-trabajo.md`. Mariana (QA visual) quedó cableada en [ADR 0011](docs/decisions/0011-cablear-mariana-no-charbel.md); Charbel se mantiene en los tests. La base previa (v0.10.0): barreras `ruff` + CI + `tools/verificar.ps1` + hook `pre-push`. El pipeline offline completo (importar → comparar → overlay → componer) funciona; la UI es Streamlit ([ADR 0010](docs/decisions/0010-framework-ui-streamlit.md)).
 
 La meta inmediata es **la v1.0**: no es construir features nuevas, sino **estabilizar, testear, documentar y validar en AMS2 el pipeline que ya existe**. Las versiones publicadas están en el CHANGELOG; el siguiente hito es la 1.0.
 

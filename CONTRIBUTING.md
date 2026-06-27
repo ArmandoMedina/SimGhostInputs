@@ -257,7 +257,7 @@ Los especialistas se encienden solo cuando aplica su área:
 - **Architect** — decisiones técnicas (ADR). Se co-produce con el PO; se dispara por necesidad, no "todos los ADR arriba".
 - **PO** (Armando) — alcance, prioridad, release. Inicia la tarea y es el único que aprieta lo irreversible.
 
-> **Estado de cableado (sé honesto al leer esto: no todo está automatizado).** Hoy disparan solos por hook el **Reviewer** y el **Escribano** (ver `.claude/hooks/`). **Mariana** y **Charbel** están **declarados aquí** —esta tabla es su router— pero aún **no** auto-cableados; se construyen cuando un cambio real los pida. **PO** y **Architect** viven en la capa de ideación (tú + el chat), no en un hook.
+> **Estado de cableado (sé honesto al leer esto: no todo está automatizado).** Hoy disparan solos por hook el **Reviewer**, el **Escribano** y **Mariana** (ver `.claude/hooks/`; Mariana se cableó en [ADR 0011](docs/decisions/0011-cablear-mariana-no-charbel.md) cuando un bug visual lo pidió). **Charbel** sigue **declarado aquí** —esta tabla es su router— pero **sin hook a propósito**: su validación de telemetría ya vive en los tests, y cablearlo sería sobre-orquestar (ADR 0011). **PO** y **Architect** viven en la capa de ideación (tú + el chat), no en un hook.
 
 ### Regla de consistencia de vocabulario
 

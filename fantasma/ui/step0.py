@@ -88,27 +88,25 @@ def render():
     for _ci, (_fk, _fv) in enumerate(_FLOWS.items()):
         with _cols[_ci]:
             _selected = st.session_state["flow_key"] == _fk
-            _border = "2px solid #00c853" if _selected else "1px solid #3d4450"
-            st.markdown(
-                "<div style='border:%s; border-radius:10px; padding:1rem; min-height:260px'>"
-                % _border,
-                unsafe_allow_html=True,
-            )
-            st.markdown("### %s" % _fk)
-            st.caption(_fv["desc"])
-            st.markdown("**Necesitas:**")
-            for _r in _fv["requires"]:
-                st.markdown("- %s" % _r)
-            st.markdown("**Obtienes:**")
-            for _d in _fv["deliverables"]:
-                st.markdown("- %s" % _d)
-            st.markdown("</div>", unsafe_allow_html=True)
-            if not _selected:
-                if st.button("Elegir este", key="flow_%d" % _ci, use_container_width=True):
-                    st.session_state["flow_key"] = _fk
-                    st.rerun()
-            else:
+            # Tarjeta con el contenedor REAL de Streamlit: st.container(border)
+            # envuelve los widgets de verdad. Un <div> por separado vía markdown
+            # NO los contiene (abre/cierra solo en el DOM y deja una caja vacía).
+            # height fija las tres a la misma altura para que el botón de abajo
+            # —fuera del contenedor— quede a la misma línea base. Ver ADR 0011.
+            with st.container(border=True, height=620):
+                st.markdown("### %s" % _fk)
+                st.caption(_fv["desc"])
+                st.markdown("**Necesitas:**")
+                for _r in _fv["requires"]:
+                    st.markdown("- %s" % _r)
+                st.markdown("**Obtienes:**")
+                for _d in _fv["deliverables"]:
+                    st.markdown("- %s" % _d)
+            if _selected:
                 st.success("✓ Seleccionado")
+            elif st.button("Elegir este", key="flow_%d" % _ci, use_container_width=True):
+                st.session_state["flow_key"] = _fk
+                st.rerun()
 
     st.divider()
     if st.button("Empezar — Ir a Importar →", type="primary"):

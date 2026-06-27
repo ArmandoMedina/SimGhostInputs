@@ -20,3 +20,4 @@ bifurcación equivocada.
 | [0008](0008-sync-multivuelta-candidatos.md) | Auto-sync multi-vuelta: candidatos + selección obligatoria del usuario (enmienda 0001) | Aceptada | 2026-06-21 |
 | [0009](0009-unidad-desgaste-acumulado.md) | Unidad del desgaste acumulado: carga de deslizamiento (integral), no el promedio | Aceptada (implementada) | 2026-06-22 |
 | [0010](0010-framework-ui-streamlit.md) | Framework de UI: Streamlit en v1.0; front de escritorio custom diferido a v2.0 | Aceptada | 2026-06-26 |
+| [0011](0011-cablear-mariana-no-charbel.md) | Cablear el rol Mariana (UX visual); Charbel se queda en los tests | Aceptada | 2026-06-27 |

@@ -13,6 +13,7 @@ driver/
 # .claude/ viaja con el repo (skills, hooks, settings.json); solo lo local se ignora:
 .claude/settings.local.json
 .claude/.review-marker
+.claude/.mariana-marker
 CLAUDE.md
 docs/demo/_*
 .obsidian/

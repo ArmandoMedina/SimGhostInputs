@@ -4,7 +4,15 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/). Versionado
 
 ## [Unreleased]
 
+### Añadido
+- **Rol Mariana auto-cableado** (`mariana-stop`): al tocar `fantasma/viz/` o `fantasma/ui/`, el hook de sesión frena el cierre y manda hacer el QA visual (checkpoint que vuelve al PO). `escribano-stop` se extiende para vigilar `fantasma/ui/` → `docs/guia-usuario.md`. Charbel se mantiene declarado en la §8 sin hook (su asiento son los tests). Ver ADR 0011.
+
+### Corregido
+- **UI Paso 0:** los botones «Elegir este / Seleccionado» de las tarjetas de flujo quedaban desalineados entre columnas (cada uno al final de su contenido). Ahora se anclan a una línea base común.
+
 ### Documentación
+- **ADR 0011 — Cablear el rol Mariana (UX visual); Charbel se queda en los tests** (Aceptada). Registra por qué Mariana se cabla ahora (el bug visual fue el "cambio real que lo pide") y por qué Charbel no (redundante con los tests; cablearlo sería sobre-orquestar).
+- **`flujo-de-trabajo.md` (orquestación):** regla dura nueva — la lectura voluminosa (transcripts, logs, dumps de búsqueda, archivos gordos) **siempre** se delega a un subagente que devuelve solo el hallazgo; el recurso escaso del orquestador es su propio contexto (Context Rot), aunque solo se quede con la conclusión. Añadida la lección del segundo caso real.
 - Pulido de descubribilidad: `README.md` agrega puntero explícito a `docs/flujo-de-trabajo.md` como guía del sistema de trabajo (barreras, doc-gate, matriz de roles §8 y capa asistida por IA en `.claude/`).
 
 ## [0.11.0] — 2026-06-27

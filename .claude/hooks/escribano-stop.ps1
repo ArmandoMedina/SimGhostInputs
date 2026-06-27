@@ -18,11 +18,14 @@ $tocoCore    = $changed | Where-Object { $_ -like 'fantasma/core/*' }
 $tocoFormato = $changed | Where-Object { $_ -eq 'docs/formato-datos.md' }
 $tocoViz     = $changed | Where-Object { $_ -like 'fantasma/viz/*' }
 $tocoHud     = $changed | Where-Object { $_ -eq 'docs/hud-reference.md' }
+$tocoUi      = $changed | Where-Object { $_ -like 'fantasma/ui/*' }
+$tocoGuia    = $changed | Where-Object { $_ -eq 'docs/guia-usuario.md' }
 $tocoBarr    = $changed | Where-Object { $_ -like '.githooks/*' -or $_ -like '.claude/hooks/*' -or $_ -eq '.claude/settings.json' -or $_ -eq 'tools/verificar.ps1' -or $_ -like '.github/workflows/*' }
 $tocoFlujo   = $changed | Where-Object { $_ -eq 'docs/flujo-de-trabajo.md' }
 $faltas = @()
 if ($tocoCore -and -not $tocoFormato) { $faltas += 'fantasma/core/ -> docs/formato-datos.md' }
 if ($tocoViz  -and -not $tocoHud)     { $faltas += 'fantasma/viz/ -> docs/hud-reference.md' }
+if ($tocoUi   -and -not $tocoGuia)    { $faltas += 'fantasma/ui/ -> docs/guia-usuario.md' }
 if ($tocoBarr -and -not $tocoFlujo)   { $faltas += 'barreras (hooks/gate/CI) -> docs/flujo-de-trabajo.md' }
 
 # 3. Sin drift: dejar cerrar. Con drift: bloquear y mandar al escribano.

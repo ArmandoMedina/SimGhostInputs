@@ -132,7 +132,8 @@ que corren en varios momentos, con autoridad creciente.
 | **Benchmark del linter** | Por qué ruff y no las alternativas (licencias verificadas) | `docs/benchmark-linter.md` |
 | **Reviewer** | Lee el diff y **aconseja** (bugs, calidad); su contenido no bloquea. **Auto-disparado** por hook de sesión cuando hay código sin revisar | `/code-review` + `.claude/hooks/review-stop.ps1` |
 | **Escribano** | Sincroniza los docs dueños (§8) tras un cambio de código. **Auto-disparado** por hook de sesión al detectar doc-drift | `.claude/skills/escribano/` + `.claude/hooks/escribano-stop.ps1` |
-| **Hooks de sesión (Claude Code)** | Frenan el cierre de la IA y disparan Reviewer/Escribano **sin que nadie los invoque** | `.claude/hooks/` + `.claude/settings.json` |
+| **Mariana** | Checkpoint de QA visual: al tocar `viz/` (HUD) o `ui/` (Streamlit) frena el cierre y manda revisar la UI a ojo. Vuelve al PO; **no juzga sola** lo visual. **Auto-disparado** por hook de sesión | `.claude/hooks/mariana-stop.ps1` ([ADR 0011](decisions/0011-cablear-mariana-no-charbel.md)) |
+| **Hooks de sesión (Claude Code)** | Frenan el cierre de la IA y disparan Reviewer/Escribano/Mariana **sin que nadie los invoque** | `.claude/hooks/` + `.claude/settings.json` |
 | **Router de roles (§8 extendida)** | Mapea cada área a su doc dueño **y** su rol validador (Charbel, Mariana, Reviewer…) | `CONTRIBUTING.md` §8 |
 
 ---
@@ -216,7 +217,12 @@ depender de que invoques nada. La mueven los **hooks de sesión** (`Stop`) en `.
 - **review-stop** → si hay código nuevo en `fantasma/` **sin revisar**, frena el cierre y dispara
   `/code-review`. Marca el diff revisado (`.claude/.review-marker`) para no re-revisar lo mismo.
 - **escribano-stop** → si tocaste código y su **doc dueño quedó desfasado** (§8), frena el cierre y
-  dispara el **Escribano**, que lo actualiza. Cuando ya está sincronizado, deja cerrar.
+  dispara el **Escribano**, que lo actualiza. Cuando ya está sincronizado, deja cerrar. Vigila
+  `core/`→`formato-datos`, `viz/`→`hud-reference`, `ui/`→`guia-usuario` y barreras→`flujo-de-trabajo`.
+- **mariana-stop** → si tocaste `viz/` (HUD) o `ui/` (Streamlit), frena el cierre y manda hacer el
+  **QA visual** (abrir `fantasma ui` / mirar el HUD) antes de cerrar. Es un checkpoint que vuelve al PO:
+  **no detecta solo** si algo se ve mal (límite semántico), solo obliga a mirarlo. Marca el diff visual
+  revisado (`.claude/.mariana-marker`) para no re-pedir lo mismo. Ver [ADR 0011](decisions/0011-cablear-mariana-no-charbel.md).
 
 Ambos son **auto-terminantes**: bloquean solo mientras falte el paso. Es poka-yoke: *el sistema no te
 deja olvidar; y si algo se cuela, el bloqueo del push (doc-gate §8) + git (todo reversible) te dejan corregir.*
@@ -227,8 +233,9 @@ por área — **Charbel** (telemetría: `core/`/`importers/`, casi todo tests) y
 `viz/`, casi todo juicio, checkpoint que vuelve a ti). El **PO** (tú) y el **Architect** (ADRs) viven en
 la ideación, no en un hook.
 
-> **Estado honesto:** hoy disparan solos **Reviewer** y **Escribano**. **Charbel** y **Mariana** están
-> **declarados** en el router §8 pero **aún no auto-cableados** — se construyen cuando un cambio real los pida.
+> **Estado honesto:** hoy disparan solos **Reviewer**, **Escribano** y **Mariana** (cableada en [ADR 0011](decisions/0011-cablear-mariana-no-charbel.md)
+> cuando un bug visual lo pidió). **Charbel** sigue **declarado** en el router §8 **sin hook a propósito**: su asiento son
+> los tests deterministas (`pytest`), no la IA — cablearlo sería sobre-orquestar (mismo ADR 0011).
 
 ### Orquestación: quién dispara a quién, y con qué modelo
 
@@ -245,6 +252,15 @@ tu cabeza ni en un chat).
   (1) leería muchos archivos o haría una búsqueda grande — **aislar el ruido** para no inflar el hilo
   principal (esto es lo que pelea el **Context Rot**); (2) es autocontenida (entrada chica → salida
   chica); o (3) querés correr **varias en paralelo**.
+
+> **Regla dura — la lectura voluminosa SIEMPRE va a un subagente.** El recurso escaso del orquestador
+> es **su propio contexto**, no su capacidad. Leer en el hilo principal transcripts, logs largos, dumps
+> de búsqueda o archivos gordos **lo envenena aunque solo te quedes con la conclusión** — el volumen ya
+> entró y desplaza lo que importa (Context Rot). Si vas a *buscar-y-condensar* (¿qué se decidió en tal
+> chat?, ¿dónde está X en estos 200 KB?), **delegá a un subagente** (`Explore`/`general-purpose`, modelo
+> `haiku`/`sonnet`) que se trague el volumen y te devuelva **solo el hallazgo**. El orquestador decide y
+> teje; **no es el que lee el bulto.** Duda razonable: si el material a leer no cabe holgado en contexto
+> o no lo vas a citar entero, no lo leas tú — delegá.
 
 **Calcular el esfuerzo y elegir el modelo** (model-routing, "no uses Ferrari para ir por tortillas").
 El subagente acepta `model`: `haiku` · `sonnet` · `opus`:
@@ -278,6 +294,12 @@ PO (tú, humano)  ──hablas──►  Sesión principal de Claude Code (ORQUE
 sesión, sin subagente**, porque era una edición acotada de reglas (la política: chico y mecánico → en
 sesión). Eso es la calibración funcionando: **no todo merece un subagente.** Sobre-orquestar es el
 error caro; se delega solo cuando la tarea es pesada, aislable o paralela.
+
+**Lección del segundo caso real (cablear Mariana, ADR 0011):** el orquestador acertó en hacer el ADR y
+la implementación en sesión (acotado, dependía del hilo), pero **falló al leer dos transcripts de
+~250 KB directo en su contexto** para reconstruir qué se había decidido — el caso de libro de la *regla
+dura* de arriba. Debió delegar esa búsqueda-y-condensa a un subagente y quedarse solo con el hallazgo.
+Corregido aquí para que la próxima sesión delegue la lectura voluminosa **por defecto**, no como opción.
 
 ### La frontera de versión (de vez en cuando)
 
@@ -399,7 +421,7 @@ C:\Repositorio personal\SimGhostInputs\   <- raíz del repo
 ├─ .github/workflows/tests.yml             <- el CI (barrera en la nube: lint + pytest)
 ├─ .claude/                                <- roles y auto-cableado en sesión (viaja con el repo)
 │  ├─ settings.json                        <- registra los hooks de sesión (Stop)
-│  ├─ hooks/                               <- review-stop, escribano-stop (frenan el cierre, disparan el rol)
+│  ├─ hooks/                               <- review-stop, escribano-stop, mariana-stop (frenan el cierre, disparan el rol)
 │  └─ skills/escribano/                    <- el rol Escribano (sincroniza docs §8)
 ├─ .gitignore                              <- qué NO se versiona
 ├─ pyproject.toml                          <- versión, deps, extras y config de ruff
