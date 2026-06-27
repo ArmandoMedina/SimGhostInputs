@@ -10,7 +10,9 @@ reference/
 driver/
 *.ld
 *.ldx
-.claude/
+# .claude/ viaja con el repo (skills, hooks, settings.json); solo lo local se ignora:
+.claude/settings.local.json
+.claude/.review-marker
 CLAUDE.md
 docs/demo/_*
 .obsidian/
