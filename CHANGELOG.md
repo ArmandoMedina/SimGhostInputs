@@ -10,6 +10,9 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/). Versionado
 ### Corregido
 - **UI Paso 0:** los botones «Elegir este / Seleccionado» de las tarjetas de flujo quedaban desalineados entre columnas (cada uno al final de su contenido). Ahora se anclan a una línea base común.
 
+### Pruebas
+- **Test sistemático de degradación por canales ausentes** (`tests/core/test_degradacion_canales.py`): parametrizado sobre las 32 combinaciones de {glat, glong, gear, abs, tcs} presentes o ausentes; verifica que `compare()` no crashea, calcula laptimes y traza, y que cada campo derivado de un canal aparece si y solo si el canal está. Cierra el gap «Media» del ROADMAP. Suite total: 106 tests en verde.
+
 ### Documentación
 - **ADR 0011 — Cablear el rol Mariana (UX visual); Charbel se queda en los tests** (Aceptada). Registra por qué Mariana se cabla ahora (el bug visual fue el "cambio real que lo pide") y por qué Charbel no (redundante con los tests; cablearlo sería sobre-orquestar).
 - **`flujo-de-trabajo.md` (orquestación):** regla dura nueva — la lectura voluminosa (transcripts, logs, dumps de búsqueda, archivos gordos) **siempre** se delega a un subagente que devuelve solo el hallazgo; el recurso escaso del orquestador es su propio contexto (Context Rot), aunque solo se quede con la conclusión. Añadida la lección del segundo caso real.

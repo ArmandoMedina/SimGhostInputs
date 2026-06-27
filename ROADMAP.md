@@ -168,7 +168,7 @@ _Contexto: cosas en el código sin cobertura de QA formal ni documentación. Nin
 - [ ] **Confirmar con un video de 60 fps real que el overlay no desincroniza** (ver «próxima sesión»); si aparece desync, capturar repro. _Contexto:_ el código no debería desincronizar (frames en `t = n/fps`); investigado 2026-06-17, sin repro. La guía ya recomienda `--fps 60`. _Prioridad: Baja._
 - [ ] **Definir y probar el comportamiento con vueltas muy cortas** (p. ej. salida de pista, vuelta de 500 m). _Prioridad: Media._
 - [ ] **Probar circuitos cuya vuelta cruza meta más de una vez** (en 8 o con chicane en meta) — podrían romper la detección de vueltas. _Prioridad: Media._
-- [ ] **Agregar test sistemático de degradación por canales ausentes** (combinaciones de glat/glong/gear/abs/tcs). _Contexto:_ parcialmente cubierto por la suite. _Prioridad: Media._
+- [x] **Agregar test sistemático de degradación por canales ausentes** (combinaciones de glat/glong/gear/abs/tcs) — hecho: `tests/core/test_degradacion_canales.py` cubre las 32 combinaciones.
 - [ ] **Avisar cuando todos los candidatos de auto-sync tienen calidad baja** ("¿seguro que el video corresponde?"). _Contexto:_ un video sin motor ya se rechaza (`z < 3.0σ`), pero uno de otra sesión con motor puede colar candidatos espurios con el multi-vuelta del [ADR 0008](docs/decisions/0008-sync-multivuelta-candidatos.md). _Prioridad: Baja._
 - [ ] **Avisar al renderizar si el piloto va más rápido que la referencia** (atajar el `--reference`/`--driver` invertido, que pinta el GAP verde cuando debería ser rojo). _Prioridad: Baja._
 - [ ] **Diferenciar colores ABS/TC de referencia vs piloto** (tonos distintos, opción B del [ADR 0006](docs/decisions/0006-grosor-uniforme-lineas-hud.md)). _Contexto:_ hoy el tono codifica «qué» y solo el brillo «quién», lo que confunde. _Prioridad: Baja._
@@ -179,6 +179,6 @@ _Contexto: cosas en el código sin cobertura de QA formal ni documentación. Nin
 
 _Contexto: lo conocido a saldar cuando toque. Los pendientes puntuales:_
 
-- [ ] **Ampliar la cobertura de tests** conforme crezca el código. _Contexto:_ la suite (48+ tests, Tier 1–4 + smoke de UI) y el CI ya cumplen el requisito de v1.0. Estrategia en [ADR 0003](docs/decisions/0003-testing.md).
+- [ ] **Ampliar la cobertura de tests** conforme crezca el código. _Contexto:_ la suite (106 tests, Tier 1–4 + smoke de UI) y el CI ya cumplen el requisito de v1.0. Estrategia en [ADR 0003](docs/decisions/0003-testing.md).
 - [ ] **Manejar encodings distintos a `utf-8-sig` en `motec_csv.py`** (CSV de i2 en Windows con setups no-inglés pueden traer otro encoding).
 - [ ] **Activar branch protection en `master` al sumar al primer colaborador** (requiere PR + checks `lint` y `pytest` en verde). _Contexto:_ hoy el CI avisa pero no bloquea el merge (single-author no lo necesita). Ya documentado en `CONTRIBUTING.md` §6 y `docs/flujo-de-trabajo.md`.
