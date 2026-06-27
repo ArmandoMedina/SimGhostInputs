@@ -261,6 +261,11 @@ tu cabeza ni en un chat).
 > `haiku`/`sonnet`) que se trague el volumen y te devuelva **solo el hallazgo**. El orquestador decide y
 > teje; **no es el que lee el bulto.** Duda razonable: si el material a leer no cabe holgado en contexto
 > o no lo vas a citar entero, no lo leas tú — delegá.
+>
+> **Lo mismo aplica a la ejecución mecánica: `git` (commit y push), builds, dumps.** No es solo lectura:
+> el orquestador **delega la mecánica** y se queda con la decisión y la condensación. Si el commit fue
+> por subagente, el push va por el mismo camino — partirlo (commit delegado, push en sesión) es
+> incongruente.
 
 **Calcular el esfuerzo y elegir el modelo** (model-routing, "no uses Ferrari para ir por tortillas").
 El subagente acepta `model`: `haiku` · `sonnet` · `opus`:
@@ -300,6 +305,11 @@ la implementación en sesión (acotado, dependía del hilo), pero **falló al le
 ~250 KB directo en su contexto** para reconstruir qué se había decidido — el caso de libro de la *regla
 dura* de arriba. Debió delegar esa búsqueda-y-condensa a un subagente y quedarse solo con el hallazgo.
 Corregido aquí para que la próxima sesión delegue la lectura voluminosa **por defecto**, no como opción.
+
+**Lección del tercer caso real (subir los tests de degradación):** el orquestador delegó el commit a un
+subagente pero luego corrió `git push` **en sesión** — incongruente. La delegación no es solo de lectura;
+cubre la **ejecución mecánica de git**. Corregido en la *regla dura* de arriba: si el commit va por
+agente, el push también.
 
 ### La frontera de versión (de vez en cuando)
 
