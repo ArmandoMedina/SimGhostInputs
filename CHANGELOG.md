@@ -4,6 +4,9 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/). Versionado
 
 ## [Unreleased]
 
+### Documentación
+- Pulido de descubribilidad: `README.md` agrega puntero explícito a `docs/flujo-de-trabajo.md` como guía del sistema de trabajo (barreras, doc-gate, matriz de roles §8 y capa asistida por IA en `.claude/`).
+
 ## [0.11.0] — 2026-06-27
 
 ### Añadido

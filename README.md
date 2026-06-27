@@ -147,6 +147,8 @@ Salida de `overlay`:
 
 Documentación completa en [`docs/`](docs/): [guía de usuario](docs/guia-usuario.md) · [referencia del HUD](docs/hud-reference.md) · [formato de datos](docs/formato-datos.md) · [glosario](docs/glosario.md) · [flujo de trabajo](docs/flujo-de-trabajo.md) · [cómo contribuir](CONTRIBUTING.md).
 
+> **¿Cómo se trabaja en este repo?** [`docs/flujo-de-trabajo.md`](docs/flujo-de-trabajo.md) es la guía del sistema de trabajo: barreras (lint, formato, tests), doc-gate (qué avisa vs qué bloquea), la matriz de roles del §8 de `CONTRIBUTING.md`, y la capa asistida por IA en `.claude/` (hooks de sesión, skill Escribano, orquestación con subagentes).
+
 > **Demo:** descarga [`sample_60s_nordschleife.mp4`](https://github.com/ArmandoMedina/SimGhostInputs/releases/latest/download/sample_60s_nordschleife.mp4) para ver el HUD en acción sobre grabación real (AMS2 · BMW M4 GT3 · Nordschleife).
 
 ## Nombres de curvas (opcional)
