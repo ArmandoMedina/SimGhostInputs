@@ -4,6 +4,8 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/). Versionado
 
 ## [Unreleased]
 
+## [0.11.0] — 2026-06-27
+
 ### Añadido
 - **Sistema de roles sobre el flujo de trabajo** — validadores que disparan solos (sobre el plan de Claude Code, sin API), enrutados por la matriz §8:
   - **Doc-gate bloqueante** en `tools/verificar.ps1`: el doc-drift de la §8 (`core/` sin `formato-datos.md`, `viz/` sin `hud-reference.md`, barreras sin `flujo-de-trabajo.md`) ahora **bloquea el push** (exit 1), no solo avisa. lint/formato/tests siguen avisando.
