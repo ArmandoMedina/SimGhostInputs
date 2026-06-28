@@ -34,6 +34,10 @@ El criterio para llamarla v1.0 es que el pipeline offline esté **completo, docu
 - [ ] **API interna (`core/`) estabilizada** — sin cambios breaking entre parches (es revisión, no código nuevo)
 - [ ] 👤 **Probado en AMS2 en ≥3 circuitos distintos** — **1/3: Nordschleife ✓** (M4 GT3, 9 vueltas, 2026-06-21: pipeline completo sin errores). Faltan **Interlagos y México**, elegidos para cubrir clases de auto distintas al GT3 (fórmula y prototipo); falta conseguir esas 2 telemetrías
 - [ ] 👤 **`setup.ps1` probado en instalación limpia de Windows 11** — en curso (Armando lo prueba en otra PC). La detección de dependencias y el encoding ASCII ya se corrigieron (v0.7.1 / v0.7.2)
+  - **Plan (2026-06-28):** dar acceso por **SSH** a una PC de Armando y, con apoyo de la IA, levantar **máquinas virtuales limpias de Windows y Linux** para correr pruebas de instalación reales y repetibles (Windows valida `setup.ps1` desde cero; Linux para igualar el entorno del CI y allanar un futuro soporte).
+    - **Fase 0 — SSH a la PC potente: ✅ montado (2026-06-28).** Host `SERVER` (LAN), acceso por llave dedicada sin password desde la laptop de trabajo (alias `pcpotente` en `~/.ssh/config`). Habilita correr cargas pesadas y, en la Fase 1, las VMs en ese hardware.
+    - **Fase 1 — VM limpia de Windows para `setup.ps1` (Hyper-V):** pendiente.
+    - **Fase 2 — mover el QA pesado a ese hardware:** pendiente.
 - [x] **Cortar release del `[Unreleased]`** acumulado — hecho en v0.10.0
 
 ### Notas vivas (no bloquean, a refinar)
