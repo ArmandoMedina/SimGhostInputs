@@ -11,6 +11,7 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/). Versionado
 - **UI Paso 0:** los botones «Elegir este / Seleccionado» de las tarjetas de flujo quedaban desalineados entre columnas (cada uno al final de su contenido). Ahora se anclan a una línea base común.
 
 ### Pruebas
+- **Smoke visual del Paso 0 con Playwright** (`tests/ui/visual/test_step0_visual.py`): captura un screenshot del Paso 0 de la UI Streamlit via Chromium headless y lo compara contra un baseline con tolerancia generosa (15 % de pixels pueden diferir > 12 %). Detecta regresiones de layout («el layout se movió», como el bug de botones desalineados del ADR 0011) sin fallar por antialiasing entre máquinas. Skipea limpiamente si playwright o Chromium no están instalados. Baseline provisional en `tests/ui/visual/baselines/step0.png`; la verdad canónica es el job `visual-smoke` del CI (ubuntu-latest, entorno consistente — ADR 0012). Nuevo job `visual-smoke` en `.github/workflows/tests.yml`; el job `pytest` excluye `tests/ui/visual/` para separar responsabilidades.
 - **Test sistemático de degradación por canales ausentes** (`tests/core/test_degradacion_canales.py`): parametrizado sobre las 32 combinaciones de {glat, glong, gear, abs, tcs} presentes o ausentes; verifica que `compare()` no crashea, calcula laptimes y traza, y que cada campo derivado de un canal aparece si y solo si el canal está. Cierra el gap «Media» del ROADMAP. Suite total: 106 tests en verde.
 
 ### Documentación

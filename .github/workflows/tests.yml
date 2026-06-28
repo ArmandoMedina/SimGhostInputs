@@ -49,4 +49,29 @@ jobs:
         run: pip install -e ".[test,ui,sync]"
 
       - name: Run pytest
-        run: pytest
+        run: pytest --ignore=tests/ui/visual
+
+  visual-smoke:
+    # Smoke visual del Paso 0 (Playwright + Chromium headless). ADR 0012.
+    # Corre en ubuntu-latest como entorno CONSISTENTE -- es la fuente de verdad
+    # del baseline. Si el layout del Paso 0 se mueve, este job truena.
+    # Solo una version de Python (3.12) porque lo que se verifica es el render
+    # visual, no la compatibilidad de version.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install package with visual extras
+        # [ui] -> streamlit (para arrancar la app); [dev] -> playwright + Pillow
+        run: pip install -e ".[test,ui,dev]"
+
+      - name: Install Chromium browser
+        run: playwright install chromium --with-deps
+
+      - name: Run visual smoke tests
+        run: pytest tests/ui/visual/ -v

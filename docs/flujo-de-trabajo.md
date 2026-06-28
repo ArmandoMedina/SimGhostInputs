@@ -128,6 +128,7 @@ que corren en varios momentos, con autoridad creciente.
 | **Doc-gate (blast-radius §8)** | **BLOQUEA** el push si tocaste `core/` sin `formato-datos.md`, `viz/` sin `hud-reference.md`, o las **barreras** (hooks/gate/CI) sin `flujo-de-trabajo.md` | dentro de `tools/verificar.ps1` |
 | **Hook `pre-push`** | Corre el verificador **solo**, justo antes de `git push` (avisa lint/formato/tests; **bloquea** doc-drift §8) | `.githooks/pre-push` |
 | **CI (pipeline)** | Barrera dura en la nube: lint + formato + tests en cada push/PR | `.github/workflows/tests.yml` |
+| **Smoke visual (Playwright)** | Screenshot del Paso 0 contra baseline; truena si el layout se mueve. Tolerancia generosa (detecta secciones corridas, no antialiasing). Dueño: Mariana | `tests/ui/visual/` ([ADR 0012](decisions/0012-playwright-smoke-visual-ui.md)) |
 | **Decisiones (ADR)** | El porqué de todo, con su camino descartado | `docs/decisions/` + su `README.md` |
 | **Benchmark del linter** | Por qué ruff y no las alternativas (licencias verificadas) | `docs/benchmark-linter.md` |
 | **Reviewer** | Lee el diff y **aconseja** (bugs, calidad); su contenido no bloquea. **Auto-disparado** por hook de sesión cuando hay código sin revisar | `/code-review` + `.claude/hooks/review-stop.ps1` |
@@ -191,11 +192,14 @@ El verificador corre, en orden:
 ### Paso 3 — Push (el CI **bloquea**)
 
 Al hacer `git push`, GitHub corre el **CI** (`.github/workflows/tests.yml`). Si algo falla, el
-push queda **en rojo**. Es el respaldo **que nadie puede saltar** desde su máquina. Dos jobs:
+push queda **en rojo**. Es el respaldo **que nadie puede saltar** desde su máquina. Tres jobs:
 
 1. **`lint`** (Ubuntu): `ruff check` (basura) **y** `ruff format --check` (formato canónico).
 2. **`pytest`** (Windows, Python 3.10 / 3.11 / 3.12): toda la suite de tests, en la plataforma
    objetivo del proyecto y en las tres versiones soportadas.
+3. **`visual-smoke`** (Ubuntu, Python 3.12): screenshot del Paso 0 de la UI con Playwright
+   (Chromium headless); falla si el layout se movió respecto al baseline ([ADR 0012](decisions/0012-playwright-smoke-visual-ui.md)).
+   Ubuntu es el entorno consistente que actúa como fuente de verdad del baseline.
 
 ### Las tres barreras, juntas
 
@@ -326,6 +330,7 @@ ver **qué cubre cada una y qué NO**, porque no todo se puede atar por máquina
 | **Basura de código** | ¿imports/vars sin usar, nombres indefinidos? | `ruff check` (`F`+`I`) | avisa local · **bloquea en CI** |
 | **Formato** | ¿el código está en el estilo canónico? | `ruff format --check` | avisa local · **bloquea en CI** |
 | **Comportamiento del motor** | ¿la lógica determinista sigue dando los números correctos? | `pytest` | avisa local · **bloquea en CI** |
+| **Layout de UI (Paso 0)** | ¿el layout del Paso 0 se movió respecto al baseline? | Playwright smoke visual (`tests/ui/visual/`) | skipea local si browser no instalado · **bloquea en CI** |
 | **Documentación (CHANGELOG)** | ¿el cambio quedó anotado? | doc-gate CHANGELOG + checklist | **avisa** (ADR/ROADMAP son juicio) |
 | **Doc-drift §8 (doc dueño)** | ¿tocaste `core/`/`viz/`/barreras sin su doc dueño? | doc-gate blast-radius | **BLOQUEA local** · el Escribano lo arregla |
 
@@ -418,6 +423,7 @@ git push --no-verify
 | **Python ≥ 3.10** | correr el motor, ruff y pytest |
 | **ruff** | linter + formatter — `pip install -e ".[dev]"` |
 | **pytest** (+ extras) | suite de tests — `pip install -e ".[test,ui,sync]"` |
+| **playwright + Pillow** | smoke visual del Paso 0 — `pip install -e ".[dev]"` + `playwright install chromium` (solo para los tests visuales; skipean si no está) |
 | **Windows PowerShell 5.1** | correr `tools/verificar.ps1` |
 | **ffmpeg** (sistema) | solo para el QA manual de overlay/compose; los tests NO lo invocan |
 
