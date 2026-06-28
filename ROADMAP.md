@@ -8,9 +8,9 @@
 
 ---
 
-## Estado actual — v0.11.0
+## Estado actual — v0.12.0
 
-Último release: **v0.11.0** (2026-06-27) — sistema de roles sobre el flujo de trabajo: doc-gate bloqueante por blast-radius §8, hooks de sesión que disparan solos (`review-stop`, `escribano-stop` y `mariana-stop`), skill Escribano, y orquestación + model-routing en `docs/flujo-de-trabajo.md`. Mariana (QA visual) quedó cableada en [ADR 0011](docs/decisions/0011-cablear-mariana-no-charbel.md); Charbel se mantiene en los tests. La base previa (v0.10.0): barreras `ruff` + CI + `tools/verificar.ps1` + hook `pre-push`. El pipeline offline completo (importar → comparar → overlay → componer) funciona; la UI es Streamlit ([ADR 0010](docs/decisions/0010-framework-ui-streamlit.md)).
+Último release: **v0.12.0** (2026-06-28) — robustez del pipeline: fix del bug bloqueante del CLI overlay (.webm de 0 bytes), avisos de `compare` para cross-circuito y autos distintos, zona gris de confianza en auto-sync ([enmienda ADR 0008](docs/decisions/0008-sync-multivuelta-candidatos.md)); andamiaje de smoke visual con Playwright en CI ([ADR 0012](docs/decisions/0012-playwright-smoke-visual.md)); Mariana cableada como rol formal ([ADR 0011](docs/decisions/0011-cablear-mariana-no-charbel.md)); tests sistemáticos de degradación por canales ausentes (32 combinaciones). 121 tests en verde. La base: sistema de roles y doc-gate (v0.11.0), barreras `ruff` + CI (v0.10.0). El pipeline offline completo (importar → comparar → overlay → componer) funciona; la UI es Streamlit ([ADR 0010](docs/decisions/0010-framework-ui-streamlit.md)).
 
 La meta inmediata es **la v1.0**: no es construir features nuevas, sino **estabilizar, testear, documentar y validar en AMS2 el pipeline que ya existe**. Las versiones publicadas están en el CHANGELOG; el siguiente hito es la 1.0.
 
@@ -179,6 +179,6 @@ _Contexto: cosas en el código sin cobertura de QA formal ni documentación. Nin
 
 _Contexto: lo conocido a saldar cuando toque. Los pendientes puntuales:_
 
-- [ ] **Ampliar la cobertura de tests** conforme crezca el código. _Contexto:_ la suite (106 tests, Tier 1–4 + smoke de UI) y el CI ya cumplen el requisito de v1.0. Estrategia en [ADR 0003](docs/decisions/0003-testing.md).
+- [ ] **Ampliar la cobertura de tests** conforme crezca el código. _Contexto:_ la suite (121 tests, Tier 1–4 + smoke de UI) y el CI ya cumplen el requisito de v1.0. Estrategia en [ADR 0003](docs/decisions/0003-testing.md).
 - [ ] **Manejar encodings distintos a `utf-8-sig` en `motec_csv.py`** (CSV de i2 en Windows con setups no-inglés pueden traer otro encoding).
 - [ ] **Activar branch protection en `master` al sumar al primer colaborador** (requiere PR + checks `lint` y `pytest` en verde). _Contexto:_ hoy el CI avisa pero no bloquea el merge (single-author no lo necesita). Ya documentado en `CONTRIBUTING.md` §6 y `docs/flujo-de-trabajo.md`.

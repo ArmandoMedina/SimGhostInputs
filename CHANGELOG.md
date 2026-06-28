@@ -4,6 +4,8 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/). Versionado
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-06-28
+
 ### Corregido
 - **`fantasma overlay` CLI — video .webm de 0 bytes (bug bloqueante)**: el callback de progreso del CLI estaba definido como `def progress(n, total):` sin el kwarg `status`, pero `overlay.py` lo invocaba con `progress(enc, n_frames, status="...")`. Eso lanzaba `TypeError`, capturado por el `except BaseException:` de overlay, que mataba ffmpeg y re-lanzaba: resultado webm vacío y exit 1. La UI no lo sufría porque su callback (`_helpers.py`) ya definía `def _cb(n, total, status=None):`. Corregido extrayendo `_overlay_progress(n, total, status=None)` a nivel de módulo en `cli.py` y usándolo en `cmd_overlay`.
 
