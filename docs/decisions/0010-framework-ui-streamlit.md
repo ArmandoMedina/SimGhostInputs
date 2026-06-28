@@ -81,3 +81,14 @@ sujeto a evaluación (ROADMAP) y no decidido aún en su arquitectura.
 **Pendiente de validar (v2.0):** la **arquitectura** del front custom (shell de escritorio
 empaquetado vs otras) **no está decidida** — se resuelve con el benchmark apuntado en el
 ROADMAP. Este ADR fija *que* se difiere y *con qué restricciones*, no *cuál* tecnología.
+
+## Enmiendas
+
+- **2026-06-28 — [ADR 0012](0012-playwright-smoke-visual-ui.md):** la restricción de
+  testing de arriba ("Testing a prueba de migración": no Playwright sobre Streamlit) queda
+  **acotada**. Sigue valiendo para la *lógica* de los flujos 0→4 (eso lo cubre AppTest,
+  que sobrevive a la migración), pero **no** para el **smoke visual**: el ADR 0012 adopta
+  Playwright para un snapshot de imagen acotado de las pantallas clave en CI. El motivo es
+  que aquí se asumía la migración del front *cerca* (la prueba moriría pronto); el PO
+  confirmó que es de **meses**, así que la cobertura se amortiza y el cálculo se invierte.
+  Además, AppTest no ve píxeles, por lo que no atrapa bugs de layout como el del Paso 0.
