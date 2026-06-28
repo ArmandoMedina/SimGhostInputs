@@ -137,6 +137,19 @@ el overlay y el video de grabación están alineados:
 
 ---
 
+## Avisos en el reporte de comparación
+
+`report.md` (generado por `fantasma compare`) incluye un bloque de **Avisos** cuando `compare()` detecta condiciones anómalas. Actualmente:
+
+| Aviso | Condición |
+| :-- | :-- |
+| Delta sospechosamente grande | `abs(total_delta) > ref_laptime * 0.5` — posible mezcla de circuitos distintos |
+| Autos distintos | Metadato `Vehicle` disponible en ambas vueltas y difiere — informativo, no bloquea el cálculo |
+
+Estos avisos también se imprimen en `stderr` al usar `fantasma compare` por CLI.
+
+---
+
 ## Opciones de renderizado
 
 ```

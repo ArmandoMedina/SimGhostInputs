@@ -79,6 +79,10 @@ def render_markdown(trace, corner_rows, summary, meta=None):
             "| Combustible usado (L) | %.2f | %.2f | %+.2f |"
             % (rw["fuel_used"], dw["fuel_used"], dw["fuel_used"] - rw["fuel_used"])
         )
+    if summary.get("avisos"):
+        out.append("")
+        for a in summary["avisos"]:
+            out.append("> **Aviso:** %s" % a)
     out.append("")
     losses = [r for r in corner_rows if r.get("time_lost") is not None]
     losses.sort(key=lambda r: r["time_lost"], reverse=True)

@@ -117,12 +117,32 @@ def compare(ref, drv, step=5.0, corners=None):
         row["flags"] = "+".join(flags)
         rows.append(row)
 
+    ref_lt = round(ref.laptime, 3)
+    drv_lt = round(drv.laptime, 3)
+    total_delta = round(trace[-1]["delta_t"], 3) if trace else 0.0
+
+    avisos = []
+
+    # FIX 2: delta sospechosamente grande indica posible circuito distinto
+    if ref_lt > 0 and abs(total_delta) > ref_lt * 0.5:
+        avisos.append(
+            "delta sospechosamente grande (%.1f s sobre vuelta de %.1f s): "
+            "¿la referencia y el piloto son del mismo circuito?" % (total_delta, ref_lt)
+        )
+
+    # FIX 3: autos distintos — solo cuando metadata disponible en ambos
+    ref_car = ref.meta.get("Vehicle")
+    drv_car = drv.meta.get("Vehicle")
+    if ref_car and drv_car and ref_car != drv_car:
+        avisos.append("autos distintos: %s (ref) vs %s (piloto)" % (ref_car, drv_car))
+
     summary = {
-        "ref_laptime": round(ref.laptime, 3),
-        "drv_laptime": round(drv.laptime, 3),
-        "total_delta": round(trace[-1]["delta_t"], 3) if trace else 0.0,
+        "ref_laptime": ref_lt,
+        "drv_laptime": drv_lt,
+        "total_delta": total_delta,
         "corners": len(rows),
         "ref_wear": wear.wear_summary(ref),
         "drv_wear": wear.wear_summary(drv),
+        "avisos": avisos,
     }
     return trace, rows, summary

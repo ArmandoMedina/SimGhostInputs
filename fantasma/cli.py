@@ -11,6 +11,17 @@ from .core.normalize import fastest_lap
 from .viz.report import write_outputs
 
 
+def _overlay_progress(n, total, status=None):
+    """Callback de progreso para render_overlay.
+
+    Acepta el kwarg ``status`` con que overlay.py lo invoca
+    (``progress(enc, n_frames, status="Codificando video… frame N / M")``)
+    y el piloto sin él (para homologar con el callback de la UI en _helpers.py).
+    """
+    pct = 100.0 * n / total if total else 0
+    print("  frame %d/%d (%.0f%%)" % (n, total, pct))
+
+
 def _parse_map(pairs):
     if not pairs:
         return None
@@ -102,6 +113,8 @@ def cmd_compare(args):
     )
     for r in losses[:3]:
         print("  mayor perdida: %s (m%d) %+.3fs" % (r["name"], r["apex_d"], r["time_lost"]))
+    for aviso in summary.get("avisos", []):
+        print("aviso: %s" % aviso, file=sys.stderr)
     print("-> %s" % report)
 
 
@@ -122,10 +135,6 @@ def cmd_overlay(args):
         corners = extract_milestones(ref, ev)
 
     os.makedirs(args.output, exist_ok=True)
-
-    def progress(n, total):
-        pct = 100.0 * n / total if total else 0
-        print("  frame %d/%d (%.0f%%)" % (n, total, pct))
 
     if args.all_laps:
         complete = [l for l in drv_laps if l.meta.get("is_complete")]
@@ -148,7 +157,7 @@ def cmd_overlay(args):
                 fmt=args.format,
                 t_start=args.start,
                 t_end=args.end,
-                progress=progress,
+                progress=_overlay_progress,
             )
             webms.append(out)
             print("-> %s" % out)
@@ -166,7 +175,7 @@ def cmd_overlay(args):
             fmt=args.format,
             t_start=args.start,
             t_end=args.end,
-            progress=progress,
+            progress=_overlay_progress,
         )
         print("-> %s" % out)
 

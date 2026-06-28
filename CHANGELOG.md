@@ -4,7 +4,12 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/). Versionado
 
 ## [Unreleased]
 
+### Corregido
+- **`fantasma overlay` CLI — video .webm de 0 bytes (bug bloqueante)**: el callback de progreso del CLI estaba definido como `def progress(n, total):` sin el kwarg `status`, pero `overlay.py` lo invocaba con `progress(enc, n_frames, status="...")`. Eso lanzaba `TypeError`, capturado por el `except BaseException:` de overlay, que mataba ffmpeg y re-lanzaba: resultado webm vacío y exit 1. La UI no lo sufría porque su callback (`_helpers.py`) ya definía `def _cb(n, total, status=None):`. Corregido extrayendo `_overlay_progress(n, total, status=None)` a nivel de módulo en `cli.py` y usándolo en `cmd_overlay`.
+
 ### Añadido
+- **`compare` — aviso de delta sospechosamente grande**: si `abs(total_delta) > ref_laptime * 0.5`, `compare()` emite un aviso claro en `summary["avisos"]` ("delta sospechosamente grande — ¿mismos circuitos?"). Previene que una comparación ref+piloto de circuitos distintos produzca un reporte numéricamente plausible pero silenciosamente incorrecto (-280 s sobre una vuelta de ~378 s). El cálculo no se bloquea; solo avisa.
+- **`compare` — aviso informativo de autos distintos**: si el metadato `Vehicle` está disponible en ambas vueltas y difiere, `compare()` emite un aviso informativo ("autos distintos: X (ref) vs Y (piloto)"). Si el metadato falta en alguna vuelta, la degradación es silenciosa (no avisa, no crashea). Los avisos se imprimen en stderr con `fantasma compare` y aparecen en el `report.md` generado.
 - **Rol Mariana auto-cableado** (`mariana-stop`): al tocar `fantasma/viz/` o `fantasma/ui/`, el hook de sesión frena el cierre y manda hacer el QA visual (checkpoint que vuelve al PO). `escribano-stop` se extiende para vigilar `fantasma/ui/` → `docs/guia-usuario.md`. Charbel se mantiene declarado en la §8 sin hook (su asiento son los tests). Ver ADR 0011.
 
 ### Corregido

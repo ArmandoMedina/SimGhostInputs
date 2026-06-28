@@ -69,3 +69,78 @@ def test_compare_without_glat_channel_does_not_crash():
     _, rows, summary = compare(ref, drv, step=5.0)
     assert rows
     assert summary["corners"] == 2
+
+
+# ---------------------------------------------------------------------------
+# FIX 2 — aviso de delta sospechosamente grande (posible circuito distinto)
+# ---------------------------------------------------------------------------
+
+
+def test_compare_avisa_delta_sospechoso():
+    """Delta > 50 % del tiempo de vuelta de referencia dispara el aviso.
+
+    Caso tipico de bug silencioso: ref de un circuito, piloto de otro.
+    La comparacion produce un numero pero el aviso lo delata.
+    """
+    ref = make_lap(base_speed=180.0)
+    # piloto tan lento que el delta supera con creces el 50 % del laptime de ref
+    drv = make_lap(base_speed=20.0)
+    _, _, summary = compare(ref, drv, step=5.0)
+    avisos = summary.get("avisos", [])
+    assert any("sospechosamente grande" in a for a in avisos), (
+        "Se esperaba aviso de delta grande; avisos actuales: %r" % avisos
+    )
+
+
+def test_compare_sin_aviso_delta_normal():
+    """Delta normal (diferencia de segundos) NO dispara el aviso."""
+    ref = make_lap(base_speed=180.0)
+    drv = make_lap(base_speed=175.0)  # ligeramente mas lento
+    _, _, summary = compare(ref, drv, step=5.0)
+    avisos = summary.get("avisos", [])
+    assert not any("sospechosamente grande" in a for a in avisos), (
+        "Aviso inesperado de delta grande: %r" % avisos
+    )
+
+
+# ---------------------------------------------------------------------------
+# FIX 3 — aviso informativo de autos distintos
+# ---------------------------------------------------------------------------
+
+
+def test_compare_avisa_autos_distintos():
+    """Metadata de Vehicle distinta en ref y piloto genera aviso informativo."""
+    ref = make_lap(meta={"Vehicle": "BMW M4 GT3"})
+    drv = make_lap(meta={"Vehicle": "Ferrari 296 GT3"})
+    _, _, summary = compare(ref, drv, step=5.0)
+    avisos = summary.get("avisos", [])
+    assert any("autos distintos" in a for a in avisos), (
+        "Se esperaba aviso de autos distintos; avisos actuales: %r" % avisos
+    )
+
+
+def test_compare_sin_aviso_autos_iguales():
+    """Mismo auto en ref y piloto -> sin aviso de autos."""
+    ref = make_lap(meta={"Vehicle": "BMW M4 GT3"})
+    drv = make_lap(meta={"Vehicle": "BMW M4 GT3"})
+    _, _, summary = compare(ref, drv, step=5.0)
+    avisos = summary.get("avisos", [])
+    assert not any("autos distintos" in a for a in avisos)
+
+
+def test_compare_sin_aviso_vehicle_ausente():
+    """Si la metadata de Vehicle no esta disponible, NO avisa ni crashea."""
+    ref = make_lap()  # sin meta -> meta={}
+    drv = make_lap()
+    _, _, summary = compare(ref, drv, step=5.0)
+    avisos = summary.get("avisos", [])
+    assert not any("autos distintos" in a for a in avisos)
+
+
+def test_compare_sin_aviso_vehicle_solo_en_ref():
+    """Vehicle solo en ref (no en piloto) -> degradacion graciosa, sin aviso."""
+    ref = make_lap(meta={"Vehicle": "BMW M4 GT3"})
+    drv = make_lap()
+    _, _, summary = compare(ref, drv, step=5.0)
+    avisos = summary.get("avisos", [])
+    assert not any("autos distintos" in a for a in avisos)

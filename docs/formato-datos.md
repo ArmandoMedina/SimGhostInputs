@@ -85,3 +85,8 @@ Campos extra (`voice_name`, `description`, `coaching_priority`...) se conservan 
 **`delta.csv`** — una fila por paso de la rejilla: `dist`, `delta_t` (s, positivo = el piloto pierde), y `ref_*`/`drv_*` para `speed`, `throttle`, `brake`, `steering`, `gear` y, si están presentes en el archivo, `glat`/`glong`. Solo se escriben las columnas de los canales que existen.
 
 **`corners_compare.csv`** — una fila por curva: `id`, `name`, `apex_d`, `ref_vmin`, `drv_vmin`, `d_vmin`, `ref_brake_d`, `drv_brake_d`, `d_brake_m` (positivo = el piloto frena más tarde), `d_gas100_m`, `time_lost` (s, delta acumulado entre los extremos del segmento), `flags`; y, cuando el archivo trae canales de rueda/ABS, `ref_slip`/`drv_slip` (proxy de desgaste por curva) y `ref_abs`/`drv_abs` (activaciones de ABS en el segmento). Las columnas dependen de los datos disponibles.
+
+**`summary` (dict interno de `compare()`)** — incluye desde v1.0 el campo `avisos` (lista de strings): mensajes de diagnóstico emitidos durante la comparación. Actualmente puede contener:
+
+- `"delta sospechosamente grande (X s sobre vuelta de Y s): ¿la referencia y el piloto son del mismo circuito?"` — se emite cuando `abs(total_delta) > ref_laptime * 0.5`. Indica que los datos probablemente no son del mismo circuito.
+- `"autos distintos: <ref> (ref) vs <piloto> (piloto)"` — aviso informativo cuando ambas vueltas tienen metadato `Vehicle` y difieren. Solo se emite si el metadato está disponible en los dos archivos; si falta en alguno, la degradación es silenciosa.
