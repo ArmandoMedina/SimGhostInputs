@@ -245,7 +245,12 @@ def cmd_compose(args):
             return 1
         print("Detectando offset de sincronizacion…")
         try:
-            from .viz.sync import _MIN_SYNC_Z, sync_candidates, validate_offset
+            from .viz.sync import (
+                _MIN_SYNC_Z,
+                sync_candidates,
+                sync_gray_zone_warning,
+                validate_offset,
+            )
 
             result = sync_candidates(args.video, lap)
         except ImportError as e:
@@ -279,6 +284,10 @@ def cmd_compose(args):
             chosen = cands[0]
 
         offset = chosen["offset"]
+        gz = sync_gray_zone_warning(chosen["z"])
+        if gz:
+            # Zona gris (ADR 0008): se acepta pero podria ser otra sesion; avisar.
+            print("  aviso: %s" % gz, file=sys.stderr)
         pause_t = validate_offset(result, offset, lap)
         if pause_t is not None:
             pm, ps = int(pause_t) // 60, int(pause_t) % 60

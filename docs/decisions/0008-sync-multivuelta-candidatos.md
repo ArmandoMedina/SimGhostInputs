@@ -67,3 +67,59 @@ usuario elige una vuelta. No hay default silencioso.
   en la práctica el #1 no acierta seguido, el Nivel 2 cubre igual. A medir con más datos.
 - **Pendiente:** validar la detección de pausa también sobre el offset elegido por el usuario
   (hoy se valida en el camino automático). Menor.
+
+## Enmiendas
+
+### 2026-06-28 — Zona gris: aceptar pero AVISAR cuando la confianza es moderada
+
+**Contexto.** En el QA (hallazgo #3) se reprodujo un fallo silencioso que esta decisión no
+cubría: un video de la **misma pista y el mismo auto pero de OTRA fecha/sesión** se aceptaba sin
+ningún aviso. La evidencia, con el mismo método de correlación:
+
+- Video de la **sesión correcta**: candidato z=9.81 → acepta bien.
+- Video de **auto y pista totalmente distintos**: z=2.77 (< 3σ) → rechaza bien (sin cambios).
+- Video de **misma pista/auto, otra fecha**: z=5.45 → pasa el umbral de 3σ, es un **único**
+  candidato fuerte (ratio de ambigüedad 0.56 < 0.85, así que el Nivel 2 no dispara) y se acepta
+  **en silencio**. El HUD queda ~4 s corrido sin que el usuario lo sepa.
+
+La causa: `_MIN_SYNC_Z` (3σ) solo separa "hay señal de motor" de "no la hay". No distingue
+"este es el video correcto" de "este es otro día en la misma pista" — ambos tienen motor y
+correlacionan por encima de 3σ. Y el ratio de ambigüedad (Nivel 2) no aplica cuando hay un solo
+candidato fuerte.
+
+**Decisión.** Introducir una **zona gris** de confianza con un segundo umbral `_STRONG_SYNC_Z`:
+
+- `z < _MIN_SYNC_Z` (3σ): se **rechaza** como hoy (no corresponde / sin señal de motor).
+- `_MIN_SYNC_Z <= z < _STRONG_SYNC_Z`: se **acepta PERO se avisa** — "correlación moderada
+  (z=X.X): el video se aceptó pero podría no corresponder a esta vuelta; verifica el inicio del
+  HUD." No bloquea: el match suele ser válido (audio sucio), solo pide verificar.
+- `z >= _STRONG_SYNC_Z`: match robusto, **sin aviso** (no entrenar al usuario a ignorar avisos).
+
+**Umbral elegido: `_STRONG_SYNC_Z = 6.5`.** Es una heurística con datos limitados (n chico: un
+caso bueno y uno malo), ajustable. El porqué del número: debe quedar **por encima** del caso de
+otra-sesión (5.45) para avisarlo, y **por debajo** del caso correcto (9.81) para no molestar con
+un match bueno. 6.5 deja ~1σ de margen sobre 5.45 (lo atrapa con holgura) y ~3.3σ por debajo de
+9.81 (un match correcto pero con audio algo más sucio sigue pasando sin aviso). Qué rompe si se
+mueve: **muy bajo** (≈6.0) → el margen sobre 5.45 se encoge y el ruido podría dejar pasar el caso
+malo sin avisar; **muy alto** (≈7.5+) → empieza a avisar sobre matches correctos pero ruidosos,
+lo que entrena al usuario a ignorar el aviso (que es justo lo que lo haría inútil).
+
+**El camino que NO se toma (y por qué tienta):**
+
+- **Subir `_MIN_SYNC_Z` a 6σ.** Tienta: una línea y "arregla" el caso de 5.45 rechazándolo. NO:
+  rechazaría matches **válidos** con audio más sucio (falsos rechazos), justo el modo de fallo que
+  el aviso evita. El mínimo debe seguir bajo; la zona gris es la que discrimina sin rechazar.
+- **Usar solo el ratio de ambigüedad.** NO atrapa este caso: hay un **único** candidato fuerte
+  (ratio 0.56), así que el Nivel 2 nunca dispara. El ratio resuelve "varias vueltas parejas", no
+  "una sesión equivocada con un pico claro".
+- **No hacer nada.** Es el dolor actual: pegado-mal-en-silencio, el mismo que motivó el ADR.
+
+**Consecuencias.**
+
+- `sync.py` expone `sync_gray_zone_warning(z)` → mensaje (str) o `None`. Lógica pura, testeada
+  aislada en `tests/viz/test_sync.py` (zona gris avisa, robusto no, < 3σ lo rechaza el caller).
+- `cli.py` (`compose --auto-sync`): imprime el aviso en stderr al aceptar un offset en zona gris.
+- UI Paso 4 (`step4.py`): `st.warning` bajo el éxito de "Offset detectado" cuando cae en zona gris.
+- Cubre **parcialmente** el gap del ROADMAP "avisar cuando los candidatos de auto-sync tienen
+  calidad baja": ahora se avisa por confianza moderada; el caso de varios candidatos todos débiles
+  pero por encima de 3σ sigue pendiente de medición con más datos.

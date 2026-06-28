@@ -140,3 +140,35 @@ def test_rank_flat_correlation_no_crash():
     cands, ambiguous = sync._rank_candidates(corr, lags, lap_dur=4.0)
     assert len(cands) >= 1
     assert not ambiguous
+
+
+# --- sync_gray_zone_warning: zona gris de confianza (ADR 0008, enmienda) ------
+# Función de decisión pura. Evidencia del QA que la motiva:
+#   correcto z=9.81 (no avisa) · otra-sesión z=5.45 (avisa) · otro auto/pista z=2.77 (rechazo).
+
+
+def test_gray_zone_warns_on_wrong_session():
+    # QA: misma pista y mismo auto pero OTRA FECHA -> z=5.45 colaba en silencio.
+    msg = sync.sync_gray_zone_warning(5.45)
+    assert msg is not None
+    assert "moderada" in msg
+    assert "5.5" in msg  # incluye el z (5.45 redondeado a %.1f) para que se vea
+
+
+def test_gray_zone_no_warning_on_strong_match():
+    # QA: la sesión correcta -> z=9.81, match robusto, sin ruido de avisos.
+    assert sync.sync_gray_zone_warning(9.81) is None
+
+
+def test_gray_zone_below_min_not_warned_caller_rejects():
+    # QA: otro auto/pista -> z=2.77 < 3σ. El caller lo rechaza ANTES de componer;
+    # la función de aviso devuelve None (no es zona gris, es rechazo).
+    assert 2.77 < sync._MIN_SYNC_Z
+    assert sync.sync_gray_zone_warning(2.77) is None
+
+
+def test_gray_zone_boundaries():
+    # Justo en el mínimo (3σ) ya se avisa; justo en el umbral fuerte (6.5σ) ya no.
+    assert sync.sync_gray_zone_warning(sync._MIN_SYNC_Z) is not None
+    assert sync.sync_gray_zone_warning(sync._STRONG_SYNC_Z) is None
+    assert sync.sync_gray_zone_warning(sync._STRONG_SYNC_Z - 0.01) is not None

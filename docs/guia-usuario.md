@@ -98,6 +98,13 @@ La detección automática extrae la energía del motor del audio del video (band
 
 Si usas `fantasma ui`, el Paso 4 incluye un botón «Detectar sincronía automáticamente» que hace lo mismo desde la interfaz gráfica.
 
+> **Aviso de «correlación moderada».** Si la sincronía se aceptó pero con una correlación solo
+> moderada (calidad media), verás un aviso de que el video **podría no corresponder a esa vuelta**
+> — típico cuando se elige por error un video de la **misma pista y el mismo auto pero de otra
+> sesión/fecha**. No se bloquea: el offset se carga igual, pero conviene **verificar el inicio del
+> HUD** (que la marcha/velocidad/distancia coincidan con el video) antes de exportar. Un match
+> robusto (calidad alta) no muestra este aviso.
+
 #### Referencia visual de sincronía
 
 El HUD muestra en todo momento la **marcha** (1–6/N/R), la **velocidad en km/h** y la **distancia en metros**. Si el video tiene el velocímetro o el contador de marchas visible, puedes verificar visualmente que el HUD coincide con lo que se ve en pantalla.

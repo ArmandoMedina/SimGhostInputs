@@ -181,6 +181,13 @@ def render():
                 "Calidad de sincronía: **%s** — el valor se cargó en el campo de abajo."
                 % (_off, _qlbl)
             )
+            # Zona gris (ADR 0008): pasa el mínimo pero no es robusto; podría ser
+            # un video de otra sesión. Se acepta pero se avisa (no bloquea).
+            from fantasma.viz.sync import sync_gray_zone_warning
+
+            _gz = sync_gray_zone_warning(_z_s)
+            if _gz:
+                st.warning("⚠️ " + _gz[0].upper() + _gz[1:])
 
     # Selector bloqueante de vuelta (ADR 0008): con video de varias vueltas el audio
     # no distingue cuál es la del piloto, así que el usuario DEBE elegir para continuar.

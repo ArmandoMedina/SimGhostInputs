@@ -121,8 +121,33 @@ def _lap_signal(drv_lap):
 
 
 _MIN_SYNC_Z = 3.0  # sigma minimo para considerar la correlacion valida
+_STRONG_SYNC_Z = 6.5  # sigma a partir del cual el match se considera robusto (sin aviso)
 _PAUSE_SILENCE_S = 3.0  # segundos de silencio consecutivos para detectar pausa
 _PAUSE_THRESHOLD = 0.05  # fraccion de la energia media por debajo de la cual = silencio
+
+
+def sync_gray_zone_warning(z):
+    """Aviso de "zona gris" para un offset YA aceptado (z >= _MIN_SYNC_Z).
+
+    Logica pura, testeable sin video. Ver ADR 0008 (enmienda zona gris).
+
+    El umbral _MIN_SYNC_Z (3 sigma) solo separa "hay senal de motor" de "no la
+    hay": un video de OTRA sesion (mismo auto/pista, otra fecha) puede colar un
+    unico candidato fuerte que pasa el minimo (en el QA: z=5.45) y aun asi pegar
+    el HUD sobre la vuelta equivocada en silencio. El ratio de ambiguedad no lo
+    atrapa porque hay un solo candidato (ratio 0.56 < 0.85). Por eso, entre
+    _MIN_SYNC_Z y _STRONG_SYNC_Z se acepta PERO se avisa (no se bloquea). Por
+    encima de _STRONG_SYNC_Z el match es robusto y no se avisa.
+
+    Returns: str con el aviso si z cae en la zona gris, o None si no hay que
+    avisar (z robusto; o z < _MIN_SYNC_Z, que el caller ya rechaza antes).
+    """
+    if _MIN_SYNC_Z <= z < _STRONG_SYNC_Z:
+        return (
+            "correlación moderada (z=%.1f σ): el video se aceptó pero podría no "
+            "corresponder a esta vuelta; verifica el inicio del HUD." % z
+        )
+    return None
 
 
 def _detect_pause(ae, start_sec, end_sec):
