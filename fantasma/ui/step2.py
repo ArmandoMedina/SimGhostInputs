@@ -62,6 +62,12 @@ def render():
     rows = st.session_state["rows"]
     trace = st.session_state["trace"]
 
+    # Avisos globales del motor (autos/circuitos distintos, delta sospechoso). Viven en
+    # summary["avisos"] y antes solo se veian en el CLI / report.md; aqui se muestran para que
+    # un usuario de la UI no interprete un reporte invalido como valido (caso C12).
+    for _av in summary.get("avisos") or []:
+        st.warning("⚠️ " + (_av[0].upper() + _av[1:] if _av else _av))
+
     st.divider()
     c1, c2, c3 = st.columns(3)
     c1.metric("Tiempo referencia", _fmt_lap(summary["ref_laptime"]))
