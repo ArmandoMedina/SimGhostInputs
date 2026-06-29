@@ -14,6 +14,9 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/). Versionado
 
 ### Documentación
 - **README (instalación):** nota de que una instalación limpia de Windows no trae git → descargar el ZIP de GitHub; y se añade el extra `.[test]` (correr la suite con pytest) a la lista de instalación manual.
+- **`docs/casos-de-uso.md`** — personas (hobby, liga, coach, creador, sim raro) y matriz de casos de uso evaluados contra lo que existe hoy (✅ cubierto · ⚠️ fricción · ❌ gap), con hallazgos priorizados. Es la lente de evaluación del producto y la UX.
+- **`docs/ux-patterns.md`** — estándar de interfaz: 10 heurísticas (Nielsen adaptado al dominio) y el **gate de UX/UI** en tres capas (determinista bloquea · checkpoint Mariana aconseja · local avisa). Análogo a las convenciones de código y al §8 de docs.
+- **ADR 0014 — Gate de UX/UI** (Aceptada): lo medible (layout/contraste/estructura) bloquea como los tests; lo subjetivo es checkpoint de Mariana que vuelve al PO. Extiende la línea del ADR 0012.
 
 ## [0.12.0] - 2026-06-28
 

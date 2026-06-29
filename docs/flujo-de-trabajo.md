@@ -465,6 +465,10 @@ C:\Repositorio personal\SimGhostInputs\   <- raíz del repo
   qué se difiere a v2.0; incluye la directiva de **tests a prueba de migración**.
 - [`docs/benchmark-linter.md`](benchmark-linter.md): por qué ruff y no flake8/pylint/black; cómo
   se configuró (`F`+`I`, sin el ruido de E701/E741) y el baseline de formato.
+- [ADR 0014 — Gate de UX/UI](decisions/0014-gate-ux-ui.md) y [`docs/ux-patterns.md`](ux-patterns.md):
+  el equivalente de las barreras para la **interfaz** — lo medible (layout, contraste, estructura)
+  bloquea como los tests; lo subjetivo es checkpoint de Mariana que vuelve al PO. Casos de uso que
+  alimentan la evaluación en [`docs/casos-de-uso.md`](casos-de-uso.md).
 
 ---
 
