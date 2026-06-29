@@ -44,6 +44,8 @@ Vueltas de referencia pagadas, telemetrías privadas de coaches o proveedores, s
 
 ## Instalación
 
+> **Primero, consigue el repo.** Una instalación limpia de Windows **no trae git**. Descarga el ZIP desde GitHub (botón verde **Code → Download ZIP**, o el de la [última release](https://github.com/ArmandoMedina/SimGhostInputs/releases/latest)), descomprímelo y abre una terminal dentro de la carpeta. Si ya tienes git, `git clone` también sirve.
+
 **Windows (recomendado):** ejecuta el script de setup incluido — instala el paquete, las dependencias Python y las herramientas del sistema en un paso:
 
 ```powershell
@@ -62,6 +64,7 @@ pip install -e ".[charts]"                # + fantasma compare con gráficas
 pip install -e ".[ui]"                    # + fantasma ui (interfaz gráfica local)
 pip install -e ".[sync]"                  # + fantasma compose --auto-sync (detección de offset)
 pip install -e ".[full]"                  # todo lo anterior
+pip install -e ".[test]"                  # + correr la suite de tests (pytest); no lo instala setup.ps1
 ```
 
 ### Dependencias completas

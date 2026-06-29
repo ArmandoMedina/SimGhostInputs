@@ -4,6 +4,14 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/). Versionado
 
 ## [Unreleased]
 
+### Corregido
+- **`setup.ps1` no corría en una instalación limpia de Windows 11** (dos bugs detectados probando el script en una VM virgen `sgi-win11-clean`):
+  - El stub de `python.exe` de la Microsoft Store (en `WindowsApps`) engañaba a `Get-Command python`: el script creía que Python ya estaba y reventaba después al llamar `pip`. Ahora se ignora cualquier `python` cuya ruta contenga `WindowsApps`.
+  - `winget install` sin `--source winget` abortaba con "multiple sources found" (exit `-1978335138`) cuando la Microsoft Store también expone el paquete. Se añadió `--source winget` a las cinco llamadas (Python, ffmpeg, gh, VLC, Kdenlive).
+
+### Documentación
+- **README (instalación):** nota de que una instalación limpia de Windows no trae git → descargar el ZIP de GitHub; y se añade el extra `.[test]` (correr la suite con pytest) a la lista de instalación manual.
+
 ## [0.12.0] - 2026-06-28
 
 ### Corregido

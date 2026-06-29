@@ -21,9 +21,14 @@ function Write-Warn { param([string]$Msg) Write-Host "    !! $Msg" -ForegroundCo
 # 1. Python
 # -----------------------------------------------------------------------
 Write-Step "Verificando Python"
-if (Get-Command python -ErrorAction SilentlyContinue) {
+# Windows 11 trae un stub de python.exe en WindowsApps (alias de la Microsoft Store) que NO es
+# Python real: aparece en Get-Command, pero al ejecutarlo abre la Store o falla. Si no se ignora,
+# el script creeria que Python ya esta instalado y reventaria mas adelante al llamar pip.
+$pythonCmd = Get-Command python -ErrorAction SilentlyContinue
+if ($pythonCmd -and ($pythonCmd.Source -notmatch 'WindowsApps')) {
     Write-OK (python --version 2>&1)
 } else {
+    if ($pythonCmd) { Write-Warn "Ignorando el stub de Python de la Microsoft Store (WindowsApps); no es Python real." }
     Write-Warn "Python no encontrado."
     if (-not (Get-Command winget -ErrorAction SilentlyContinue)) {
         Write-Error "Tampoco hay winget. Instala Python 3.10+ a mano desde https://python.org (marca 'Add Python to PATH') y vuelve a correr setup.ps1."
@@ -34,7 +39,9 @@ if (Get-Command python -ErrorAction SilentlyContinue) {
         Write-Error "Python es obligatorio. Instalalo desde https://python.org y vuelve a correr setup.ps1."
         exit 1
     }
-    winget install Python.Python.3.12 --accept-source-agreements --accept-package-agreements
+    # --source winget es obligatorio: si la Microsoft Store tambien expone el paquete, winget
+    # aborta con "multiple sources found" (exit -1978335138) al no saber cual usar.
+    winget install Python.Python.3.12 --source winget --accept-source-agreements --accept-package-agreements
     # winget actualiza el PATH en el registro, pero NO en esta sesion ya abierta.
     # Se intenta refrescar desde el registro (Machine + User).
     $env:Path = [Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [Environment]::GetEnvironmentVariable("Path", "User")
@@ -128,7 +135,7 @@ if ($SkipSystem) {
         Write-Warn "ffmpeg no encontrado - el overlay generara frames PNG en lugar de video"
         $resp = Read-Host "    Instalar ffmpeg via winget? (s/n)"
         if ($resp -eq "s") {
-            winget install Gyan.FFmpeg --accept-source-agreements --accept-package-agreements
+            winget install Gyan.FFmpeg --source winget --accept-source-agreements --accept-package-agreements
             Write-OK "ffmpeg instalado  (reinicia la terminal para que quede en PATH)"
         } else {
             Write-Warn "Sin ffmpeg: 'fantasma overlay --format webm/prores' queda como PNG"
@@ -141,7 +148,7 @@ if ($SkipSystem) {
     } else {
         $resp = Read-Host "    Instalar GitHub CLI (gh) via winget? (s/n)"
         if ($resp -eq "s") {
-            winget install GitHub.cli --accept-source-agreements --accept-package-agreements
+            winget install GitHub.cli --source winget --accept-source-agreements --accept-package-agreements
             Write-OK "gh instalado  (autenticate con: gh auth login)"
         } else {
             Write-Skip "gh omitido  (puedes subir el repo manualmente desde github.com/new)"
@@ -155,7 +162,7 @@ if ($SkipSystem) {
     } else {
         $resp = Read-Host "    Instalar VLC (previsualizar overlay.webm con alfa)? (s/n)"
         if ($resp -eq "s") {
-            winget install VideoLAN.VLC --accept-source-agreements --accept-package-agreements
+            winget install VideoLAN.VLC --source winget --accept-source-agreements --accept-package-agreements
             Write-OK "VLC instalado"
         } else {
             Write-Skip "VLC omitido"
@@ -169,7 +176,7 @@ if ($SkipSystem) {
     } else {
         $resp = Read-Host "    Instalar Kdenlive (editor open source para sincronizar el HUD con tu grabacion)? (s/n)"
         if ($resp -eq "s") {
-            winget install KDE.Kdenlive --accept-source-agreements --accept-package-agreements
+            winget install KDE.Kdenlive --source winget --accept-source-agreements --accept-package-agreements
             Write-OK "Kdenlive instalado"
         } else {
             Write-Skip "Kdenlive omitido  (otras opciones: DaVinci Resolve, Premiere)"
