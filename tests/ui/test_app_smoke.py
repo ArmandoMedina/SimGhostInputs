@@ -16,5 +16,8 @@ APP = Path(__file__).resolve().parents[2] / "fantasma" / "ui" / "app.py"
 
 
 def test_app_starts_without_exception():
-    at = AppTest.from_file(str(APP)).run()
+    # timeout generoso: el default de AppTest (3 s) es demasiado ajustado y da
+    # falsos rojos (timeout) cuando la maquina de CI esta cargada — un gate flaky
+    # pierde autoridad (ver ADR 0014). El arranque real tarda < 1 s holgado.
+    at = AppTest.from_file(str(APP)).run(timeout=30)
     assert not at.exception

@@ -14,6 +14,9 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/). Versionado
   - El stub de `python.exe` de la Microsoft Store (en `WindowsApps`) engañaba a `Get-Command python`: el script creía que Python ya estaba y reventaba después al llamar `pip`. Ahora se ignora cualquier `python` cuya ruta contenga `WindowsApps`.
   - `winget install` sin `--source winget` abortaba con "multiple sources found" (exit `-1978335138`) cuando la Microsoft Store también expone el paquete. Se añadió `--source winget` a las cinco llamadas (Python, ffmpeg, gh, VLC, Kdenlive).
 
+### Pruebas
+- **Smoke de la UI (`test_app_smoke`) — timeout de AppTest subido a 30 s.** El default (3 s) daba falsos rojos por timeout cuando la máquina está cargada (visto en una corrida local). Un gate flaky pierde autoridad ([ADR 0014](docs/decisions/0014-gate-ux-ui.md)); el arranque real tarda < 1 s.
+
 ### Documentación
 - **README (instalación):** nota de que una instalación limpia de Windows no trae git → descargar el ZIP de GitHub; y se añade el extra `.[test]` (correr la suite con pytest) a la lista de instalación manual.
 - **`docs/casos-de-uso.md`** — personas (hobby, liga, coach, creador, sim raro) y matriz de casos de uso evaluados contra lo que existe hoy (✅ cubierto · ⚠️ fricción · ❌ gap), con hallazgos priorizados. Es la lente de evaluación del producto y la UX.
