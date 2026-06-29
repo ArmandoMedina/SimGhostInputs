@@ -365,7 +365,25 @@ def cmd_wear(args):
         )
 
 
+def _force_utf8_console():
+    """Evita UnicodeEncodeError al imprimir en la consola de Windows.
+
+    En Windows la consola usa cp1252 por defecto, y los avisos que incluyen
+    caracteres como 'σ' (calidad de sincronía, "z=5.5 σ") lanzan
+    UnicodeEncodeError ('charmap' codec can't encode character '\\u03c3') —
+    visto en `fantasma compose` con el aviso de correlación moderada. Forzar
+    UTF-8 en stdout/stderr lo evita sin perder el carácter. Silencioso si el
+    stream no soporta reconfigure (p. ej. redirigido a un objeto sin el método).
+    """
+    for _stream in (sys.stdout, sys.stderr):
+        try:
+            _stream.reconfigure(encoding="utf-8")
+        except Exception:
+            pass
+
+
 def main(argv=None):
+    _force_utf8_console()
     p = argparse.ArgumentParser(
         prog="fantasma",
         description="Compara tus inputs contra una vuelta de referencia, por distancia.",

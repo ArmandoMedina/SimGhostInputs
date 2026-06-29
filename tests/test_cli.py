@@ -13,7 +13,10 @@ provocando TypeError: progress() got an unexpected keyword argument 'status',
 que el except BaseException mataba ffmpeg y re-lanzaba -> webm vacio + exit 1.
 """
 
-from fantasma.cli import _overlay_progress
+import io
+import sys
+
+from fantasma.cli import _force_utf8_console, _overlay_progress
 
 
 def test_overlay_progress_acepta_status_kwarg():
@@ -43,3 +46,33 @@ def test_overlay_progress_firma_compatible_con_ui():
     assert params == ["n", "total", "status"]
     # status debe tener default None
     assert sig.parameters["status"].default is None
+
+
+def test_force_utf8_console_evita_unicodeerror_con_sigma():
+    """Habria fallado antes del fix: imprimir 'σ' (calidad de sincronia) en una
+    consola cp1252 —el default de Windows— lanza UnicodeEncodeError ('charmap'
+    codec can't encode '\\u03c3'), visto en `fantasma compose`. _force_utf8_console
+    reconfigura stdout a utf-8 y el print procede."""
+    buf = io.BytesIO()
+    stream = io.TextIOWrapper(buf, encoding="cp1252")
+    old = sys.stdout
+    sys.stdout = stream
+    try:
+        _force_utf8_console()  # reconfigura el stream a utf-8
+        print("  -> offset: 1.234 s  (z=5.5 σ)")  # con cp1252 esto reventaria
+        sys.stdout.flush()
+    finally:
+        sys.stdout = old
+    assert "σ".encode("utf-8") in buf.getvalue()
+
+
+def test_force_utf8_console_no_crashea_si_no_hay_reconfigure():
+    """Streams sin .reconfigure (p. ej. ya redirigidos a un objeto simple) no
+    deben romper: el fix es silencioso."""
+    old_out, old_err = sys.stdout, sys.stderr
+    sys.stdout = object()  # sin metodo reconfigure
+    sys.stderr = object()
+    try:
+        _force_utf8_console()  # no debe lanzar
+    finally:
+        sys.stdout, sys.stderr = old_out, old_err

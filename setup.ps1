@@ -55,22 +55,37 @@ if ($pythonCmd -and ($pythonCmd.Source -notmatch 'WindowsApps')) {
     # winget actualiza el PATH en el registro, pero NO en esta sesion ya abierta.
     # Se intenta refrescar desde el registro (Machine + User).
     $env:Path = [Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [Environment]::GetEnvironmentVariable("Path", "User")
-    # winget pudo instalar Python sin refrescar el PATH de esta sesion. Ademas del registro,
-    # probamos las rutas estandar donde winget deja Python.Python.3.12 y las anadimos a mano.
-    if (-not (Get-Command python -ErrorAction SilentlyContinue)) {
-        foreach ($base in @("$env:LOCALAPPDATA\Programs\Python\Python312", "$env:ProgramFiles\Python312")) {
-            if (Test-Path (Join-Path $base "python.exe")) {
-                $env:Path = "$base;$base\Scripts;$env:Path"
-                break
+    # En headless (PowerShell Direct / SSH / CI) ni refrescar el registro basta: hay que LOCALIZAR
+    # el python REAL recien instalado y anteponerlo al PATH. Se IGNORA el stub de WindowsApps (que
+    # resuelve 'python' pero no es Python) y se cubre user y machine con version variable
+    # (Python312, Python313...) globeando, en vez de rutas fijas que winget puede no usar.
+    $pyExe = $null
+    $cmd = Get-Command python -ErrorAction SilentlyContinue
+    if ($cmd -and ($cmd.Source -notmatch 'WindowsApps')) {
+        $pyExe = $cmd.Source
+    } else {
+        foreach ($base in @("$env:LOCALAPPDATA\Programs\Python", "$env:ProgramFiles", "${env:ProgramFiles(x86)}")) {
+            if ($base -and (Test-Path $base)) {
+                foreach ($d in (Get-ChildItem -Path $base -Directory -Filter "Python3*" -ErrorAction SilentlyContinue)) {
+                    $maybe = Join-Path $d.FullName "python.exe"
+                    if (Test-Path $maybe) { $pyExe = $maybe; break }
+                }
             }
+            if ($pyExe) { break }
         }
     }
-    if (Get-Command python -ErrorAction SilentlyContinue) {
+    if ($pyExe) {
+        $pyDir = Split-Path -Parent $pyExe
+        $env:Path = "$pyDir;$pyDir\Scripts;$env:Path"
+    }
+
+    $cmd2 = Get-Command python -ErrorAction SilentlyContinue
+    if ($cmd2 -and ($cmd2.Source -notmatch 'WindowsApps')) {
         Write-OK ("Python instalado: " + (python --version 2>&1))
     } elseif ($Relaunched -or $Yes) {
         # No relanzamos una terminal nueva en modo desatendido (-Yes) ni si ya se reintento una vez
         # (anti-bucle): en headless/CI una ventana nueva no sirve. Mejor fallar claro.
-        Write-Error "Python se instalo pero no aparece en el PATH. Abre una terminal nueva (o reinicia) y vuelve a correr setup.ps1."
+        Write-Error "Python se instalo pero no se encontro su ejecutable. Abre una terminal nueva (o reinicia) y vuelve a correr setup.ps1."
         exit 1
     } else {
         # Una terminal NUEVA si hereda el PATH actualizado del registro. Abrimos otra,
