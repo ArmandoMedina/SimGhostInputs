@@ -55,7 +55,7 @@ piloto puede ser "league racer + ACC + sin GPU + UI".
 | C01 | Primera vez: instalar en Windows limpio | ⚠️→✅ | `setup.ps1` tenía fricciones reales en máquina virgen (stub de Python de la Store, `--source winget`, sin git, falta de `[test]`) — **corregidas** (commits 4a08f8b/288f66e). Queda: el flujo aún asume que sabes exportar de MoTeC. |
 | C02 | Exportar telemetría de AMS2 (sim-to-motec → i2 → CSV) | ✅ | Guía paso a paso en Paso 0 (con placeholders de imágenes pendientes). |
 | C03 | Entender qué CSV es "referencia" vs "piloto" | ⚠️ | El Paso 0 lo explica en texto, pero el concepto de "necesitas dos exports" es fácil de pasar por alto. Candidato a refuerzo visual. |
-| C04 | Imágenes de la guía de exportación | ❌ | Varias `docs/guide/*.png|gif` son **placeholders** (`_img_or_placeholder` muestra "Imagen pendiente"). La guía visual está incompleta. |
+| C04 | Imágenes de la guía de exportación | ✅ | Las 4 imágenes (`s2m_01..04_*.png/gif`) **existen** en `docs/guide/` y se muestran en el Paso 0. (`_img_or_placeholder` solo cae a "pendiente" si faltan; aquí no faltan.) |
 
 ### 3.2 Importar y elegir vuelta
 
@@ -63,18 +63,18 @@ piloto puede ser "league racer + ACC + sin GPU + UI".
 | :-- | :-- | :-- | :-- |
 | C05 | Cargar CSV de MoTeC i2 (en-US) | ✅ | Importador probado. |
 | C06 | Cargar `.xlsx` de MoTeC | ✅ | Requiere extra `[xlsx]`/openpyxl. |
-| C07 | CSV genérico (SimHub/AC) con `--map` | ✅ (CLI) / ⚠️ (UI) | El CLI mapea columnas; **en la UI no hay editor de mapeo claro** para un CSV no-MoTeC. Andrés (P5) se atora si su CSV no tiene los headers esperados. |
-| C08 | **Export europeo (coma decimal, `;`)** | ❌ | Gap conocido (xfail en la suite). Un Windows en español/UE exporta así y **el importador falla**. Afecta a una fracción grande de la comunidad objetivo (Europa). **Prioridad alta.** |
+| C07 | CSV genérico (SimHub/AC) con `--map` | ✅ | CLI con `--map`; **la UI sí tiene editor de mapeo** de columnas en "⚙️ Opciones avanzadas" del Paso 1 (`columna_original = canal`). Mejora posible: que aparezca de forma más visible cuando el archivo no parsea bien. |
+| C08 | **Export europeo (coma decimal, `;`)** | ✅ | **Soportado en el código actual:** el importador maneja separador `;` y coma decimal; cubierto por tests (`test_semicolon_separator_supported`, `test_semicolon_with_decimal_comma`), **sin xfail**. (La memoria vieja del 17-jun lo daba como gap; se resolvió desde entonces — verificado contra el código de hoy.) |
 | C09 | Elegir la vuelta a analizar | ✅ | Tabla por radio, marca la más rápida (🏆) y completas/incompletas. |
-| C10 | Comparar dos vueltas del **mismo** outing (sin referencia externa) | ⚠️ | Soportado conceptualmente (cargar el mismo archivo como ref y piloto, elegir vueltas distintas), pero **la UI no lo guía**: el usuario sin referencia externa no sabe que puede compararse consigo mismo del mismo archivo. |
+| C10 | Comparar dos vueltas del **mismo** outing (sin referencia externa) | ⚠️ | **Funciona** (cargar el mismo archivo como ref y piloto y elegir vueltas distintas con la tabla de vueltas), pero **no hay atajo guiado** "compárate contra ti mismo": el usuario sin referencia externa no sabe que puede. Mejora de onboarding, no un gap técnico. |
 
 ### 3.3 Análisis (Producto 1)
 
 | # | Caso | Veredicto | Notas |
 | :-- | :-- | :-- | :-- |
 | C11 | Reporte por curva, delta, tiempo perdido | ✅ | `compare` + report.md + CSVs + PNGs. Núcleo sólido. |
-| C12 | Avisos de comparación inválida (circuitos/autos distintos) | ✅ | Avisos implementados (delta sospechoso, autos distintos). |
-| C13 | Nombrar curvas / track pack | ✅ (CLI) / ⚠️ (UI) | `detect` + editar JSON es flujo CLI; en la UI no hay editor de nombres de curva cómodo. Diego (P3) lo hace a mano. |
+| C12 | Avisos de comparación inválida (circuitos/autos distintos) | ⚠️ | Implementados en el motor (`summary["avisos"]`: delta sospechoso, autos distintos) y visibles en CLI/`report.md`, pero **el Paso 2 de la UI no los muestra** — solo la columna "Avisos" por curva. Un usuario de UI no ve la alerta global. |
+| C13 | Nombrar curvas / track pack | ✅ | CLI (`detect` + editar JSON) **y UI**: Paso 1 → "⚙️ Opciones avanzadas" detecta curvas y ofrece un `data_editor` para nombrarlas, o subir un `corners.json`. |
 | C14 | Drill-down interactivo por curva | ❌ (futuro) | Visión capturada en PRODUCT_BRIEF §10, no implementada. Es el siguiente salto de valor de análisis. |
 
 ### 3.4 Overlay y video (Producto 2)
@@ -86,7 +86,7 @@ piloto puede ser "league racer + ACC + sin GPU + UI".
 | C17 | Compose con **GPU NVENC** | ⚠️ | NVENC se auto-detecta, pero en equipos con GPU NVIDIA usable la detección puede **caer a CPU** (hallazgo en la PC potente — en diagnóstico). Sofía (P4) con GPU paga render lento sin saber por qué. |
 | C18 | Compose **sin GPU** (CPU libx264) | ✅ | Fallback correcto. |
 | C19 | Compose **sin ffmpeg** | ⚠️ | `overlay` cae a frames PNG; `compose` falla con mensaje. No hay aviso temprano en la UI de que ffmpeg falta hasta que lo intentas. |
-| C20 | Saber qué encoder se usó (GPU vs CPU) | ❌ | La UI/CLI no dicen si compuso con NVENC o libx264 ni el tiempo — el usuario no puede saber si su GPU se está aprovechando. |
+| C20 | Saber qué encoder se usó (GPU vs CPU) | ⚠️ | El Paso 4 anuncia la **política** ("NVENC si está disponible, libx264 si no") *antes* de componer, pero **no confirma el encoder real usado ni el tiempo** después; `compose_video()` no lo devuelve. El usuario no sabe si su GPU se aprovechó. Ata con C17. |
 | C21 | Overlay legible / profesional | ⚠️ | Sujeto a evaluación visual (ver `ux-patterns.md` + ADR 0005-0007). Pendiente diagnóstico con capturas. |
 
 ### 3.5 Volumen, recurrencia y batch
@@ -111,17 +111,27 @@ piloto puede ser "league racer + ACC + sin GPU + UI".
 
 ## 4. Hallazgos priorizados (lo que sale de la evaluación)
 
-Ordenado por impacto en el nicho real:
+> **Nota de honestidad.** Una primera pasada de este doc marcó como gaps varios casos (C04, C07,
+> C08, C13) que **resultaron ya resueltos** al verificar contra el código actual — venían de
+> memoria desactualizada. Corregidos arriba. La app está más completa de lo que parecía; los
+> hallazgos reales son menos y más finos. Lección: evaluar siempre contra el código de hoy.
 
-1. **❌ C08 — Export europeo (coma decimal / `;`).** Rompe a la mitad de Europa. Es el gap más
-   doloroso para el público objetivo. → arreglar el importador (detección de locale/separador).
-2. **⚠️ C17/C20 — GPU NVENC infrautilizada + sin visibilidad del encoder.** Va contra el objetivo
-   de "rápido"; el usuario no sabe si su GPU se usa. → diagnosticar detección + reportar encoder y tiempo.
-3. **❌ C04 — Imágenes de la guía de exportación faltantes.** El onboarding visual está a medias.
-4. **⚠️ C07/C10/C13 — Huecos de la UI vs CLI:** mapeo de columnas, compararse contra uno mismo,
-   editar nombres de curva. La UI no expone capacidades que el CLI sí tiene.
-5. **⚠️ C19 — ffmpeg ausente sin aviso temprano.** Chequeo de prerrequisitos al entrar al flujo de video.
-6. **❌ C14 — Drill-down por curva.** El mayor salto de valor de análisis (futuro, post base).
+Ordenado por impacto en el nicho real (solo lo verificado contra el código):
 
-> Los hallazgos de UX visual (C21 y el detalle de la UI) se desarrollan en
+1. **⚠️ C17 + C20 — GPU NVENC infrautilizada y sin confirmar el encoder real.** En la PC potente
+   `compose` cae a CPU pese a haber GPU (en diagnóstico), y la UI no confirma qué encoder usó ni el
+   tiempo. Va directo contra el objetivo "rápido". → diagnosticar la detección + que `compose_video`
+   devuelva encoder y duración, y mostrarlos.
+2. **⚠️ C12 — Avisos globales de comparación no se ven en la UI.** `summary["avisos"]` (autos/
+   circuitos distintos, delta sospechoso) están en el motor pero el Paso 2 no los muestra. Fix chico
+   y de alto valor (evita interpretar mal un reporte inválido). 
+3. **⚠️ C19 — ffmpeg ausente sin aviso temprano.** Chequeo de prerrequisito al entrar al flujo de
+   video, en vez de fallar al apretar "Componer".
+4. **⚠️ C03 / C10 — Onboarding:** dejar más claro que se necesitan **dos** exports y que puedes
+   **compararte contra ti mismo** del mismo archivo. UX, no técnica.
+5. **❌ C14 — Drill-down por curva.** El mayor salto de valor de análisis (futuro, PRODUCT_BRIEF §10).
+6. **⏳ C21 — Calidad visual del HUD y de la UI.** Pendiente del diagnóstico con capturas
+   ([`docs/ux-patterns.md`](ux-patterns.md)) generadas en el host.
+
+> Los hallazgos de UX visual (C21 y el detalle por pantalla) se desarrollan en
 > [`docs/ux-patterns.md`](ux-patterns.md) con capturas, una vez generadas en el host.
