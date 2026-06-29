@@ -3,9 +3,14 @@
 # Parametros opcionales:
 #   -Full       instala dependencias Python completas (openpyxl + Pillow + matplotlib)
 #   -SkipSystem omite instalacion de herramientas del sistema (ffmpeg, gh)
+#   -Yes        modo desatendido: responde "si" a todas las confirmaciones, sin Read-Host
+#               (para CI / pruebas en VM limpia). Combina con -SkipSystem para evitar las apps
+#               grandes (VLC, Kdenlive). En -Yes no se relanza una terminal nueva tras instalar
+#               Python (inservible en headless): se resuelve la ruta de Python en la misma sesion.
 param(
     [switch]$Full,
     [switch]$SkipSystem,
+    [switch]$Yes,
     [switch]$Relaunched   # uso interno: marca que ya se reabrio tras instalar Python (anti-bucle)
 )
 
@@ -16,6 +21,12 @@ function Write-Step { param([string]$Msg) Write-Host "`n==> $Msg" -ForegroundCol
 function Write-OK   { param([string]$Msg) Write-Host "    OK: $Msg" -ForegroundColor Green }
 function Write-Skip { param([string]$Msg) Write-Host "    --: $Msg" -ForegroundColor DarkGray }
 function Write-Warn { param([string]$Msg) Write-Host "    !! $Msg" -ForegroundColor Yellow }
+# Confirmacion que respeta el modo desatendido: con -Yes asume "si" sin preguntar.
+function Confirm-Action {
+    param([string]$Prompt)
+    if ($Yes) { Write-Host "$Prompt s (auto -Yes)" -ForegroundColor DarkGray; return $true }
+    return ((Read-Host $Prompt) -eq "s")
+}
 
 # -----------------------------------------------------------------------
 # 1. Python
@@ -34,8 +45,7 @@ if ($pythonCmd -and ($pythonCmd.Source -notmatch 'WindowsApps')) {
         Write-Error "Tampoco hay winget. Instala Python 3.10+ a mano desde https://python.org (marca 'Add Python to PATH') y vuelve a correr setup.ps1."
         exit 1
     }
-    $resp = Read-Host "    Instalar Python 3.12 via winget ahora? (s/n)"
-    if ($resp -ne "s") {
+    if (-not (Confirm-Action "    Instalar Python 3.12 via winget ahora? (s/n)")) {
         Write-Error "Python es obligatorio. Instalalo desde https://python.org y vuelve a correr setup.ps1."
         exit 1
     }
@@ -45,11 +55,22 @@ if ($pythonCmd -and ($pythonCmd.Source -notmatch 'WindowsApps')) {
     # winget actualiza el PATH en el registro, pero NO en esta sesion ya abierta.
     # Se intenta refrescar desde el registro (Machine + User).
     $env:Path = [Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [Environment]::GetEnvironmentVariable("Path", "User")
+    # winget pudo instalar Python sin refrescar el PATH de esta sesion. Ademas del registro,
+    # probamos las rutas estandar donde winget deja Python.Python.3.12 y las anadimos a mano.
+    if (-not (Get-Command python -ErrorAction SilentlyContinue)) {
+        foreach ($base in @("$env:LOCALAPPDATA\Programs\Python\Python312", "$env:ProgramFiles\Python312")) {
+            if (Test-Path (Join-Path $base "python.exe")) {
+                $env:Path = "$base;$base\Scripts;$env:Path"
+                break
+            }
+        }
+    }
     if (Get-Command python -ErrorAction SilentlyContinue) {
         Write-OK ("Python instalado: " + (python --version 2>&1))
-    } elseif ($Relaunched) {
-        # Ya se reabrio una vez y Python sigue sin aparecer: no relanzar mas (anti-bucle).
-        Write-Error "Python se instalo pero no aparece en el PATH ni tras reabrir. Reinicia la PC y vuelve a correr setup.ps1."
+    } elseif ($Relaunched -or $Yes) {
+        # No relanzamos una terminal nueva en modo desatendido (-Yes) ni si ya se reintento una vez
+        # (anti-bucle): en headless/CI una ventana nueva no sirve. Mejor fallar claro.
+        Write-Error "Python se instalo pero no aparece en el PATH. Abre una terminal nueva (o reinicia) y vuelve a correr setup.ps1."
         exit 1
     } else {
         # Una terminal NUEVA si hereda el PATH actualizado del registro. Abrimos otra,
@@ -109,8 +130,7 @@ if (-not $Full) {
     if ($LASTEXITCODE -eq 0) {
         Write-Skip "matplotlib ya instalado"
     } else {
-        $resp = Read-Host "    Instalar matplotlib para graficas ghost? (s/n)"
-        if ($resp -eq "s") {
+        if (Confirm-Action "    Instalar matplotlib para graficas ghost? (s/n)") {
             pip install "matplotlib>=3.7" --quiet
             Write-OK "matplotlib instalado  (graficas ghost)"
         } else {
@@ -133,8 +153,7 @@ if ($SkipSystem) {
         Write-Skip "ffmpeg ya instalado  ($(ffmpeg -version 2>&1 | Select-Object -First 1))"
     } else {
         Write-Warn "ffmpeg no encontrado - el overlay generara frames PNG en lugar de video"
-        $resp = Read-Host "    Instalar ffmpeg via winget? (s/n)"
-        if ($resp -eq "s") {
+        if (Confirm-Action "    Instalar ffmpeg via winget? (s/n)") {
             winget install Gyan.FFmpeg --source winget --accept-source-agreements --accept-package-agreements
             Write-OK "ffmpeg instalado  (reinicia la terminal para que quede en PATH)"
         } else {
@@ -146,8 +165,7 @@ if ($SkipSystem) {
     if (Get-Command gh -ErrorAction SilentlyContinue) {
         Write-Skip "GitHub CLI ya instalado"
     } else {
-        $resp = Read-Host "    Instalar GitHub CLI (gh) via winget? (s/n)"
-        if ($resp -eq "s") {
+        if (Confirm-Action "    Instalar GitHub CLI (gh) via winget? (s/n)") {
             winget install GitHub.cli --source winget --accept-source-agreements --accept-package-agreements
             Write-OK "gh instalado  (autenticate con: gh auth login)"
         } else {
@@ -160,8 +178,7 @@ if ($SkipSystem) {
     if ((Get-Command vlc -ErrorAction SilentlyContinue) -or (Test-Path $vlcPath)) {
         Write-Skip "VLC ya instalado"
     } else {
-        $resp = Read-Host "    Instalar VLC (previsualizar overlay.webm con alfa)? (s/n)"
-        if ($resp -eq "s") {
+        if (Confirm-Action "    Instalar VLC (previsualizar overlay.webm con alfa)? (s/n)") {
             winget install VideoLAN.VLC --source winget --accept-source-agreements --accept-package-agreements
             Write-OK "VLC instalado"
         } else {
@@ -174,8 +191,7 @@ if ($SkipSystem) {
     if ((Get-Command kdenlive -ErrorAction SilentlyContinue) -or (Test-Path $kdenlivePath)) {
         Write-Skip "Kdenlive ya instalado"
     } else {
-        $resp = Read-Host "    Instalar Kdenlive (editor open source para sincronizar el HUD con tu grabacion)? (s/n)"
-        if ($resp -eq "s") {
+        if (Confirm-Action "    Instalar Kdenlive (editor open source para sincronizar el HUD con tu grabacion)? (s/n)") {
             winget install KDE.Kdenlive --source winget --accept-source-agreements --accept-package-agreements
             Write-OK "Kdenlive instalado"
         } else {

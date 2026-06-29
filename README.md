@@ -52,6 +52,8 @@ Vueltas de referencia pagadas, telemetrías privadas de coaches o proveedores, s
 powershell -ExecutionPolicy Bypass -File setup.ps1
 # o con todo incluido (openpyxl + Pillow + matplotlib):
 powershell -ExecutionPolicy Bypass -File setup.ps1 -Full
+# desatendido (CI / máquina virgen): responde "sí" a todo, sin preguntas:
+powershell -ExecutionPolicy Bypass -File setup.ps1 -Yes -SkipSystem
 ```
 
 **Manual:**

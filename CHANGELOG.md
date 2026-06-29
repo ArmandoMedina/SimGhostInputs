@@ -4,6 +4,9 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/). Versionado
 
 ## [Unreleased]
 
+### Añadido
+- **`setup.ps1 -Yes` — modo desatendido** ([ADR 0013](docs/decisions/0013-setup-modo-desatendido.md)): responde "sí" a todas las confirmaciones (sin `Read-Host`) y, tras instalar Python, resuelve su ruta en la misma sesión en vez de relanzar una terminal nueva (inservible en headless/CI). Habilita probar el instalador desatendido en CI y en la VM limpia. Combo recomendado: `setup.ps1 -Yes -SkipSystem`.
+
 ### Corregido
 - **`setup.ps1` no corría en una instalación limpia de Windows 11** (dos bugs detectados probando el script en una VM virgen `sgi-win11-clean`):
   - El stub de `python.exe` de la Microsoft Store (en `WindowsApps`) engañaba a `Get-Command python`: el script creía que Python ya estaba y reventaba después al llamar `pip`. Ahora se ignora cualquier `python` cuya ruta contenga `WindowsApps`.
