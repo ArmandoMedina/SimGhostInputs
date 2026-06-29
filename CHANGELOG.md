@@ -5,6 +5,7 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/). Versionado
 ## [Unreleased]
 
 ### Añadido
+- **UI Paso 4 — aviso temprano si falta ffmpeg** (caso C19): el paso de composición necesita ffmpeg; ahora avisa al entrar (con el comando de instalación) en vez de dejar fallar al apretar «Componer». Con test estructural (`test_step4_ffmpeg.py`).
 - **UI Paso 2 — avisos globales de comparación visibles** (caso C12): los avisos del motor (`summary["avisos"]`: autos distintos, delta sospechosamente grande → posible circuito distinto) ahora se muestran como banner en el Paso 2 de la UI. Antes solo aparecían en el CLI/`report.md`, así que un usuario de la UI podía interpretar un reporte inválido como válido. Con test estructural (`test_step2_avisos.py`, capa A del gate de UX, [ADR 0014](docs/decisions/0014-gate-ux-ui.md)).
 - **`setup.ps1 -Yes` — modo desatendido** ([ADR 0013](docs/decisions/0013-setup-modo-desatendido.md)): responde "sí" a todas las confirmaciones (sin `Read-Host`) y, tras instalar Python, resuelve su ruta en la misma sesión en vez de relanzar una terminal nueva (inservible en headless/CI). Habilita probar el instalador desatendido en CI y en la VM limpia. Combo recomendado: `setup.ps1 -Yes -SkipSystem`.
 

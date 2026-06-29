@@ -1,6 +1,7 @@
 """Paso 4 — Componer: superponer overlay sobre la grabación."""
 
 import os
+import shutil
 
 import streamlit as st
 
@@ -26,6 +27,15 @@ def render():
         "El resultado es un **clip MP4 recortado exactamente a la duración de tu vuelta**, "
         "con el HUD ya integrado y listo para subir."
     )
+
+    # Prerrequisito: compose NECESITA ffmpeg. Avisar temprano (caso C19) en vez de dejar fallar
+    # al apretar "Componer". El overlay del Paso 3 sí degrada a PNG sin ffmpeg; compose no.
+    if shutil.which("ffmpeg") is None:
+        st.error(
+            "⚠️ **ffmpeg no está instalado** y este paso lo necesita para generar el video.  \n"
+            "Instálalo y reinicia la terminal: `winget install Gyan.FFmpeg`  \n"
+            "(El overlay del Paso 3 sí funciona sin ffmpeg, generando frames PNG.)"
+        )
 
     _col_k1, _col_k2 = st.columns(2)
     _col_k1.warning(
