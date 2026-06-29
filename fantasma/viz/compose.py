@@ -98,6 +98,11 @@ def _nvenc_available(ffmpeg_path):
     en ffmpeg pero fallar en runtime si no hay GPU NVIDIA o `nvcuda.dll` no
     carga (p. ej. equipos sin tarjeta NVIDIA). Probamos con un encode real de
     1 frame contra un source sintético; solo devolvemos True si termina en 0.
+
+    OJO con la resolución del source: NVENC rechaza frames demasiado pequeños
+    (un 64x64 falla con "no capable devices found" / "Invalid surface" aunque
+    la GPU SÍ sirva) → falso NEGATIVO que mandaba TODO a CPU en equipos con
+    GPU real. Por eso el test usa 320x240, holgadamente por encima del mínimo.
     """
     try:
         r = subprocess.run(
@@ -109,7 +114,7 @@ def _nvenc_available(ffmpeg_path):
                 "-f",
                 "lavfi",
                 "-i",
-                "color=black:s=64x64:d=1",
+                "color=black:s=320x240:d=1",
                 "-frames:v",
                 "1",
                 "-c:v",
