@@ -3,9 +3,8 @@
 # lint (ruff) + formato (ruff format) + tests (pytest) + doc-gate + auditor del grafo.
 # Inspirado en el patron "no-mistakes" (convenciones de metodo: project-starter).
 # lint/formato/tests AVISAN (el CI los hace cumplir); el doc-drift de la seccion 8
-# (core/->formato-datos, viz/->hud-reference) y los hallazgos BLOQUEA del auditor del
-# grafo de docs (auditar.ps1: wikilinks rotos, frontmatter, criterios) BLOQUEAN el
-# push (exit 1) - poka-yoke.
+# (segun blast-radius.json) y los hallazgos BLOQUEA del auditor del grafo de docs
+# (auditar.ps1: wikilinks rotos, frontmatter, criterios) BLOQUEAN el push (exit 1).
 # Saltar a proposito: git push --no-verify.
 #
 # Uso:  ./tools/verificar.ps1
@@ -20,6 +19,12 @@ $script:block = 0
 function Note($msg)  { Write-Host "  [AVISO] $msg"   -ForegroundColor Yellow; $script:warn++ }
 function Block($msg) { Write-Host "  [BLOQUEA] $msg" -ForegroundColor Red;    $script:block++ }
 function Ok($msg)    { Write-Host "  [OK] $msg"      -ForegroundColor Green }
+
+# Devuelve $true si algun elemento de $list hace -like $pattern.
+function Match-Any($list, $pattern) {
+  foreach ($item in $list) { if ($item -like $pattern) { return $true } }
+  return $false
+}
 
 Write-Host "== Verificar (modo aviso; el CI es el que bloquea) =="
 
@@ -55,21 +60,53 @@ if ($tocoCodigo -and -not $tocoChangelog) {
 }
 else { Ok "CHANGELOG al dia (o sin cambios de codigo)" }
 
-# 5. Doc-gate: blast-radius (CONTRIBUTING seccion 8, reglas mecanicas) -------
+# 5. Doc-gate: blast-radius (tools/blast-radius.json, CONTRIBUTING seccion 8) --
+# Fuente unica de verdad ejecutable. Para agregar un area o un doc dueno: edita
+# blast-radius.json y esto funciona sin mas cambios. Ver CONTRIBUTING.md seccion 8.
 Write-Host "`n-- Doc-gate (blast-radius seccion 8) --"
-$tocoCore     = $changed | Where-Object { $_ -like 'fantasma/core/*' }
-$tocoFormato  = $changed | Where-Object { $_ -eq 'docs/formato-datos.md' }
-$tocoViz      = $changed | Where-Object { $_ -like 'fantasma/viz/*' }
-$tocoHud      = $changed | Where-Object { $_ -eq 'docs/hud-reference.md' }
-$tocoBarreras = $changed | Where-Object { $_ -like '.githooks/*' -or $_ -like '.claude/hooks/*' -or $_ -eq '.claude/settings.json' -or $_ -eq 'tools/verificar.ps1' -or $_ -like '.github/workflows/*' }
-$tocoFlujo    = $changed | Where-Object { $_ -eq 'docs/flujo-de-trabajo.md' }
-$faltaFormato = $tocoCore     -and -not $tocoFormato
-$faltaHud     = $tocoViz      -and -not $tocoHud
-$faltaFlujo   = $tocoBarreras -and -not $tocoFlujo
-if ($faltaFormato) { Block "tocaste fantasma/core/ sin docs/formato-datos.md (algoritmo/JSON/CSV). Ver CONTRIBUTING.md seccion 8 -> pasalo al escribano." }
-if ($faltaHud)     { Block "tocaste fantasma/viz/ (HUD/overlay) sin docs/hud-reference.md. Ver CONTRIBUTING.md seccion 8 -> pasalo al escribano." }
-if ($faltaFlujo)   { Block "tocaste las barreras (hooks/gate/CI) sin docs/flujo-de-trabajo.md. Ver CONTRIBUTING.md seccion 8 -> pasalo al escribano." }
-if (-not ($faltaFormato -or $faltaHud -or $faltaFlujo)) { Ok "docs duenos al dia (o sin cambios en core/viz/barreras)" }
+$manifest = Get-Content "$PSScriptRoot/blast-radius.json" -Raw | ConvertFrom-Json
+$hayBlastFalta = $false
+$hayBlastAviso = $false
+
+foreach ($entry in $manifest) {
+  # Chequear si el area fue tocada.
+  $areaMatch = $false
+  foreach ($pat in $entry.fuente) {
+    if (Match-Any $changed $pat) { $areaMatch = $true; break }
+  }
+  if (-not $areaMatch) { continue }
+
+  # docs_bloquea: BLOQUEA si falta alguno.
+  foreach ($tgt in $entry.doc_bloquea) {
+    if (-not (Match-Any $changed $tgt)) {
+      Block "[$($entry.nombre)] tocaste $($entry.fuente -join '/') sin $tgt ($($entry.desc)). Rol: $($entry.rol) -> pasalo al escribano."
+      $hayBlastFalta = $true
+    }
+  }
+
+  # doc_avisa: AVISA si falta alguno.
+  foreach ($tgt in $entry.doc_avisa) {
+    if (-not (Match-Any $changed $tgt)) {
+      Note "[$($entry.nombre)] considera actualizar $tgt ($($entry.desc)). Rol: $($entry.rol)."
+      $hayBlastAviso = $true
+    }
+  }
+
+  # product_avisa: AVISA si ninguno de los patrones de product/ fue tocado.
+  if ($entry.product_avisa.Count -gt 0) {
+    $anyProduct = $false
+    foreach ($pat in $entry.product_avisa) {
+      if (Match-Any $changed $pat) { $anyProduct = $true; break }
+    }
+    if (-not $anyProduct) {
+      Note "[$($entry.nombre)] preguntate: las capacidades/modulos de product/ siguen describiendo lo que implementaste? Candidatos: $($entry.product_avisa -join ', '). Escribano los sincroniza si cambiaron criterios."
+      $hayBlastAviso = $true
+    }
+  }
+}
+
+if (-not $hayBlastFalta -and -not $hayBlastAviso) { Ok "blast-radius al dia (o sin cambios en areas cubiertas)" }
+elseif (-not $hayBlastFalta) { Write-Host "  (avisos arriba; nada que BLOQUEA en blast-radius)" -ForegroundColor Yellow }
 
 # 6. Doc-gate: integridad del grafo de docs (product/ + engineering/) --------
 # Lo corre el auditor determinista (auditar.ps1): frontmatter, wikilinks rotos,
@@ -83,7 +120,7 @@ else { Block "el auditor del grafo encontro hallazgos BLOQUEA (arriba). Ver tool
 # Resumen -------------------------------------------------------------------
 Write-Host ""
 if ($script:block -gt 0) {
-  Write-Host "== $($script:block) bloqueo(s) de doc-drift (seccion 8). PUSH DETENIDO. ==" -ForegroundColor Red
+  Write-Host "== $($script:block) bloqueo(s) de doc-drift. PUSH DETENIDO. ==" -ForegroundColor Red
   Write-Host "   Sincroniza los docs duenos (pasalo al escribano) y reintenta, o 'git push --no-verify' a proposito." -ForegroundColor Red
   if ($script:warn -gt 0) { Write-Host "   (+$($script:warn) aviso[s] no bloqueante[s] arriba.)" -ForegroundColor Yellow }
   exit 1

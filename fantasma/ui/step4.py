@@ -31,11 +31,22 @@ def render():
     # Prerrequisito: compose NECESITA ffmpeg. Avisar temprano (caso C19) en vez de dejar fallar
     # al apretar "Componer". El overlay del Paso 3 sí degrada a PNG sin ffmpeg; compose no.
     if shutil.which("ffmpeg") is None:
+        import platform as _pl
+
+        _os = _pl.system()
+        _install_cmd = (
+            "`winget install Gyan.FFmpeg`"
+            if _os == "Windows"
+            else "`brew install ffmpeg`"
+            if _os == "Darwin"
+            else "`sudo apt install ffmpeg`"
+        )
         st.error(
             "⚠️ **ffmpeg no está instalado** y este paso lo necesita para generar el video.  \n"
-            "Instálalo y reinicia la terminal: `winget install Gyan.FFmpeg`  \n"
-            "(El overlay del Paso 3 sí funciona sin ffmpeg, generando frames PNG.)"
+            "Instálalo y abre una terminal nueva: %s  \n"
+            "(El overlay del Paso 3 sí funciona sin ffmpeg, generando frames PNG.)" % _install_cmd
         )
+        st.stop()
 
     _col_k1, _col_k2 = st.columns(2)
     _col_k1.warning(
@@ -131,73 +142,74 @@ def render():
         )
 
     _can_sync = bool(_video_path and _drv_for_sync)
-    _sc1, _sc2 = st.columns([3, 1])
-    with _sc2:
-        if not _can_sync:
-            st.caption("Necesitas el video y la telemetría.")
-        if st.button(
-            "Detectar sincronía",
-            disabled=not _can_sync,
-            type="primary" if _can_sync else "secondary",
-            key="btn_autosync",
-        ):
-            with st.spinner("Analizando audio… (~30 s)"):
-                _res = None
-                try:
-                    from fantasma.viz.sync import _MIN_SYNC_Z, sync_candidates
+    if st.button(
+        "🔍 Detectar sincronía automáticamente",
+        disabled=not _can_sync,
+        type="primary" if _can_sync else "secondary",
+        key="btn_autosync",
+    ):
+        with st.spinner("Analizando audio… (~30 s)"):
+            _res = None
+            try:
+                from fantasma.viz.sync import _MIN_SYNC_Z, sync_candidates
 
-                    _res = sync_candidates(_video_path, _drv_for_sync)
-                except ImportError as _ie:
-                    st.error(str(_ie))
-                except Exception as _se:
-                    st.error("Error en auto-sync: %s" % _se)
-                if _res is not None:
-                    for _k in (
-                        "_sync_cands",
-                        "_sync_ambiguous",
-                        "_sync_resolved",
-                        "_autosync_detected",
-                        "_autosync_z",
-                        "_autosync_error",
-                    ):
-                        st.session_state.pop(_k, None)
-                    _cs = _res["candidates"]
-                    if not _cs or _cs[0]["z"] < _MIN_SYNC_Z:
-                        st.session_state["_autosync_error"] = (
-                            "Correlación insuficiente: el video no parece corresponder a tu "
-                            "vuelta. Usa la sincronía manual de abajo."
-                        )
-                    elif _res["ambiguous"]:
-                        # ADR 0008: varias vueltas parecidas — selección obligatoria.
-                        st.session_state["_sync_cands"] = _cs
-                        st.session_state["_sync_ambiguous"] = True
-                    else:
-                        st.session_state["_autosync_detected"] = _cs[0]["offset"]
-                        st.session_state["_autosync_z"] = _cs[0]["z"]
-                        st.session_state["compose_offset"] = _cs[0]["offset"]
-                    st.rerun()
+                _res = sync_candidates(_video_path, _drv_for_sync)
+            except ImportError as _ie:
+                st.error(str(_ie))
+            except Exception as _se:
+                st.error("Error en auto-sync: %s" % _se)
+            if _res is not None:
+                for _k in (
+                    "_sync_cands",
+                    "_sync_ambiguous",
+                    "_sync_resolved",
+                    "_autosync_detected",
+                    "_autosync_z",
+                    "_autosync_error",
+                ):
+                    st.session_state.pop(_k, None)
+                _cs = _res["candidates"]
+                if not _cs or _cs[0]["z"] < _MIN_SYNC_Z:
+                    st.session_state["_autosync_error"] = (
+                        "Correlación insuficiente: el video no parece corresponder a tu "
+                        "vuelta. Usa la sincronía manual de abajo."
+                    )
+                elif _res["ambiguous"]:
+                    # ADR 0008: varias vueltas parecidas — selección obligatoria.
+                    st.session_state["_sync_cands"] = _cs
+                    st.session_state["_sync_ambiguous"] = True
+                else:
+                    st.session_state["_autosync_detected"] = _cs[0]["offset"]
+                    st.session_state["_autosync_z"] = _cs[0]["z"]
+                    st.session_state["compose_offset"] = _cs[0]["offset"]
+                st.rerun()
+    if not _can_sync:
+        st.caption(
+            "Necesitas el video de grabación y la telemetría para usar la detección automática."
+        )
 
-    with _sc1:
-        if st.session_state.get("_autosync_error"):
-            st.error(st.session_state["_autosync_error"])
-        elif "_autosync_detected" in st.session_state and not st.session_state.get(
-            "_sync_ambiguous"
-        ):
-            _off = st.session_state["_autosync_detected"]
-            _z_s = st.session_state.get("_autosync_z", 0.0)
-            _qlbl = _sync_quality_label(_z_s)
-            st.success(
-                "✓ **Offset detectado: %.3f s** desde el inicio del video hasta el cruce de meta.  \n"
-                "Calidad de sincronía: **%s** — el valor se cargó en el campo de abajo."
-                % (_off, _qlbl)
-            )
-            # Zona gris (ADR 0008): pasa el mínimo pero no es robusto; podría ser
-            # un video de otra sesión. Se acepta pero se avisa (no bloquea).
+    if st.session_state.get("_autosync_error"):
+        st.error(st.session_state["_autosync_error"])
+    elif "_autosync_detected" in st.session_state and (
+        not st.session_state.get("_sync_ambiguous") or st.session_state.get("_sync_resolved")
+    ):
+        _off = st.session_state["_autosync_detected"]
+        _z_s = st.session_state.get("_autosync_z", 0.0)
+        _qlbl = _sync_quality_label(_z_s)
+        st.success(
+            "✓ **Offset detectado: %.3f s** desde el inicio del video hasta el cruce de meta.  \n"
+            "Calidad de sincronía: **%s** — el valor se cargó en el campo de abajo." % (_off, _qlbl)
+        )
+        # Zona gris (ADR 0008): pasa el mínimo pero no es robusto; podría ser
+        # un video de otra sesión. Se acepta pero se avisa (no bloquea).
+        try:
             from fantasma.viz.sync import sync_gray_zone_warning
 
             _gz = sync_gray_zone_warning(_z_s)
             if _gz:
                 st.warning("⚠️ " + _gz[0].upper() + _gz[1:])
+        except ImportError:
+            pass
 
     # Selector bloqueante de vuelta (ADR 0008): con video de varias vueltas el audio
     # no distingue cuál es la del piloto, así que el usuario DEBE elegir para continuar.
@@ -226,11 +238,7 @@ def render():
             st.session_state["_sync_resolved"] = True
             st.rerun()
 
-    with st.expander("⚙️ Sincronizar manualmente (avanzado)"):
-        st.warning(
-            "⚠️ Usa esto solo si la detección automática falló o el video no tiene audio del motor. "
-            "Necesitarás reproducir el video y anotar el segundo exacto en que cruzas la meta."
-        )
+    with st.expander("⚙️ Sincronizar manualmente (avanzado — si la detección automática falló)"):
         st.markdown(
             "**Cómo encontrar el offset manualmente:**  \n"
             "1. Abre el video en VLC.  \n"
@@ -299,12 +307,11 @@ def render():
     # ── resumen pre-compose ───────────────────────────────────────────────────
     # _drv_for_sync unifica la telemetría del Paso 1 y la subida aquí en el Paso 4,
     # así el recorte a la vuelta funciona también con el CSV cargado en este paso.
+    def _mss(s):
+        return "%d:%02d" % (int(s) // 60, int(s) % 60)
+
     _drv_lap = _drv_for_sync
     if _video_path and _overlay_path:
-
-        def _mss(s):
-            return "%d:%02d" % (int(s) // 60, int(s) % 60)
-
         _offset_val = float(st.session_state.get("compose_offset", 0.0))
         if _drv_lap is not None:
             _clip_line = (
@@ -313,7 +320,7 @@ def render():
             )
         else:
             _clip_line = (
-                "- Clip: overlay aplicado desde **%s min** del video → **duración completa** "
+                "- Clip: overlay desde **%s min** → **duración completa del overlay** "
                 "(sin telemetría no se recorta a la vuelta)  \n" % _mss(_offset_val)
             )
         st.info(
@@ -346,11 +353,7 @@ def render():
         elif _cp_err:
             st.error("Error: %s" % _cp_err)
         else:
-
-            def _mss(s):
-                return "%d:%02d" % (int(s) // 60, int(s) % 60)
-
-            st.success("✓ Video guardado en: `%s`" % _cp_result)
+            st.success("✓ Video guardado: `%s`" % os.path.basename(_cp_result))
             _z_score = st.session_state.get("_autosync_z")
             if _z_score is not None:
                 st.info(

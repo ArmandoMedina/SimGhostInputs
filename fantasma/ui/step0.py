@@ -4,27 +4,129 @@ import streamlit as st
 
 from ._helpers import _FLOWS, _go, _img_or_placeholder
 
+_FLOW_PREVIEW = {
+    "📊 Solo análisis": {"need": "2 CSVs", "out": "Reporte, CSVs y gráficas"},
+    "🎬 Solo overlay": {"need": "2 CSVs", "out": "HUD transparente `.webm`"},
+    "🎥 Video con HUD": {"need": "2 CSVs + video", "out": "MP4 final con HUD"},
+}
+
 
 def render():
     st.markdown(
-        '<div class="step-header">👻 Bienvenido a SimGhostInputs</div>', unsafe_allow_html=True
+        """
+<div class="sgi-hero">
+  <h1>👻 SimGhostInputs</h1>
+  <p>Convierte una tanda en un debrief por curva y, si quieres, en un video con HUD listo para revisar.</p>
+</div>
+""",
+        unsafe_allow_html=True,
     )
-    st.caption("Compara tus inputs de simracing contra una vuelta de referencia, curva a curva.")
+    st.markdown(
+        '<div class="step-header">Elige el resultado y carga tus vueltas</div>',
+        unsafe_allow_html=True,
+    )
 
-    st.info(
-        "**Una vuelta por flujo.** Cada vez que usas la app procesas exactamente una vuelta. "
-        "Si tienes varias vueltas para analizar, al terminar el flujo el botón "
-        "**«Procesar otra vuelta»** te devuelve aquí sin tener que recargar archivos ni la referencia."
+    st.markdown(
+        """
+<div class="sgi-strip">
+  <div class="sgi-strip-item">
+    <strong>① Referencia</strong>
+    <span>Tu mejor vuelta, una vuelta de coach o una vuelta del mismo archivo.</span>
+  </div>
+  <div class="sgi-strip-item">
+    <strong>② Piloto</strong>
+    <span>La vuelta que quieres entender hoy. La app elige la rápida y puedes cambiarla.</span>
+  </div>
+  <div class="sgi-strip-item">
+    <strong>③ Salida</strong>
+    <span>Reporte, overlay transparente o video final con HUD.</span>
+  </div>
+</div>
+""",
+        unsafe_allow_html=True,
     )
+
+    st.markdown(
+        """
+<div class="sgi-note">
+  <strong>Una vuelta por flujo.</strong> Si quieres analizar varias, al terminar puedes volver aquí sin
+  recargar la referencia. Para compararte contra ti mismo, carga el mismo CSV como referencia y piloto
+  y elige dos vueltas distintas en el Paso 1.
+</div>
+""",
+        unsafe_allow_html=True,
+    )
+
+    st.divider()
+
+    # ── ¿qué quieres obtener hoy? ─────────────────────────────────────────────
+    st.subheader("① ¿Qué quieres obtener hoy?")
+    st.caption(
+        "Elige el flujo que mejor describe tu objetivo. "
+        "La UI se adapta y solo te muestra los pasos que necesitas."
+    )
+
+    _flow_keys = list(_FLOWS.keys())
+    _cols = st.columns(len(_flow_keys))
+    for _ci, (_fk, _fv) in enumerate(_FLOWS.items()):
+        with _cols[_ci]:
+            _selected = st.session_state["flow_key"] == _fk
+            _preview = _FLOW_PREVIEW[_fk]
+            # Tarjeta con el contenedor REAL de Streamlit: st.container(border)
+            # envuelve los widgets de verdad. Un <div> por separado vía markdown
+            # NO los contiene (abre/cierra solo en el DOM y deja una caja vacía).
+            # height fija las tres a la misma altura para que el botón de abajo
+            # —fuera del contenedor— quede a la misma línea base. Ver ADR 0011.
+            with st.container(border=True, height=260):
+                st.markdown(
+                    '<div class="sgi-flow-card-title">%s</div>' % _fk, unsafe_allow_html=True
+                )
+                st.markdown(
+                    '<div class="sgi-flow-meta">%s</div>' % _fv["desc"], unsafe_allow_html=True
+                )
+                st.markdown("**Necesitas:** %s" % _preview["need"])
+                st.markdown("**Obtienes:** %s" % _preview["out"])
+                with st.expander("Ver detalle"):
+                    st.markdown("**Requisitos**")
+                    for _r in _fv["requires"]:
+                        st.markdown("- %s" % _r)
+                    st.markdown("**Archivos de salida**")
+                    for _d in _fv["deliverables"]:
+                        st.markdown("- %s" % _d)
+            if _selected:
+                if "flow_chosen" in st.session_state:
+                    st.success("✓ Seleccionado")
+                else:
+                    st.info("Por defecto — pulsa «Empezar» o elige otro flujo")
+            if not _selected and st.button(
+                "Elegir este", key="flow_%d" % _ci, use_container_width=True
+            ):
+                st.session_state["flow_key"] = _fk
+                st.session_state["flow_chosen"] = True
+                st.rerun()
+
+    st.divider()
 
     # ── cómo exportar telemetría ──────────────────────────────────────────────
-    st.subheader("① Antes de empezar: exporta tu telemetría")
-    st.markdown(
-        "SimGhostInputs necesita **archivos CSV** con los datos de la sesión. "
-        "Se exportan desde **MoTeC i2** después de cada tanda usando el plugin gratuito **Sim To MoTeC**."
-    )
+    st.subheader("② Exporta la telemetría con distancia")
+    _txt_col, _img_col = st.columns([1.2, 1])
+    with _txt_col:
+        st.markdown(
+            "Necesitas CSVs exportados desde **MoTeC i2** con **Include Time Stamp** y "
+            "**Include Distance Data** activados. Sin distancia, el análisis se detiene antes de comparar."
+        )
+        st.markdown(
+            "- **Referencia:** vuelta rápida propia, coach o compañero.\n"
+            "- **Piloto:** outing actual o el mismo CSV si quieres comparar dos vueltas tuyas.\n"
+            "- **Video:** solo para el flujo **Video con HUD**."
+        )
+    with _img_col:
+        _img_or_placeholder(
+            "docs/guide/s2m_04_export.gif",
+            "MoTeC i2 — Export Data con Time Stamp y Distance Data",
+        )
 
-    with st.expander("📋 Ver guía de exportación paso a paso", expanded=False):
+    with st.expander("Ver guía de exportación paso a paso", expanded=False):
         st.markdown("### 1. Instalar y abrir Sim To MoTeC")
         st.markdown(
             "Descarga e instala **[Sim To MoTeC](https://github.com/GeekyDeaks/sim-to-motec/releases)** "
@@ -69,45 +171,6 @@ def render():
             "docs/guide/s2m_04_export.gif", "File → Export Data → opciones recomendadas → Export"
         )
 
-        st.info(
-            "💡 Exporta **dos archivos**: uno con la vuelta de referencia "
-            "(tu mejor tiempo anterior, o la de un coach) y otro con **tus vueltas de la sesión de hoy**."
-        )
-
-    st.divider()
-
-    # ── ¿qué quieres obtener hoy? ─────────────────────────────────────────────
-    st.subheader("② ¿Qué quieres obtener hoy?")
-    st.caption(
-        "Elige el flujo que mejor describe tu objetivo. "
-        "La UI se adapta y solo te muestra los pasos que necesitas."
-    )
-
-    _flow_keys = list(_FLOWS.keys())
-    _cols = st.columns(len(_flow_keys))
-    for _ci, (_fk, _fv) in enumerate(_FLOWS.items()):
-        with _cols[_ci]:
-            _selected = st.session_state["flow_key"] == _fk
-            # Tarjeta con el contenedor REAL de Streamlit: st.container(border)
-            # envuelve los widgets de verdad. Un <div> por separado vía markdown
-            # NO los contiene (abre/cierra solo en el DOM y deja una caja vacía).
-            # height fija las tres a la misma altura para que el botón de abajo
-            # —fuera del contenedor— quede a la misma línea base. Ver ADR 0011.
-            with st.container(border=True, height=620):
-                st.markdown("### %s" % _fk)
-                st.caption(_fv["desc"])
-                st.markdown("**Necesitas:**")
-                for _r in _fv["requires"]:
-                    st.markdown("- %s" % _r)
-                st.markdown("**Obtienes:**")
-                for _d in _fv["deliverables"]:
-                    st.markdown("- %s" % _d)
-            if _selected:
-                st.success("✓ Seleccionado")
-            elif st.button("Elegir este", key="flow_%d" % _ci, use_container_width=True):
-                st.session_state["flow_key"] = _fk
-                st.rerun()
-
-    st.divider()
     if st.button("Empezar — Ir a Importar →", type="primary"):
+        st.session_state["flow_chosen"] = True
         _go(1)

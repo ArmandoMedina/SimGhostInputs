@@ -1,8 +1,10 @@
 """Paso 2 — Comparar: análisis curva a curva."""
 
+import io
 import os
 import tempfile
 
+import pandas as pd
 import streamlit as st
 
 from ._helpers import _fmt_lap, _go, _next_step_btn
@@ -43,6 +45,7 @@ def render():
                 st.session_state.pop("charts_paths", None)
             except Exception as _e:
                 st.error("Error en comparación: %s" % _e)
+                st.stop()
 
     _ref_name = st.session_state.get("ref_name") or os.path.basename(
         st.session_state.get("ref_path", "—")
@@ -82,14 +85,17 @@ def render():
     st.divider()
     st.subheader("¿Dónde estás perdiendo tiempo?")
     st.caption(
-        "**Vel. mínima en ápex** = la velocidad más baja que alcanzas en el punto más cerrado de la curva. "
-        "**Diferencia km/h** = cuánto más rápido (+) o más lento (−) que la referencia en ese ápex. "
-        "**Tiempo ganado/perdido**: positivo = pierdes tiempo, negativo = ganas tiempo. "
-        "Las curvas están ordenadas por impacto en el crono."
+        "**Vel. mínima en ápex** = la velocidad más baja en el punto más cerrado de la curva.  "
+        "**Diferencia km/h**: positivo (+) = más rápido que la referencia en ese ápex.  "
+        "**Tiempo ganado/perdido**: positivo (+) = **pierdes** tiempo aquí; negativo (−) = **ganas** tiempo.  "
+        "Curvas ordenadas por impacto en el crono."
     )
+    if not rows:
+        st.info(
+            "No se detectaron curvas en esta vuelta. Verifica que el CSV incluye el canal de distancia "
+            "y que la vuelta tiene longitud suficiente para detectar frenadas."
+        )
     if rows:
-        import pandas as pd
-
         df = pd.DataFrame(rows)[
             ["name", "apex_d", "ref_vmin", "drv_vmin", "d_vmin", "time_lost", "flags"]
         ]
@@ -190,4 +196,25 @@ def render():
                 _show(_bc[_i % 2], _p)
 
     st.divider()
+    if rows:
+        _dl_df = pd.DataFrame(rows)[
+            ["name", "apex_d", "ref_vmin", "drv_vmin", "d_vmin", "time_lost", "flags"]
+        ]
+        _dl_df.columns = [
+            "Curva",
+            "Ápex (m)",
+            "Ref. vel. mín. (km/h)",
+            "Tu vel. mín. (km/h)",
+            "Diferencia (km/h)",
+            "Tiempo ganado/perdido (s)",
+            "Avisos",
+        ]
+        _csv_buf = io.StringIO()
+        _dl_df.to_csv(_csv_buf, index=False)
+        st.download_button(
+            "⬇️ Descargar tabla de curvas (CSV)",
+            _csv_buf.getvalue(),
+            file_name="corners_compare.csv",
+            mime="text/csv",
+        )
     _next_step_btn(2)

@@ -33,6 +33,18 @@ fantasma laps "mi_outing.csv"
 
 Lista las vueltas con duración y longitud, y marca la más rápida (la que se usa por defecto). Para usar otra: `--lap N`.
 
+### Desde la UI
+
+`fantasma ui` abre un asistente local. En el **Paso 0** eliges qué salida quieres:
+
+- **📊 Solo análisis**: reporte, CSVs y gráficas.
+- **🎬 Solo overlay**: HUD transparente para editarlo aparte.
+- **🎥 Video con HUD**: overlay y composición final (flujo por defecto).
+
+La pantalla inicial muestra los tres insumos del flujo: **referencia**, **piloto** y **salida**. El flujo por defecto aparece pre-seleccionado con un aviso neutro; pulsa «Empezar» para confirmar o elige otro con «Elegir este». Si no tienes una referencia externa, puedes cargar el mismo CSV como referencia y piloto y elegir dos vueltas distintas en el Paso 1 para compararte contra ti mismo.
+
+El **sidebar izquierdo** muestra el progreso: ✅ paso completado, ▶️ paso actual, ○ paso pendiente en tu flujo, · paso opcional fuera del flujo elegido. El botón **🔄 Nueva sesión** al pie del sidebar borra todo el estado y vuelve al Paso 0 sin recargar la pestaña del navegador — útil para analizar otra tanda sin cerrar la app.
+
 ## 4. Compara
 
 ```
@@ -40,6 +52,12 @@ fantasma compare --reference ref.csv --driver mi_outing.csv -o salida/
 ```
 
 Lee `salida/report.md`. La columna **Tiempo perdido** es la verdad: cuánto delta acumulas entre la entrada y la salida de cada curva. **Δv** te dice si el problema es velocidad de paso; **Frenada Δm** si es el punto de frenada (positivo = frenas después que la referencia, negativo = antes).
+
+### Desde la UI — Paso 2
+
+La tabla de curvas muestra **Diferencia km/h** y **Tiempo ganado/perdido**. Los signos son opuestos a propósito: Diferencia km/h positivo (+) significa que vas más rápido que la referencia en ese ápex; Tiempo ganado/perdido positivo (+) significa que **pierdes** tiempo ahí (vas más lento en promedio en ese tramo). Las curvas se ordenan de mayor a menor impacto en el crono.
+
+Al pie de la tabla hay un botón **⬇️ Descargar tabla de curvas (CSV)** para guardar el reporte localmente.
 
 Interpretación honesta:
 - Δ de frenada menores de ~10m son ruido; mayores de ~100m suelen ser un artefacto del detector (frenadas distintas emparejadas), no un error tuyo de 100m.

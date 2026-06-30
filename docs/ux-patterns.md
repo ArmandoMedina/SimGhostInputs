@@ -99,7 +99,7 @@ limpio si no hay Chromium), como ya hace con lint/formato/tests. El CI es el que
 
 | Pieza del gate | Estado | Acción |
 | :-- | :-- | :-- |
-| Smoke visual Paso 0 | ✅ existe (ADR 0012) | — |
+| Smoke visual Paso 0 | ✅ existe (ADR 0012); baseline regenerado en v0.14.0 por cambio F-01 | — |
 | Smoke visual Pasos 1-4 | ❌ | Añadir baselines por pantalla con datos sintéticos |
 | Aserciones AppTest | ⚠️ parcial (tests/ui) | Ampliar a elementos clave por paso |
 | Contraste WCAG | ❌ | Test que parsea los colores propios y valida ratio |
@@ -109,3 +109,24 @@ limpio si no hay Chromium), como ya hace con lint/formato/tests. El CI es el que
 > La decisión de tratar el gate de UX con la dualidad determinismo/juicio se asienta en un ADR
 > (ver `docs/decisions/`). Los hallazgos de UX concretos por pantalla se documentan tras el
 > diagnóstico con capturas, cruzados con [`casos-de-uso.md`](casos-de-uso.md).
+
+---
+
+## 4. Registro de cambios de patrón por versión
+
+Historial de decisiones de UX que alteraron el layout o el flujo de la UI — para que el baseline visual tenga contexto al regenerarse.
+
+### v0.14.0 (2026-06-30)
+
+**Paso 0 — Rediseño del onboarding y selector de flujo:**
+- Hero strip de 3 items (Referencia / Piloto / Salida) sustituye al bloque de texto de intro.
+- Tarjetas de flujo con `st.container(border=True, height=260)`: altura fija para alinear los botones de selección entre columnas (ADR 0011).
+- Estado neutro para el flujo por defecto: `st.info("Por defecto…")` en vez de `st.success("✓ Seleccionado")` hasta que el usuario confirma explícitamente (F-01). Heurística: **reconocer vs recordar** — el usuario sabe que no eligió nada todavía.
+- `st.info`/`st.note` con texto `sgi-note` (borde azul izquierdo) para la instrucción de "una vuelta por flujo / compararse contra sí mismo".
+
+**Paso 2 — Tabla de curvas:**
+- Caption de convención de signos reescrito para explicitar que `Diferencia km/h` (+) y `Tiempo ganado/perdido` (+) tienen sentidos opuestos (F-11). Heurística: **prevención de errores** — la ambigüedad anterior llevaba a interpretaciones invertidas.
+- Estado vacío cuando `rows=[]` con `st.info` y pasos de diagnóstico (F-10).
+
+**Sidebar:**
+- Botón 🔄 Nueva sesión al pie (F-23). Heurística: **control y libertad** — el usuario puede reiniciar sin recargar la pestaña.

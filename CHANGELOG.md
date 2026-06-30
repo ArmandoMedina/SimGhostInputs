@@ -5,17 +5,39 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/). Versionado
 ## [Unreleased]
 
 ### Añadido
+- **UI — botón «Nueva sesión» en el sidebar** (F-23): limpia todo el estado y vuelve al Paso 0 sin recargar la pestaña. Evita que el usuario tenga que refrescar el navegador para empezar un análisis nuevo.
+- **UI Paso 2 — descarga de tabla de curvas en CSV** (F-09): botón `⬇️ Descargar tabla de curvas (CSV)` al final del análisis para guardar el reporte de curvas localmente.
+- **UI Paso 2 — estado vacío si no se detectan curvas** (F-10): aviso claro con instrucción de re-exportación cuando la vuelta no tiene longitud suficiente o le falta el canal de distancia.
+- **UI Paso 0 — estado neutro del flujo por defecto** (F-01): el flujo pre-seleccionado al arrancar muestra "Por defecto — pulsa «Empezar» o elige otro flujo" hasta que el usuario confirma con un clic, diferenciando la selección implícita de la explícita.
 - **Aviso temprano si el CSV no trae el canal de distancia** ([ADR 0017](docs/decisions/0017-distancia-canal-requerido.md)): en MoTeC i2 la casilla **«Include Distance Data»** es fácil de no marcar, y sin ese canal —el eje maestro de la comparación— no hay análisis posible. Ahora `fantasma laps` lo **avisa** (con la instrucción de re-exportar) y la **UI Paso 1 lo bloquea** (no deja avanzar el flujo) en vez de dejar que el usuario falle más adelante en `detect`/`compare`/`overlay`. Detectado en el QA de cierre de v1.0 con un export real del ORECA 07.
 
 ### Corregido
+- **UI — `_step_done(0)` siempre devolvía `True`** (B-01): chequeaba `"flow_key"` (presente desde el inicio) en vez de `"flow_chosen"` (que solo existe tras acción explícita del usuario). El sidebar mostraba el Paso 0 como completado en frío.
+- **UI — `_step_done(4)` siempre devolvía `False`** (B-02): comparaba el flag contra el literal `False` en lugar de comprobar `"last_compose_video" in st.session_state`. El paso nunca se marcaba ✅ aunque el video existiese.
+- **UI Paso 1 — estado de análisis rancio al cambiar archivos** (B-03): al pulsar «Cargar» con archivos nuevos, `summary`, `trace`, `rows` y `charts_paths` de la sesión anterior no se borraban. El Paso 2 mostraba la comparación vieja. Ahora se limpian antes de procesar.
+- **UI Paso 1 — sin guard para `ref_laps` vacío** (B-04): la referencia sin vueltas detectadas caía silenciosamente; ahora muestra `st.warning` con instrucción de re-exportación, simétrico con el guard que ya existía para el piloto.
+- **UI — `_next_step_btn` mostraba «Completaste» cuando el paso no estaba en el flujo** (B-07): si el usuario visitaba el Paso 2 en el flujo «Solo overlay», `flow["next"].get(2)` devolvía `None` y se mostraba el mensaje de completado incorrectamente. Ahora detecta pasos fuera del flujo y muestra el botón al siguiente paso real.
+- **UI Paso 2 — ejecución continuaba tras error de comparación** (B-08): faltaba `st.stop()` en el `except`, el código seguía corriendo y generaba errores en cascada.
+- **UI Paso 4 — import de `sync_gray_zone_warning` sin manejo de error** (B-11): si el módulo no estaba disponible, la UI reventaba en lugar de degradar. Envuelto en `try/except ImportError`.
+- **UI Paso 4 — ffmpeg check no detenía el render ni indicaba cómo instalar** (B-12): sin `st.stop()` el formulario seguía visible y la instrucción de instalación era genérica. Ahora detiene el render y detecta la plataforma (Windows, macOS, Linux) para dar el comando exacto.
+- **UI Paso 4 — mensaje de sincronía resuelta no aparecía** (B-13): la condición para mostrar «sincronía detectada» no cubría el caso donde se resolvía manualmente una detección ambigua.
+- **UI Paso 4 — `_mss()` definida dos veces en distinto scope** (B-14): causaba `UnboundLocalError` en ciertas rutas. Movida al nivel de módulo.
+- **UI Paso 1 — etiqueta de expander del piloto** (F-06): decía «Cambiar vuelta» (igual que el de referencia); ahora dice «Cambiar vuelta del piloto» para distinguirlos visualmente.
+- **UI Paso 2 — convención de signos ambigua en la tabla de curvas** (F-11): «Diferencia km/h positivo» y «Tiempo ganado/perdido positivo» tienen signos opuestos. Caption reescrito para hacerlo explícito.
+- **UI Paso 3 y 4 — mensajes de éxito mostraban la ruta completa del archivo** (F-13): ahora muestran solo el nombre de archivo con `os.path.basename()`.
+- **UI Paso 4 — botón de sincronía automática en columna derecha** (F-17): layout de dos columnas era contraintuitivo (resultado izquierda, botón derecha). Ahora botón ancho completo y resultado debajo.
+- **UI Paso 4 — `st.warning` redundante en expander de sync manual** (F-20): el título del expander ya indica que es avanzado. Aviso duplicado eliminado.
+- **UI Paso 4 — «duración completa» ambigua en la opción de compose** (F-22): reemplazado por «duración completa del overlay».
 - **`detect_corners` reventaba con `KeyError('dist')` desnudo si faltaba el canal de distancia**: ahora degrada con gracia lanzando un `ValueError` con mensaje accionable (re-exportar incluyendo el canal Distance), igual que ya hacía con el canal `speed`. Como `compare` y `overlay` pasan por aquí, los tres heredan el aviso claro. Con test de regresión (`test_detect_requires_dist_channel`).
 - **`fantasma compare` con un CSV de piloto sin distancia escapaba como `NoneType` genérico**: ahora valida temprano la distancia en referencia y piloto, igual que `detect`, y devuelve el mensaje accionable para re-exportar con `Distance`. Detectado con el export real del ORECA 07. Con test de regresión (`test_compare_avisa_driver_sin_distancia`).
 
 ### Pruebas
+- Suite local: **127 tests en verde** tras todos los cambios de UI y validación de distancia.
 - **QA de AMS2 en ≥3 circuitos cerrado (requisito de v1.0).** Validación sobre telemetría real en **4 circuitos** (Barcelona NC, Interlagos, Nordschleife 2025, Nürburgring GP) y **clases más allá de GT3** (Hypercar: Valkyrie/BMW Hybrid V8/Cadillac V-Series.R; Fórmula: F3; Prototipo/LMP2: ORECA 07): el pipeline de análisis (`laps`→`detect`→`compare`) procesa todas las clases sin errores de lógica, con degradación graceful de canales ausentes. Único hallazgo: el export del ORECA sin canal de distancia (corregido arriba).
-- **QA extendido con material real externo:** matriz sobre 19 CSVs AMS2 del directorio de pruebas: `laps` importó todos, `detect` generó curvas para todos los CSV con distancia y `compare --no-charts` generó reportes por circuito/clase. También se validó un tramo corto de `overlay` + `compose` con video real. Suite local: **127 tests en verde**.
+- **QA extendido con material real externo:** matriz sobre 19 CSVs AMS2 del directorio de pruebas: `laps` importó todos, `detect` generó curvas para todos los CSV con distancia y `compare --no-charts` generó reportes por circuito/clase. También se validó un tramo corto de `overlay` + `compose` con video real.
 
 ### Documentación
+- **UI Paso 0 — onboarding guiado por objetivo:** la pantalla inicial adopta un patrón de decisión progresiva: primero muestra referencia/piloto/salida, deja claro que se puede comparar el mismo CSV contra sí mismo y usa el GIF real de exportación de MoTeC i2 como ayuda contextual antes de la guía completa.
 - **ADR 0017 — La distancia es un canal requerido; no se sintetiza desde la velocidad** (Aceptada): se exige el canal `dist` y se descarta derivarlo integrando `speed × dt`, porque dos vueltas derivarían ejes inconsistentes y romperían el alineado por metro del que depende todo el análisis. Se refuerza la guía de export en `guia-usuario.md`, `formato-datos.md` y la capacidad COR-01.
 
 ## [0.13.0] - 2026-06-30

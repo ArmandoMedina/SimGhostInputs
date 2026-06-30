@@ -14,52 +14,39 @@ documentar, validar en AMS2 el pipeline que ya existe).
 
 ## ⚠️ Pendiente inmediato (en vuelo)
 
-El cambio que **cierra el QA de AMS2** y **exige el canal de distancia** (ADR 0017) ya está
-**committeado en `master`** (commit `4baa462`), pero **la versión v0.14.0 AÚN NO está cortada**.
+**127 tests verdes, `verificar.ps1` limpio.** Solo falta:
 
-Además, en la sesión del 2026-06-30 se corrió un **QA extendido** con el material externo en
-`C:\Repositorio personal\Paterial para test (no es un repo)`: 19 CSVs reales + video corto. El QA
-encontró un bug menor ya corregido en working tree: `fantasma compare` con el piloto sin canal
-`Distance` escapaba como `NoneType`; ahora valida temprano y muestra el mismo mensaje accionable
-que `detect`. Queda **sin commit** al momento de este relevo.
-
-La próxima sesión debe:
-
-1. Cerrar el fix actual si sigue en working tree: revisar `fantasma/cli.py`, `tests/test_cli.py`,
-   `CHANGELOG.md` y este `HANDOFF.md`; correr `./tools/verificar.ps1`; commitear.
-2. Correr la skill **`release-helper`** para cortar **v0.14.0** (el PO ya autorizó commit/push/versionamiento):
-   bump en `pyproject.toml`, mover `CHANGELOG [Unreleased]`→`[0.14.0]` (el contenido **ya está
-   redactado** en `[Unreleased]`), footer/estado de `ROADMAP`, badge del `README`, **tag anotado**,
-   **push** y **GitHub release** (ojo al cambio de cuenta `gh` personal↔trabajo: el repo es público bajo
-   la cuenta personal de Armando).
+1. ⚠️ **QA visual de Step 0 (Mariana checkpoint):** el Paso 0 fue rediseñado en esta sesión
+   (reorden de bloques, cards más cortas, hero strip con los 3 insumos). Antes de hacer push,
+   abrir `fantasma ui` y confirmar que el layout se ve correcto. Juicio visual, no comparación
+   contra baseline.
+2. Correr la skill **`release-helper`** para cortar **v0.14.0** (el PO ya autorizó
+   commit/push/versionamiento): bump en `pyproject.toml`, mover `CHANGELOG [Unreleased]`→`[0.14.0]`
+   (el contenido **ya está redactado**), footer/estado de `ROADMAP`, badge del `README`, **tag
+   anotado**, **push** y **GitHub release** (ojo al cambio de cuenta `gh` personal↔trabajo: el repo
+   es público bajo la cuenta personal de Armando).
 3. Verificar que el CI quede verde tras el push.
 
-> Nota: este `HANDOFF.md` ya describe el estado **post**-v0.14.0 (versión y conteo de tests). Si por
-> lo que sea el release no se corta, lo único que falta es el ritual del punto 1; el código y los docs
-> ya están en `master`.
+## Estado actual
 
-## Estado actual (qué está hecho y validado)
+- **`master` local, sin push.** 4 commits por encima de `origin/master`.
+- **127 tests verdes.** Pipeline completo: importar → comparar → overlay → componer.
+- **QA de AMS2 cerrado** (requisito v1.0): 4 circuitos, Hypercar/F3/LMP2. Canal de distancia
+  exigido con aviso temprano ([ADR 0017](docs/decisions/0017-distancia-canal-requerido.md)).
+- **Rama `codex/pruebas-codex`:** 2 de 3 commits integrados a master (cherry-pick). El tercero
+  (skills/hooks para Codex) excluido: rutas absolutas hardcodeadas, duplica `.claude/hooks/`.
+  Si se quiere soporte Codex en el futuro, merece decisión limpia (ADR o nota en flujo-de-trabajo).
 
-- **v0.14.0** (2026-06-30). **127 tests verdes** en working tree tras el fix de `compare` sin distancia. Pipeline offline completo: importar → comparar →
-  overlay → componer. UI Streamlit ([ADR 0010](docs/decisions/0010-framework-ui-streamlit.md)).
-- **QA de AMS2 cerrado (requisito de v1.0):** validado en 4 circuitos (Barcelona NC, Interlagos,
-  Nordschleife 2025, Nürburgring GP) y clases más allá de GT3 (Hypercar, Fórmula F3, Prototipo/LMP2).
-  El canal de distancia ahora es requisito duro con aviso temprano ([ADR 0017](docs/decisions/0017-distancia-canal-requerido.md)).
-- Metodología de `project-starter` adoptada por completo: estructura `product/` + `engineering/`
-  poblada con contenido real ([ADR 0015](docs/decisions/0015-estructura-product-engineering.md)),
-  casting de asientos formalizado, y gate determinista del grafo de docs
-  (`tools/auditar.ps1`, [ADR 0016](docs/decisions/0016-gate-grafo-documentacion.md)).
-- Capa de barreras viva: `ruff`+CI (v0.10.0), doc-gate §8 + roles (v0.11.0), Mariana cableada
-  ([ADR 0011](docs/decisions/0011-cablear-mariana-no-charbel.md)), smoke visual Playwright
-  ([ADR 0012](docs/decisions/0012-playwright-smoke-visual-ui.md)).
+## Qué falta para v1.0
 
-| Pieza | Qué hace | Código | Validación |
-|---|---|---|---|
-| Motor de comparación | delta por distancia, curvas, tiempo perdido | `fantasma/core/` | tests Tier 1-2 verdes |
-| Importadores | MoTeC CSV/XLSX, CSV genérico | `fantasma/importers/` | tests + 1 circuito AMS2 real |
-| Overlay / compose | HUD alfa + ffmpeg/NVENC | `fantasma/viz/` | QA manual; tests de compose/overlay |
-| Sincronía | offset por correlación de audio | `fantasma/viz/sync.py` | tests; pendiente repro 60fps |
-| UI | Streamlit, pasos 0-4 | `fantasma/ui/` | smoke visual Paso 0 |
+> QA de AMS2 cerrado. Quedan dos requisitos.
+
+1. **`setup.ps1` en Windows 11 limpio** — Fase 0 (SSH a `SERVER`) ✓; pendiente Fase 1: VM limpia
+   con Hyper-V para probar instalación desde cero.
+2. **Estabilizar la API interna de `core/`** — sin cambios breaking entre parches (revisión, no
+   código nuevo).
+
+Baja prioridad: pulir HUD (DESLIZ vs GASTO misma franja), confirmar overlay con video 60 fps real.
 
 ### QA extendido 2026-06-30
 
@@ -82,7 +69,7 @@ La próxima sesión debe:
 pip install -e ".[full]"          # entorno completo
 fantasma --help                   # CLI
 fantasma ui                       # UI Streamlit
-pytest                            # suite (125+)
+pytest                            # suite (127)
 ./tools/verificar.ps1             # barreras locales (lint+formato+tests+doc-gate)
 git config core.hooksPath .githooks   # una vez por clon: enciende pre-push
 ```
@@ -90,14 +77,14 @@ git config core.hooksPath .githooks   # una vez por clon: enciende pre-push
 ## Cosas que DEBES saber (o te tropiezas)
 
 1. **`core/` e `importers/` son librería estándar pura** — sin matplotlib/scipy/openpyxl. Las deps
-   viven en extras opcionales y degradan con gracia si faltan. No metas deps al núcleo (PRODUCT_BRIEF §8).
+   viven en extras opcionales y degradan con gracia si faltan. No metas deps al núcleo.
 2. **Determinista:** misma entrada → misma salida. Solo lo determinista se automatiza como barrera;
    lo visual/subjetivo es QA manual ([ADR 0003](docs/decisions/0003-testing.md)).
 3. **El cambio incluye su test** si toca comportamiento (`core/`, `importers/`, helpers puros de `viz/`).
 4. **Doc-gate §8 BLOQUEA** en local si tocas `core/` sin `formato-datos.md`, `viz/` sin
    `hud-reference.md`, o las barreras sin `flujo-de-trabajo.md`. Pásalo al escribano.
-5. **Entorno PS 5.1:** mensajes de commit multilínea a git → `git commit -F archivo`; `.ps1` con
-   acentos → guardar con BOM. Ver `CLAUDE.md` global.
+5. **Entorno PS 5.1:** mensajes de commit multilínea a git → `git commit -F archivo` con
+   `[System.IO.File]::WriteAllText(... utf8NoBOM)`; `.ps1` con acentos → guardar con BOM. Ver `CLAUDE.md` global.
 
 ## Qué falta (próximos pasos, en orden de valor)
 

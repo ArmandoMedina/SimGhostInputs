@@ -125,7 +125,7 @@ que corren en varios momentos, con autoridad creciente.
 | **Suite de tests** | Verifica la lógica determinista del motor con datos sintéticos | `tests/` (pytest); enfoque en `docs/decisions/0003-testing.md` |
 | **Verificador local** | Corre lint + formato + tests + doc-gate de un jalón, en modo aviso | `tools/verificar.ps1` |
 | **Doc-gate (CHANGELOG)** | Avisa si tocaste `fantasma/` sin anotar el `CHANGELOG.md` (checklist ¿ADR? ¿ROADMAP?) | dentro de `tools/verificar.ps1` |
-| **Doc-gate (blast-radius §8)** | **BLOQUEA** el push si tocaste `core/` sin `formato-datos.md`, `viz/` sin `hud-reference.md`, o las **barreras** (hooks/gate/CI) sin `flujo-de-trabajo.md` | dentro de `tools/verificar.ps1` |
+| **Doc-gate (blast-radius §8)** | **BLOQUEA** los `doc_bloquea` faltantes por área; **AVISA** los `doc_avisa` y `product_avisa` faltantes. Reglas en `tools/blast-radius.json` (fuente única — agrega un área ahí y listo) | `tools/verificar.ps1` + `tools/blast-radius.json` |
 | **Auditor del grafo de docs** | Audita `product/`+`engineering/`: **BLOQUEA** frontmatter incompleto, wikilinks rotos, capacidades `vigente` sin criterios; **avisa** sin-test-citado y huérfanos. Modulado por estado. Dueño: Armando | `tools/auditar.ps1` ([ADR 0016](decisions/0016-gate-grafo-documentacion.md)) |
 | **Hook `pre-push`** | Corre el verificador **solo**, justo antes de `git push` (avisa lint/formato/tests; **bloquea** doc-drift §8) | `.githooks/pre-push` |
 | **CI (pipeline)** | Barrera dura en la nube: lint + formato + tests en cada push/PR | `.github/workflows/tests.yml` |
@@ -182,9 +182,12 @@ El verificador corre, en orden:
    - **CHANGELOG** (avisa) — ¿tocaste `fantasma/` sin anotar el `CHANGELOG`? Checklist
      (¿fue decisión? → ADR · ¿cambió el plan? → ROADMAP); ADR y ROADMAP dependen de juicio, por
      eso checklist y no validación (forzarlos generaría entradas vacías).
-   - **Blast-radius §8** (**BLOQUEA**, sale ≠ 0) — tocaste `core/` sin `formato-datos.md`, `viz/`
-     sin `hud-reference.md`, o las **barreras** (hooks/gate/CI) sin `flujo-de-trabajo.md`. Salir a
-     propósito: `git push --no-verify`.
+   - **Blast-radius §8** (**BLOQUEA**, sale ≠ 0) — tocaste un área sin su `doc_bloquea` dueño.
+     Las 8 áreas y sus reglas viven en `tools/blast-radius.json` (fuente única). Salir a propósito:
+     `git push --no-verify`.
+   - **Grafo de producto** (**AVISA**) — tocaste `fantasma/` sin actualizar nada en `product/`.
+     Preguntarse: ¿cambió algún criterio funcional? Si sí → actualizar la capacidad o módulo del
+     área antes de cerrar el PR.
 
 > **Mixto:** los avisos (lint/formato/tests/CHANGELOG) dejan seguir; el **doc-drift de la §8
 > bloquea ya aquí** (push detenido hasta sincronizar el doc dueño). La barrera dura de
@@ -225,8 +228,14 @@ depender de que invoques nada. La mueven los **hooks de sesión** (`Stop`) en `.
 - **review-stop** → si hay código nuevo en `fantasma/` **sin revisar**, frena el cierre y dispara
   `/code-review`. Marca el diff revisado (`.claude/.review-marker`) para no re-revisar lo mismo.
 - **escribano-stop** → si tocaste código y su **doc dueño quedó desfasado** (§8), frena el cierre y
-  dispara el **Escribano**, que lo actualiza. Cuando ya está sincronizado, deja cerrar. Vigila
-  `core/`→`formato-datos`, `viz/`→`hud-reference`, `ui/`→`guia-usuario` y barreras→`flujo-de-trabajo`.
+  dispara el **Escribano**, que lo actualiza. Cuando ya está sincronizado, deja cerrar. Lee las reglas
+  de `tools/blast-radius.json` (fuente única ejecutable): por cada área (`core/`, `viz/`, `ui/`,
+  `importers/`, `cli`, `barreras`, `orquestacion`, `setup`) sabe qué `doc_bloquea` debe estar presente. **Scope real del hook:**
+  cubre los docs técnicos (`doc_bloquea`); los de `product/capacidades/` son AVISA, no bloquean el
+  cierre — los sincroniza el Escribano si detecta que un criterio funcional cambió.
+  **Nota sobre las dos ventanas:** este hook evalúa `git status --porcelain` (cambios sin commitear).
+  Si committeas código sin sus docs, el working tree queda limpio y el hook ya no dispara; el drift
+  lo atrapa `verificar.ps1` al hacer push. Para que nada se pierda: commitea código y docs juntos.
 - **mariana-stop** → si tocaste `viz/` (HUD) o `ui/` (Streamlit), frena el cierre y manda hacer el
   **QA visual** (abrir `fantasma ui` / mirar el HUD) antes de cerrar. Es un checkpoint que vuelve al PO:
   **no detecta solo** si algo se ve mal (límite semántico), solo obliga a mirarlo. Marca el diff visual
@@ -254,19 +263,21 @@ Le hablas a **Mau**; Mau ocupa o delega los demás asientos.
 | Asiento | Función | Vive como | ¿Hook? |
 |---|---|---|---|
 | **Mau** | **orquestador** / cara al PO: decide, rutea, teje | **la sesión principal** de Claude Code | — |
-| **Ahiram** | **desarrollador**: escribe `fantasma/` y sus tests | trabajo por defecto; puede correr como subagente | — |
+| **Ahiram** | **desarrollador**: escribe `fantasma/` y sus tests | `.claude/skills/ahiram/`; puede correr en sesión o como subagente | no (deliberado) |
 | **Armando** | **arquitecto-doc**: jerarquía `product/`+`engineering/`, wikilinks, frontmatter, **ADRs** | `.claude/skills/armando/` | no (deliberado) |
 | **Charbel** | **validador** de telemetría (`core/`, importers) | `.claude/skills/charbel/` | no (sus tests son el asiento) |
 | **Mariana** | **revisor-visual** del HUD/UI (`viz/`, `ui/`) | `.claude/skills/mariana/` | sí (mariana-stop) |
 | **Escribano** | **sincroniza** docs↔código (§8) | `.claude/skills/escribano/` | sí (escribano-stop) |
 | **Reviewer** | revisa el diff (bugs, calidad) — función, no persona | `/code-review` | sí (review-stop) |
+| **Oscar** | **infra y ops del entorno**: VMs, SSH, Windows Sandbox, mounts, despliegues, la "PC potente" para QA limpio | agente de plataforma global (no vive en el repo) | no |
 
 > **Asiento ≠ skill.** Una **skill** es un comportamiento especializado, disparable, con límites
 > escritos (lo que SÍ y lo que NO hace) — un archivo en `.claude/skills/`. Un **asiento** es el
 > rol que alguien ocupa, y puede ocuparse **en la sesión** (Mau lo hace directo) o **como subagente**
-> (Mau lo spawnea). Por eso **Mau y Ahiram no son skills**: Mau *es* la sesión; Ahiram es el trabajo
-> por defecto (desarrollar). Armando/Charbel/Mariana/Escribano sí están escritos como skills porque
-> son comportamientos acotados que conviene disparar igual cada vez.
+> (Mau lo spawnea). Por eso **Mau no es skill**: Mau *es* la sesión; no tiene sentido "invocar a Mau".
+> Ahiram/Armando/Charbel/Mariana/Escribano sí están escritos como skills porque son comportamientos
+> acotados que conviene disparar igual cada vez. **Oscar** es agente de plataforma global (ops de
+> entorno), no un asiento del repo — no tiene skill aquí porque su dominio es la máquina, no el código.
 
 > **Antipatrón a evitar: "Mau desarrollando".** El recurso escaso de Mau es **su contexto**, no su
 > capacidad. Si Mau se pone a escribir `fantasma/` en el hilo principal, envenena el contexto que
@@ -372,7 +383,8 @@ ver **qué cubre cada una y qué NO**, porque no todo se puede atar por máquina
 | **Comportamiento del motor** | ¿la lógica determinista sigue dando los números correctos? | `pytest` | avisa local · **bloquea en CI** |
 | **Layout de UI (Paso 0)** | ¿el layout del Paso 0 se movió respecto al baseline? | Playwright smoke visual (`tests/ui/visual/`) | skipea local si browser no instalado · **bloquea en CI** |
 | **Documentación (CHANGELOG)** | ¿el cambio quedó anotado? | doc-gate CHANGELOG + checklist | **avisa** (ADR/ROADMAP son juicio) |
-| **Doc-drift §8 (doc dueño)** | ¿tocaste `core/`/`viz/`/barreras sin su doc dueño? | doc-gate blast-radius | **BLOQUEA local** · el Escribano lo arregla |
+| **Doc-drift §8 (doc dueño)** | ¿tocaste un área sin su `doc_bloquea`? (`blast-radius.json`) | doc-gate blast-radius | **BLOQUEA local** · el Escribano lo arregla |
+| **Doc-aviso §8 (product/eng)** | ¿tocaste un área sin actualizar `doc_avisa` o `product_avisa`? | doc-gate blast-radius | **AVISA** · Escribano sincroniza si cambió un criterio funcional |
 | **Grafo de docs (product/engineering)** | ¿frontmatter, wikilinks y criterios de las notas están íntegros? | `tools/auditar.ps1` | **avisa local · bloquea en CI** (job `docs-graph`) |
 
 > **Dónde acaba la máquina — el límite semántico.** Ningún chequeo determinista garantiza que el
