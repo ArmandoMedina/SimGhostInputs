@@ -126,6 +126,7 @@ que corren en varios momentos, con autoridad creciente.
 | **Verificador local** | Corre lint + formato + tests + doc-gate de un jalón, en modo aviso | `tools/verificar.ps1` |
 | **Doc-gate (CHANGELOG)** | Avisa si tocaste `fantasma/` sin anotar el `CHANGELOG.md` (checklist ¿ADR? ¿ROADMAP?) | dentro de `tools/verificar.ps1` |
 | **Doc-gate (blast-radius §8)** | **BLOQUEA** el push si tocaste `core/` sin `formato-datos.md`, `viz/` sin `hud-reference.md`, o las **barreras** (hooks/gate/CI) sin `flujo-de-trabajo.md` | dentro de `tools/verificar.ps1` |
+| **Auditor del grafo de docs** | Audita `product/`+`engineering/`: **BLOQUEA** frontmatter incompleto, wikilinks rotos, capacidades `vigente` sin criterios; **avisa** sin-test-citado y huérfanos. Modulado por estado. Dueño: Armando | `tools/auditar.ps1` ([ADR 0016](decisions/0016-gate-grafo-documentacion.md)) |
 | **Hook `pre-push`** | Corre el verificador **solo**, justo antes de `git push` (avisa lint/formato/tests; **bloquea** doc-drift §8) | `.githooks/pre-push` |
 | **CI (pipeline)** | Barrera dura en la nube: lint + formato + tests en cada push/PR | `.github/workflows/tests.yml` |
 | **Smoke visual (Playwright)** | Screenshot del Paso 0 contra baseline; truena si el layout se mueve. Tolerancia generosa (detecta secciones corridas, no antialiasing). Dueño: Mariana | `tests/ui/visual/` ([ADR 0012](decisions/0012-playwright-smoke-visual-ui.md)) |
@@ -192,12 +193,15 @@ El verificador corre, en orden:
 ### Paso 3 — Push (el CI **bloquea**)
 
 Al hacer `git push`, GitHub corre el **CI** (`.github/workflows/tests.yml`). Si algo falla, el
-push queda **en rojo**. Es el respaldo **que nadie puede saltar** desde su máquina. Tres jobs:
+push queda **en rojo**. Es el respaldo **que nadie puede saltar** desde su máquina. Cuatro jobs:
 
 1. **`lint`** (Ubuntu): `ruff check` (basura) **y** `ruff format --check` (formato canónico).
-2. **`pytest`** (Windows, Python 3.10 / 3.11 / 3.12): toda la suite de tests, en la plataforma
+2. **`docs-graph`** (Ubuntu, pwsh): `tools/auditar.ps1 -Bloquea` — integridad del grafo de
+   `product/`+`engineering/` (frontmatter, wikilinks, criterios). No necesita Python; solo lee los
+   `.md`. Ver [ADR 0016](decisions/0016-gate-grafo-documentacion.md).
+3. **`pytest`** (Windows, Python 3.10 / 3.11 / 3.12): toda la suite de tests, en la plataforma
    objetivo del proyecto y en las tres versiones soportadas.
-3. **`visual-smoke`** (Ubuntu, Python 3.12): screenshot del Paso 0 de la UI con Playwright
+4. **`visual-smoke`** (Ubuntu, Python 3.12): screenshot del Paso 0 de la UI con Playwright
    (Chromium headless); falla si el layout se movió respecto al baseline ([ADR 0012](decisions/0012-playwright-smoke-visual-ui.md)).
    Ubuntu es el entorno consistente que actúa como fuente de verdad del baseline.
 
@@ -369,6 +373,7 @@ ver **qué cubre cada una y qué NO**, porque no todo se puede atar por máquina
 | **Layout de UI (Paso 0)** | ¿el layout del Paso 0 se movió respecto al baseline? | Playwright smoke visual (`tests/ui/visual/`) | skipea local si browser no instalado · **bloquea en CI** |
 | **Documentación (CHANGELOG)** | ¿el cambio quedó anotado? | doc-gate CHANGELOG + checklist | **avisa** (ADR/ROADMAP son juicio) |
 | **Doc-drift §8 (doc dueño)** | ¿tocaste `core/`/`viz/`/barreras sin su doc dueño? | doc-gate blast-radius | **BLOQUEA local** · el Escribano lo arregla |
+| **Grafo de docs (product/engineering)** | ¿frontmatter, wikilinks y criterios de las notas están íntegros? | `tools/auditar.ps1` | **avisa local · bloquea en CI** (job `docs-graph`) |
 
 > **Dónde acaba la máquina — el límite semántico.** Ningún chequeo determinista garantiza que el
 > **HUD se vea bien**, que el overlay esté **visualmente correcto**, o que la sincronía de video
@@ -474,14 +479,15 @@ C:\Repositorio personal\SimGhostInputs\   <- raíz del repo
 ├─ .claude/                                <- roles y auto-cableado en sesión (viaja con el repo)
 │  ├─ settings.json                        <- registra los hooks de sesión (Stop)
 │  ├─ hooks/                               <- review-stop, escribano-stop, mariana-stop (frenan el cierre, disparan el rol)
-│  └─ skills/escribano/                    <- el rol Escribano (sincroniza docs §8)
+│  └─ skills/                              <- los asientos-skill: escribano, armando (arquitecto), charbel, mariana
 ├─ .gitignore                              <- qué NO se versiona
 ├─ pyproject.toml                          <- versión, deps, extras y config de ruff
 ├─ CHANGELOG.md                            <- bitácora de cambios
 ├─ ROADMAP.md                              <- estado vivo, camino a v1.0, gaps, deuda
 ├─ CONTRIBUTING.md                         <- entorno dev, convención de commits, matriz de docs (§8)
 ├─ tools/
-│  └─ verificar.ps1                        <- el verificador local (lint + formato + tests + doc-gate)
+│  ├─ verificar.ps1                        <- el verificador local (lint + formato + tests + doc-gate + auditor)
+│  └─ auditar.ps1                          <- auditor del grafo de docs (product/ + engineering/); lo corre el CI
 ├─ fantasma/                               <- el código (core, importers, viz, ui, cli)
 ├─ tests/                                  <- la suite de pytest (espejo del paquete)
 └─ docs/

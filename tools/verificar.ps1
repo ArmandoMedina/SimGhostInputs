@@ -1,9 +1,11 @@
 #Requires -Version 5
 # verificar.ps1 - Pipeline de barreras deterministas local. Se corre ANTES de subir:
-# lint (ruff) + formato (ruff format) + tests (pytest) + doc-gate.
+# lint (ruff) + formato (ruff format) + tests (pytest) + doc-gate + auditor del grafo.
 # Inspirado en el patron "no-mistakes" (convenciones de metodo: project-starter).
 # lint/formato/tests AVISAN (el CI los hace cumplir); el doc-drift de la seccion 8
-# (core/->formato-datos, viz/->hud-reference) BLOQUEA el push (exit 1) - poka-yoke.
+# (core/->formato-datos, viz/->hud-reference) y los hallazgos BLOQUEA del auditor del
+# grafo de docs (auditar.ps1: wikilinks rotos, frontmatter, criterios) BLOQUEAN el
+# push (exit 1) - poka-yoke.
 # Saltar a proposito: git push --no-verify.
 #
 # Uso:  ./tools/verificar.ps1
@@ -68,6 +70,15 @@ if ($faltaFormato) { Block "tocaste fantasma/core/ sin docs/formato-datos.md (al
 if ($faltaHud)     { Block "tocaste fantasma/viz/ (HUD/overlay) sin docs/hud-reference.md. Ver CONTRIBUTING.md seccion 8 -> pasalo al escribano." }
 if ($faltaFlujo)   { Block "tocaste las barreras (hooks/gate/CI) sin docs/flujo-de-trabajo.md. Ver CONTRIBUTING.md seccion 8 -> pasalo al escribano." }
 if (-not ($faltaFormato -or $faltaHud -or $faltaFlujo)) { Ok "docs duenos al dia (o sin cambios en core/viz/barreras)" }
+
+# 6. Doc-gate: integridad del grafo de docs (product/ + engineering/) --------
+# Lo corre el auditor determinista (auditar.ps1): frontmatter, wikilinks rotos,
+# criterios de capacidades vigentes, huerfanos. BLOQUEA igual que el doc-drift de
+# la seccion 8 (mismo principio: determinismo bloquea). Ver ADR 0016.
+Write-Host "`n-- Doc-gate (grafo product/engineering: auditar.ps1) --"
+& "$PSScriptRoot/auditar.ps1" -Bloquea | Out-Host
+if ($LASTEXITCODE -eq 0) { Ok "grafo de docs integro (o solo avisos)" }
+else { Block "el auditor del grafo encontro hallazgos BLOQUEA (arriba). Ver tools/auditar.ps1 y ADR 0016." }
 
 # Resumen -------------------------------------------------------------------
 Write-Host ""

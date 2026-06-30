@@ -25,3 +25,4 @@ bifurcación equivocada.
 | [0013](0013-setup-modo-desatendido.md) | Modo desatendido (`-Yes`) en `setup.ps1` para pruebas reproducibles | Aceptada | 2026-06-28 |
 | [0014](0014-gate-ux-ui.md) | Gate de UX/UI: lo medible bloquea, lo subjetivo es checkpoint de Mariana | Aceptada | 2026-06-28 |
 | [0015](0015-estructura-product-engineering.md) | Adoptar estructura product/ + engineering/ (reclasificar el repo a mixto) | Aceptada | 2026-06-29 |
+| [0016](0016-gate-grafo-documentacion.md) | Gate determinista del grafo de docs (`auditar.ps1`), sin auto-firma | Aceptada | 2026-06-30 |

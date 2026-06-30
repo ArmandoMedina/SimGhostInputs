@@ -26,6 +26,19 @@ jobs:
       - name: Ruff format check
         run: ruff format --check .
 
+  docs-graph:
+    # Auditor determinista del grafo de docs (product/ + engineering/): frontmatter,
+    # wikilinks rotos, criterios de capacidades vigentes, huerfanos. Es el "muro" del
+    # gate de documentacion que un subagente no puede saltar: se evalua sobre los .md
+    # del repo, no sobre confiar en el agente. -Bloquea => exit 1 si hay BLOQUEA. ADR 0016.
+    # Corre en pwsh sobre ubuntu (no necesita Python ni Windows; solo lee los .md).
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Auditar grafo de docs (product/ + engineering/)
+        shell: pwsh
+        run: ./tools/auditar.ps1 -Bloquea
+
   pytest:
     # Windows es la plataforma objetivo del proyecto
     runs-on: windows-latest

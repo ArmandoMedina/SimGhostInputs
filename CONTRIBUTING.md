@@ -224,6 +224,9 @@ Cada hecho vive en **un** documento. Los demás enlazan, no duplican.
 | `docs/glosario.md` | Definición canónica de los términos del proyecto (vocabulario) |
 | `docs/flujo-de-trabajo.md` | El sistema de barreras y el flujo explorar→commit→push (linter, formato, tests, hook, CI, doc-gate) explicado desde cero |
 | `docs/benchmark-linter.md` | Por qué `ruff` y no las alternativas; cómo se configuró |
+| `product/` (+ su `README.md`) | El **QUÉ**: jerarquía funcional (ecosistema→solución→dominio→módulo→capacidad), criterios de aceptación y backlog. Las notas **enlazan** a su dueño SSOT (p. ej. una capacidad de `core/` cede el esquema a `formato-datos`), no duplican |
+| `engineering/` (+ su `README.md`) | El **CÓMO**: panorama de arquitectura, especificaciones técnicas, modelos de datos y estrategia de pruebas. Igual: enlaza a los dueños canónicos (`formato-datos`, `hud-reference`, ADRs) |
+| `templates/` (+ su `README.md`) | Los moldes canónicos de cada tipo de nota de `product/`+`engineering/` |
 
 ### Blast radius — al hacer este cambio, revisa estos documentos
 
@@ -242,6 +245,9 @@ Cada hecho vive en **un** documento. Los demás enlazan, no duplican.
 | Decisión de arquitectura/diseño | **ADR nuevo** en `docs/decisions/` · su `README.md` (índice) · el documento que la decisión afecta | **Armando** (arquitecto, + PO) |
 | Término o concepto nuevo (o renombrado) | `docs/glosario.md` (definición canónica) · busca el término en los demás docs para dejarlo consistente | _solo Reviewer_ (consistencia) |
 | Cambio en las barreras o la gobernanza (linter, formato, hook, CI, tests, doc-gate) | `docs/flujo-de-trabajo.md` · `docs/benchmark-linter.md` si cambia la herramienta · `.github/workflows/tests.yml` si cambia el CI | **PO / Armando** |
+| Capacidad/dominio/módulo nuevo, o cambio del motor que afecta una capacidad | la nota de `product/` correspondiente (`estado`, criterios de aceptación, wikilinks) · `engineering/` si cambia un algoritmo o modelo | **Armando** (lo verifica `auditar.ps1`) |
+
+> **La integridad de `product/`+`engineering/` se gatea determinísticamente.** Igual que `pytest` hace cumplir el código, [`tools/auditar.ps1`](docs/decisions/0016-gate-grafo-documentacion.md) audita el grafo de docs: **BLOQUEA** frontmatter ausente/incompleto, wikilinks rotos y capacidades `vigente` sin criterios Gherkin; **avisa** lo que es juicio (capacidad vigente sin test citado, notas huérfanas). Lo corre `verificar.ps1` (local) y el CI (job `docs-graph`, infranqueable). Modulado por estado: `en_definicion` solo exige frontmatter + enlaces. No hay archivos de auto-firma: el gate lee el artefacto, no confía en que un agente declare "ya validé" ([ADR 0016](docs/decisions/0016-gate-grafo-documentacion.md)).
 
 ### Roles que validan
 
