@@ -50,6 +50,18 @@ El criterio para llamarla v1.0 es que el pipeline offline esté **completo, docu
 
 > Fuera del alcance de la 1.0 (solo AMS2, pipeline offline). Se retoman después de declararla estable. El detalle fino de cada uno vive en su documento dueño (ADR o PRODUCT_BRIEF); aquí el qué, el porqué se difiere y el alcance previsto.
 
+### Pipeline desatendido: overlay → compose en secuencia + notificación
+
+**Dolor real (2026-06-30):** el usuario lanza el overlay, se va a hacer otra cosa y al volver tiene que esperar a que compose termine — dos esperas en lugar de una. No hay forma de delegar ambas operaciones juntas y recibir aviso al terminar.
+
+**Qué se quiere:**
+- Un modo "encadenar": al terminar el overlay, lanzar compose automáticamente con los parámetros ya configurados.
+- Notificación al terminar (push al móvil, o al menos un sonido/pop-up de escritorio) para no tener que estar mirando la pantalla.
+
+**Por qué se difiere:** requiere arquitectura de tareas en background (hilo o proceso separado que sobreviva la interacción de Streamlit) y un canal de notificación. Es una mejora de experiencia, no un bug ni un requisito de v1.0.
+
+**Gatillo para retomar:** cuando el usuario reporte que esperar las dos etapas es fricción frecuente, o al evaluar el front custom (v2.0) donde esto es más natural.
+
 ### Front de escritorio custom (v2.0)
 > Decisión de fondo en [ADR 0010](docs/decisions/0010-framework-ui-streamlit.md).
 
