@@ -131,8 +131,6 @@ def corner_coaching(row, trace):
 
     lo, hi = _corner_segment(row, trace)
     seg = [s for s in trace if lo <= s["dist"] <= hi]
-    if not seg:
-        seg = trace
 
     apex_d = row.get("apex_d")
     ref_apex = _near_sample(seg, apex_d)
