@@ -75,6 +75,18 @@ def _go(i):
 
 def _next_step_btn(current_step_idx):
     flow = _FLOWS[st.session_state.get("flow_key", _DEFAULT_FLOW)]
+    # Si el paso actual no es parte del flujo elegido (lo visita como opcional),
+    # ofrecer volver al siguiente paso real del flujo en vez de mostrar "completaste".
+    if current_step_idx not in flow["steps"]:
+        _remaining = sorted(s for s in flow["steps"] if s > current_step_idx)
+        if _remaining:
+            next_i = _remaining[0]
+            if st.button(
+                "Continuar con tu flujo — Ir al Paso %d (%s) →" % (next_i, _STEPS[next_i]),
+                type="primary",
+            ):
+                _go(next_i)
+        return
     next_i = flow["next"].get(current_step_idx)
     if next_i is None:
         st.success("✅ ¡Completaste todos los pasos de tu flujo!")

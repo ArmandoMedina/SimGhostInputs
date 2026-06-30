@@ -110,11 +110,11 @@ _flow = _FLOWS[st.session_state["flow_key"]]
 def _step_done(i):
     return bool(
         [
-            "flow_key" in st.session_state,
+            "flow_chosen" in st.session_state,  # Paso 0: el usuario eligió flujo explícitamente
             "ref_lap" in st.session_state,
             "summary" in st.session_state,
             "last_overlay" in st.session_state,
-            False,
+            "last_compose_video" in st.session_state,
         ][i]
     )
 
@@ -187,6 +187,12 @@ with st.sidebar:
     st.divider()
     st.caption("Flujo: **%s**" % st.session_state["flow_key"])
     st.caption("Tus datos nunca salen de tu máquina.")
+    st.divider()
+    if st.button(
+        "🔄 Nueva sesión", use_container_width=True, help="Borra todo y vuelve al inicio."
+    ):
+        st.session_state.clear()
+        st.rerun()
 
 
 # ── routing ───────────────────────────────────────────────────────────────────

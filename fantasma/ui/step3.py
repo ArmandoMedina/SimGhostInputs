@@ -39,7 +39,10 @@ def render():
             corners = []
 
     if "last_overlay" in st.session_state:
-        st.success("✓ Ya tienes un overlay generado: `%s`" % st.session_state["last_overlay"])
+        st.success(
+            "✓ Ya tienes un overlay generado: `%s`"
+            % os.path.basename(st.session_state["last_overlay"])
+        )
         st.caption("Si quieres regenerarlo con distintos parámetros, usa las opciones de abajo.")
         _next_step_btn(3)
         st.divider()
@@ -120,7 +123,7 @@ def render():
             else:
                 st.error("Error en el render: %s" % _ov_err)
         else:
-            st.success("✓ Overlay generado: `%s`" % _ov_result)
+            st.success("✓ Overlay generado: `%s`" % os.path.basename(_ov_result))
             st.session_state["last_overlay"] = _ov_result
             st.session_state["_overlay_out_dir"] = os.path.dirname(_ov_result)
             _next_step_btn(3)

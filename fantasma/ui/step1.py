@@ -56,6 +56,11 @@ def render(flow):
         st.stop()
 
     _ref_laps = _rc["laps"]
+    if not _ref_laps:
+        st.warning(
+            "No se detectaron vueltas en el archivo de referencia. Verifica que el CSV incluye distancia y tiempo."
+        )
+        st.stop()
     _ref_path = _rc["path"]
     _ref_auto_i = _best_lap_index(_ref_laps)
     _ref_sel_i = st.session_state.get("ref_sel_%s" % ref_file.file_id, _ref_auto_i)
@@ -125,7 +130,7 @@ def render(flow):
     )
 
     if len(_drv_laps) > 1:
-        with st.expander("Cambiar vuelta — %d vueltas disponibles" % len(_drv_laps)):
+        with st.expander("Cambiar vuelta del piloto — %d vueltas disponibles" % len(_drv_laps)):
             st.caption(
                 "🏆 = la más rápida completa (pre-seleccionada)  ·  "
                 "✓ = completa  ·  ⚠️ = incompleta (salida de pista, pit, etc.)"
@@ -234,6 +239,9 @@ def render(flow):
     if st.button(_load_label, type="primary"):
         with st.spinner("Procesando…"):
             try:
+                # B-03: limpiar resultados anteriores para que el Paso 2 recalcule
+                for _stale in ["summary", "trace", "rows", "charts_paths"]:
+                    st.session_state.pop(_stale, None)
                 ref_lap = _ref_laps[_ref_sel_i]
                 drv_lap = _drv_laps[_drv_sel_i]
                 corners = (

@@ -94,9 +94,15 @@ def render():
                     for _d in _fv["deliverables"]:
                         st.markdown("- %s" % _d)
             if _selected:
-                st.success("✓ Seleccionado")
-            elif st.button("Elegir este", key="flow_%d" % _ci, use_container_width=True):
+                if "flow_chosen" in st.session_state:
+                    st.success("✓ Seleccionado")
+                else:
+                    st.info("Por defecto — pulsa «Empezar» o elige otro flujo")
+            if not _selected and st.button(
+                "Elegir este", key="flow_%d" % _ci, use_container_width=True
+            ):
                 st.session_state["flow_key"] = _fk
+                st.session_state["flow_chosen"] = True
                 st.rerun()
 
     st.divider()
@@ -166,4 +172,5 @@ def render():
         )
 
     if st.button("Empezar — Ir a Importar →", type="primary"):
+        st.session_state["flow_chosen"] = True
         _go(1)
