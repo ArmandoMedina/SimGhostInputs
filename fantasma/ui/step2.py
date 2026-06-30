@@ -82,51 +82,6 @@ def render():
         delta_color="normal",
     )
 
-    st.divider()
-    st.subheader("¿Dónde estás perdiendo tiempo?")
-    st.caption(
-        "**Vel. mínima en ápex** = la velocidad más baja en el punto más cerrado de la curva.  "
-        "**Diferencia km/h**: positivo (+) = más rápido que la referencia en ese ápex.  "
-        "**Tiempo ganado/perdido**: positivo (+) = **pierdes** tiempo aquí; negativo (−) = **ganas** tiempo.  "
-        "Curvas ordenadas por impacto en el crono."
-    )
-    if not rows:
-        st.info(
-            "No se detectaron curvas en esta vuelta. Verifica que el CSV incluye el canal de distancia "
-            "y que la vuelta tiene longitud suficiente para detectar frenadas."
-        )
-    if rows:
-        df = pd.DataFrame(rows)[
-            ["name", "apex_d", "ref_vmin", "drv_vmin", "d_vmin", "time_lost", "flags"]
-        ]
-        df.columns = [
-            "Curva",
-            "Ápex (m)",
-            "Ref. vel. mín. (km/h)",
-            "Tu vel. mín. (km/h)",
-            "Diferencia (km/h)",
-            "Tiempo ganado/perdido (s)",
-            "Avisos",
-        ]
-        st.dataframe(
-            df.style.format(
-                {
-                    "Tiempo ganado/perdido (s)": "{:+.3f}",
-                    "Diferencia (km/h)": "{:+.0f}",
-                }
-            ),
-            use_container_width=True,
-            hide_index=True,
-        )
-
-    st.divider()
-    st.subheader("Gráficas de análisis")
-    st.caption(
-        "**delta_map** = mapa de la vuelta coloreado por dónde ganas y pierdes tiempo. "
-        "**time_loss_bar** = barras por curva ordenadas de mayor a menor pérdida. "
-        "**curva_*** = detalle de gas / freno / volante / delta en cada curva con pérdida."
-    )
-
     if "charts_paths" not in st.session_state:
         _charts_import_err = False
         _charts_gen_err = None
@@ -150,36 +105,160 @@ def render():
             st.error("Error en gráficas: %s" % _charts_gen_err)
 
     _charts = st.session_state.get("charts_paths", [])
+    _tab_curvas, _tab_resumen, _tab_vuelta = st.tabs(
+        ["Curvas prioritarias", "Resumen de vuelta", "Vuelta completa"]
+    )
 
-    if _charts:
+    def _show(container, path):
+        try:
+            with open(path, "rb") as _f:
+                container.image(_f.read(), use_container_width=True)
+        except Exception as _ie:
+            container.error("No se pudo cargar: %s\n%s" % (os.path.basename(path), _ie))
 
-        def _show(container, path):
-            try:
-                with open(path, "rb") as _f:
-                    container.image(_f.read(), use_container_width=True)
-            except Exception as _ie:
-                container.error("No se pudo cargar: %s\n%s" % (os.path.basename(path), _ie))
+    def _charts_of(prefix):
+        return [p for p in _charts if os.path.basename(p).startswith(prefix)]
 
-        def _charts_of(prefix):
-            return [p for p in _charts if os.path.basename(p).startswith(prefix)]
+    with _tab_curvas:
+        st.subheader("¿Dónde estás perdiendo tiempo?")
+        st.caption(
+            "**Vel. mínima en ápex** = la velocidad más baja en el punto más cerrado de la curva.  "
+            "**Diferencia km/h**: positivo (+) = más rápido que la referencia en ese ápex.  "
+            "**Tiempo ganado/perdido**: positivo (+) = **pierdes** tiempo aquí; negativo (−) = **ganas** tiempo.  "
+            "Curvas ordenadas por impacto en el crono."
+        )
+        if not rows:
+            st.info(
+                "No se detectaron curvas en esta vuelta. Verifica que el CSV incluye el canal de distancia "
+                "y que la vuelta tiene longitud suficiente para detectar frenadas."
+            )
+        if rows:
+            df = pd.DataFrame(rows)[
+                ["name", "apex_d", "ref_vmin", "drv_vmin", "d_vmin", "time_lost", "flags"]
+            ].sort_values("time_lost", ascending=False)
+            df.columns = [
+                "Curva",
+                "Ápex (m)",
+                "Ref. vel. mín. (km/h)",
+                "Tu vel. mín. (km/h)",
+                "Diferencia (km/h)",
+                "Tiempo ganado/perdido (s)",
+                "Avisos",
+            ]
+            st.dataframe(
+                df.style.format(
+                    {
+                        "Tiempo ganado/perdido (s)": "{:+.3f}",
+                        "Diferencia (km/h)": "{:+.0f}",
+                    }
+                ),
+                use_container_width=True,
+                hide_index=True,
+            )
+            from fantasma.core.compare import corner_coaching
 
-        _overview = _charts_of("delta_map") + _charts_of("time_loss_bar")
-        if _overview:
-            st.markdown("**Resumen de vuelta**")
-            _ov_cols = st.columns(len(_overview))
-            for _i, _p in enumerate(_overview):
-                _show(_ov_cols[_i], _p)
+            _ordered_rows = sorted(rows, key=lambda _r: _r.get("time_lost", 0), reverse=True)
+            _labels = [
+                "%s · %+.3f s" % (_r.get("name", _r.get("id", "?")), _r.get("time_lost", 0.0))
+                for _r in _ordered_rows
+            ]
+            _selected = st.selectbox("Curva a atacar", _labels, key="selected_corner_label")
+            _row = _ordered_rows[_labels.index(_selected)]
+            _coach = corner_coaching(_row, trace)
 
-        _gg = _charts_of("gg_diagram")
-        if _gg:
-            st.markdown("**Círculo de fricción (G-G)**")
-            _, _gc, _ = st.columns([1, 2, 1])
-            _show(_gc, _gg[0])
+            st.markdown("**Qué atacar primero**")
+            if _coach["status"] == "gain":
+                st.success(_coach["summary"])
+            elif _coach["status"] == "neutral":
+                st.info(_coach["summary"])
+            else:
+                st.warning(_coach["summary"])
 
-        _full = _charts_of("full_lap")
-        if _full:
-            st.markdown("**Vista completa de la vuelta — todos los canales**")
-            _show(st, _full[0])
+            _a1, _a2, _a3 = st.columns(3)
+            _a1.metric("Curva", _coach["name"])
+            _a2.metric("Impacto", "%+.3f s" % (_coach.get("time_lost") or 0.0))
+            _a3.metric("Ápex", "%s m" % _coach["apex"].get("ref_apex_m", "—"))
+
+            _actions = _coach.get("actions") or []
+            if _actions:
+                st.markdown("**Plan de ataque**")
+                for _action in _actions:
+                    st.write("- %s" % _action)
+
+            _detail_rows = []
+            _br = _coach.get("braking") or {}
+            if _br.get("delta_start_m") is not None:
+                _detail_rows.append(
+                    {
+                        "Punto clave": "Frenada",
+                        "Referencia": "%s m" % _br.get("ref_start_m", "—"),
+                        "Tú": "%s m" % _br.get("drv_start_m", "—"),
+                        "Diferencia": "%+d m" % _br["delta_start_m"],
+                    }
+                )
+            if _br.get("delta_peak_pct") is not None:
+                _detail_rows.append(
+                    {
+                        "Punto clave": "Pico de freno",
+                        "Referencia": "%s%%" % _br.get("ref_peak_pct", "—"),
+                        "Tú": "%s%%" % _br.get("drv_peak_pct", "—"),
+                        "Diferencia": "%+d pp" % _br["delta_peak_pct"],
+                    }
+                )
+            _ap = _coach.get("apex") or {}
+            if _ap.get("delta_vmin_kmh") is not None:
+                _detail_rows.append(
+                    {
+                        "Punto clave": "V-Min",
+                        "Referencia": "%s km/h" % _ap.get("ref_vmin_kmh", "—"),
+                        "Tú": "%s km/h" % _ap.get("drv_vmin_kmh", "—"),
+                        "Diferencia": "%+d km/h" % _ap["delta_vmin_kmh"],
+                    }
+                )
+            _th = _coach.get("throttle") or {}
+            if _th.get("delta_gas100_m") is not None:
+                _detail_rows.append(
+                    {
+                        "Punto clave": "Gas 100%",
+                        "Referencia": "%s m" % _th.get("ref_gas100_m", "—"),
+                        "Tú": "%s m" % _th.get("drv_gas100_m", "—"),
+                        "Diferencia": "%+d m" % _th["delta_gas100_m"],
+                    }
+                )
+            _lat = _coach.get("lateral") or {}
+            if _lat.get("delta_peak_g") is not None:
+                _detail_rows.append(
+                    {
+                        "Punto clave": "G lateral",
+                        "Referencia": "%.2f G" % _lat.get("ref_peak_g", 0.0),
+                        "Tú": "%.2f G" % _lat.get("drv_peak_g", 0.0),
+                        "Diferencia": "%+.2f G" % _lat["delta_peak_g"],
+                    }
+                )
+            _gear = _coach.get("gear") or {}
+            if _gear.get("ref") or _gear.get("drv"):
+                _detail_rows.append(
+                    {
+                        "Punto clave": "Marcha/RPM en ápex",
+                        "Referencia": "%s · %s rpm"
+                        % (
+                            _gear.get("ref", {}).get("gear", "—"),
+                            _gear.get("ref", {}).get("rpm", "—"),
+                        ),
+                        "Tú": "%s · %s rpm"
+                        % (
+                            _gear.get("drv", {}).get("gear", "—"),
+                            _gear.get("drv", {}).get("rpm", "—"),
+                        ),
+                        "Diferencia": (
+                            "%+d rpm" % _gear["delta_rpm"]
+                            if _gear.get("delta_rpm") is not None
+                            else "—"
+                        ),
+                    }
+                )
+            if _detail_rows:
+                st.dataframe(pd.DataFrame(_detail_rows), use_container_width=True, hide_index=True)
 
         _corners_charts = _charts_of("curva_")
         if _corners_charts:
@@ -195,26 +274,50 @@ def render():
             for _i, _p in enumerate(_brakes):
                 _show(_bc[_i % 2], _p)
 
-    st.divider()
-    if rows:
-        _dl_df = pd.DataFrame(rows)[
-            ["name", "apex_d", "ref_vmin", "drv_vmin", "d_vmin", "time_lost", "flags"]
-        ]
-        _dl_df.columns = [
-            "Curva",
-            "Ápex (m)",
-            "Ref. vel. mín. (km/h)",
-            "Tu vel. mín. (km/h)",
-            "Diferencia (km/h)",
-            "Tiempo ganado/perdido (s)",
-            "Avisos",
-        ]
-        _csv_buf = io.StringIO()
-        _dl_df.to_csv(_csv_buf, index=False)
-        st.download_button(
-            "⬇️ Descargar tabla de curvas (CSV)",
-            _csv_buf.getvalue(),
-            file_name="corners_compare.csv",
-            mime="text/csv",
-        )
+        if rows:
+            _dl_df = pd.DataFrame(rows)[
+                ["name", "apex_d", "ref_vmin", "drv_vmin", "d_vmin", "time_lost", "flags"]
+            ]
+            _dl_df.columns = [
+                "Curva",
+                "Ápex (m)",
+                "Ref. vel. mín. (km/h)",
+                "Tu vel. mín. (km/h)",
+                "Diferencia (km/h)",
+                "Tiempo ganado/perdido (s)",
+                "Avisos",
+            ]
+            _csv_buf = io.StringIO()
+            _dl_df.to_csv(_csv_buf, index=False)
+            st.download_button(
+                "⬇️ Descargar tabla de curvas (CSV)",
+                _csv_buf.getvalue(),
+                file_name="corners_compare.csv",
+                mime="text/csv",
+            )
+
+    with _tab_resumen:
+        st.subheader("Resumen de vuelta")
+        _overview = _charts_of("delta_map") + _charts_of("time_loss_bar")
+        if _overview:
+            _ov_cols = st.columns(len(_overview))
+            for _i, _p in enumerate(_overview):
+                _show(_ov_cols[_i], _p)
+
+        _gg = _charts_of("gg_diagram")
+        if _gg:
+            st.markdown("**Círculo de fricción (G-G)**")
+            _, _gc, _ = st.columns([1, 2, 1])
+            _show(_gc, _gg[0])
+        if not _overview and not _gg:
+            st.info("No hay gráficas de resumen disponibles para esta comparación.")
+
+    with _tab_vuelta:
+        st.subheader("Vista completa de la vuelta — todos los canales")
+        _full = _charts_of("full_lap")
+        if _full:
+            _show(st, _full[0])
+        else:
+            st.info("No hay vista completa disponible para esta comparación.")
+
     _next_step_btn(2)

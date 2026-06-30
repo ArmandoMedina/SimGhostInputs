@@ -14,6 +14,7 @@ Dar una **interfaz gráfica local** (Streamlit) como capa delgada sobre el CLI, 
 
 ## Alcance
 - Flujo en pasos 0-4 (carga, comparación, overlay, composición).
+- Drill-down accionable por curva en el Paso 2.
 - Avisos visibles del motor (autos distintos, delta sospechoso, falta ffmpeg).
 - "CLI primero": todo lo de la UI se puede hacer en terminal.
 
