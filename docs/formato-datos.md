@@ -9,7 +9,7 @@ Todo importador convierte a este modelo (`fantasma/core/lap.py`):
 | Canal | Unidad | Obligatorio | Notas |
 | :-- | :-- | :-- | :-- |
 | `time` | s | ✅ | desde el inicio del segmento |
-| `dist` | m | ✅ | desde el inicio del segmento |
+| `dist` | m | ✅ | desde el inicio del segmento. En MoTeC i2 requiere marcar **«Include Distance Data»** al exportar; sin este canal el motor se detiene con un aviso claro (no se sintetiza desde la velocidad — [ADR 0017](decisions/0017-distancia-canal-requerido.md)) |
 | `speed` | km/h | recomendado | |
 | `throttle` | % (0-100) | recomendado | |
 | `brake` | % (0-100) | recomendado | |

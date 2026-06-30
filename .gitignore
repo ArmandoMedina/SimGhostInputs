@@ -6,6 +6,7 @@ dist/
 .venv/
 salida/
 output/
+qa_runs/
 reference/
 driver/
 *.ld
