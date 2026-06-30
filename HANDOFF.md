@@ -10,8 +10,24 @@
 
 Motor **offline** de análisis de telemetría sim racing (importar CSV de MoTeC → comparar vueltas por
 distancia → reporte + overlay de video). Objetivo de fondo: cortar la **v1.0** (estabilizar, testear,
-documentar, validar en AMS2 el pipeline que ya existe). **Nada en vuelo ahora** — punto de partida
-limpio sobre v0.13.0.
+documentar, validar en AMS2 el pipeline que ya existe).
+
+## ⚠️ Pendiente inmediato (en vuelo)
+
+El cambio que **cierra el QA de AMS2** y **exige el canal de distancia** (ADR 0017) ya está
+**committeado en `master`** (commit `4baa462`, 126 tests verdes, `verificar.ps1` todo limpio), pero
+**la versión v0.14.0 AÚN NO está cortada**. La próxima sesión debe:
+
+1. Correr la skill **`release-helper`** para cortar **v0.14.0** (el PO ya autorizó commit/push/versionamiento):
+   bump en `pyproject.toml`, mover `CHANGELOG [Unreleased]`→`[0.14.0]` (el contenido **ya está
+   redactado** en `[Unreleased]`), footer/estado de `ROADMAP`, badge del `README`, **tag anotado**,
+   **push** y **GitHub release** (ojo al cambio de cuenta `gh` personal↔trabajo: el repo es público bajo
+   la cuenta personal de Armando).
+2. Verificar que el CI quede verde tras el push.
+
+> Nota: este `HANDOFF.md` ya describe el estado **post**-v0.14.0 (versión y conteo de tests). Si por
+> lo que sea el release no se corta, lo único que falta es el ritual del punto 1; el código y los docs
+> ya están en `master`.
 
 ## Estado actual (qué está hecho y validado)
 
