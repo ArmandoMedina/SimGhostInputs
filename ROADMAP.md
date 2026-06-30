@@ -165,6 +165,19 @@ Coaching **adaptativo en tiempo real** — reacciona a lo que pasa en esa vuelta
 - [ ] Motor de voz adaptativo — TTS con edge-tts, latencia <200ms.
 - [ ] Modos de coaching — Aprendizaje · Qualy · Carrera.
 
+### Previsualización del HUD en el formulario de Componer (Paso 4)
+
+**Dolor real (2026-06-30):** el usuario lanzó el compose sin cambiar el tamaño del HUD y el overlay cubrió la mitad del video. Los parámetros (escala, posición) se configuran a ciegas: no hay referencia visual de cuánto ocupa el HUD antes de renderizar.
+
+**Qué se quiere:**
+- En el formulario de Paso 4, junto a los sliders de escala y posición del HUD, mostrar un frame de referencia dinámico (imagen estática o GIF corto) que simule el tamaño y posición resultantes sobre un fondo de video placeholder.
+- Al mover el slider la previsualización se actualiza en tiempo real (o con debounce).
+- El frame de referencia puede ser el primer fotograma del video del piloto si está disponible, o un placeholder con las dimensiones correctas.
+
+**Por qué se difiere:** requiere diseñar el componente de preview (generar un frame compuesto en Python/PIL + `st.image` reactivo a los sliders), que es trabajo de UX más que de motor. No bloquea v1.0.
+
+**Gatillo para retomar:** cuando se repita el problema de HUD mal dimensionado, o al hacer el pass de usabilidad de Paso 4.
+
 ### Lista de vueltas procesadas en la sesión (UI)
 Tabla acumulada de vuelta + salida + calidad de sync para quien procesa varias seguidas. Conveniencia, no corrección.
 
