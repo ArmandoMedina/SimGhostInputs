@@ -102,7 +102,7 @@
   },
   {
     "nombre": "orquestacion",
-    "desc": "casting de roles: skills (armando, charbel, escribano, mariana) y comandos de sesion",
+    "desc": "casting de roles: skills (ahiram, armando, charbel, escribano, mariana) y comandos de sesion",
     "fuente": [".claude/skills/*", ".claude/commands/*"],
     "doc_bloquea": [],
     "doc_avisa": ["docs/flujo-de-trabajo.md"],

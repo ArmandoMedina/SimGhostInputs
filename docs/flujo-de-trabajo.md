@@ -263,19 +263,21 @@ Le hablas a **Mau**; Mau ocupa o delega los demás asientos.
 | Asiento | Función | Vive como | ¿Hook? |
 |---|---|---|---|
 | **Mau** | **orquestador** / cara al PO: decide, rutea, teje | **la sesión principal** de Claude Code | — |
-| **Ahiram** | **desarrollador**: escribe `fantasma/` y sus tests | trabajo por defecto; puede correr como subagente | — |
+| **Ahiram** | **desarrollador**: escribe `fantasma/` y sus tests | `.claude/skills/ahiram/`; puede correr en sesión o como subagente | no (deliberado) |
 | **Armando** | **arquitecto-doc**: jerarquía `product/`+`engineering/`, wikilinks, frontmatter, **ADRs** | `.claude/skills/armando/` | no (deliberado) |
 | **Charbel** | **validador** de telemetría (`core/`, importers) | `.claude/skills/charbel/` | no (sus tests son el asiento) |
 | **Mariana** | **revisor-visual** del HUD/UI (`viz/`, `ui/`) | `.claude/skills/mariana/` | sí (mariana-stop) |
 | **Escribano** | **sincroniza** docs↔código (§8) | `.claude/skills/escribano/` | sí (escribano-stop) |
 | **Reviewer** | revisa el diff (bugs, calidad) — función, no persona | `/code-review` | sí (review-stop) |
+| **Oscar** | **infra y ops del entorno**: VMs, SSH, Windows Sandbox, mounts, despliegues, la "PC potente" para QA limpio | agente de plataforma global (no vive en el repo) | no |
 
 > **Asiento ≠ skill.** Una **skill** es un comportamiento especializado, disparable, con límites
 > escritos (lo que SÍ y lo que NO hace) — un archivo en `.claude/skills/`. Un **asiento** es el
 > rol que alguien ocupa, y puede ocuparse **en la sesión** (Mau lo hace directo) o **como subagente**
-> (Mau lo spawnea). Por eso **Mau y Ahiram no son skills**: Mau *es* la sesión; Ahiram es el trabajo
-> por defecto (desarrollar). Armando/Charbel/Mariana/Escribano sí están escritos como skills porque
-> son comportamientos acotados que conviene disparar igual cada vez.
+> (Mau lo spawnea). Por eso **Mau no es skill**: Mau *es* la sesión; no tiene sentido "invocar a Mau".
+> Ahiram/Armando/Charbel/Mariana/Escribano sí están escritos como skills porque son comportamientos
+> acotados que conviene disparar igual cada vez. **Oscar** es agente de plataforma global (ops de
+> entorno), no un asiento del repo — no tiene skill aquí porque su dominio es la máquina, no el código.
 
 > **Antipatrón a evitar: "Mau desarrollando".** El recurso escaso de Mau es **su contexto**, no su
 > capacidad. Si Mau se pone a escribir `fantasma/` en el hilo principal, envenena el contexto que
