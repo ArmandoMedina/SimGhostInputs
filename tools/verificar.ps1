@@ -61,15 +61,19 @@ $tocoCore     = $changed | Where-Object { $_ -like 'fantasma/core/*' }
 $tocoFormato  = $changed | Where-Object { $_ -eq 'docs/formato-datos.md' }
 $tocoViz      = $changed | Where-Object { $_ -like 'fantasma/viz/*' }
 $tocoHud      = $changed | Where-Object { $_ -eq 'docs/hud-reference.md' }
+$tocoUi       = $changed | Where-Object { $_ -like 'fantasma/ui/*' }
+$tocoGuia     = $changed | Where-Object { $_ -eq 'docs/guia-usuario.md' }
 $tocoBarreras = $changed | Where-Object { $_ -like '.githooks/*' -or $_ -like '.claude/hooks/*' -or $_ -eq '.claude/settings.json' -or $_ -eq 'tools/verificar.ps1' -or $_ -like '.github/workflows/*' }
 $tocoFlujo    = $changed | Where-Object { $_ -eq 'docs/flujo-de-trabajo.md' }
 $faltaFormato = $tocoCore     -and -not $tocoFormato
 $faltaHud     = $tocoViz      -and -not $tocoHud
+$faltaGuia    = $tocoUi       -and -not $tocoGuia
 $faltaFlujo   = $tocoBarreras -and -not $tocoFlujo
 if ($faltaFormato) { Block "tocaste fantasma/core/ sin docs/formato-datos.md (algoritmo/JSON/CSV). Ver CONTRIBUTING.md seccion 8 -> pasalo al escribano." }
 if ($faltaHud)     { Block "tocaste fantasma/viz/ (HUD/overlay) sin docs/hud-reference.md. Ver CONTRIBUTING.md seccion 8 -> pasalo al escribano." }
+if ($faltaGuia)    { Block "tocaste fantasma/ui/ sin docs/guia-usuario.md (UX/layout). Ver CONTRIBUTING.md seccion 8 -> pasalo al escribano." }
 if ($faltaFlujo)   { Block "tocaste las barreras (hooks/gate/CI) sin docs/flujo-de-trabajo.md. Ver CONTRIBUTING.md seccion 8 -> pasalo al escribano." }
-if (-not ($faltaFormato -or $faltaHud -or $faltaFlujo)) { Ok "docs duenos al dia (o sin cambios en core/viz/barreras)" }
+if (-not ($faltaFormato -or $faltaHud -or $faltaGuia -or $faltaFlujo)) { Ok "docs duenos al dia (o sin cambios en core/viz/ui/barreras)" }
 
 # 6. Doc-gate: integridad del grafo de docs (product/ + engineering/) --------
 # Lo corre el auditor determinista (auditar.ps1): frontmatter, wikilinks rotos,
