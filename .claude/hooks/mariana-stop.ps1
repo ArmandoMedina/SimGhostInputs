@@ -29,9 +29,15 @@ $last = if (Test-Path $marker) { (Get-Content $marker -Raw).Trim() } else { '' }
 if ($sha -eq $last) { exit 0 }   # este diff visual exacto ya se reviso a ojo
 
 $ctx = "Rol Mariana (UX visual): tocaste fantasma/viz/ (HUD) o fantasma/ui/ (UI). " +
-       "Antes de cerrar, haz el QA visual: abre 'fantasma ui' o revisa el render del HUD y confirma que se ve bien " +
-       "(alineacion, colores, layout, legibilidad). Mariana es un checkpoint que vuelve al PO; no juzga sola lo visual. " +
-       "Cuando lo hayas revisado a ojo (o el PO lo apruebe), marca este diff como revisado ejecutando exactamente: " +
+       "Antes de cerrar, completa la checklist de QA visual (docs/ux-patterns.md sec 2-B): " +
+       "[1] El cambio respeta las 10 heuristicas de Nielsen del dominio (sec 1). " +
+       "[2] La pantalla afectada se ve coherente con el resto (espaciado, tipografia, iconos). " +
+       "[3] El HUD (si aplica) es legible sobre video real, con la jerarquia piloto/ref correcta. " +
+       "[4] Ningun texto en jerga de sistema; vocabulario de pista. " +
+       "[5] Estados visibles: carga, progreso, encoder/tiempo, errores claros. " +
+       "Abre 'fantasma ui' o revisa el render del HUD con el material de test real. " +
+       "Mariana es un checkpoint que vuelve al PO; no juzga sola lo visual. " +
+       "Cuando el PO apruebe, marca este diff como revisado ejecutando exactamente: " +
        "Set-Content -Encoding ASCII '.claude/.mariana-marker' '$sha'"
 $out = @{
   decision = 'block'

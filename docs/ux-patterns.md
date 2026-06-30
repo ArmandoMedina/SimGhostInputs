@@ -100,11 +100,11 @@ limpio si no hay Chromium), como ya hace con lint/formato/tests. El CI es el que
 | Pieza del gate | Estado | Acción |
 | :-- | :-- | :-- |
 | Smoke visual Paso 0 | ✅ existe (ADR 0012); baseline regenerado en v0.14.0 por cambio F-01 | — |
-| Smoke visual Pasos 1-4 | ❌ | Añadir baselines por pantalla con datos sintéticos |
-| Aserciones AppTest | ⚠️ parcial (tests/ui) | Ampliar a elementos clave por paso |
-| Contraste WCAG | ❌ | Test que parsea los colores propios y valida ratio |
-| Checklist Mariana | ⚠️ hook existe | Formalizar la checklist de §2-B en el hook |
-| Integración en `verificar.ps1`/CI | ✅ (visual) | Sumar AppTest + contraste cuando existan |
+| Smoke visual Pasos 1-4 | ⏸️ diferido | AppTest cubre la estructura; Playwright requiere inyectar estado en browser (no trivial). Diferido post-v1.0 |
+| Aserciones AppTest | ✅ Pasos 0-4 cubiertos (`tests/ui/`) — 18 tests en verde (v0.14.0) | — |
+| Contraste WCAG | ⏸️ diferido post-v1.0 | Bajo riesgo: paleta reducida, colores revisados a ojo |
+| Checklist Mariana | ✅ hook formalizado con los 5 puntos de §2-B (v0.14.0) | — |
+| Integración en `verificar.ps1`/CI | ✅ (visual + AppTest vía pytest) | — |
 
 > La decisión de tratar el gate de UX con la dualidad determinismo/juicio se asienta en un ADR
 > (ver `docs/decisions/`). Los hallazgos de UX concretos por pantalla se documentan tras el
