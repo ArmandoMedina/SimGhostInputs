@@ -29,6 +29,7 @@ Sistema (ejecutado sobre la vuelta remuestreada, antes de la comparación por cu
 
 ## Reglas de negocio
 - El canal `speed` es obligatorio; sin él se lanza `ValueError`.
+- El canal `dist` es obligatorio; sin él se lanza `ValueError` con un aviso accionable (re-exportar incluyendo el canal de distancia). No se sintetiza desde la velocidad (ADR 0017).
 - Se detecta un evento V-Min por cada mínimo local de velocidad significativo.
 - La dirección de la curva (left / right) se toma del canal `glat` si está disponible.
 - Sin canal `glat`, no se calcula `g_lat_max` en los hitos, pero las curvas V-Min siguen detectándose.
@@ -36,6 +37,7 @@ Sistema (ejecutado sobre la vuelta remuestreada, antes de la comparación por cu
 ## Criterios de aceptación
 - Dado una vuelta con N valles de velocidad conocidos, cuando se ejecuta `detect_corners`, entonces se identifican exactamente N curvas con evento de tipo `vmin`.
 - Dado que la vuelta no tiene canal `speed`, cuando se ejecuta `detect_corners`, entonces se lanza `ValueError`.
+- Dado que la vuelta no tiene canal `dist`, cuando se ejecuta `detect_corners`, entonces se lanza `ValueError` (no un `KeyError` desnudo).
 - Dado una vuelta con valles de velocidad, cuando se extraen los hitos con `extract_milestones`, entonces cada curva incluye al menos `apex` y `brake_start` en sus milestones.
 - Dado una vuelta sin canal `glat`, cuando se detectan las curvas, entonces se encuentran las curvas V-Min pero ninguna incluye el campo `g_lat_max` en sus hitos.
 
@@ -46,7 +48,7 @@ Sistema (ejecutado sobre la vuelta remuestreada, antes de la comparación por cu
 - Comparación de hitos entre piloto y referencia (es [[CMP-02 - Métricas y flags por curva]]).
 
 ## Verificación
-- Cubierta por `tests/core/test_corners.py` (`test_detects_one_event_per_valley`, `test_detect_requires_speed_channel`, `test_milestones_have_apex_and_brake_start`, `test_corner_direction_matches_valley`, `test_detection_without_glat_still_finds_vmin_corners`).
+- Cubierta por `tests/core/test_corners.py` (`test_detects_one_event_per_valley`, `test_detect_requires_speed_channel`, `test_detect_requires_dist_channel`, `test_milestones_have_apex_and_brake_start`, `test_corner_direction_matches_valley`, `test_detection_without_glat_still_finds_vmin_corners`).
 
 ## Relacionado con
 - [[Detección de curvas e hitos]]

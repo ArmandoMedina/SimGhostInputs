@@ -40,6 +40,12 @@ def detect_corners(
     data, keys = _samples(lap)
     if "speed" not in keys:
         raise ValueError("La vuelta no tiene canal de velocidad")
+    if "dist" not in keys:
+        raise ValueError(
+            "La vuelta no tiene canal de distancia. En MoTeC i2 re-exporta el CSV "
+            "incluyendo el canal 'Distance': es el eje maestro de comparacion del que "
+            "dependen detect, compare y overlay."
+        )
     # frecuencia de muestreo aproximada
     dt = (data[-1]["time"] - data[0]["time"]) / max(1, len(data) - 1)
     W = max(3, int(round(vmin_window_s / dt)))

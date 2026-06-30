@@ -7,7 +7,7 @@ Flujo completo: de una tanda en el simulador a un debrief con video.
 Fantasma no captura datos en vivo; consume archivos. La ruta probada:
 
 1. Instala [sim-to-motec](https://github.com/GeekyDeaks/sim-to-motec) y déjalo corriendo mientras conduces (soporta AMS2 por shared memory y GT7 por UDP). Genera archivos `.ld` de MoTeC.
-2. Abre el `.ld` en [MoTeC i2](https://www.motec.com.au/i2/i2downloads/) (gratuito) y exporta como **CSV** (`Export Data...`), con todas las vueltas del outing. También puedes guardarlo como `.xlsx`.
+2. Abre el `.ld` en [MoTeC i2](https://www.motec.com.au/i2/i2downloads/) (gratuito) y exporta como **CSV** (`Export Data...`), con todas las vueltas del outing. También puedes guardarlo como `.xlsx`. **Marca la casilla «Include Distance Data»**: Fantasma compara por distancia, así que sin ese canal no puede analizar la vuelta (te avisará y no continuará; ver [ADR 0017](decisions/0017-distancia-canal-requerido.md)).
 3. Cualquier otro logger que genere `.ld` o CSV sirve por la misma vía.
 
 ¿Tu telemetría es un CSV de otro origen (SimHub, apps de AC)? Usa `--map` para indicar las columnas:

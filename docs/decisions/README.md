@@ -26,3 +26,4 @@ bifurcación equivocada.
 | [0014](0014-gate-ux-ui.md) | Gate de UX/UI: lo medible bloquea, lo subjetivo es checkpoint de Mariana | Aceptada | 2026-06-28 |
 | [0015](0015-estructura-product-engineering.md) | Adoptar estructura product/ + engineering/ (reclasificar el repo a mixto) | Aceptada | 2026-06-29 |
 | [0016](0016-gate-grafo-documentacion.md) | Gate determinista del grafo de docs (`auditar.ps1`), sin auto-firma | Aceptada | 2026-06-30 |
+| [0017](0017-distancia-canal-requerido.md) | La distancia es un canal requerido; no se sintetiza desde la velocidad | Aceptada | 2026-06-30 |

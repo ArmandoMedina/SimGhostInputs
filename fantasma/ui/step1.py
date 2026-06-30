@@ -9,7 +9,14 @@ from ._helpers import (
     _fmt_lap,
     _go,
     _lap_table,
+    _missing_distance,
     _next_step_btn,
+)
+
+_NO_DIST_MSG = (
+    "⚠️ Este CSV no incluye el canal **Distance**. SimGhostInputs compara **por "
+    "distancia** (es el eje maestro), así que sin ese canal no se puede analizar. "
+    "Vuelve a exportarlo desde MoTeC i2 marcando **✅ Include Distance Data**."
 )
 
 
@@ -42,6 +49,10 @@ def render(flow):
     _rc = _cache_file(ref_file)
     if not _rc["ok"]:
         st.error("No se pudo leer el archivo: %s" % _rc.get("err", ""))
+        st.stop()
+
+    if _missing_distance(_rc["laps"]):
+        st.error(_NO_DIST_MSG)
         st.stop()
 
     _ref_laps = _rc["laps"]
@@ -91,6 +102,10 @@ def render(flow):
     _dc = _cache_file(drv_file)
     if not _dc["ok"]:
         st.error("No se pudo leer el archivo: %s" % _dc.get("err", ""))
+        st.stop()
+
+    if _missing_distance(_dc["laps"]):
+        st.error(_NO_DIST_MSG)
         st.stop()
 
     _drv_laps = _dc["laps"]

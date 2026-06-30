@@ -44,6 +44,13 @@ def cmd_laps(args):
     for k in ("Venue", "Vehicle", "Driver"):
         if k in best.meta:
             print("  %s: %s" % (k, best.meta[k]))
+    if not any(l.has("dist") for l in laps):
+        print(
+            "aviso: este CSV no incluye el canal de distancia (longitud 0m). "
+            "SimGhostInputs compara por distancia: re-exporta desde MoTeC i2 marcando "
+            "'Include Distance Data' o detect/compare/overlay no podran ejecutarse.",
+            file=sys.stderr,
+        )
     print("\n  #  duracion   longitud   completa")
     for i, l in enumerate(laps):
         mark = " <- mas rapida" if l is best else ""

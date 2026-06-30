@@ -10,16 +10,22 @@
 
 Motor **offline** de análisis de telemetría sim racing (importar CSV de MoTeC → comparar vueltas por
 distancia → reporte + overlay de video). Objetivo de fondo: cortar la **v1.0** (estabilizar, testear,
-documentar, validar en AMS2 el pipeline que ya existe). **En vuelo ahora:** adopción de la estructura
-`product/` + `engineering/` del método ([ADR 0015](docs/decisions/0015-estructura-product-engineering.md))
-— refactor **documental**, no toca el motor; todo reversible por git.
+documentar, validar en AMS2 el pipeline que ya existe). **Nada en vuelo ahora** — punto de partida
+limpio sobre v0.13.0.
 
 ## Estado actual (qué está hecho y validado)
 
-- **v0.12.0** (2026-06-28). **121 tests verdes** (Tier 1-4 + smoke visual de UI). Pipeline offline
-  completo: importar → comparar → overlay → componer. UI Streamlit ([ADR 0010](docs/decisions/0010-framework-ui-streamlit.md)).
-- Capa de método ya viva: barreras `ruff`+CI (v0.10.0), doc-gate §8 + roles (v0.11.0), Mariana
-  cableada ([ADR 0011](docs/decisions/0011-cablear-mariana-no-charbel.md)), smoke visual Playwright
+- **v0.14.0** (2026-06-30). **126 tests verdes**. Pipeline offline completo: importar → comparar →
+  overlay → componer. UI Streamlit ([ADR 0010](docs/decisions/0010-framework-ui-streamlit.md)).
+- **QA de AMS2 cerrado (requisito de v1.0):** validado en 4 circuitos (Barcelona NC, Interlagos,
+  Nordschleife 2025, Nürburgring GP) y clases más allá de GT3 (Hypercar, Fórmula F3, Prototipo/LMP2).
+  El canal de distancia ahora es requisito duro con aviso temprano ([ADR 0017](docs/decisions/0017-distancia-canal-requerido.md)).
+- Metodología de `project-starter` adoptada por completo: estructura `product/` + `engineering/`
+  poblada con contenido real ([ADR 0015](docs/decisions/0015-estructura-product-engineering.md)),
+  casting de asientos formalizado, y gate determinista del grafo de docs
+  (`tools/auditar.ps1`, [ADR 0016](docs/decisions/0016-gate-grafo-documentacion.md)).
+- Capa de barreras viva: `ruff`+CI (v0.10.0), doc-gate §8 + roles (v0.11.0), Mariana cableada
+  ([ADR 0011](docs/decisions/0011-cablear-mariana-no-charbel.md)), smoke visual Playwright
   ([ADR 0012](docs/decisions/0012-playwright-smoke-visual-ui.md)).
 
 | Pieza | Qué hace | Código | Validación |
@@ -36,7 +42,7 @@ documentar, validar en AMS2 el pipeline que ya existe). **En vuelo ahora:** adop
 pip install -e ".[full]"          # entorno completo
 fantasma --help                   # CLI
 fantasma ui                       # UI Streamlit
-pytest                            # suite (121+)
+pytest                            # suite (125+)
 ./tools/verificar.ps1             # barreras locales (lint+formato+tests+doc-gate)
 git config core.hooksPath .githooks   # una vez por clon: enciende pre-push
 ```
@@ -55,14 +61,13 @@ git config core.hooksPath .githooks   # una vez por clon: enciende pre-push
 
 ## Qué falta (próximos pasos, en orden de valor)
 
-1. **Terminar la adopción de la estructura (plan en curso):** Fase 1 `engineering/` → Fase 2
-   `product/` → Fase 3 casting + gate determinista (`tools/auditar.ps1`, §8 extendida) → Fase 4
-   backport a `project-starter`. Cada fase commiteable y verde.
-2. **QA AMS2 en ≥3 circuitos** — 1/3 (Nordschleife ✓). Faltan Interlagos y México (clases distintas
-   al GT3); falta conseguir esas 2 telemetrías.
-3. **`setup.ps1` en Windows 11 limpio** — en curso; plan de VMs limpias vía SSH a la PC potente (SERVER).
-4. **Pulir HUD:** DESLIZ vs GASTO se confunden (misma franja). _Prioridad baja._
-5. **Confirmar con video 60 fps real** que el overlay no desincroniza (sin repro hasta hoy).
+> El QA de AMS2 (≥3 circuitos) ya quedó cerrado en v0.14.0. De los requisitos de v1.0 quedan dos.
+
+1. **`setup.ps1` en Windows 11 limpio** — Fase 0 (SSH a la PC potente `SERVER`) ✓; pendiente
+   **Fase 1: VM limpia de Windows con Hyper-V** para probar la instalación desde cero.
+2. **Estabilizar la API interna de `core/`** — sin cambios breaking entre parches (revisión, no código nuevo).
+3. **Pulir HUD:** DESLIZ vs GASTO se confunden (misma franja). _Prioridad baja._
+4. **Confirmar con video 60 fps real** que el overlay no desincroniza (sin repro hasta hoy). _Prioridad baja._
 
 ## Mapa rápido del repo
 

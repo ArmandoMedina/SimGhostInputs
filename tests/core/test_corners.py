@@ -26,6 +26,15 @@ def test_detect_requires_speed_channel():
         detect_corners(lap)
 
 
+def test_detect_requires_dist_channel():
+    # Export real sin canal de distancia (ej. ORECA 07 vía sim-to-motec): debe
+    # degradar con un ValueError claro, no propagar un KeyError('dist') desnudo.
+    lap = Lap()
+    lap.channels = {"time": [0.0, 1.0], "speed": [100.0, 90.0]}  # sin 'dist'
+    with pytest.raises(ValueError):
+        detect_corners(lap)
+
+
 def test_milestones_have_apex_and_brake_start():
     lap = make_lap()
     corners = extract_milestones(lap)

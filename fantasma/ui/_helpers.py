@@ -123,6 +123,16 @@ def _corners_from_json(uploaded):
     return data.get("corners", data) if isinstance(data, dict) else data
 
 
+def _missing_distance(laps):
+    """True si el archivo se leyó pero ninguna vuelta trae el canal de distancia.
+
+    El export de MoTeC i2 tiene una casilla 'Include Distance Data' fácil de
+    olvidar; sin ese canal no hay eje maestro y todo el análisis (comparar,
+    overlay) es imposible. Se atrapa temprano para no dejar avanzar el flujo.
+    """
+    return bool(laps) and not any(l.has("dist") for l in laps)
+
+
 # ── formato ───────────────────────────────────────────────────────────────────
 
 
