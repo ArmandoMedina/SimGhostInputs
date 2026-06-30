@@ -15,8 +15,12 @@ que el except BaseException mataba ffmpeg y re-lanzaba -> webm vacio + exit 1.
 
 import io
 import sys
+from types import SimpleNamespace
 
-from fantasma.cli import _force_utf8_console, _overlay_progress
+import pytest
+
+from fantasma.cli import _force_utf8_console, _overlay_progress, cmd_compare
+from fantasma.core.lap import Lap
 
 
 def test_overlay_progress_acepta_status_kwarg():
@@ -76,3 +80,35 @@ def test_force_utf8_console_no_crashea_si_no_hay_reconfigure():
         _force_utf8_console()  # no debe lanzar
     finally:
         sys.stdout, sys.stderr = old_out, old_err
+
+
+def test_compare_avisa_driver_sin_distancia(monkeypatch, tmp_path):
+    """Regresion real: un CSV sin distancia no debe escapar como NoneType."""
+    ref = Lap(
+        channels={
+            "time": [0.0, 1.0, 2.0],
+            "dist": [0.0, 10.0, 20.0],
+            "speed": [100.0, 90.0, 110.0],
+        }
+    )
+    drv = Lap(channels={"time": [0.0, 1.0, 2.0], "speed": [100.0, 90.0, 110.0]})
+
+    def fake_load(path, column_map=None, lap_index=None):
+        lap = ref if path == "ref.csv" else drv
+        return [lap], lap
+
+    monkeypatch.setattr("fantasma.cli._load_lap", fake_load)
+
+    args = SimpleNamespace(
+        reference="ref.csv",
+        driver="drv.csv",
+        lap=None,
+        corners=None,
+        step=5.0,
+        map=None,
+        output=str(tmp_path),
+        no_charts=True,
+        charts_top=5,
+    )
+    with pytest.raises(ValueError, match="piloto no tiene canal de distancia"):
+        cmd_compare(args)

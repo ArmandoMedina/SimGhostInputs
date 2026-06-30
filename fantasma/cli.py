@@ -38,6 +38,15 @@ def _load_lap(path, column_map=None, lap_index=None):
     return laps, lap
 
 
+def _require_distance(lap, role):
+    if not lap.has("dist"):
+        raise ValueError(
+            "La vuelta de %s no tiene canal de distancia. En MoTeC i2 re-exporta el CSV "
+            "incluyendo el canal 'Distance': es el eje maestro de comparacion del que "
+            "dependen detect, compare y overlay." % role
+        )
+
+
 def cmd_laps(args):
     laps, best = _load_lap(args.file, _parse_map(args.map))
     print("Archivo: %s" % args.file)
@@ -91,6 +100,8 @@ def cmd_detect(args):
 def cmd_compare(args):
     _, ref = _load_lap(args.reference, _parse_map(args.map))
     _, drv = _load_lap(args.driver, _parse_map(args.map), args.lap)
+    _require_distance(ref, "referencia")
+    _require_distance(drv, "piloto")
     corners = None
     if args.corners:
         with open(args.corners, encoding="utf-8") as f:
@@ -132,6 +143,8 @@ def cmd_overlay(args):
 
     ref_laps, ref = _load_lap(args.reference, _parse_map(args.map))
     drv_laps, drv = _load_lap(args.driver, _parse_map(args.map), args.lap)
+    _require_distance(ref, "referencia")
+    _require_distance(drv, "piloto")
 
     corners = None
     if args.corners:
