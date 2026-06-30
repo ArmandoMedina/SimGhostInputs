@@ -5,6 +5,7 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/). Versionado
 ## [Unreleased]
 
 ### Añadido
+- **UI Paso 0 — onboarding guiado por objetivo:** la pantalla inicial adopta un patrón de decisión progresiva: primero muestra referencia/piloto/salida, deja claro que se puede comparar el mismo CSV contra sí mismo y usa el GIF real de exportación de MoTeC i2 como ayuda contextual antes de la guía completa.
 - **Aviso temprano si el CSV no trae el canal de distancia** ([ADR 0017](docs/decisions/0017-distancia-canal-requerido.md)): en MoTeC i2 la casilla **«Include Distance Data»** es fácil de no marcar, y sin ese canal —el eje maestro de la comparación— no hay análisis posible. Ahora `fantasma laps` lo **avisa** (con la instrucción de re-exportar) y la **UI Paso 1 lo bloquea** (no deja avanzar el flujo) en vez de dejar que el usuario falle más adelante en `detect`/`compare`/`overlay`. Detectado en el QA de cierre de v1.0 con un export real del ORECA 07.
 
 ### Corregido

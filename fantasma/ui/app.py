@@ -33,6 +33,64 @@ st.markdown(
 .step-header { font-size: 1.3rem; font-weight: 700; margin-bottom: 0.5rem; }
 .metric-ok  { color: #00c853; }
 .metric-bad { color: #ff1744; }
+.sgi-hero {
+  border: 1px solid #d7e3f4;
+  border-radius: 8px;
+  padding: 1.1rem 1.2rem;
+  background: linear-gradient(135deg, #f7fbff 0%, #eef6ff 100%);
+  margin: 0.6rem 0 1.2rem 0;
+}
+.sgi-hero h1 {
+  font-size: 1.55rem;
+  line-height: 1.25;
+  margin: 0 0 0.35rem 0;
+  letter-spacing: 0;
+}
+.sgi-hero p {
+  margin: 0;
+  color: #42526e;
+}
+.sgi-strip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin: 0.7rem 0 1rem 0;
+}
+.sgi-strip-item {
+  border: 1px solid #dde5ef;
+  border-radius: 8px;
+  padding: 0.75rem;
+  background: #ffffff;
+  min-height: 6.2rem;
+}
+.sgi-strip-item strong {
+  display: block;
+  margin-bottom: 0.25rem;
+  color: #172033;
+}
+.sgi-strip-item span {
+  color: #5f6b7a;
+  font-size: 0.92rem;
+}
+.sgi-note {
+  border-left: 4px solid #2d6cdf;
+  background: #f4f8ff;
+  padding: 0.8rem 1rem;
+  border-radius: 6px;
+  color: #24364f;
+}
+.sgi-flow-card-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  margin-bottom: 0.25rem;
+}
+.sgi-flow-meta {
+  color: #5f6b7a;
+  min-height: 3.2rem;
+}
+@media (max-width: 900px) {
+  .sgi-strip { grid-template-columns: 1fr; }
+}
 </style>
 """,
     unsafe_allow_html=True,

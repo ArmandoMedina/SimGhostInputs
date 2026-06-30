@@ -33,6 +33,16 @@ fantasma laps "mi_outing.csv"
 
 Lista las vueltas con duración y longitud, y marca la más rápida (la que se usa por defecto). Para usar otra: `--lap N`.
 
+### Desde la UI
+
+`fantasma ui` abre un asistente local. En el Paso 0 eliges qué salida quieres:
+
+- **Solo análisis**: reporte, CSVs y gráficas.
+- **Solo overlay**: HUD transparente para editarlo aparte.
+- **Video con HUD**: overlay y composición final.
+
+La pantalla inicial muestra los tres insumos del flujo: **referencia**, **piloto** y **salida**. Si no tienes una referencia externa, puedes cargar el mismo CSV como referencia y piloto y elegir dos vueltas distintas en el Paso 1 para compararte contra ti mismo.
+
 ## 4. Compara
 
 ```
