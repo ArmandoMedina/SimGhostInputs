@@ -39,5 +39,8 @@ Sistema (paso de selección automática dentro del pipeline de normalización).
 ## Fuera de alcance
 - Remuestreo por distancia (es [[NRM-03 - Remuestrear por distancia]]).
 
+## Verificación
+- Cubierta por `tests/core/test_normalize.py` (`test_fastest_lap_picks_lowest_time`).
+
 ## Relacionado con
 - [[Normalización y comparación]]

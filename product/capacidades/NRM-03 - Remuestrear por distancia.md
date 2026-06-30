@@ -43,5 +43,8 @@ Sistema (paso previo obligatorio a comparación y detección de curvas).
 ## Fuera de alcance
 - Interpolación no lineal o suavizado (no implementado por diseño).
 
+## Verificación
+- Cubierta por `tests/core/test_normalize.py` (`test_resample_grid_spacing`, `test_resample_linear_interpolation_in_range`, `test_resample_keeps_gear_discrete`).
+
 ## Relacionado con
 - [[Normalización y comparación]]

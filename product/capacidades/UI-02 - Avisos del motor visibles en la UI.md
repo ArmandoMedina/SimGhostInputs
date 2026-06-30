@@ -42,5 +42,9 @@ Sistema (la UI detecta condiciones de aviso y las presenta al usuario en el paso
 ## Fuera de alcance
 - Avisos de calidad de auto-sync (visible en el Paso 3, no cubierto por los tests actuales).
 
+## Verificación
+- Cubierta por `tests/ui/test_step2_avisos.py` (`test_paso2_muestra_aviso_autos_distintos`).
+- Aviso de ffmpeg ausente en Paso 4: `tests/ui/test_step4_ffmpeg.py` (`test_paso4_avisa_si_falta_ffmpeg`).
+
 ## Relacionado con
 - [[Interfaz de usuario]]

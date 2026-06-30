@@ -48,5 +48,6 @@ Sistema (parte de `write_outputs()`; se genera junto con el reporte).
 
 ## Relacionado con
 - [[Reportería]]
+- [[TBL-OUT-01 - Salidas (CSV y JSON)]] — esquema canónico de los archivos que esta capacidad produce.
 
 > **Nota:** No existe test unitario dedicado a esta capacidad. Los criterios se derivan de la inspección de `fantasma/viz/report.py` (`write_outputs`).

@@ -46,6 +46,9 @@ Sistema (núcleo del pipeline de análisis).
 - Métricas por curva y flags (es [[CMP-02 - Métricas y flags por curva]]).
 - Avisos de comparación inválida (es [[CMP-03 - Avisar de comparación inválida]]).
 
+## Verificación
+- Cubierta por `tests/core/test_compare.py` (`test_identical_laps_have_zero_delta`, `test_slower_driver_loses_time_positive_delta`, `test_summary_counts_corners_and_laptimes`).
+
 ## Relacionado con
 - [[Normalización y comparación]]
 - [TEC-CMP-01 — Comparación por distancia](../../engineering/especificaciones/TEC-CMP-01%20-%20Comparacion%20por%20distancia.md)

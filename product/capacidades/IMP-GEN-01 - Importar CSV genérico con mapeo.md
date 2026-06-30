@@ -46,5 +46,8 @@ Sistema (llamado desde CLI o UI cuando el archivo no tiene estructura MoTeC).
 ## Fuera de alcance
 - Archivos con estructura de cabecera MoTeC i2 (es [[IMP-MTC-01 - Importar CSV de MoTeC i2]]).
 
+## Verificación
+- Cubierta por `tests/importers/test_generic_csv.py` (`test_guesses_common_column_names`, `test_column_map_overrides_guess`, `test_missing_time_or_dist_raises`, `test_bad_values_default_to_zero`).
+
 ## Relacionado con
 - [[Importación de telemetría]]

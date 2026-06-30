@@ -44,6 +44,10 @@ Sistema (parte de `compare()`, ejecutada al finalizar el cálculo del delta).
 ## Fuera de alcance
 - Validación del circuito por geometría o nombre de pista (no implementado).
 
+## Verificación
+- Cubierta por `tests/core/test_compare.py` (`test_compare_avisa_delta_sospechoso`, `test_compare_sin_aviso_delta_normal`, `test_compare_avisa_autos_distintos`, `test_compare_sin_aviso_autos_iguales`, `test_compare_sin_aviso_vehicle_ausente`).
+- Aviso visible en la UI: `tests/ui/test_step2_avisos.py` (`test_paso2_muestra_aviso_autos_distintos`).
+
 ## Relacionado con
 - [[Normalización y comparación]]
 - [TEC-CMP-01 — Comparación por distancia](../../engineering/especificaciones/TEC-CMP-01%20-%20Comparacion%20por%20distancia.md)

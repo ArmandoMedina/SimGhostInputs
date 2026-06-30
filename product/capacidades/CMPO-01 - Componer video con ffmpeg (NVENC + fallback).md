@@ -47,6 +47,9 @@ Sistema (llamado con `fantasma compose` o desde el Paso 4 de la UI).
 - Generación del HUD (es [[OVL-01 - Generar overlay HUD con canal alfa]]).
 - Formato ProRes (diferido post-v1.0 por bug de congelamiento en vueltas largas).
 
+## Verificación
+- Cubierta por `tests/viz/test_compose.py` (`test_build_filter_scale_has_multiply_operator`, `test_build_filter_setpts_only_with_offset`, `test_build_filter_unknown_position_falls_back_to_bottom_right`, `test_nvenc_available_false_on_nonzero`, `test_nvenc_available_false_on_exception`).
+
 ## Relacionado con
 - [[Overlay y composición de video]]
 - [TEC-OVL-01 — Overlay HUD y NVENC](../../engineering/especificaciones/TEC-OVL-01%20-%20Overlay%20HUD%20y%20NVENC.md)

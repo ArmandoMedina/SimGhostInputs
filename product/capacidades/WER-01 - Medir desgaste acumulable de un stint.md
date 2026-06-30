@@ -50,5 +50,8 @@ Sistema (ejecutado sobre vuelta normalizada; el presupuesto de stint se calcula 
 ## Fuera de alcance
 - Visualización del GASTO en el HUD del overlay (es [[OVL-01 - Generar overlay HUD con canal alfa]]).
 
+## Verificación
+- Cubierta por `tests/core/test_wear.py` (`test_clean_rolling_has_low_slip_index`, `test_slip_series_signs_locking_and_spinning`, `test_wear_budget_accumulates_and_projects`, `test_wear_budget_status_thresholds`, `test_calibrate_returns_none_without_wheel_channels`).
+
 ## Relacionado con
 - [[Desgaste de gomas]]

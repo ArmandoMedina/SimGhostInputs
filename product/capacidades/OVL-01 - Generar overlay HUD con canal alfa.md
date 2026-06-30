@@ -45,6 +45,9 @@ Sistema (llamado con `fantasma overlay` o desde el Paso 3 de la UI).
 - Composición del HUD sobre el video de cámara (es [[CMPO-01 - Componer video con ffmpeg (NVENC + fallback)]]).
 - Definición exacta de los indicadores del HUD (dueño: `docs/hud-reference.md`).
 
+## Verificación
+- Cubierta por `tests/viz/test_overlay.py` (`test_flag_recent_grid_none_is_off`, `test_flag_recent_grid_on_at_cursor`, `test_flag_recent_grid_holds_within_window`, `test_flag_recent_grid_off_beyond_hold`, `test_flag_recent_grid_clamps_index_past_end`).
+
 ## Relacionado con
 - [[Overlay y composición de video]]
 - [TEC-OVL-01 — Overlay HUD y NVENC](../../engineering/especificaciones/TEC-OVL-01%20-%20Overlay%20HUD%20y%20NVENC.md)

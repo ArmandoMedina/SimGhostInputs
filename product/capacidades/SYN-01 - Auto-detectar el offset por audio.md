@@ -50,6 +50,9 @@ Sistema (llamado con `fantasma overlay` o desde el flujo de la UI antes de compo
 - Composición del video con el offset (es [[CMPO-01 - Componer video con ffmpeg (NVENC + fallback)]]).
 - Validación manual del offset por el usuario.
 
+## Verificación
+- Cubierta por `tests/viz/test_sync.py` (`test_lap_signal_combines_rpm_and_speed`, `test_lap_signal_requires_time_channel`, `test_lap_signal_requires_rpm_or_speed`, `test_rank_single_clear_peak_not_ambiguous`, `test_rank_multi_lap_is_ambiguous`, `test_gray_zone_warns_on_wrong_session`, `test_gray_zone_no_warning_on_strong_match`).
+
 ## Relacionado con
 - [[Sincronía audio-video]]
 - [TEC-SYN-01 — Auto-sync por audio](../../engineering/especificaciones/TEC-SYN-01%20-%20Auto-sync%20por%20audio.md)

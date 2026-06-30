@@ -45,6 +45,9 @@ Sistema (ejecutado sobre la vuelta remuestreada, antes de la comparación por cu
 ## Fuera de alcance
 - Comparación de hitos entre piloto y referencia (es [[CMP-02 - Métricas y flags por curva]]).
 
+## Verificación
+- Cubierta por `tests/core/test_corners.py` (`test_detects_one_event_per_valley`, `test_detect_requires_speed_channel`, `test_milestones_have_apex_and_brake_start`, `test_corner_direction_matches_valley`, `test_detection_without_glat_still_finds_vmin_corners`).
+
 ## Relacionado con
 - [[Detección de curvas e hitos]]
 - [TEC-COR-01 — Detección de curvas e hitos](../../engineering/especificaciones/TEC-COR-01%20-%20Deteccion%20de%20curvas%20e%20hitos.md)

@@ -49,5 +49,8 @@ Sistema (llamado desde CLI o UI al cargar un archivo de referencia o piloto).
 - Archivos `.ld` nativos de MoTeC (diferidos a post-v1.0).
 - División del outing en vueltas (es [[NRM-01 - Separar las vueltas de un outing]]).
 
+## Verificación
+- Cubierta por `tests/importers/test_motec_csv.py` (`test_maps_motec_columns_to_canonical_channels`, `test_metadata_is_parsed`, `test_non_motec_file_raises`, `test_beacon_markers_parsed_as_floats`, `test_semicolon_separator_supported`, `test_semicolon_with_decimal_comma`, `test_load_laps_splits_by_lap_number`).
+
 ## Relacionado con
 - [[Importación de telemetría]]

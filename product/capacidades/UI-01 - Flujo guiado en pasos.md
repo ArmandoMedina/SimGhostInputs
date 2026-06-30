@@ -44,6 +44,9 @@ Usuario (piloto o ingeniero de datos) que abre la app con `fantasma ui`.
 ## Fuera de alcance
 - Front de escritorio custom (diferido a v2.0 según ADR 0010).
 
+## Verificación
+- Cubierta por `tests/ui/test_app_smoke.py` (`test_app_starts_without_exception`).
+
 ## Relacionado con
 - [[Interfaz de usuario]]
 

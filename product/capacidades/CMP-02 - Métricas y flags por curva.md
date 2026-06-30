@@ -46,6 +46,10 @@ Sistema (parte de `compare()`, ejecutada por curva tras el delta continuo).
 - Delta continuo (es [[CMP-01 - Comparar dos vueltas por distancia]]).
 - Avisos globales de comparación inválida (es [[CMP-03 - Avisar de comparación inválida]]).
 
+## Verificación
+- Cubierta por `tests/core/test_compare.py` (`test_faster_apex_gives_positive_d_vmin`, `test_compare_without_gear_channel_does_not_crash`, `test_compare_without_glat_channel_does_not_crash`).
+- Cobertura sistemática de las 32 combinaciones de canales opcionales: `tests/core/test_degradacion_canales.py` (`test_compare_degradacion_graceful`).
+
 ## Relacionado con
 - [[Normalización y comparación]]
 - [TEC-CMP-01 — Comparación por distancia](../../engineering/especificaciones/TEC-CMP-01%20-%20Comparacion%20por%20distancia.md)

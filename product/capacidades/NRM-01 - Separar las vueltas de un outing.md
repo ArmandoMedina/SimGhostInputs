@@ -40,5 +40,8 @@ Sistema (paso inicial de normalización después de importar).
 - Selección de la vuelta más rápida (es [[NRM-02 - Seleccionar la vuelta más rápida completa]]).
 - Remuestreo por distancia (es [[NRM-03 - Remuestrear por distancia]]).
 
+## Verificación
+- Cubierta por `tests/core/test_normalize.py` (`test_split_laps_by_lap_number`).
+
 ## Relacionado con
 - [[Normalización y comparación]]
