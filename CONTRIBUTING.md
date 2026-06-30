@@ -237,11 +237,11 @@ Cada hecho vive en **un** documento. Los demás enlazan, no duplican.
 | Cambio en `core/` (detección de curvas, comparación, `wear`, normalización) | `formato-datos` (algoritmo + JSON + CSV) · `tests/` si cambian números/signos · ADR si es una decisión | **Charbel** (telemetría) |
 | Dependencia o extra nuevo | `pyproject.toml` · `README` (tabla de deps + instalación) · §3 de este doc · `setup.ps1` | _solo Reviewer_ |
 | Importador o formato de entrada nuevo | `README` (tabla de sims) · `guia-usuario` · `formato-datos` (canales) · §7 (bienvenidas) | **Charbel** (telemetría) |
-| Cambio de alcance o de un principio de diseño | `PRODUCT_BRIEF` · `ROADMAP` · §4 de este doc si aplica | **PO** + Architect |
+| Cambio de alcance o de un principio de diseño | `PRODUCT_BRIEF` · `ROADMAP` · §4 de este doc si aplica | **PO** + Armando |
 | Release / bump de versión | `pyproject.toml` · `CHANGELOG` (`[Unreleased]` → versión con fecha) · `ROADMAP` (estado actual + footer) · `README` (badge) · tag git anotado | **PO** (corta la versión) |
-| Decisión de arquitectura/diseño | **ADR nuevo** en `docs/decisions/` · su `README.md` (índice) · el documento que la decisión afecta | **Architect** (+ PO) |
+| Decisión de arquitectura/diseño | **ADR nuevo** en `docs/decisions/` · su `README.md` (índice) · el documento que la decisión afecta | **Armando** (arquitecto, + PO) |
 | Término o concepto nuevo (o renombrado) | `docs/glosario.md` (definición canónica) · busca el término en los demás docs para dejarlo consistente | _solo Reviewer_ (consistencia) |
-| Cambio en las barreras o la gobernanza (linter, formato, hook, CI, tests, doc-gate) | `docs/flujo-de-trabajo.md` · `docs/benchmark-linter.md` si cambia la herramienta · `.github/workflows/tests.yml` si cambia el CI | **PO / Architect** |
+| Cambio en las barreras o la gobernanza (linter, formato, hook, CI, tests, doc-gate) | `docs/flujo-de-trabajo.md` · `docs/benchmark-linter.md` si cambia la herramienta · `.github/workflows/tests.yml` si cambia el CI | **PO / Armando** |
 
 ### Roles que validan
 
@@ -254,10 +254,12 @@ Los especialistas se encienden solo cuando aplica su área:
 
 - **Charbel** (telemetría) — correctitud de datos. **Casi todo determinista** (tests, rangos físicos, ¿parsea el archivo?, ¿están los canales?); la IA solo juzga lo ambiguo (¿archivo malo o anomalía real?). **No** pongas la IA a "validar la telemetría" en bloque — ese asiento es de los tests.
 - **Mariana** (UX del HUD y UI) — aceptación visual. **Casi todo juicio**: "¿el HUD se ve bien?" y "¿el layout de la UI tiene sentido?" son **checkpoints que vuelven al PO**, no un auto-pase.
-- **Architect** — decisiones técnicas (ADR). Se co-produce con el PO; se dispara por necesidad, no "todos los ADR arriba".
-- **PO** (Armando) — alcance, prioridad, release. Inicia la tarea y es el único que aprieta lo irreversible.
+- **Armando** (arquitecto) — decisiones técnicas (ADR) y la **estructura** de `product/`+`engineering/`. Se co-produce con el PO; se dispara por necesidad, no "todos los ADR arriba".
+- **PO** (tú, el humano) — alcance, prioridad, release. Inicia la tarea y es el único que aprieta lo irreversible.
 
-> **Estado de cableado (sé honesto al leer esto: no todo está automatizado).** Hoy disparan solos por hook el **Reviewer**, el **Escribano** y **Mariana** (ver `.claude/hooks/`; Mariana se cableó en [ADR 0011](docs/decisions/0011-cablear-mariana-no-charbel.md) cuando un bug visual lo pidió). **Charbel** sigue **declarado aquí** —esta tabla es su router— pero **sin hook a propósito**: su validación de telemetría ya vive en los tests, y cablearlo sería sobre-orquestar (ADR 0011). **PO** y **Architect** viven en la capa de ideación (tú + el chat), no en un hook.
+> Estos nombres son **asientos** del casting; quién los ocupa y cómo (en sesión o como subagente), en [`docs/flujo-de-trabajo.md` §4 — El casting](docs/flujo-de-trabajo.md#el-casting--asientos-no-skills).
+
+> **Estado de cableado (sé honesto al leer esto: no todo está automatizado).** Hoy disparan solos por hook el **Reviewer**, el **Escribano** y **Mariana** (ver `.claude/hooks/`; Mariana se cableó en [ADR 0011](docs/decisions/0011-cablear-mariana-no-charbel.md) cuando un bug visual lo pidió). **Charbel** sigue **declarado aquí** —esta tabla es su router— pero **sin hook a propósito**: su validación de telemetría ya vive en los tests, y cablearlo sería sobre-orquestar (ADR 0011). **PO** y **Armando** (arquitecto) viven en la capa de ideación (tú + el chat), no en un hook.
 
 ### Regla de consistencia de vocabulario
 

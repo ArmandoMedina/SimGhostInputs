@@ -234,12 +234,48 @@ deja olvidar; y si algo se cuela, el bloqueo del push (doc-gate §8) + git (todo
 **Los roles.** Cada cambio enciende a quien valida, según el **router de la §8 extendida**
 (`CONTRIBUTING.md`): **Reviewer** (todo código) y **Escribano** (docs) van siempre; los especialistas
 por área — **Charbel** (telemetría: `core/`/`importers/`, casi todo tests) y **Mariana** (UX del HUD:
-`viz/`, casi todo juicio, checkpoint que vuelve a ti). El **PO** (tú) y el **Architect** (ADRs) viven en
+`viz/`, casi todo juicio, checkpoint que vuelve a ti). El **PO** (tú) y **Armando** (arquitecto: ADRs y estructura de docs) viven en
 la ideación, no en un hook.
 
 > **Estado honesto:** hoy disparan solos **Reviewer**, **Escribano** y **Mariana** (cableada en [ADR 0011](decisions/0011-cablear-mariana-no-charbel.md)
 > cuando un bug visual lo pidió). **Charbel** sigue **declarado** en el router §8 **sin hook a propósito**: su asiento son
 > los tests deterministas (`pytest`), no la IA — cablearlo sería sobre-orquestar (mismo ADR 0011).
+
+### El casting — asientos, no skills
+
+El trabajo se reparte en **asientos** (roles) con **nombres** propios, para poder hablar de ellos
+("pásalo a Charbel") y para que cada sesión los ocupe igual. Hay **un solo humano: tú (el PO).**
+Le hablas a **Mau**; Mau ocupa o delega los demás asientos.
+
+| Asiento | Función | Vive como | ¿Hook? |
+|---|---|---|---|
+| **Mau** | **orquestador** / cara al PO: decide, rutea, teje | **la sesión principal** de Claude Code | — |
+| **Ahiram** | **desarrollador**: escribe `fantasma/` y sus tests | trabajo por defecto; puede correr como subagente | — |
+| **Armando** | **arquitecto-doc**: jerarquía `product/`+`engineering/`, wikilinks, frontmatter, **ADRs** | `.claude/skills/armando/` | no (deliberado) |
+| **Charbel** | **validador** de telemetría (`core/`, importers) | `.claude/skills/charbel/` | no (sus tests son el asiento) |
+| **Mariana** | **revisor-visual** del HUD/UI (`viz/`, `ui/`) | `.claude/skills/mariana/` | sí (mariana-stop) |
+| **Escribano** | **sincroniza** docs↔código (§8) | `.claude/skills/escribano/` | sí (escribano-stop) |
+| **Reviewer** | revisa el diff (bugs, calidad) — función, no persona | `/code-review` | sí (review-stop) |
+
+> **Asiento ≠ skill.** Una **skill** es un comportamiento especializado, disparable, con límites
+> escritos (lo que SÍ y lo que NO hace) — un archivo en `.claude/skills/`. Un **asiento** es el
+> rol que alguien ocupa, y puede ocuparse **en la sesión** (Mau lo hace directo) o **como subagente**
+> (Mau lo spawnea). Por eso **Mau y Ahiram no son skills**: Mau *es* la sesión; Ahiram es el trabajo
+> por defecto (desarrollar). Armando/Charbel/Mariana/Escribano sí están escritos como skills porque
+> son comportamientos acotados que conviene disparar igual cada vez.
+
+> **Antipatrón a evitar: "Mau desarrollando".** El recurso escaso de Mau es **su contexto**, no su
+> capacidad. Si Mau se pone a escribir `fantasma/` en el hilo principal, envenena el contexto que
+> necesita para orquestar (Context Rot) y borra la frontera de asientos. El desarrollo es de
+> **Ahiram** — en sesión si es una edición chica y acotada, o delegado si es voluminoso. Mau decide
+> y teje; **no es el que pica código**, igual que no es el que lee el bulto.
+
+> **Convención 🎭 — anunciar la sustitución de asiento.** Cuando Mau hace **en sesión** un trabajo
+> que pertenece a un asiento definido (en vez de delegarlo), lo **anuncia** con una línea:
+> `🎭 Asiento: <rol> (en sesión) — <por qué>`. **No es pedir permiso** — Mau ya decidió; es para que
+> el PO distinga una **elección deliberada** (p. ej. "🎭 Asiento: Armando (en sesión) — edición de
+> una sola nota, no amerita subagente") de un **olvido**. Si un asiento debió actuar y no se anuncia,
+> es una omisión a corregir, no un atajo válido.
 
 ### Orquestación: quién dispara a quién, y con qué modelo
 
@@ -277,7 +313,7 @@ El subagente acepta `model`: `haiku` · `sonnet` · `opus`:
   mover ítems, buscar y condensar (Explorador), ruteo simple.
 - **sonnet** — juicio acotado que sí requiere razonar: Reviewer de bugs, juzgar una anomalía de
   telemetría (Charbel), entender un diff.
-- **opus** — decisión profunda con trade-offs: Architect, redactar un ADR, un refactor con criterio.
+- **opus** — decisión profunda con trade-offs: Armando (arquitecto), redactar un ADR, un refactor con criterio.
 
 **Regla de calibración (sin complacencia): iguala el modelo a la COMPLEJIDAD, no al precio.** Un modelo
 barato en tarea compleja **falla y pagas doble** (re-correr). Si dudas entre dos, **sube uno**: un sonnet

@@ -32,7 +32,7 @@ Los tests atrapan lo determinista. Charbel (la IA) entra cuando la pregunta es a
 
 - **No valida telemetría en bloque.** Poner a la IA a "revisar todos los datos" es el error caro que §8 de CONTRIBUTING ya advierte: ese asiento es de los tests, no de la IA. Un bloque de validación manual es costoso, lento y menos confiable que pytest.
 - No toca `fantasma/viz/` ni `fantasma/ui/` — eso es de Mariana.
-- No decide si un cambio de lógica es correcto en términos de diseño — eso es un ADR (Architect y PO).
+- No decide si un cambio de lógica es correcto en términos de diseño — eso es un ADR (Armando y PO).
 
 ## Cómo se invoca
 
