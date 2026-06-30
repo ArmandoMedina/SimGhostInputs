@@ -12,23 +12,22 @@ Motor **offline** de análisis de telemetría sim racing (importar CSV de MoTeC 
 distancia → reporte + overlay de video). Objetivo de fondo: cortar la **v1.0** (estabilizar, testear,
 documentar, validar en AMS2 el pipeline que ya existe).
 
-## Estado actual — v0.14.0 (2026-06-30)
+## Estado actual — v0.15.0 (2026-06-30)
 
-**132 tests verdes, `master` en limpio.** v0.14.0 recién cortada.
+**142 tests verdes, `master` en limpio.** v0.15.0 recién cortada.
 
-- Pipeline completo: importar → comparar → overlay → componer.
+- Pipeline completo: importar → comparar → overlay → componer. Happy path confirmado en QA manual.
 - QA de AMS2 cerrado: 4 circuitos, Hypercar/F3/LMP2, canal de distancia requerido ([ADR 0017](docs/decisions/0017-distancia-canal-requerido.md)).
-- UI/UX: 10 bugs corregidos, 4 features de flujo (Nueva sesión, descarga CSV, estado vacío, estado neutro).
+- UI/UX: gate completo — AppTest Pasos 0-4 (18 tests) + checklist Mariana formalizada en hook.
+- API `core/` estabilizada: `__all__`, `_` prefijos consistentes, `CANONICAL` eliminada.
 - Cobertura completa de blast-radius (8 áreas); skill de Ahiram + Oscar en el casting.
 
 ## Qué falta para v1.0
 
-> QA de AMS2 cerrado. Quedan dos requisitos.
+> Queda un solo requisito.
 
 1. **`setup.ps1` en Windows 11 limpio** — Fase 0 (SSH a `SERVER`) ✓; pendiente Fase 1: VM limpia
    con Hyper-V para probar instalación desde cero.
-2. **Estabilizar la API interna de `core/`** — sin cambios breaking entre parches (revisión, no
-   código nuevo).
 
 Baja prioridad: pulir HUD (DESLIZ vs GASTO misma franja), confirmar overlay con video 60 fps real.
 

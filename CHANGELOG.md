@@ -4,8 +4,14 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/). Versionado
 
 ## [Unreleased]
 
+## [0.15.0] - 2026-06-30
+
+### Añadido
+- **Gate de UX — AppTest Pasos 1, 3 y 4** (Capa A): aserciones estructurales completan la cobertura de los 5 pasos del wizard (Pasos 0 y 2 ya existían). 142 tests verdes.
+- **Checklist de Mariana formalizada en el hook `mariana-stop`**: los 5 puntos del §2-B de `ux-patterns.md` ahora aparecen explícitamente en el mensaje de bloqueo para no depender de que el revisor tenga el doc abierto.
+
 ### Refactorizado
-- **`core/` — API pública estabilizada (prep v1.0):** `_samples` renombrado a `samples` (era parte de la API real); funciones internas de `wear.py` (`_slip_index`, `_assist_count`, `_tyre_temp_avg`) prefijadas con `_`; constante `CANONICAL` eliminada (muerta, la documentación vive en `formato-datos.md`); `core/__init__.py` ahora declara `__all__` explícitamente.
+- **`core/` — API pública estabilizada:** `_samples` renombrado a `samples` (era parte de la API real); funciones internas de `wear.py` (`_slip_index`, `_assist_count`, `_tyre_temp_avg`) prefijadas con `_`; constante `CANONICAL` eliminada (muerta, la documentación vive en `formato-datos.md`); `core/__init__.py` ahora declara `__all__` explícitamente.
 
 ## [0.14.0] - 2026-06-30
 
