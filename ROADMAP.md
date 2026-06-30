@@ -62,16 +62,23 @@ El criterio para llamarla v1.0 es que el pipeline offline esté **completo, docu
 **Gatillo para retomar:** cuando el usuario reporte que esperar las dos etapas es fricción frecuente, o al evaluar el front custom (v2.0) donde esto es más natural.
 
 ### Front de escritorio custom (v2.0)
-> Decisión de fondo en [ADR 0010](docs/decisions/0010-framework-ui-streamlit.md).
+> Decisión en [ADR 0018](docs/decisions/0018-framework-ui-nicegui.md) (enmienda a [ADR 0010](docs/decisions/0010-framework-ui-streamlit.md)).
 
-La UI de v1.0 es Streamlit (ADR 0010). Se difiere a v2.0 **evaluar** migrar a un front custom, por dos límites reales detectados: **(1)** personalización topada y **(2)** fricción de instalación (Streamlit no es doble-click: exige Python + terminal + `setup.ps1`). **No es una migración decidida: es una evaluación con gatillo.**
+**Decisión tomada (2026-06-30):** la UI de v2.0 migra a **NiceGUI** (MIT), empaquetada con `nicegui-pack` + Inno Setup. El instalador final es `SimGhostInputs-vX.Y-Setup.exe` — doble-click, sin Python, sin terminal. El benchmark completo está en [`docs/benchmark-ui-framework.md`](docs/benchmark-ui-framework.md).
 
-> **Restricción heredada del ADR 0010:** mantener `core/` **desacoplado** de la UI (mantiene barato migrar) y, durante v1.0, preferir tests **a prueba de migración** (AppTest + snapshot del HUD) sobre Playwright-sobre-Streamlit.
+**Antes de iniciar la migración — spike obligatorio:**
+- [ ] `nicegui-pack --onedir` en venv limpio: medir bundle size real con el stack completo (numpy + scipy + PIL + matplotlib)
+- [ ] Probar `native=True` en VM limpia Windows 11 24H2 (ya tenemos Hyper-V del spike de v1.0)
+- [ ] Prototipo de preview HUD reactiva: slider → PIL → `image.set_source()` → medir latencia percibida
+- [ ] Subir el `.exe` a VirusTotal: detectar false positives de antivirus antes de publicar
 
-**Qué evaluar antes de comprometerse:**
-- [ ] 🔬 **Benchmark de herramientas** (skill `benchmark-opciones`): comparar lo que ya usamos (Streamlit, `AppTest`) y opciones nuevas para un front testeable + personalizable + **instalación doble-click**. Candidatos: shell de escritorio empaquetado (Tauri, pywebview, Electron → `.exe` doble-click); web-en-navegador con servidor local (parte en desventaja: no quita la fricción de instalación); escape hatches de Streamlit (CSS, `st.components.html`, componentes custom → ¿destraban sin migrar?); Playwright para el front nuevo (no para Streamlit).
-- [ ] **Experimento barato de personalización:** probar los escape hatches de Streamlit en la pantalla que más duele, para decidir *con evidencia* si migrar siquiera hace falta.
-- [ ] Con el benchmark resuelto, **registrar la arquitectura elegida como ADR nuevo** (hoy NO está decidida).
+**Migración (post-spike):**
+- [ ] Skeleton NiceGUI: `ng_app.py` + sidebar con navegación de 5 pasos + gestión de estado
+- [ ] Portar pasos 0–4 a NiceGUI (mantener `app.py` Streamlit en paralelo hasta completar)
+- [ ] Preview reactiva del HUD en Paso 4 (el feature que justificó la migración)
+- [ ] Empaquetado: `nicegui-pack --onedir` + script `.iss` de Inno Setup
+- [ ] CI: job `build-installer` en `release.yml` → artefacto en GitHub Release
+- [ ] Mockups con Claude Design antes de implementar cada paso
 
 ### Coaching de voz — CrewChief Pace Notes
 > Investigado y validado; spec completa en [ADR 0002](docs/decisions/0002-crewchief-pacenotes.md).

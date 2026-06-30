@@ -8,7 +8,9 @@
 
 ## Pendiente inmediato
 
-**v1.0.0 cortada (2026-06-30).** Continuar con el roadmap post-v1.0 — ver [ROADMAP.md](ROADMAP.md) → «Diferido post-v1.0».
+**v1.0.0 cortada. Framework v2.0 decidido: NiceGUI + nicegui-pack + Inno Setup ([ADR 0018](docs/decisions/0018-framework-ui-nicegui.md)).**
+
+Siguiente paso concreto: **spike de NiceGUI** — crear venv limpio, correr `nicegui-pack --onedir`, medir bundle size real y probar `native=True` en VM Windows 11. Ver checklist en [ROADMAP.md](ROADMAP.md) → «Front de escritorio custom (v2.0)».
 
 ## Para retomar en frío
 

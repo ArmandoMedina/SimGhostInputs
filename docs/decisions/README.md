@@ -27,3 +27,4 @@ bifurcación equivocada.
 | [0015](0015-estructura-product-engineering.md) | Adoptar estructura product/ + engineering/ (reclasificar el repo a mixto) | Aceptada | 2026-06-29 |
 | [0016](0016-gate-grafo-documentacion.md) | Gate determinista del grafo de docs (`auditar.ps1`), sin auto-firma | Aceptada | 2026-06-30 |
 | [0017](0017-distancia-canal-requerido.md) | La distancia es un canal requerido; no se sintetiza desde la velocidad | Aceptada | 2026-06-30 |
+| [0018](0018-framework-ui-nicegui.md) | Framework de UI v2.0: NiceGUI + nicegui-pack + Inno Setup (enmienda ADR 0010) | Aceptada | 2026-06-30 |
