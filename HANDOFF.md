@@ -14,7 +14,7 @@ documentar, validar en AMS2 el pipeline que ya existe).
 
 ## ⚠️ Pendiente inmediato (en vuelo)
 
-**127 tests verdes, `verificar.ps1` limpio, `master` sin push.** Solo falta:
+**127 tests verdes, `verificar.ps1` limpio.** Solo falta:
 
 1. ⚠️ **QA visual de Step 0 (Mariana checkpoint):** el Paso 0 fue rediseñado en esta sesión
    (reorden de bloques, cards más cortas, hero strip con los 3 insumos). Antes de hacer push,
@@ -48,6 +48,21 @@ documentar, validar en AMS2 el pipeline que ya existe).
 
 Baja prioridad: pulir HUD (DESLIZ vs GASTO misma franja), confirmar overlay con video 60 fps real.
 
+### QA extendido 2026-06-30
+
+- Artefactos: `qa_runs/local-matrix-20260630-082708/` y `qa_runs/charbel-20260630/`.
+- `pytest`: **127 passed** tras el fix.
+- Matriz local: 19/19 CSVs importan con `laps`; 18/19 generan `corners_detected.json`; el único
+  fallo esperado es el ORECA 07 sin canal `Distance`.
+- `compare --no-charts`: reportes generados por circuito/clase; el caso ORECA ahora falla con
+  mensaje claro en vez de `NoneType`.
+- `overlay` + `compose`: Charbel validó un tramo corto con `2.mp4`, generando `overlay.webm` y
+  `composed_2s.mp4` bajo `qa_runs/charbel-20260630/overlay_compose/`.
+- UI: AppTest explícito (`test_app_smoke`, `test_step2_avisos`, `test_step4_ffmpeg`) y smoke visual
+  Playwright pasan individualmente. Ojo: `pytest tests\ui tests\ui\visual` colectó solo el test
+  visual en esta máquina; usar archivos explícitos o revisar discovery si se quiere ese comando
+  como atajo.
+
 ## Cómo correr
 
 ```powershell
@@ -69,7 +84,17 @@ git config core.hooksPath .githooks   # una vez por clon: enciende pre-push
 4. **Doc-gate §8 BLOQUEA** en local si tocas `core/` sin `formato-datos.md`, `viz/` sin
    `hud-reference.md`, o las barreras sin `flujo-de-trabajo.md`. Pásalo al escribano.
 5. **Entorno PS 5.1:** mensajes de commit multilínea a git → `git commit -F archivo` con
-   `[System.IO.File]::WriteAllText(... utf8NoBOM)`; `.ps1` con acentos → guardar con BOM.
+   `[System.IO.File]::WriteAllText(... utf8NoBOM)`; `.ps1` con acentos → guardar con BOM. Ver `CLAUDE.md` global.
+
+## Qué falta (próximos pasos, en orden de valor)
+
+> El QA de AMS2 (≥3 circuitos) ya quedó cerrado en v0.14.0. De los requisitos de v1.0 quedan dos.
+
+1. **`setup.ps1` en Windows 11 limpio** — Fase 0 (SSH a la PC potente `SERVER`) ✓; pendiente
+   **Fase 1: VM limpia de Windows con Hyper-V** para probar la instalación desde cero.
+2. **Estabilizar la API interna de `core/`** — sin cambios breaking entre parches (revisión, no código nuevo).
+3. **Pulir HUD:** DESLIZ vs GASTO se confunden (misma franja). _Prioridad baja._
+4. **Confirmar con video 60 fps real** que el overlay no desincroniza (sin repro hasta hoy). _Prioridad baja._
 
 ## Mapa rápido del repo
 
