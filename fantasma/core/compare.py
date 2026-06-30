@@ -1,7 +1,7 @@
 """Comparacion piloto vs referencia, por distancia (no por tiempo)."""
 
 from . import wear
-from .corners import samples, detect_corners, extract_milestones
+from .corners import detect_corners, extract_milestones, samples
 from .normalize import resample
 
 
