@@ -8,9 +8,9 @@
 
 ---
 
-## Estado actual — v0.12.0
+## Estado actual — v0.13.0
 
-Último release: **v0.12.0** (2026-06-28) — robustez del pipeline: fix del bug bloqueante del CLI overlay (.webm de 0 bytes), avisos de `compare` para cross-circuito y autos distintos, zona gris de confianza en auto-sync ([enmienda ADR 0008](docs/decisions/0008-sync-multivuelta-candidatos.md)); andamiaje de smoke visual con Playwright en CI ([ADR 0012](docs/decisions/0012-playwright-smoke-visual.md)); Mariana cableada como rol formal ([ADR 0011](docs/decisions/0011-cablear-mariana-no-charbel.md)); tests sistemáticos de degradación por canales ausentes (32 combinaciones). 121 tests en verde. La base: sistema de roles y doc-gate (v0.11.0), barreras `ruff` + CI (v0.10.0). El pipeline offline completo (importar → comparar → overlay → componer) funciona; la UI es Streamlit ([ADR 0010](docs/decisions/0010-framework-ui-streamlit.md)).
+Último release: **v0.13.0** (2026-06-30) — adopción completa de la metodología de `project-starter`: estructura **`product/` + `engineering/`** (repo reclasificado a mixto, [ADR 0015](docs/decisions/0015-estructura-product-engineering.md)) con la jerarquía funcional poblada de contenido real (8 dominios, 12 módulos, 18 capacidades con criterios Gherkin que citan su test); **casting de asientos formalizado en el repo** (Mau, Ahiram, Armando, Charbel, Mariana, Escribano; asiento≠skill, antipatrón "Mau desarrollando", convención 🎭); y **gate determinista del grafo de docs** (`tools/auditar.ps1`, [ADR 0016](docs/decisions/0016-gate-grafo-documentacion.md), sin auto-firma). Incluye fixes de pipeline acumulados: NVENC ~35% más rápido (fix del probe 64×64), aviso temprano de ffmpeg en la UI, fix de consola unicode en `compose`, y `setup.ps1 -Yes` desatendido. 125 tests en verde. La base: robustez del pipeline (v0.12.0), sistema de roles y doc-gate (v0.11.0), barreras `ruff` + CI (v0.10.0). El pipeline offline completo (importar → comparar → overlay → componer) funciona; la UI es Streamlit ([ADR 0010](docs/decisions/0010-framework-ui-streamlit.md)).
 
 La meta inmediata es **la v1.0**: no es construir features nuevas, sino **estabilizar, testear, documentar y validar en AMS2 el pipeline que ya existe**. Las versiones publicadas están en el CHANGELOG; el siguiente hito es la 1.0.
 

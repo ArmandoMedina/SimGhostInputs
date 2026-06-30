@@ -4,6 +4,8 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/). Versionado
 
 ## [Unreleased]
 
+## [0.13.0] - 2026-06-30
+
 ### Añadido
 - **Gate determinista del grafo de documentación — `tools/auditar.ps1`** ([ADR 0016](docs/decisions/0016-gate-grafo-documentacion.md), Fase 3.2): auditor que verifica la integridad de `product/`+`engineering/` sobre el artefacto (los `.md`), no sobre confiar en el agente. **BLOQUEA** frontmatter ausente/incompleto, wikilinks rotos y capacidades `vigente` sin criterios Gherkin; **avisa** capacidad vigente sin test citado y notas huérfanas. **Modulado por estado** (`en_definicion` solo exige frontmatter + enlaces). Lo corre `verificar.ps1` (local, bloquea como el doc-drift §8) y el CI (nuevo job `docs-graph`, infranqueable). **Sin archivos de auto-firma** (`.gate/`): un agente que declara "ya validé" no es verificación. La §8 de `CONTRIBUTING.md` se extiende como fuente única (filas SSOT de `product/`/`engineering/`/`templates/` + blast-radius).
 - **UI Paso 4 — aviso temprano si falta ffmpeg** (caso C19): el paso de composición necesita ffmpeg; ahora avisa al entrar (con el comando de instalación) en vez de dejar fallar al apretar «Componer». Con test estructural (`test_step4_ffmpeg.py`).
