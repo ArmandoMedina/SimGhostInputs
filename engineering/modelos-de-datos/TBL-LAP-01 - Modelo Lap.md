@@ -16,7 +16,7 @@ El contenedor central de una vuelta en memoria: a esto convierte **todo** import
 | `channels` | `dict[str, list[float]]` | nombre canónico → serie; todas las listas con la misma longitud |
 | `meta` | `dict` | metadatos libres: `venue`, `vehicle`, `driver`, `beacons`, `lap_index`, `is_complete`, `resample_step_m`… |
 
-> Los **canales canónicos** y su significado (unidades, convenciones de signo) son dueño de [`../../docs/formato-datos.md`](../../docs/formato-datos.md). Constante `CANONICAL` en el código: `time`, `dist`, `speed`, `throttle`, `brake`, `steering`, `gear`, `glat`, `glong`, `rpm`, `alt`. Solo `time` y `dist` son obligatorios.
+> Los **canales canónicos** y su significado (unidades, convenciones de signo) son dueño de [`../../docs/formato-datos.md`](../../docs/formato-datos.md): `time`, `dist`, `speed`, `throttle`, `brake`, `steering`, `gear`, `glat`, `glong`, `rpm`, `alt`. Solo `time` y `dist` son obligatorios.
 
 ## API (a nivel código)
 - **Propiedades:** `laptime` (`t[-1] − t[0]`), `length` (`d[-1] − d[0]`).

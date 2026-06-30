@@ -54,7 +54,7 @@ def test_calibrate_finds_ratio_with_wheel_channels():
 
 def test_clean_rolling_has_low_slip_index():
     lap = _rolling_lap(ratio=1.0)
-    idx = wear.slip_index(lap)
+    idx = wear._slip_index(lap)
     assert idx is not None
     assert idx == 0.0  # sin deslizamiento real, por debajo de la banda muerta
 
@@ -67,7 +67,7 @@ def test_slip_series_signs_locking_and_spinning():
 
 
 def test_slip_index_positive_with_real_slip():
-    idx = wear.slip_index(_slip_lap())
+    idx = wear._slip_index(_slip_lap())
     assert idx is not None
     assert idx > 0  # con deslizamiento real por encima de la banda muerta
 
@@ -105,12 +105,12 @@ def test_assist_count_counts_rising_edges():
     lap.channels["dist"] = [i * 1.0 for i in range(n)]
     # dos activaciones de ABS (dos flancos de subida)
     lap.channels["abs"] = [0, 0, 1, 1, 0, 0, 1, 1, 0, 0]
-    assert wear.assist_count(lap, "abs") == 2
+    assert wear._assist_count(lap, "abs") == 2
 
 
 def test_assist_count_none_when_channel_absent():
     lap = make_lap()  # sin canal abs
-    assert wear.assist_count(lap, "abs") is None
+    assert wear._assist_count(lap, "abs") is None
 
 
 def test_wear_summary_empty_without_optional_channels():

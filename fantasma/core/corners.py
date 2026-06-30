@@ -11,7 +11,7 @@ Metodologia (validada contra telemetria real del Nordschleife):
 """
 
 
-def _samples(lap):
+def samples(lap):
     keys = [
         k
         for k in (
@@ -36,8 +36,11 @@ def _samples(lap):
 def detect_corners(
     lap, vmin_window_s=1.2, vmin_prominence_kmh=3.0, kink_glat=2.2, sample_rate_hint=None
 ):
-    """Devuelve lista de eventos: [{'kind': 'vmin'|'kink', 'i': indice}] ordenada por distancia."""
-    data, keys = _samples(lap)
+    """Devuelve lista de eventos: [{'kind': 'vmin'|'kink', 'i': indice}] ordenada por distancia.
+
+    sample_rate_hint: reservado para uso futuro; dt se calcula directamente de los datos.
+    """
+    data, keys = samples(lap)
     if "speed" not in keys:
         raise ValueError("La vuelta no tiene canal de velocidad")
     if "dist" not in keys:
@@ -87,7 +90,7 @@ def extract_milestones(
     if events is None:
         events, data = detect_corners(lap)
     else:
-        data, _ = _samples(lap)
+        data, _ = samples(lap)
     apex_ds = [data[i]["dist"] for _, i in events]
     corners = []
     for n, (kind, ai) in enumerate(events):
