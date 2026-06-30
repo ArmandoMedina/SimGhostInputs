@@ -1,7 +1,7 @@
 """Comparacion piloto vs referencia, por distancia (no por tiempo)."""
 
 from . import wear
-from .corners import _samples, detect_corners, extract_milestones
+from .corners import samples, detect_corners, extract_milestones
 from .normalize import resample
 
 
@@ -68,7 +68,7 @@ def compare(ref, drv, step=5.0, corners=None):
     if corners is None:
         events, _ = detect_corners(ref)
         corners = extract_milestones(ref, events)
-    drv_data, _ = _samples(drv)
+    drv_data, _ = samples(drv)
 
     def delta_at(dist):
         i = min(int(dist / step), len(trace) - 1)
@@ -102,10 +102,10 @@ def compare(ref, drv, step=5.0, corners=None):
         if "full_throttle" in m and "gas100_d" in drv_m:
             row["d_gas100_m"] = drv_m["gas100_d"] - m["full_throttle"]["d"]
         if ref_slip is not None and drv_slip is not None:
-            row["ref_slip"] = wear.slip_index(ref, lo, hi, slip=ref_slip)
-            row["drv_slip"] = wear.slip_index(drv, lo, hi, slip=drv_slip)
-        ra = wear.assist_count(ref, "abs", lo, hi)
-        da = wear.assist_count(drv, "abs", lo, hi)
+            row["ref_slip"] = wear._slip_index(ref, lo, hi, slip=ref_slip)
+            row["drv_slip"] = wear._slip_index(drv, lo, hi, slip=drv_slip)
+        ra = wear._assist_count(ref, "abs", lo, hi)
+        da = wear._assist_count(drv, "abs", lo, hi)
         if ra is not None and da is not None:
             row["ref_abs"], row["drv_abs"] = ra, da
         tol = c.get("tolerances", {})

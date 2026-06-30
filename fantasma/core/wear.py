@@ -64,7 +64,7 @@ def slip_series(lap, ratios=None):
     return out
 
 
-def slip_index(lap, d0=None, d1=None, slip=None, ratios=None):
+def _slip_index(lap, d0=None, d1=None, slip=None, ratios=None):
     """Indice de deslizamiento de un tramo: media del exceso de |slip| sobre la
     banda muerta, ponderada por muestra. 0 = limpio; >5 = goma sufriendo."""
     slip = slip if slip is not None else slip_series(lap, ratios)
@@ -85,7 +85,7 @@ def slip_load(lap, d0=None, d1=None, slip=None, ratios=None):
     """Carga de deslizamiento de un tramo (ADR 0009): el slip **integrado sobre la
     distancia** — Σ (exceso de |slip| sobre la banda muerta / 100) × Δdistancia.
 
-    A diferencia de `slip_index` (que es el PROMEDIO = intensidad), esto es una
+    A diferencia de `_slip_index` (que es el PROMEDIO = intensidad), esto es una
     cantidad **extensiva y aditiva**: la carga de dos tramos contiguos es la suma de
     sus cargas (curva → vuelta → stint suman). Aproxima los metros de patinaje
     equivalente de la goma. None si no hay serie de slip.
@@ -104,7 +104,7 @@ def slip_load(lap, d0=None, d1=None, slip=None, ratios=None):
     return round(total, 2)
 
 
-def assist_count(lap, channel, d0=None, d1=None):
+def _assist_count(lap, channel, d0=None, d1=None):
     """Numero de activaciones (flancos de subida) de abs/tcs en un tramo."""
     c = lap.col(channel)
     if c is None:
@@ -120,7 +120,7 @@ def assist_count(lap, channel, d0=None, d1=None):
     return count
 
 
-def tyre_temp_avg(lap, d0=None, d1=None):
+def _tyre_temp_avg(lap, d0=None, d1=None):
     """Temperatura media de las 4 gomas en un tramo (°C)."""
     cols = [lap.col("tt_" + w) for w in WHEELS]
     if any(c is None for c in cols):
@@ -140,12 +140,12 @@ def wear_summary(lap):
     slip = slip_series(lap, ratios) if ratios else None
     out = {}
     if slip is not None:
-        out["slip_index"] = slip_index(lap, slip=slip)
+        out["slip_index"] = _slip_index(lap, slip=slip)
     for ch in ("abs", "tcs"):
-        n = assist_count(lap, ch)
+        n = _assist_count(lap, ch)
         if n is not None:
             out[ch + "_count"] = n
-    t = tyre_temp_avg(lap)
+    t = _tyre_temp_avg(lap)
     if t is not None:
         out["tyre_temp_avg"] = t
     fuel = lap.col("fuel")
@@ -159,7 +159,7 @@ def wear_budget(rates, thresholds, recent_n=1):
     medidor de gasolina (ver ADR 0004 — desgaste acumulable).
 
     Args:
-        rates:      slip_index por vuelta, en orden (los None se ignoran).
+        rates:      _slip_index por vuelta, en orden (los None se ignoran).
         thresholds: dict con "yellow"/"red"/"burst" — umbrales que el usuario
                     calibra empíricamente (NO son físicos; el rate es un proxy
                     en unidades arbitrarias).
