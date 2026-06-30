@@ -8,7 +8,7 @@
 
 ## Pendiente inmediato
 
-**Cortar versión** — el drill-down por curva (Paso 2) ya está mergeado en master y sin versión. Cuando arranques, corre `/release-helper`.
+**v1.0.0 cortada (2026-06-30).** Continuar con el roadmap post-v1.0 — ver [ROADMAP.md](ROADMAP.md) → «Diferido post-v1.0».
 
 ## Para retomar en frío
 

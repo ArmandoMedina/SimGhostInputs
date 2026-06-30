@@ -1,6 +1,6 @@
 # 👻 SimGhostInputs
 
-[![Estado](https://img.shields.io/badge/estado-pre--release%20v0.x-orange)](CHANGELOG.md)
+[![Estado](https://img.shields.io/badge/estado-v1.0.0%20estable-brightgreen)](CHANGELOG.md)
 [![tests](https://github.com/ArmandoMedina/SimGhostInputs/actions/workflows/tests.yml/badge.svg)](https://github.com/ArmandoMedina/SimGhostInputs/actions/workflows/tests.yml)
 [![Ko-fi](https://img.shields.io/badge/Ko--fi-Buy%20me%20a%20Coffee-FF5E5B?logo=ko-fi&logoColor=white)](https://ko-fi.com/armandomedina2255)
 [![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL--3.0-blue.svg)](LICENSE)
@@ -9,10 +9,9 @@
 
 ![HUD preview](docs/demo/overlay_hud_preview.gif)
 
-> [!WARNING]
-> **Proyecto en desarrollo activo — versión 0.x (pre-release).**
-> El motor CLI, la interfaz gráfica (`fantasma ui`) y el flujo de video completo (`fantasma compose`) están probados con telemetría y grabaciones reales.
-> La API interna puede cambiar sin aviso entre versiones 0.x. No se garantiza estabilidad hasta v1.0 (AMS2).
+> [!NOTE]
+> **v1.0 — Pipeline AMS2 completo, documentado y probado.** El motor CLI, la interfaz gráfica (`fantasma ui`) y el flujo de video con HUD (`fantasma compose`) están validados con telemetría y grabaciones reales en AMS2 (4 circuitos, múltiples clases). `setup.ps1` probado en instalación limpia de Windows 11.
+> Alcance declarado de v1.0: AMS2, pipeline offline. Importadores adicionales (iRacing, ACC, rF2) y features avanzadas van en versiones siguientes.
 
 **Compara tus inputs contra una vuelta de referencia, por distancia, no por tiempo.**
 

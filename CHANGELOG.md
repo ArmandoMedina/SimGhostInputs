@@ -4,8 +4,13 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/). Versionado
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-06-30
+
+**Hito — pipeline AMS2 completo, documentado y probado.** `setup.ps1` validado en instalación limpia de Windows 11 (Hyper-V VM). Alcance declarado: AMS2, pipeline offline (análisis + overlay + compose), interfaz gráfica de 5 pasos. 142 tests en verde.
+
 ### Añadido
 - **Drill-down por curva en UI Paso 2**: la tabla de curvas ahora selecciona por defecto la mayor pérdida y muestra un panel accionable con síntesis y plan de ataque (frenada, pico de freno, V-Min, gas 100%, G lateral y marcha/RPM cuando existan). El cálculo vive en `corner_coaching(row, trace)` dentro de `core`, sin LLM ni red, y degrada con gracia cuando faltan canales opcionales. La pantalla se organiza en pestañas: curvas prioritarias primero, resumen de vuelta después y la vista completa de todos los canales en una pestaña propia. Con tests de núcleo (`tests/core/test_coaching.py`) y AppTest de Paso 2.
+- **`verificar.ps1` — aviso de cobertura de tests**: al correr las barreras locales se informa cuántos tests cubre la suite en ese momento, para que el aviso de "pytest verde" incluya el número real de casos en verde.
 
 ## [0.15.0] - 2026-06-30
 
