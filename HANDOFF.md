@@ -14,19 +14,14 @@ documentar, validar en AMS2 el pipeline que ya existe).
 
 ## ⚠️ Pendiente inmediato (en vuelo)
 
-El cambio que **cierra el QA de AMS2** y **exige el canal de distancia** (ADR 0017) ya está
-**committeado en `master`** (commit `4baa462`), pero **la versión v0.14.0 AÚN NO está cortada**.
-
-Además, en la sesión del 2026-06-30 se corrió un **QA extendido** con el material externo en
-`C:\Repositorio personal\Paterial para test (no es un repo)`: 19 CSVs reales + video corto. El QA
-encontró un bug menor ya corregido en working tree: `fantasma compare` con el piloto sin canal
-`Distance` escapaba como `NoneType`; ahora valida temprano y muestra el mismo mensaje accionable
-que `detect`. Queda **sin commit** al momento de este relevo.
+Todo el código para v0.14.0 está en `master` — **127 tests verdes**, `verificar.ps1` limpio.
+**Solo falta cortar el release.**
 
 La próxima sesión debe:
 
-1. Cerrar el fix actual si sigue en working tree: revisar `fantasma/cli.py`, `tests/test_cli.py`,
-   `CHANGELOG.md` y este `HANDOFF.md`; correr `./tools/verificar.ps1`; commitear.
+1. ⚠️ **QA visual de Step 0** — Mariana checkpoint: la UI del Paso 0 fue rediseñada (reorden de
+   bloques, cards más cortas, hero strip). Antes del push hay que abrir `fantasma ui` y confirmar
+   que el layout se ve correcto. No hace falta comparar con baseline; es juicio visual.
 2. Correr la skill **`release-helper`** para cortar **v0.14.0** (el PO ya autorizó commit/push/versionamiento):
    bump en `pyproject.toml`, mover `CHANGELOG [Unreleased]`→`[0.14.0]` (el contenido **ya está
    redactado** en `[Unreleased]`), footer/estado de `ROADMAP`, badge del `README`, **tag anotado**,
@@ -34,9 +29,16 @@ La próxima sesión debe:
    la cuenta personal de Armando).
 3. Verificar que el CI quede verde tras el push.
 
-> Nota: este `HANDOFF.md` ya describe el estado **post**-v0.14.0 (versión y conteo de tests). Si por
-> lo que sea el release no se corta, lo único que falta es el ritual del punto 1; el código y los docs
-> ya están en `master`.
+### Sobre la rama `codex/pruebas-codex`
+
+Condex trabajó en paralelo y sus 3 commits fueron revisados. **Integrados a master (cherry-pick):**
+- `c1b5364` fix(cli): validación de distancia en `compare`/`overlay`
+- `6a79769` feat(ui): mejora del onboarding del Paso 0
+
+**Deliberadamente excluido:** `e26866f` (skills para Codex + hooks en `.codex/`). Motivos:
+rutas absolutas hardcodeadas en `hooks.json`, duplica `.claude/hooks/` byte a byte (doble
+mantenimiento), y falta ADR/nota en `flujo-de-trabajo.md`. Si se quiere soporte Codex, merece
+una decisión limpia que llame a `.claude/hooks/` en vez de duplicarlos.
 
 ## Estado actual (qué está hecho y validado)
 
