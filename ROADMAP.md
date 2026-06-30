@@ -8,13 +8,13 @@
 
 ---
 
-## Estado actual — v0.13.0
+## Estado actual — v0.14.0
 
-Último release: **v0.13.0** (2026-06-30) — adopción completa de la metodología de `project-starter`: estructura **`product/` + `engineering/`** (repo reclasificado a mixto, [ADR 0015](docs/decisions/0015-estructura-product-engineering.md)) con la jerarquía funcional poblada de contenido real (8 dominios, 12 módulos, 18 capacidades con criterios Gherkin que citan su test); **casting de asientos formalizado en el repo** (Mau, Ahiram, Armando, Charbel, Mariana, Escribano; asiento≠skill, antipatrón "Mau desarrollando", convención 🎭); y **gate determinista del grafo de docs** (`tools/auditar.ps1`, [ADR 0016](docs/decisions/0016-gate-grafo-documentacion.md), sin auto-firma). Incluye fixes de pipeline acumulados: NVENC ~35% más rápido (fix del probe 64×64), aviso temprano de ffmpeg en la UI, fix de consola unicode en `compose`, y `setup.ps1 -Yes` desatendido. 125 tests en verde. La base: robustez del pipeline (v0.12.0), sistema de roles y doc-gate (v0.11.0), barreras `ruff` + CI (v0.10.0). El pipeline offline completo (importar → comparar → overlay → componer) funciona; la UI es Streamlit ([ADR 0010](docs/decisions/0010-framework-ui-streamlit.md)).
+Último release: **v0.14.0** (2026-06-30) — **QA de AMS2 cerrado** (4 circuitos, Hypercar/F3/LMP2; canal de distancia ahora requerido con aviso temprano, [ADR 0017](docs/decisions/0017-distancia-canal-requerido.md)) y **overhaul de UI/UX** (10 bugs B-01→B-14, 4 features de flujo F-01/F-09/F-10/F-23). **Cobertura completa de blast-radius** (8 áreas, engineering/ sincronizado); **skill de Ahiram** y **Oscar en el casting** documentados. 132 tests en verde. La base: gate determinista del grafo (`tools/auditar.ps1`, v0.13.0), casting de asientos (v0.13.0), barreras ruff+CI (v0.10.0).
 
 La meta inmediata es **la v1.0**: no es construir features nuevas, sino **estabilizar, testear, documentar y validar en AMS2 el pipeline que ya existe**. Las versiones publicadas están en el CHANGELOG; el siguiente hito es la 1.0.
 
-> **▶️ Para la próxima sesión:** ver [`HANDOFF.md`](HANDOFF.md) → «Qué falta». En resumen, lo que falta para cortar la 1.0: QA de AMS2 (≥3 circuitos), `setup.ps1` en Windows limpio, y pulir overlay/UI (DESLIZ/GASTO en el HUD, confirmar desync con video 60 fps real).
+> **▶️ Para la próxima sesión:** ver [`HANDOFF.md`](HANDOFF.md) → «Qué falta». Quedan dos requisitos de v1.0: `setup.ps1` en VM limpia de Windows (Hyper-V) y estabilizar la API interna de `core/`.
 
 ---
 

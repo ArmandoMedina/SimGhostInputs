@@ -4,6 +4,8 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/). Versionado
 
 ## [Unreleased]
 
+## [0.14.0] - 2026-06-30
+
 ### Añadido
 - **UI — botón «Nueva sesión» en el sidebar** (F-23): limpia todo el estado y vuelve al Paso 0 sin recargar la pestaña. Evita que el usuario tenga que refrescar el navegador para empezar un análisis nuevo.
 - **UI Paso 2 — descarga de tabla de curvas en CSV** (F-09): botón `⬇️ Descargar tabla de curvas (CSV)` al final del análisis para guardar el reporte de curvas localmente.

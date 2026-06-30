@@ -12,30 +12,14 @@ Motor **offline** de análisis de telemetría sim racing (importar CSV de MoTeC 
 distancia → reporte + overlay de video). Objetivo de fondo: cortar la **v1.0** (estabilizar, testear,
 documentar, validar en AMS2 el pipeline que ya existe).
 
-## ⚠️ Pendiente inmediato (en vuelo)
+## Estado actual — v0.14.0 (2026-06-30)
 
-**127 tests verdes, `verificar.ps1` limpio.** Solo falta:
+**132 tests verdes, `master` en limpio.** v0.14.0 recién cortada.
 
-1. ⚠️ **QA visual de Step 0 (Mariana checkpoint):** el Paso 0 fue rediseñado en esta sesión
-   (reorden de bloques, cards más cortas, hero strip con los 3 insumos). Antes de hacer push,
-   abrir `fantasma ui` y confirmar que el layout se ve correcto. Juicio visual, no comparación
-   contra baseline.
-2. Correr la skill **`release-helper`** para cortar **v0.14.0** (el PO ya autorizó
-   commit/push/versionamiento): bump en `pyproject.toml`, mover `CHANGELOG [Unreleased]`→`[0.14.0]`
-   (el contenido **ya está redactado**), footer/estado de `ROADMAP`, badge del `README`, **tag
-   anotado**, **push** y **GitHub release** (ojo al cambio de cuenta `gh` personal↔trabajo: el repo
-   es público bajo la cuenta personal de Armando).
-3. Verificar que el CI quede verde tras el push.
-
-## Estado actual
-
-- **`master` local, sin push.** 4 commits por encima de `origin/master`.
-- **127 tests verdes.** Pipeline completo: importar → comparar → overlay → componer.
-- **QA de AMS2 cerrado** (requisito v1.0): 4 circuitos, Hypercar/F3/LMP2. Canal de distancia
-  exigido con aviso temprano ([ADR 0017](docs/decisions/0017-distancia-canal-requerido.md)).
-- **Rama `codex/pruebas-codex`:** 2 de 3 commits integrados a master (cherry-pick). El tercero
-  (skills/hooks para Codex) excluido: rutas absolutas hardcodeadas, duplica `.claude/hooks/`.
-  Si se quiere soporte Codex en el futuro, merece decisión limpia (ADR o nota en flujo-de-trabajo).
+- Pipeline completo: importar → comparar → overlay → componer.
+- QA de AMS2 cerrado: 4 circuitos, Hypercar/F3/LMP2, canal de distancia requerido ([ADR 0017](docs/decisions/0017-distancia-canal-requerido.md)).
+- UI/UX: 10 bugs corregidos, 4 features de flujo (Nueva sesión, descarga CSV, estado vacío, estado neutro).
+- Cobertura completa de blast-radius (8 áreas); skill de Ahiram + Oscar en el casting.
 
 ## Qué falta para v1.0
 
