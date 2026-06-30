@@ -4,6 +4,9 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/). Versionado
 
 ## [Unreleased]
 
+### Refactorizado
+- **`core/` — API pública estabilizada (prep v1.0):** `_samples` renombrado a `samples` (era parte de la API real); funciones internas de `wear.py` (`_slip_index`, `_assist_count`, `_tyre_temp_avg`) prefijadas con `_`; constante `CANONICAL` eliminada (muerta, la documentación vive en `formato-datos.md`); `core/__init__.py` ahora declara `__all__` explícitamente.
+
 ## [0.14.0] - 2026-06-30
 
 ### Añadido

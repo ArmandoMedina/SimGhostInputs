@@ -16,20 +16,6 @@ Canales canonicos (todos opcionales salvo time y dist):
 
 from dataclasses import dataclass, field
 
-CANONICAL = [
-    "time",
-    "dist",
-    "speed",
-    "throttle",
-    "brake",
-    "steering",
-    "gear",
-    "glat",
-    "glong",
-    "rpm",
-    "alt",
-]
-
 
 @dataclass
 class Lap:
