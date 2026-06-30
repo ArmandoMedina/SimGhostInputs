@@ -13,13 +13,17 @@
       "product/modulos/CMP*",
       "product/modulos/COR*",
       "product/modulos/NRM*",
-      "product/modulos/WER*"
+      "product/modulos/WER*",
+      "engineering/especificaciones/TEC-CMP-*",
+      "engineering/especificaciones/TEC-COR-*",
+      "engineering/modelos-de-datos/TBL-LAP-*",
+      "engineering/modelos-de-datos/TBL-OUT-*"
     ],
     "rol": "Charbel"
   },
   {
     "nombre": "viz",
-    "desc": "overlay HUD, graficas, composicion de video, sincronía audio",
+    "desc": "overlay HUD, graficas, reportes, composicion de video, sincronía audio",
     "fuente": ["fantasma/viz/*"],
     "doc_bloquea": ["docs/hud-reference.md"],
     "doc_avisa": ["docs/ux-patterns.md"],
@@ -28,10 +32,16 @@
       "product/capacidades/CHT-*",
       "product/capacidades/CMPO-*",
       "product/capacidades/SYN-*",
+      "product/capacidades/REP-*",
       "product/modulos/OVL*",
       "product/modulos/CHT*",
       "product/modulos/CMPO*",
-      "product/modulos/SYN*"
+      "product/modulos/SYN*",
+      "product/modulos/REP*",
+      "product/dominios/Reporteria*",
+      "engineering/especificaciones/TEC-OVL-*",
+      "engineering/especificaciones/TEC-SYN-*",
+      "engineering/componentes/ffmpeg*"
     ],
     "rol": "Mariana"
   },
@@ -44,7 +54,8 @@
     "product_avisa": [
       "product/capacidades/UI-*",
       "product/modulos/UI*",
-      "product/dominios/Interfaz de usuario*"
+      "product/dominios/Interfaz de usuario*",
+      "engineering/componentes/streamlit*"
     ],
     "rol": "Mariana"
   },
@@ -56,7 +67,8 @@
     "doc_avisa": ["README.md", "docs/guia-usuario.md", "docs/formato-datos.md"],
     "product_avisa": [
       "product/capacidades/IMP-*",
-      "product/modulos/IMP-*"
+      "product/modulos/IMP-*",
+      "engineering/componentes/motec*"
     ],
     "rol": "Charbel"
   },
@@ -73,18 +85,37 @@
   },
   {
     "nombre": "barreras",
-    "desc": "hooks de git/claude, gate local, workflows de CI",
+    "desc": "hooks de git/claude, gate local, auditor del grafo, workflows de CI",
     "fuente": [
       ".githooks/*",
       ".claude/hooks/*",
       ".claude/settings.json",
       "tools/verificar.ps1",
+      "tools/auditar.ps1",
       "tools/blast-radius.json",
       ".github/workflows/*"
     ],
     "doc_bloquea": ["docs/flujo-de-trabajo.md"],
-    "doc_avisa": [],
+    "doc_avisa": ["docs/benchmark-linter.md"],
     "product_avisa": [],
     "rol": "Armando"
+  },
+  {
+    "nombre": "orquestacion",
+    "desc": "casting de roles: skills (armando, charbel, escribano, mariana) y comandos de sesion",
+    "fuente": [".claude/skills/*", ".claude/commands/*"],
+    "doc_bloquea": [],
+    "doc_avisa": ["docs/flujo-de-trabajo.md"],
+    "product_avisa": [],
+    "rol": "Armando"
+  },
+  {
+    "nombre": "setup",
+    "desc": "script de puesta a punto del clon (instalacion desatendida, ADR 0013)",
+    "fuente": ["setup.ps1"],
+    "doc_bloquea": [],
+    "doc_avisa": ["README.md", "docs/flujo-de-trabajo.md"],
+    "product_avisa": [],
+    "rol": "Reviewer"
   }
 ]
