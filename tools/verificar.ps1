@@ -75,6 +75,16 @@ if ($faltaGuia)    { Block "tocaste fantasma/ui/ sin docs/guia-usuario.md (UX/la
 if ($faltaFlujo)   { Block "tocaste las barreras (hooks/gate/CI) sin docs/flujo-de-trabajo.md. Ver CONTRIBUTING.md seccion 8 -> pasalo al escribano." }
 if (-not ($faltaFormato -or $faltaHud -or $faltaGuia -or $faltaFlujo)) { Ok "docs duenos al dia (o sin cambios en core/viz/ui/barreras)" }
 
+# 5b. Doc-gate: grafo de producto (capacidades/modulos) al dia ---------------
+Write-Host "`n-- Doc-gate (grafo de producto: capacidades y modulos) --"
+$tocoFantasma  = $changed | Where-Object { $_ -like 'fantasma/*' }
+$tocoProducto  = $changed | Where-Object { $_ -like 'product/*' }
+if ($tocoFantasma -and -not $tocoProducto) {
+  Note "tocaste fantasma/ sin actualizar product/ - preguntate: las capacidades o modulos del area siguen describiendo lo que implementaste? (UI-01, CMP-01, etc.)"
+  Write-Host "    Si el comportamiento no cambio: ignora. Si agregaste, quitaste o modificaste un criterio funcional: actualiza la capacidad."
+}
+else { Ok "product/ al dia (o sin cambios de codigo)" }
+
 # 6. Doc-gate: integridad del grafo de docs (product/ + engineering/) --------
 # Lo corre el auditor determinista (auditar.ps1): frontmatter, wikilinks rotos,
 # criterios de capacidades vigentes, huerfanos. BLOQUEA igual que el doc-drift de

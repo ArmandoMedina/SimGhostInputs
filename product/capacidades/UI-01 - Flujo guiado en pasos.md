@@ -34,6 +34,10 @@ Usuario (piloto o ingeniero de datos) que abre la app con `fantasma ui`.
 
 ## Criterios de aceptación
 - Dado que streamlit está instalado, cuando se ejecuta `app.py` vía `AppTest`, entonces la aplicación inicializa sin lanzar ninguna excepción.
+- Dado que no existe `flow_chosen` en session_state (sesión nueva), cuando se renderiza el sidebar, entonces el paso 0 no aparece marcado como completado (✅).
+- Dado que `flow_chosen` existe en session_state y el usuario navega al paso 1, cuando se renderiza el sidebar, entonces el paso 0 aparece como completado (✅).
+- Dado que `last_compose_video` existe en session_state, cuando se renderiza el sidebar, entonces el paso 4 aparece como completado (✅).
+- Dado que el usuario pulsa «🔄 Nueva sesión» en el sidebar, cuando se procesa la acción, entonces el session_state se limpia y la app vuelve al paso 0.
 
 ## Dependencias funcionales
 - [[IMP-MTC-01 - Importar CSV de MoTeC i2]]
@@ -45,7 +49,10 @@ Usuario (piloto o ingeniero de datos) que abre la app con `fantasma ui`.
 - Front de escritorio custom (diferido a v2.0 según ADR 0010).
 
 ## Verificación
-- Cubierta por `tests/ui/test_app_smoke.py` (`test_app_starts_without_exception`).
+- `tests/ui/test_app_smoke.py` · `test_app_starts_without_exception` — arranque sin excepción.
+- `tests/ui/test_app_smoke.py` · `test_paso0_no_marcado_en_sesion_nueva` — B-01: `_step_done(0)` usa `flow_chosen`.
+- `tests/ui/test_app_smoke.py` · `test_paso0_marcado_cuando_flow_chosen` — B-01: confirmación explícita marca el paso.
+- `tests/ui/test_app_smoke.py` · `test_paso4_marcado_cuando_video_compuesto` — B-02: `_step_done(4)` usa `last_compose_video`.
 
 ## Relacionado con
 - [[Interfaz de usuario]]

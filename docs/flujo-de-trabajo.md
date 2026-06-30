@@ -126,6 +126,7 @@ que corren en varios momentos, con autoridad creciente.
 | **Verificador local** | Corre lint + formato + tests + doc-gate de un jalón, en modo aviso | `tools/verificar.ps1` |
 | **Doc-gate (CHANGELOG)** | Avisa si tocaste `fantasma/` sin anotar el `CHANGELOG.md` (checklist ¿ADR? ¿ROADMAP?) | dentro de `tools/verificar.ps1` |
 | **Doc-gate (blast-radius §8)** | **BLOQUEA** el push si tocaste `core/` sin `formato-datos.md`, `viz/` sin `hud-reference.md`, `ui/` sin `guia-usuario.md`, o las **barreras** (hooks/gate/CI) sin `flujo-de-trabajo.md` | dentro de `tools/verificar.ps1` |
+| **Doc-gate (grafo de producto)** | **AVISA** si tocaste `fantasma/` sin actualizar nada en `product/` — obliga a preguntarse si alguna capacidad o módulo quedó desfasado | dentro de `tools/verificar.ps1` |
 | **Auditor del grafo de docs** | Audita `product/`+`engineering/`: **BLOQUEA** frontmatter incompleto, wikilinks rotos, capacidades `vigente` sin criterios; **avisa** sin-test-citado y huérfanos. Modulado por estado. Dueño: Armando | `tools/auditar.ps1` ([ADR 0016](decisions/0016-gate-grafo-documentacion.md)) |
 | **Hook `pre-push`** | Corre el verificador **solo**, justo antes de `git push` (avisa lint/formato/tests; **bloquea** doc-drift §8) | `.githooks/pre-push` |
 | **CI (pipeline)** | Barrera dura en la nube: lint + formato + tests en cada push/PR | `.github/workflows/tests.yml` |
@@ -185,6 +186,9 @@ El verificador corre, en orden:
    - **Blast-radius §8** (**BLOQUEA**, sale ≠ 0) — tocaste `core/` sin `formato-datos.md`, `viz/`
      sin `hud-reference.md`, `ui/` sin `guia-usuario.md`, o las **barreras** (hooks/gate/CI) sin
      `flujo-de-trabajo.md`. Salir a propósito: `git push --no-verify`.
+   - **Grafo de producto** (**AVISA**) — tocaste `fantasma/` sin actualizar nada en `product/`.
+     Preguntarse: ¿cambió algún criterio funcional? Si sí → actualizar la capacidad o módulo del
+     área antes de cerrar el PR.
 
 > **Mixto:** los avisos (lint/formato/tests/CHANGELOG) dejan seguir; el **doc-drift de la §8
 > bloquea ya aquí** (push detenido hasta sincronizar el doc dueño). La barrera dura de
@@ -373,6 +377,7 @@ ver **qué cubre cada una y qué NO**, porque no todo se puede atar por máquina
 | **Layout de UI (Paso 0)** | ¿el layout del Paso 0 se movió respecto al baseline? | Playwright smoke visual (`tests/ui/visual/`) | skipea local si browser no instalado · **bloquea en CI** |
 | **Documentación (CHANGELOG)** | ¿el cambio quedó anotado? | doc-gate CHANGELOG + checklist | **avisa** (ADR/ROADMAP son juicio) |
 | **Doc-drift §8 (doc dueño)** | ¿tocaste `core/`/`viz/`/`ui/`/barreras sin su doc dueño? | doc-gate blast-radius | **BLOQUEA local** · el Escribano lo arregla |
+| **Grafo de producto al día** | ¿tocaste `fantasma/` sin actualizar `product/`? | doc-gate grafo de producto | **AVISA** — el Escribano revisa y actualiza si el criterio cambió |
 | **Grafo de docs (product/engineering)** | ¿frontmatter, wikilinks y criterios de las notas están íntegros? | `tools/auditar.ps1` | **avisa local · bloquea en CI** (job `docs-graph`) |
 
 > **Dónde acaba la máquina — el límite semántico.** Ningún chequeo determinista garantiza que el
