@@ -15,15 +15,24 @@ documentar, validar en AMS2 el pipeline que ya existe).
 ## ⚠️ Pendiente inmediato (en vuelo)
 
 El cambio que **cierra el QA de AMS2** y **exige el canal de distancia** (ADR 0017) ya está
-**committeado en `master`** (commit `4baa462`, 126 tests verdes, `verificar.ps1` todo limpio), pero
-**la versión v0.14.0 AÚN NO está cortada**. La próxima sesión debe:
+**committeado en `master`** (commit `4baa462`), pero **la versión v0.14.0 AÚN NO está cortada**.
 
-1. Correr la skill **`release-helper`** para cortar **v0.14.0** (el PO ya autorizó commit/push/versionamiento):
+Además, en la sesión del 2026-06-30 se corrió un **QA extendido** con el material externo en
+`C:\Repositorio personal\Paterial para test (no es un repo)`: 19 CSVs reales + video corto. El QA
+encontró un bug menor ya corregido en working tree: `fantasma compare` con el piloto sin canal
+`Distance` escapaba como `NoneType`; ahora valida temprano y muestra el mismo mensaje accionable
+que `detect`. Queda **sin commit** al momento de este relevo.
+
+La próxima sesión debe:
+
+1. Cerrar el fix actual si sigue en working tree: revisar `fantasma/cli.py`, `tests/test_cli.py`,
+   `CHANGELOG.md` y este `HANDOFF.md`; correr `./tools/verificar.ps1`; commitear.
+2. Correr la skill **`release-helper`** para cortar **v0.14.0** (el PO ya autorizó commit/push/versionamiento):
    bump en `pyproject.toml`, mover `CHANGELOG [Unreleased]`→`[0.14.0]` (el contenido **ya está
    redactado** en `[Unreleased]`), footer/estado de `ROADMAP`, badge del `README`, **tag anotado**,
    **push** y **GitHub release** (ojo al cambio de cuenta `gh` personal↔trabajo: el repo es público bajo
    la cuenta personal de Armando).
-2. Verificar que el CI quede verde tras el push.
+3. Verificar que el CI quede verde tras el push.
 
 > Nota: este `HANDOFF.md` ya describe el estado **post**-v0.14.0 (versión y conteo de tests). Si por
 > lo que sea el release no se corta, lo único que falta es el ritual del punto 1; el código y los docs
@@ -31,7 +40,7 @@ El cambio que **cierra el QA de AMS2** y **exige el canal de distancia** (ADR 00
 
 ## Estado actual (qué está hecho y validado)
 
-- **v0.14.0** (2026-06-30). **126 tests verdes**. Pipeline offline completo: importar → comparar →
+- **v0.14.0** (2026-06-30). **127 tests verdes** en working tree tras el fix de `compare` sin distancia. Pipeline offline completo: importar → comparar →
   overlay → componer. UI Streamlit ([ADR 0010](docs/decisions/0010-framework-ui-streamlit.md)).
 - **QA de AMS2 cerrado (requisito de v1.0):** validado en 4 circuitos (Barcelona NC, Interlagos,
   Nordschleife 2025, Nürburgring GP) y clases más allá de GT3 (Hypercar, Fórmula F3, Prototipo/LMP2).
@@ -51,6 +60,21 @@ El cambio que **cierra el QA de AMS2** y **exige el canal de distancia** (ADR 00
 | Overlay / compose | HUD alfa + ffmpeg/NVENC | `fantasma/viz/` | QA manual; tests de compose/overlay |
 | Sincronía | offset por correlación de audio | `fantasma/viz/sync.py` | tests; pendiente repro 60fps |
 | UI | Streamlit, pasos 0-4 | `fantasma/ui/` | smoke visual Paso 0 |
+
+### QA extendido 2026-06-30
+
+- Artefactos: `qa_runs/local-matrix-20260630-082708/` y `qa_runs/charbel-20260630/`.
+- `pytest`: **127 passed** tras el fix.
+- Matriz local: 19/19 CSVs importan con `laps`; 18/19 generan `corners_detected.json`; el único
+  fallo esperado es el ORECA 07 sin canal `Distance`.
+- `compare --no-charts`: reportes generados por circuito/clase; el caso ORECA ahora falla con
+  mensaje claro en vez de `NoneType`.
+- `overlay` + `compose`: Charbel validó un tramo corto con `2.mp4`, generando `overlay.webm` y
+  `composed_2s.mp4` bajo `qa_runs/charbel-20260630/overlay_compose/`.
+- UI: AppTest explícito (`test_app_smoke`, `test_step2_avisos`, `test_step4_ffmpeg`) y smoke visual
+  Playwright pasan individualmente. Ojo: `pytest tests\ui tests\ui\visual` colectó solo el test
+  visual en esta máquina; usar archivos explícitos o revisar discovery si se quiere ese comando
+  como atajo.
 
 ## Cómo correr
 
