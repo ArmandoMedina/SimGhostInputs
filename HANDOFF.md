@@ -14,69 +14,39 @@ documentar, validar en AMS2 el pipeline que ya existe).
 
 ## ⚠️ Pendiente inmediato (en vuelo)
 
-Todo el código para v0.14.0 está en `master` — **127 tests verdes**, `verificar.ps1` limpio.
-**Solo falta cortar el release.**
+**127 tests verdes, `verificar.ps1` limpio, `master` sin push.** Solo falta:
 
-La próxima sesión debe:
-
-1. ⚠️ **QA visual de Step 0** — Mariana checkpoint: la UI del Paso 0 fue rediseñada (reorden de
-   bloques, cards más cortas, hero strip). Antes del push hay que abrir `fantasma ui` y confirmar
-   que el layout se ve correcto. No hace falta comparar con baseline; es juicio visual.
-2. Correr la skill **`release-helper`** para cortar **v0.14.0** (el PO ya autorizó commit/push/versionamiento):
-   bump en `pyproject.toml`, mover `CHANGELOG [Unreleased]`→`[0.14.0]` (el contenido **ya está
-   redactado** en `[Unreleased]`), footer/estado de `ROADMAP`, badge del `README`, **tag anotado**,
-   **push** y **GitHub release** (ojo al cambio de cuenta `gh` personal↔trabajo: el repo es público bajo
-   la cuenta personal de Armando).
+1. ⚠️ **QA visual de Step 0 (Mariana checkpoint):** el Paso 0 fue rediseñado en esta sesión
+   (reorden de bloques, cards más cortas, hero strip con los 3 insumos). Antes de hacer push,
+   abrir `fantasma ui` y confirmar que el layout se ve correcto. Juicio visual, no comparación
+   contra baseline.
+2. Correr la skill **`release-helper`** para cortar **v0.14.0** (el PO ya autorizó
+   commit/push/versionamiento): bump en `pyproject.toml`, mover `CHANGELOG [Unreleased]`→`[0.14.0]`
+   (el contenido **ya está redactado**), footer/estado de `ROADMAP`, badge del `README`, **tag
+   anotado**, **push** y **GitHub release** (ojo al cambio de cuenta `gh` personal↔trabajo: el repo
+   es público bajo la cuenta personal de Armando).
 3. Verificar que el CI quede verde tras el push.
 
-### Sobre la rama `codex/pruebas-codex`
+## Estado actual
 
-Condex trabajó en paralelo y sus 3 commits fueron revisados. **Integrados a master (cherry-pick):**
-- `c1b5364` fix(cli): validación de distancia en `compare`/`overlay`
-- `6a79769` feat(ui): mejora del onboarding del Paso 0
+- **`master` local, sin push.** 4 commits por encima de `origin/master`.
+- **127 tests verdes.** Pipeline completo: importar → comparar → overlay → componer.
+- **QA de AMS2 cerrado** (requisito v1.0): 4 circuitos, Hypercar/F3/LMP2. Canal de distancia
+  exigido con aviso temprano ([ADR 0017](docs/decisions/0017-distancia-canal-requerido.md)).
+- **Rama `codex/pruebas-codex`:** 2 de 3 commits integrados a master (cherry-pick). El tercero
+  (skills/hooks para Codex) excluido: rutas absolutas hardcodeadas, duplica `.claude/hooks/`.
+  Si se quiere soporte Codex en el futuro, merece decisión limpia (ADR o nota en flujo-de-trabajo).
 
-**Deliberadamente excluido:** `e26866f` (skills para Codex + hooks en `.codex/`). Motivos:
-rutas absolutas hardcodeadas en `hooks.json`, duplica `.claude/hooks/` byte a byte (doble
-mantenimiento), y falta ADR/nota en `flujo-de-trabajo.md`. Si se quiere soporte Codex, merece
-una decisión limpia que llame a `.claude/hooks/` en vez de duplicarlos.
+## Qué falta para v1.0
 
-## Estado actual (qué está hecho y validado)
+> QA de AMS2 cerrado. Quedan dos requisitos.
 
-- **v0.14.0** (2026-06-30). **127 tests verdes** en working tree tras el fix de `compare` sin distancia. Pipeline offline completo: importar → comparar →
-  overlay → componer. UI Streamlit ([ADR 0010](docs/decisions/0010-framework-ui-streamlit.md)).
-- **QA de AMS2 cerrado (requisito de v1.0):** validado en 4 circuitos (Barcelona NC, Interlagos,
-  Nordschleife 2025, Nürburgring GP) y clases más allá de GT3 (Hypercar, Fórmula F3, Prototipo/LMP2).
-  El canal de distancia ahora es requisito duro con aviso temprano ([ADR 0017](docs/decisions/0017-distancia-canal-requerido.md)).
-- Metodología de `project-starter` adoptada por completo: estructura `product/` + `engineering/`
-  poblada con contenido real ([ADR 0015](docs/decisions/0015-estructura-product-engineering.md)),
-  casting de asientos formalizado, y gate determinista del grafo de docs
-  (`tools/auditar.ps1`, [ADR 0016](docs/decisions/0016-gate-grafo-documentacion.md)).
-- Capa de barreras viva: `ruff`+CI (v0.10.0), doc-gate §8 + roles (v0.11.0), Mariana cableada
-  ([ADR 0011](docs/decisions/0011-cablear-mariana-no-charbel.md)), smoke visual Playwright
-  ([ADR 0012](docs/decisions/0012-playwright-smoke-visual-ui.md)).
+1. **`setup.ps1` en Windows 11 limpio** — Fase 0 (SSH a `SERVER`) ✓; pendiente Fase 1: VM limpia
+   con Hyper-V para probar instalación desde cero.
+2. **Estabilizar la API interna de `core/`** — sin cambios breaking entre parches (revisión, no
+   código nuevo).
 
-| Pieza | Qué hace | Código | Validación |
-|---|---|---|---|
-| Motor de comparación | delta por distancia, curvas, tiempo perdido | `fantasma/core/` | tests Tier 1-2 verdes |
-| Importadores | MoTeC CSV/XLSX, CSV genérico | `fantasma/importers/` | tests + 1 circuito AMS2 real |
-| Overlay / compose | HUD alfa + ffmpeg/NVENC | `fantasma/viz/` | QA manual; tests de compose/overlay |
-| Sincronía | offset por correlación de audio | `fantasma/viz/sync.py` | tests; pendiente repro 60fps |
-| UI | Streamlit, pasos 0-4 | `fantasma/ui/` | smoke visual Paso 0 |
-
-### QA extendido 2026-06-30
-
-- Artefactos: `qa_runs/local-matrix-20260630-082708/` y `qa_runs/charbel-20260630/`.
-- `pytest`: **127 passed** tras el fix.
-- Matriz local: 19/19 CSVs importan con `laps`; 18/19 generan `corners_detected.json`; el único
-  fallo esperado es el ORECA 07 sin canal `Distance`.
-- `compare --no-charts`: reportes generados por circuito/clase; el caso ORECA ahora falla con
-  mensaje claro en vez de `NoneType`.
-- `overlay` + `compose`: Charbel validó un tramo corto con `2.mp4`, generando `overlay.webm` y
-  `composed_2s.mp4` bajo `qa_runs/charbel-20260630/overlay_compose/`.
-- UI: AppTest explícito (`test_app_smoke`, `test_step2_avisos`, `test_step4_ffmpeg`) y smoke visual
-  Playwright pasan individualmente. Ojo: `pytest tests\ui tests\ui\visual` colectó solo el test
-  visual en esta máquina; usar archivos explícitos o revisar discovery si se quiere ese comando
-  como atajo.
+Baja prioridad: pulir HUD (DESLIZ vs GASTO misma franja), confirmar overlay con video 60 fps real.
 
 ## Cómo correr
 
@@ -84,7 +54,7 @@ una decisión limpia que llame a `.claude/hooks/` en vez de duplicarlos.
 pip install -e ".[full]"          # entorno completo
 fantasma --help                   # CLI
 fantasma ui                       # UI Streamlit
-pytest                            # suite (125+)
+pytest                            # suite (127)
 ./tools/verificar.ps1             # barreras locales (lint+formato+tests+doc-gate)
 git config core.hooksPath .githooks   # una vez por clon: enciende pre-push
 ```
@@ -92,24 +62,14 @@ git config core.hooksPath .githooks   # una vez por clon: enciende pre-push
 ## Cosas que DEBES saber (o te tropiezas)
 
 1. **`core/` e `importers/` son librería estándar pura** — sin matplotlib/scipy/openpyxl. Las deps
-   viven en extras opcionales y degradan con gracia si faltan. No metas deps al núcleo (PRODUCT_BRIEF §8).
+   viven en extras opcionales y degradan con gracia si faltan. No metas deps al núcleo.
 2. **Determinista:** misma entrada → misma salida. Solo lo determinista se automatiza como barrera;
    lo visual/subjetivo es QA manual ([ADR 0003](docs/decisions/0003-testing.md)).
 3. **El cambio incluye su test** si toca comportamiento (`core/`, `importers/`, helpers puros de `viz/`).
 4. **Doc-gate §8 BLOQUEA** en local si tocas `core/` sin `formato-datos.md`, `viz/` sin
    `hud-reference.md`, o las barreras sin `flujo-de-trabajo.md`. Pásalo al escribano.
-5. **Entorno PS 5.1:** mensajes de commit multilínea a git → `git commit -F archivo`; `.ps1` con
-   acentos → guardar con BOM. Ver `CLAUDE.md` global.
-
-## Qué falta (próximos pasos, en orden de valor)
-
-> El QA de AMS2 (≥3 circuitos) ya quedó cerrado en v0.14.0. De los requisitos de v1.0 quedan dos.
-
-1. **`setup.ps1` en Windows 11 limpio** — Fase 0 (SSH a la PC potente `SERVER`) ✓; pendiente
-   **Fase 1: VM limpia de Windows con Hyper-V** para probar la instalación desde cero.
-2. **Estabilizar la API interna de `core/`** — sin cambios breaking entre parches (revisión, no código nuevo).
-3. **Pulir HUD:** DESLIZ vs GASTO se confunden (misma franja). _Prioridad baja._
-4. **Confirmar con video 60 fps real** que el overlay no desincroniza (sin repro hasta hoy). _Prioridad baja._
+5. **Entorno PS 5.1:** mensajes de commit multilínea a git → `git commit -F archivo` con
+   `[System.IO.File]::WriteAllText(... utf8NoBOM)`; `.ps1` con acentos → guardar con BOM.
 
 ## Mapa rápido del repo
 
