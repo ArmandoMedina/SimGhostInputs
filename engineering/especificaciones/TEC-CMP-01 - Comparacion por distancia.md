@@ -29,5 +29,5 @@ Flags: `"vmin"` si `|d_vmin| > tol.vmin_kmh` (default 5 km/h); `"frenada"` si `|
 - Las columnas exactas de las salidas (`delta.csv`, `corners_compare.csv`) son dueño de [`../../docs/formato-datos.md`](../../docs/formato-datos.md) — aquí se enlaza, no se redefine.
 
 ## Vinculado con
-- [[Normalizacion y comparacion]]
+- [[Normalización y comparación]]
 - [TEC-COR-01 — Detección de curvas](TEC-COR-01%20-%20Deteccion%20de%20curvas%20e%20hitos.md)

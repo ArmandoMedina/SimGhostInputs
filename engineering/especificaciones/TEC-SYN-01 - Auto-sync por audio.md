@@ -27,5 +27,5 @@ Detecta automáticamente el offset entre el video grabado y la telemetría, corr
 - **Dónde vive:** `fantasma/viz/sync.py`. La aritmética pura (offset, z-score) se testea sin ffmpeg (Tier 3); el render/audio real es QA manual.
 
 ## Vinculado con
-- [[Sincronia]]
+- [[Sincronía audio-video]]
 - [[ffmpeg]]

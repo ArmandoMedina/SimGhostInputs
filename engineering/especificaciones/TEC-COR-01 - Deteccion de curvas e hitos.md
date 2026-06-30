@@ -25,5 +25,5 @@ Identifica dónde están las curvas y los hitos de manejo (frenada, ápex, gas) 
 - **Dónde vive:** `fantasma/core/corners.py` (Tier 1). Umbrales calibrados sobre telemetría AMS2; recalibrar requiere datos reales, no intuición.
 
 ## Vinculado con
-- [[Deteccion de curvas]]
+- [[Detección de curvas e hitos]]
 - [Formato de datos (esquema corners JSON)](../../docs/formato-datos.md)

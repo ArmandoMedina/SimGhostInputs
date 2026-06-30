@@ -24,6 +24,6 @@ Genera el HUD animado con canal alfa y lo compone sobre el video. La **anatomía
 - Grosor uniforme, piloto siempre encima ([ADR 0006](../../docs/decisions/0006-grosor-uniforme-lineas-hud.md)); indicadores instantáneos ([ADR 0005](../../docs/decisions/0005-indicadores-instantaneos.md)); sin leyenda ([ADR 0007](../../docs/decisions/0007-hud-sin-leyenda.md)).
 
 ## Vinculado con
-- [[Visualizacion y HUD]]
+- [[Overlay y composición de video]]
 - [Referencia del HUD](../../docs/hud-reference.md)
 - [[ffmpeg]]
