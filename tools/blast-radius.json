@@ -1,0 +1,90 @@
+[
+  {
+    "nombre": "core",
+    "desc": "motor de analisis: normalizacion, comparacion, deteccion de curvas, desgaste",
+    "fuente": ["fantasma/core/*"],
+    "doc_bloquea": ["docs/formato-datos.md"],
+    "doc_avisa": [],
+    "product_avisa": [
+      "product/capacidades/CMP-*",
+      "product/capacidades/COR-*",
+      "product/capacidades/NRM-*",
+      "product/capacidades/WER-*",
+      "product/modulos/CMP*",
+      "product/modulos/COR*",
+      "product/modulos/NRM*",
+      "product/modulos/WER*"
+    ],
+    "rol": "Charbel"
+  },
+  {
+    "nombre": "viz",
+    "desc": "overlay HUD, graficas, composicion de video, sincronía audio",
+    "fuente": ["fantasma/viz/*"],
+    "doc_bloquea": ["docs/hud-reference.md"],
+    "doc_avisa": ["docs/ux-patterns.md"],
+    "product_avisa": [
+      "product/capacidades/OVL-*",
+      "product/capacidades/CHT-*",
+      "product/capacidades/CMPO-*",
+      "product/capacidades/SYN-*",
+      "product/modulos/OVL*",
+      "product/modulos/CHT*",
+      "product/modulos/CMPO*",
+      "product/modulos/SYN*"
+    ],
+    "rol": "Mariana"
+  },
+  {
+    "nombre": "ui",
+    "desc": "interfaz Streamlit: app.py, step0-4.py, _helpers.py",
+    "fuente": ["fantasma/ui/*"],
+    "doc_bloquea": ["docs/guia-usuario.md"],
+    "doc_avisa": ["docs/ux-patterns.md"],
+    "product_avisa": [
+      "product/capacidades/UI-*",
+      "product/modulos/UI*",
+      "product/dominios/Interfaz de usuario*"
+    ],
+    "rol": "Mariana"
+  },
+  {
+    "nombre": "importers",
+    "desc": "importadores de telemetria: MoTeC CSV/XLSX, CSV generico",
+    "fuente": ["fantasma/importers/*"],
+    "doc_bloquea": [],
+    "doc_avisa": ["README.md", "docs/guia-usuario.md", "docs/formato-datos.md"],
+    "product_avisa": [
+      "product/capacidades/IMP-*",
+      "product/modulos/IMP-*"
+    ],
+    "rol": "Charbel"
+  },
+  {
+    "nombre": "cli",
+    "desc": "punto de entrada de comandos (cli.py)",
+    "fuente": ["fantasma/cli.py"],
+    "doc_bloquea": [],
+    "doc_avisa": ["README.md", "docs/guia-usuario.md"],
+    "product_avisa": [
+      "product/procesos/Pipeline*"
+    ],
+    "rol": "Reviewer"
+  },
+  {
+    "nombre": "barreras",
+    "desc": "hooks de git/claude, gate local, workflows de CI",
+    "fuente": [
+      ".githooks/*",
+      ".claude/hooks/*",
+      ".claude/settings.json",
+      "tools/verificar.ps1",
+      "tools/blast-radius.json",
+      ".github/workflows/*"
+    ],
+    "doc_bloquea": ["docs/flujo-de-trabajo.md"],
+    "doc_avisa": [],
+    "product_avisa": [],
+    "rol": "Armando"
+  }
+]

@@ -232,14 +232,16 @@ Cada hecho vive en **un** documento. Los demás enlazan, no duplican.
 
 > `CHANGELOG.md` se actualiza **siempre** que el cambio sea liberable; se omite abajo por brevedad.
 
+> **Espejo ejecutable de esta tabla: `tools/blast-radius.json`.** Cada entrada de la tabla tiene su par en ese manifiesto, que consumen `verificar.ps1` (gate de push) y `escribano-stop.ps1` (hook de sesión). Para agregar un área: edita el JSON — nada más. Esta prosa es la explicación; el JSON es la ley que el gate ejecuta.
+
 | Cambio | Documentos a actualizar | Rol especialista que valida |
 | :-- | :-- | :-- |
 | Flag/comando CLI nuevo, o cambio de comportamiento de uno | `README` (uso rápido) · `guia-usuario` · `formato-datos` si cambian las salidas | _solo Reviewer_ |
-| Cambio visual del HUD/overlay (color, panel, franja de datos) | `hud-reference` · `README` (tabla de colores) · **ADR nuevo** + `docs/decisions/README.md` | **Mariana** (UX) |
-| Cambio de UX/layout en la UI Streamlit (`fantasma/ui/`) | `guia-usuario` | **Mariana** (UX) |
-| Cambio en `core/` (detección de curvas, comparación, `wear`, normalización) | `formato-datos` (algoritmo + JSON + CSV) · `tests/` si cambian números/signos · ADR si es una decisión | **Charbel** (telemetría) |
+| Cambio visual del HUD/overlay (color, panel, franja de datos) | `hud-reference` · `README` (tabla de colores) · `ux-patterns.md` · **ADR nuevo** + `docs/decisions/README.md` | **Mariana** (UX) |
+| Cambio de UX/layout en la UI Streamlit (`fantasma/ui/`) | `guia-usuario` (BLOQUEA) · `ux-patterns.md` (AVISA) · `product/capacidades/UI-*` si cambia un criterio funcional (AVISA) | **Mariana** (UX) |
+| Cambio en `core/` (detección de curvas, comparación, `wear`, normalización) | `formato-datos` (algoritmo + JSON + CSV, BLOQUEA) · `tests/` si cambian números/signos · `product/capacidades/CMP-*/COR-*/NRM-*/WER-*` si cambia un criterio (AVISA) · ADR si es una decisión | **Charbel** (telemetría) |
 | Dependencia o extra nuevo | `pyproject.toml` · `README` (tabla de deps + instalación) · §3 de este doc · `setup.ps1` | _solo Reviewer_ |
-| Importador o formato de entrada nuevo | `README` (tabla de sims) · `guia-usuario` · `formato-datos` (canales) · §7 (bienvenidas) | **Charbel** (telemetría) |
+| Importador o formato de entrada nuevo o modificado (`fantasma/importers/`) | `README` (tabla de sims, AVISA) · `guia-usuario` (AVISA) · `formato-datos` (canales, AVISA) · §7 (bienvenidas) · `product/capacidades/IMP-*` si cambia un criterio (AVISA) | **Charbel** (telemetría) |
 | Cambio de alcance o de un principio de diseño | `PRODUCT_BRIEF` · `ROADMAP` · §4 de este doc si aplica | **PO** + Armando |
 | Release / bump de versión | `pyproject.toml` · `CHANGELOG` (`[Unreleased]` → versión con fecha) · `ROADMAP` (estado actual + footer) · `README` (badge) · tag git anotado | **PO** (corta la versión) |
 | Decisión de arquitectura/diseño | **ADR nuevo** en `docs/decisions/` · su `README.md` (índice) · el documento que la decisión afecta | **Armando** (arquitecto, + PO) |
