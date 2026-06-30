@@ -47,7 +47,20 @@ pytest | Out-Host
 if ($LASTEXITCODE -eq 0) { Ok "tests verdes" }
 else { Note "pytest fallo (arriba). Un rojo se diagnostica, no se silencia." }
 
-# 4. Doc-gate: codigo tocado sin CHANGELOG ----------------------------------
+# 4. Cobertura de tests: codigo tocado sin tests ----------------------------
+Write-Host "`n-- Cobertura de tests --"
+$upstreamCov = git rev-parse --abbrev-ref --symbolic-full-name '@{u}' 2>$null
+if ($LASTEXITCODE -eq 0) { $changedCov = git diff --name-only '@{u}..HEAD' }
+else { $changedCov = git diff --name-only HEAD }
+$tocoCodigoCov = $changedCov | Where-Object { $_ -like 'fantasma/*' }
+$tocoTests     = $changedCov | Where-Object { $_ -like 'tests/*' }
+if ($tocoCodigoCov -and -not $tocoTests) {
+  Note "tocaste fantasma/ sin cambios en tests/. Revisa si el cambio introduce comportamiento nuevo o modifica uno existente que no este cubierto aun."
+  Write-Host "    Pistas: nueva funcion -> nuevo test; comportamiento cambiado -> test actualizado; refactor puro -> tests existentes ya cubren."
+}
+else { Ok "tests acompanan los cambios de codigo (o sin cambios en fantasma/)" }
+
+# 5-a. Doc-gate: codigo tocado sin CHANGELOG ----------------------------------
 Write-Host "`n-- Doc-gate (CHANGELOG) --"
 $upstream = git rev-parse --abbrev-ref --symbolic-full-name '@{u}' 2>$null
 if ($LASTEXITCODE -eq 0) { $changed = git diff --name-only '@{u}..HEAD' }
@@ -60,7 +73,7 @@ if ($tocoCodigo -and -not $tocoChangelog) {
 }
 else { Ok "CHANGELOG al dia (o sin cambios de codigo)" }
 
-# 5. Doc-gate: blast-radius (tools/blast-radius.json, CONTRIBUTING seccion 8) --
+# 5-b. Doc-gate: blast-radius (tools/blast-radius.json, CONTRIBUTING seccion 8) --
 # Fuente unica de verdad ejecutable. Para agregar un area o un doc dueno: edita
 # blast-radius.json y esto funciona sin mas cambios. Ver CONTRIBUTING.md seccion 8.
 Write-Host "`n-- Doc-gate (blast-radius seccion 8) --"
@@ -108,7 +121,7 @@ foreach ($entry in $manifest) {
 if (-not $hayBlastFalta -and -not $hayBlastAviso) { Ok "blast-radius al dia (o sin cambios en areas cubiertas)" }
 elseif (-not $hayBlastFalta) { Write-Host "  (avisos arriba; nada que BLOQUEA en blast-radius)" -ForegroundColor Yellow }
 
-# 6. Doc-gate: integridad del grafo de docs (product/ + engineering/) --------
+# 5-c. Doc-gate: integridad del grafo de docs (product/ + engineering/) --------
 # Lo corre el auditor determinista (auditar.ps1): frontmatter, wikilinks rotos,
 # criterios de capacidades vigentes, huerfanos. BLOQUEA igual que el doc-drift de
 # la seccion 8 (mismo principio: determinismo bloquea). Ver ADR 0016.
