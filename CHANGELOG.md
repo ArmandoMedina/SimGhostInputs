@@ -5,7 +5,7 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/). Versionado
 ## [Unreleased]
 
 ### Añadido
-- **Drill-down por curva en UI Paso 2**: la tabla de curvas ahora selecciona por defecto la mayor pérdida y muestra un panel accionable con síntesis y plan de ataque (frenada, pico de freno, V-Min, gas 100%, G lateral y marcha/RPM cuando existan). El cálculo vive en `corner_coaching(row, trace)` dentro de `core/`, sin LLM ni red, y degrada con gracia cuando faltan canales opcionales. Con tests de núcleo (`tests/core/test_coaching.py`) y AppTest de Paso 2.
+- **Drill-down por curva en UI Paso 2**: la tabla de curvas ahora selecciona por defecto la mayor pérdida y muestra un panel accionable con síntesis y plan de ataque (frenada, pico de freno, V-Min, gas 100%, G lateral y marcha/RPM cuando existan). El cálculo vive en `corner_coaching(row, trace)` dentro de `core`, sin LLM ni red, y degrada con gracia cuando faltan canales opcionales. La pantalla se organiza en pestañas: curvas prioritarias primero, resumen de vuelta después y la vista completa de todos los canales en una pestaña propia. Con tests de núcleo (`tests/core/test_coaching.py`) y AppTest de Paso 2.
 
 ## [0.15.0] - 2026-06-30
 
