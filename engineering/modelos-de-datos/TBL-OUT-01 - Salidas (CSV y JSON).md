@@ -20,6 +20,8 @@ estado: vigente
 
 > **Convención de signo (recordatorio, no fuente):** `delta_t` positivo = piloto pierde tiempo; `d_vmin` positivo = piloto más rápido en la curva. Detalle y columnas exactas en [`formato-datos.md`](../../docs/formato-datos.md).
 
+> **Drill-down:** `corner_coaching(row, trace)` no agrega archivo nuevo; interpreta `corners_compare.csv` + `delta.csv` para el panel accionable del Paso 2.
+
 ## Administrado por
 - [[arquitectura]]
 

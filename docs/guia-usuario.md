@@ -57,7 +57,9 @@ Lee `salida/report.md`. La columna **Tiempo perdido** es la verdad: cuánto delt
 
 La tabla de curvas muestra **Diferencia km/h** y **Tiempo ganado/perdido**. Los signos son opuestos a propósito: Diferencia km/h positivo (+) significa que vas más rápido que la referencia en ese ápex; Tiempo ganado/perdido positivo (+) significa que **pierdes** tiempo ahí (vas más lento en promedio en ese tramo). Las curvas se ordenan de mayor a menor impacto en el crono.
 
-Al pie de la tabla hay un botón **⬇️ Descargar tabla de curvas (CSV)** para guardar el reporte localmente.
+Debajo de la tabla, el selector **Curva a atacar** abre el drill-down de la curva elegida. Por defecto queda seleccionada la curva donde más tiempo pierdes. El panel resume la palanca principal y muestra un plan de ataque con las señales disponibles: punto de frenada, pico de freno, V-Min, gas 100%, G lateral y marcha/RPM en ápex. Si falta un canal opcional (`gear`, `glat`, `rpm`), esa fila se omite sin romper el análisis.
+
+Al pie del Paso 2 hay un botón **⬇️ Descargar tabla de curvas (CSV)** para guardar el reporte localmente.
 
 Interpretación honesta:
 - Δ de frenada menores de ~10m son ruido; mayores de ~100m suelen ser un artefacto del detector (frenadas distintas emparejadas), no un error tuyo de 100m.

@@ -82,15 +82,19 @@ Campos extra (`voice_name`, `description`, `coaching_priority`...) se conservan 
 
 ## API pública de `fantasma.core`
 
-El paquete declara `__all__` con los símbolos de uso externo: `Lap`, `samples`, `detect_corners`, `extract_milestones`, `compare`, `delta_trace`, `resample` y el módulo `wear`. Funciones internas de `wear` (`_slip_index`, `_assist_count`, `_tyre_temp_avg`) llevan el prefijo `_` y no forman parte de la API estable.
+El paquete declara `__all__` con los símbolos de uso externo: `Lap`, `samples`, `detect_corners`, `extract_milestones`, `compare`, `corner_coaching`, `delta_trace`, `resample` y el módulo `wear`. Funciones internas de `wear` (`_slip_index`, `_assist_count`, `_tyre_temp_avg`) llevan el prefijo `_` y no forman parte de la API estable.
 
 `samples(lap)` — convierte un `Lap` en lista de dicts `[{canal: valor, ...}]` por muestra; útil para consumir la telemetría desde scripts externos.
 
+`corner_coaching(row, trace)` — interpreta una fila de `corners_compare.csv` junto con la traza metro a metro (`delta.csv`) y devuelve un dict de drill-down por curva. Es aritmética pura: prioriza acciones como punto de frenada, intensidad de freno, V-Min, gas 100%, G lateral y marcha/RPM si los canales existen. Si falta `gear`, `glat` u otro canal opcional, omite esa sección sin inventar valores.
+
 ## Salidas de `compare`
 
-**`delta.csv`** — una fila por paso de la rejilla: `dist`, `delta_t` (s, positivo = el piloto pierde), y `ref_*`/`drv_*` para `speed`, `throttle`, `brake`, `steering`, `gear` y, si están presentes en el archivo, `glat`/`glong`. Solo se escriben las columnas de los canales que existen.
+**`delta.csv`** — una fila por paso de la rejilla: `dist`, `delta_t` (s, positivo = el piloto pierde), y `ref_*`/`drv_*` para `speed`, `throttle`, `brake`, `steering`, `gear`, `rpm` y, si están presentes en el archivo, `glat`/`glong`. Solo se escriben las columnas de los canales que existen.
 
-**`corners_compare.csv`** — una fila por curva: `id`, `name`, `apex_d`, `ref_vmin`, `drv_vmin`, `d_vmin`, `ref_brake_d`, `drv_brake_d`, `d_brake_m` (positivo = el piloto frena más tarde), `d_gas100_m`, `time_lost` (s, delta acumulado entre los extremos del segmento), `flags`; y, cuando el archivo trae canales de rueda/ABS, `ref_slip`/`drv_slip` (proxy de desgaste por curva) y `ref_abs`/`drv_abs` (activaciones de ABS en el segmento). Las columnas dependen de los datos disponibles.
+**`corners_compare.csv`** — una fila por curva: `id`, `name`, `segment_start_m`, `segment_end_m`, `apex_d`, `ref_vmin`, `drv_vmin`, `drv_vmin_d`, `d_vmin`, `ref_brake_d`, `drv_brake_d`, `d_brake_m` (positivo = el piloto frena más tarde), `ref_gas100_d`, `drv_gas100_d`, `d_gas100_m`, `time_lost` (s, delta acumulado entre los extremos del segmento), `flags`; y, cuando el archivo trae canales de rueda/ABS, `ref_slip`/`drv_slip` (proxy de desgaste por curva) y `ref_abs`/`drv_abs` (activaciones de ABS en el segmento). Las columnas dependen de los datos disponibles.
+
+**`corner_coaching` (dict interno de drill-down)** — no crea un archivo nuevo; se calcula desde `corner_rows` + `trace`. Campos principales: `status` (`loss`, `gain`, `neutral`), `summary`, `actions`, `segment_m`, y secciones `braking`, `apex`, `throttle`, `lateral`, `gear`. Cada sección aparece vacía si no hay canales suficientes.
 
 **`summary` (dict interno de `compare()`)** — incluye desde v1.0 el campo `avisos` (lista de strings): mensajes de diagnóstico emitidos durante la comparación. Actualmente puede contener:
 

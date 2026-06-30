@@ -91,3 +91,74 @@ def test_paso2_muestra_aviso_autos_distintos(lap_factory):
     assert any("autos distintos" in a for a in avisos), (
         "El Paso 2 deberia mostrar el aviso global de autos distintos. Avisos vistos: %r" % avisos
     )
+
+
+def test_paso2_muestra_drilldown_de_mayor_perdida(lap_factory):
+    ref = lap_factory()
+    drv = lap_factory()
+    trace = []
+    for d in range(0, 121, 10):
+        trace.append(
+            {
+                "dist": float(d),
+                "delta_t": d / 120.0 * 0.7,
+                "ref_speed": 180.0,
+                "drv_speed": 170.0,
+                "ref_throttle": 100.0 if d >= 80 else 0.0,
+                "drv_throttle": 100.0 if d >= 100 else 0.0,
+                "ref_brake": 80.0 if 20 <= d <= 50 else 0.0,
+                "drv_brake": 60.0 if 0 <= d <= 50 else 0.0,
+                "ref_gear": 4.0,
+                "drv_gear": 3.0,
+                "ref_rpm": 6800.0,
+                "drv_rpm": 6400.0,
+            }
+        )
+    rows = [
+        {
+            "id": "C01",
+            "name": "Curva chica",
+            "segment_start_m": 0,
+            "segment_end_m": 120,
+            "apex_d": 50,
+            "ref_vmin": 120,
+            "drv_vmin": 118,
+            "drv_vmin_d": 50,
+            "d_vmin": -2,
+            "time_lost": 0.1,
+            "flags": "",
+        },
+        {
+            "id": "C02",
+            "name": "Curva lenta",
+            "segment_start_m": 0,
+            "segment_end_m": 120,
+            "apex_d": 50,
+            "ref_vmin": 120,
+            "drv_vmin": 110,
+            "drv_vmin_d": 50,
+            "d_vmin": -10,
+            "time_lost": 0.7,
+            "ref_brake_d": 20,
+            "drv_brake_d": 0,
+            "d_brake_m": -20,
+            "ref_gas100_d": 80,
+            "drv_gas100_d": 100,
+            "d_gas100_m": 20,
+            "flags": "vmin+frenada",
+        },
+    ]
+
+    at = AppTest.from_file(str(APP))
+    at.session_state["nav_step"] = 2
+    at.session_state["ref_lap"] = ref
+    at.session_state["drv_lap"] = drv
+    at.session_state["summary"] = _SUMMARY_BASE
+    at.session_state["rows"] = rows
+    at.session_state["trace"] = trace
+    at.session_state["charts_paths"] = []
+    at.run(timeout=30)
+
+    assert not at.exception
+    warnings = [w.value for w in at.warning]
+    assert any("Pierdes 0.700 s en Curva lenta" in w for w in warnings), warnings

@@ -14,7 +14,7 @@ prioridad: Must Have
 - [[CMP - Comparación]]
 
 ## Propósito funcional
-Para cada curva detectada, calcular las métricas de diferencia entre piloto y referencia: velocidad en el ápex, distancia de frenada, punto de gas al 100% y flags de comportamiento.
+Para cada curva detectada, calcular las métricas de diferencia entre piloto y referencia: velocidad en el ápex, distancia de frenada, punto de gas al 100%, flags de comportamiento y un drill-down accionable derivado de esas señales.
 
 ## Actor principal
 Sistema (parte de `compare()`, ejecutada por curva tras el delta continuo).
@@ -24,7 +24,8 @@ Sistema (parte de `compare()`, ejecutada por curva tras el delta continuo).
 - Lista de curvas con hitos (salida de [[COR-01 - Detectar curvas e hitos]]).
 
 ## Salidas funcionales
-- `rows`: lista de dicts por curva con `d_vmin`, `d_brake_m`, `d_gas100_m`, `time_lost`, `flags`, y opcionalmente `ref_abs`, `drv_abs`, `ref_tcs`, `drv_tcs`.
+- `rows`: lista de dicts por curva con `segment_start_m`, `segment_end_m`, `drv_vmin_d`, `d_vmin`, `d_brake_m`, `d_gas100_m`, `time_lost`, `flags`, y opcionalmente `ref_abs`, `drv_abs`, `ref_slip`, `drv_slip`.
+- `corner_coaching(row, trace)`: dict de drill-down con `summary`, `actions`, `braking`, `apex`, `throttle`, `lateral` y `gear`.
 - Solo aparecen los campos cuyo canal subyacente existe en ambas vueltas.
 
 ## Reglas de negocio
@@ -32,11 +33,14 @@ Sistema (parte de `compare()`, ejecutada por curva tras el delta continuo).
 - Si no hay canal `gear`, el campo `vmin_gear` no aparece en la salida.
 - Si no hay canal `glat` o `glong`, los campos dependientes de ellos no aparecen.
 - El pipeline no crashea con ninguna combinación de los 32 subconjuntos de canales opcionales (glat, glong, gear, abs, tcs).
+- El coaching por curva debe priorizar acciones concretas, sin LLM ni red: frenar antes/después, aumentar o suavizar el pico de freno, subir V-Min, adelantar gas 100%, revisar G lateral o marcha/RPM si los canales existen.
 
 ## Criterios de aceptación
 - Dado que el piloto pasa el ápex más rápido que la referencia, cuando se calculan las métricas por curva, entonces `d_vmin` es positivo para esa curva.
 - Dado que ninguna de las dos vueltas tiene canal de marcha, cuando se comparan, entonces el campo `vmin_gear` no aparece en las rows por curva.
 - Dado que las vueltas carecen de un canal opcional (glat, glong, gear, abs o tcs), cuando se comparan, entonces los campos dependientes de ese canal no aparecen en la salida y el resto de métricas sí están presentes.
+- Dado que una curva concentra pérdida de tiempo, cuando se calcula `corner_coaching(row, trace)`, entonces el dict contiene una síntesis y acciones derivadas de los deltas de frenada, V-Min, gas o G lateral disponibles.
+- Dado que el piloto gana tiempo en una curva, cuando se calcula `corner_coaching(row, trace)`, entonces el estado de la curva es positivo y la síntesis no la presenta como problema prioritario.
 
 ## Dependencias funcionales
 - [[CMP-01 - Comparar dos vueltas por distancia]]
@@ -49,6 +53,7 @@ Sistema (parte de `compare()`, ejecutada por curva tras el delta continuo).
 ## Verificación
 - Cubierta por `tests/core/test_compare.py` (`test_faster_apex_gives_positive_d_vmin`, `test_compare_without_gear_channel_does_not_crash`, `test_compare_without_glat_channel_does_not_crash`).
 - Cobertura sistemática de las 32 combinaciones de canales opcionales: `tests/core/test_degradacion_canales.py` (`test_compare_degradacion_graceful`).
+- Drill-down por curva: `tests/core/test_coaching.py`.
 
 ## Relacionado con
 - [[Normalización y comparación]]

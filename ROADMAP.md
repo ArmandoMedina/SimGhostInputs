@@ -115,16 +115,16 @@ La UI de v1.0 es Streamlit (ADR 0010). Se difiere a v2.0 **evaluar** migrar a un
 Convierte la tabla de tiempo perdido en coaching accionable: el piloto pica una curva y ve qué corregir (Δ frenada, Δ intensidad, V-Min target, Δ gas/G-lat), con síntesis en lenguaje natural — aritmética pura sobre `corners_compare.csv`, sin LLM. Los datos ya existen en el `trace` de `compare()`.
 
 **Cambios previstos:**
-- [ ] Tabla de curvas clickeable en UI Paso 2 → panel de detalle por curva.
-- [ ] Función `corner_coaching(row, trace)` en `core/` que produce el dict de coaching.
-- [ ] Síntesis en lenguaje natural ("frenas 40m antes con 15% menos intensidad → 0.6s perdidos").
+- [x] Tabla de curvas seleccionable en UI Paso 2 → panel de detalle por curva.
+- [x] Función `corner_coaching(row, trace)` en `core/` que produce el dict de coaching.
+- [x] Síntesis en lenguaje natural ("frenas 40m antes con 15% menos intensidad → 0.6s perdidos").
 
 **QA antes de publicar:**
-- [ ] Click en la curva con mayor pérdida → panel de detalle con todos los campos.
-- [ ] Curva sin canal gear → panel omite la marcha sin crashear.
-- [ ] Curva sin glat → panel omite G-lat sin crashear.
-- [ ] Síntesis en lenguaje natural coherente con los números del panel.
-- [ ] Curva donde el piloto es más rápido → mensaje positivo ("ganas X s aquí").
+- [x] Click/selección en la curva con mayor pérdida → panel de detalle con todos los campos disponibles.
+- [x] Curva sin canal gear → panel omite la marcha sin crashear.
+- [x] Curva sin glat → panel omite G-lat sin crashear.
+- [x] Síntesis en lenguaje natural coherente con los números del panel.
+- [x] Curva donde el piloto es más rápido → mensaje positivo ("ganas X s aquí").
 
 ### Histórico entre sesiones
 Comparar el rendimiento en una misma curva a lo largo de varias tandas (¿progreso, techo, retroceso?).

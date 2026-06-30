@@ -127,6 +127,7 @@ Historial de decisiones de UX que alteraron el layout o el flujo de la UI — pa
 **Paso 2 — Tabla de curvas:**
 - Caption de convención de signos reescrito para explicitar que `Diferencia km/h` (+) y `Tiempo ganado/perdido` (+) tienen sentidos opuestos (F-11). Heurística: **prevención de errores** — la ambigüedad anterior llevaba a interpretaciones invertidas.
 - Estado vacío cuando `rows=[]` con `st.info` y pasos de diagnóstico (F-10).
+- Drill-down por curva: selector default en la mayor pérdida, síntesis determinista y tabla de puntos clave. Heurística: **reconocer en vez de recordar** — el usuario no revisa todas las gráficas ni memoriza MoTeC; la UI convierte la fila más importante en acciones concretas.
 
 **Sidebar:**
 - Botón 🔄 Nueva sesión al pie (F-23). Heurística: **control y libertad** — el usuario puede reiniciar sin recargar la pestaña.

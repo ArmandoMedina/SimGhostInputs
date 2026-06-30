@@ -199,11 +199,11 @@ Si la respuesta a esas cuatro preguntas es sí, el producto funciona.
 
 ---
 
-## 10. Concepto de UX — Drill-down por curva (visión futura, sin spec)
+## 10. Concepto de UX — Drill-down por curva
 
-> Capturado 2026-06-14. No implementar hasta validar el producto base. Puede cambiar.
+> Capturado 2026-06-14. Primera versión implementada el 2026-06-30 como panel de Paso 2 basado en `corner_coaching(row, trace)`. Puede crecer después con más señales, pero mantiene la regla de aritmética pura.
 
-La tabla actual de curvas muestra tiempo perdido ordenado de mayor a menor. El siguiente paso natural es hacerla interactiva: el piloto pica en una curva y ve exactamente qué corregir.
+La tabla actual de curvas muestra tiempo perdido ordenado de mayor a menor. El siguiente paso natural es hacerla interactiva: el piloto selecciona una curva y ve exactamente qué corregir.
 
 **Flujo:**
 1. Vista principal: lista de curvas ordenadas por tiempo perdido (mayor → menor)
