@@ -8,13 +8,13 @@
 
 ---
 
-## Estado actual — v0.15.0
+## Estado actual — v1.0.0
 
-Último release: **v0.15.0** (2026-06-30) — **Gate de UX completo** (AppTest Pasos 1-4 + checklist Mariana formalizada) y **API de `core/` estabilizada** (`__all__`, prefijos `_` consistentes, `CANONICAL` eliminada). 142 tests en verde. La base: QA de AMS2 cerrado con 4 circuitos y 3 clases (v0.14.0), overhaul de UI/UX (v0.14.0), gate determinista del grafo (v0.13.0).
+Último release: **v1.0.0** (2026-06-30) — **Pipeline AMS2 completo, documentado y probado.** `setup.ps1` validado en instalación limpia de Windows 11 (Hyper-V VM). Drill-down por curva en UI Paso 2. 142 tests en verde.
 
-La meta inmediata es **la v1.0**: no es construir features nuevas, sino **estabilizar, testear, documentar y validar en AMS2 el pipeline que ya existe**. Las versiones publicadas están en el CHANGELOG; el siguiente hito es la 1.0.
+La v1.0 está declarada estable. El camino a continuación es la **v2.0**: nuevos importadores, coaching de voz (CrewChief Pace Notes), histórico entre sesiones, y evaluación del front de escritorio. Ver «Diferido post-v1.0» abajo.
 
-> **▶️ Para la próxima sesión:** ver [`HANDOFF.md`](HANDOFF.md) → «Qué falta». Queda un solo requisito de v1.0: `setup.ps1` en VM limpia de Windows (Hyper-V).
+> **▶️ Para la próxima sesión:** ver [`HANDOFF.md`](HANDOFF.md). La v1.0 está cortada — continuar con el roadmap post-v1.0.
 
 ---
 
@@ -30,11 +30,10 @@ El criterio para llamarla v1.0 es que el pipeline offline esté **completo, docu
 - [x] **Los gaps `Alta` no bloquean la 1.0** (decidido 2026-06-21): el único vivo es `--format prores`, ya mitigado con el default `webm`; se difiere a post-1.0
 - [x] **API interna (`core/`) estabilizada** — `__all__` declarado, prefijos `_` consistentes, `CANONICAL` muerta eliminada (v0.15.0)
 - [x] 👤 **Probado en AMS2 en ≥3 circuitos distintos** — **4 circuitos ✓** (Barcelona NC, Interlagos, Nordschleife 2025, Nürburgring GP) y **clases más allá de GT3** (Hypercar, Fórmula F3, Prototipo/LMP2). QA de cierre 2026-06-30 sobre telemetría real: el pipeline de análisis procesa todas las clases sin errores de lógica. Único hallazgo (corregido): un export del ORECA 07 sin canal de distancia, que ahora degrada con gracia y se avisa temprano ([ADR 0017](docs/decisions/0017-distancia-canal-requerido.md))
-- [ ] 👤 **`setup.ps1` probado en instalación limpia de Windows 11** — en curso (Armando lo prueba en otra PC). La detección de dependencias y el encoding ASCII ya se corrigieron (v0.7.1 / v0.7.2)
-  - **Plan (2026-06-28):** dar acceso por **SSH** a una PC de Armando y, con apoyo de la IA, levantar **máquinas virtuales limpias de Windows y Linux** para correr pruebas de instalación reales y repetibles (Windows valida `setup.ps1` desde cero; Linux para igualar el entorno del CI y allanar un futuro soporte).
-    - **Fase 0 — SSH a la PC potente: ✅ montado (2026-06-28).** Host `SERVER` (LAN), acceso por llave dedicada sin password desde la laptop de trabajo (alias `pcpotente` en `~/.ssh/config`). Habilita correr cargas pesadas y, en la Fase 1, las VMs en ese hardware.
-    - **Fase 1 — VM limpia de Windows para `setup.ps1` (Hyper-V):** pendiente.
-    - **Fase 2 — mover el QA pesado a ese hardware:** pendiente.
+- [x] 👤 **`setup.ps1` probado en instalación limpia de Windows 11** — ✅ validado en VM Hyper-V (2026-06-30). Happy path completo sin errores. La detección de dependencias y el encoding ASCII se corrigieron en v0.7.1 / v0.7.2.
+  - **Fase 0 — SSH a la PC potente: ✅ montado (2026-06-28).** Host `SERVER` (LAN), acceso por llave dedicada sin password desde la laptop de trabajo (alias `pcpotente` en `~/.ssh/config`).
+  - **Fase 1 — VM limpia de Windows para `setup.ps1` (Hyper-V): ✅ ejecutada y validada (2026-06-30).**
+  - **Fase 2 — mover el QA pesado a ese hardware:** diferido post-v1.0.
 - [x] **Cortar release del `[Unreleased]`** acumulado — hecho en v0.10.0
 
 ### Notas vivas (no bloquean, a refinar)
