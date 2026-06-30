@@ -182,9 +182,9 @@ El verificador corre, en orden:
    - **CHANGELOG** (avisa) — ¿tocaste `fantasma/` sin anotar el `CHANGELOG`? Checklist
      (¿fue decisión? → ADR · ¿cambió el plan? → ROADMAP); ADR y ROADMAP dependen de juicio, por
      eso checklist y no validación (forzarlos generaría entradas vacías).
-   - **Blast-radius §8** (**BLOQUEA**, sale ≠ 0) — tocaste `core/` sin `formato-datos.md`, `viz/`
-     sin `hud-reference.md`, `ui/` sin `guia-usuario.md`, o las **barreras** (hooks/gate/CI) sin
-     `flujo-de-trabajo.md`. Salir a propósito: `git push --no-verify`.
+   - **Blast-radius §8** (**BLOQUEA**, sale ≠ 0) — tocaste un área sin su `doc_bloquea` dueño.
+     Las 8 áreas y sus reglas viven en `tools/blast-radius.json` (fuente única). Salir a propósito:
+     `git push --no-verify`.
    - **Grafo de producto** (**AVISA**) — tocaste `fantasma/` sin actualizar nada en `product/`.
      Preguntarse: ¿cambió algún criterio funcional? Si sí → actualizar la capacidad o módulo del
      área antes de cerrar el PR.
@@ -230,7 +230,7 @@ depender de que invoques nada. La mueven los **hooks de sesión** (`Stop`) en `.
 - **escribano-stop** → si tocaste código y su **doc dueño quedó desfasado** (§8), frena el cierre y
   dispara el **Escribano**, que lo actualiza. Cuando ya está sincronizado, deja cerrar. Lee las reglas
   de `tools/blast-radius.json` (fuente única ejecutable): por cada área (`core/`, `viz/`, `ui/`,
-  `importers/`, `cli`, `barreras`) sabe qué `doc_bloquea` debe estar presente. **Scope real del hook:**
+  `importers/`, `cli`, `barreras`, `orquestacion`, `setup`) sabe qué `doc_bloquea` debe estar presente. **Scope real del hook:**
   cubre los docs técnicos (`doc_bloquea`); los de `product/capacidades/` son AVISA, no bloquean el
   cierre — los sincroniza el Escribano si detecta que un criterio funcional cambió.
   **Nota sobre las dos ventanas:** este hook evalúa `git status --porcelain` (cambios sin commitear).
