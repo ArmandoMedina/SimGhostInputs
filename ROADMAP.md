@@ -2,7 +2,7 @@
 
 > Estado vivo del proyecto: dónde va, qué falta para la **v1.0** y qué queda **diferido** para después. El **porqué** de cada decisión vive en [`docs/decisions/`](docs/decisions/README.md); el historial de cambios, en [`CHANGELOG.md`](CHANGELOG.md); qué documentos tocar al hacer un cambio, en [`CONTRIBUTING.md` §8](CONTRIBUTING.md#8-mantenimiento-de-documentación).
 >
-> **Para retomar en frío:** lee «Estado actual» y «▶️ Para la próxima sesión». Eso basta para saber qué sigue.
+> **Para retomar en frío:** el relevo en-vuelo (dónde voy, qué falta ahora) vive en [`HANDOFF.md`](HANDOFF.md). Este ROADMAP guarda el camino a v1.0; lo efímero está en el HANDOFF.
 
 📋 [Brief de Producto](PRODUCT_BRIEF.md) · 📝 [Changelog](CHANGELOG.md) · 🧩 [Decisiones (ADR)](docs/decisions/README.md)
 
@@ -14,10 +14,7 @@
 
 La meta inmediata es **la v1.0**: no es construir features nuevas, sino **estabilizar, testear, documentar y validar en AMS2 el pipeline que ya existe**. Las versiones publicadas están en el CHANGELOG; el siguiente hito es la 1.0.
 
-> **▶️ Para la próxima sesión (Armando):**
-> 1. **Revisar overlay + UI** buscando detalles visuales y de usabilidad por pulir (ver gaps de UI abajo — DESLIZ/GASTO se confunden en el HUD).
-> 2. **Confirmar el desync de FPS con un video de 60 fps real.** El análisis de código dice que NO debería desincronizar; falta la prueba con video.
-> Con eso + el QA de AMS2 (≥3 circuitos) + `setup.ps1` en Windows limpio, se corta la 1.0.
+> **▶️ Para la próxima sesión:** ver [`HANDOFF.md`](HANDOFF.md) → «Qué falta». En resumen, lo que falta para cortar la 1.0: QA de AMS2 (≥3 circuitos), `setup.ps1` en Windows limpio, y pulir overlay/UI (DESLIZ/GASTO en el HUD, confirmar desync con video 60 fps real).
 
 ---
 

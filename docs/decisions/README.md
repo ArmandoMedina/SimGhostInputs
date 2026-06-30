@@ -24,3 +24,4 @@ bifurcación equivocada.
 | [0012](0012-playwright-smoke-visual-ui.md) | Playwright para smoke visual acotado de la UI Streamlit en v1.0 (enmienda testing del 0010) | Aceptada | 2026-06-28 |
 | [0013](0013-setup-modo-desatendido.md) | Modo desatendido (`-Yes`) en `setup.ps1` para pruebas reproducibles | Aceptada | 2026-06-28 |
 | [0014](0014-gate-ux-ui.md) | Gate de UX/UI: lo medible bloquea, lo subjetivo es checkpoint de Mariana | Aceptada | 2026-06-28 |
+| [0015](0015-estructura-product-engineering.md) | Adoptar estructura product/ + engineering/ (reclasificar el repo a mixto) | Aceptada | 2026-06-29 |
