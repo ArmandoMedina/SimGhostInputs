@@ -8,13 +8,13 @@
 
 ---
 
-## Estado actual — v0.14.0
+## Estado actual — v0.15.0
 
-Último release: **v0.14.0** (2026-06-30) — **QA de AMS2 cerrado** (4 circuitos, Hypercar/F3/LMP2; canal de distancia ahora requerido con aviso temprano, [ADR 0017](docs/decisions/0017-distancia-canal-requerido.md)) y **overhaul de UI/UX** (10 bugs B-01→B-14, 4 features de flujo F-01/F-09/F-10/F-23). **Cobertura completa de blast-radius** (8 áreas, engineering/ sincronizado); **skill de Ahiram** y **Oscar en el casting** documentados. 132 tests en verde. La base: gate determinista del grafo (`tools/auditar.ps1`, v0.13.0), casting de asientos (v0.13.0), barreras ruff+CI (v0.10.0).
+Último release: **v0.15.0** (2026-06-30) — **Gate de UX completo** (AppTest Pasos 1-4 + checklist Mariana formalizada) y **API de `core/` estabilizada** (`__all__`, prefijos `_` consistentes, `CANONICAL` eliminada). 142 tests en verde. La base: QA de AMS2 cerrado con 4 circuitos y 3 clases (v0.14.0), overhaul de UI/UX (v0.14.0), gate determinista del grafo (v0.13.0).
 
 La meta inmediata es **la v1.0**: no es construir features nuevas, sino **estabilizar, testear, documentar y validar en AMS2 el pipeline que ya existe**. Las versiones publicadas están en el CHANGELOG; el siguiente hito es la 1.0.
 
-> **▶️ Para la próxima sesión:** ver [`HANDOFF.md`](HANDOFF.md) → «Qué falta». Quedan dos requisitos de v1.0: `setup.ps1` en VM limpia de Windows (Hyper-V) y estabilizar la API interna de `core/`.
+> **▶️ Para la próxima sesión:** ver [`HANDOFF.md`](HANDOFF.md) → «Qué falta». Queda un solo requisito de v1.0: `setup.ps1` en VM limpia de Windows (Hyper-V).
 
 ---
 
@@ -28,7 +28,7 @@ El criterio para llamarla v1.0 es que el pipeline offline esté **completo, docu
 - [x] Suite de tests de `core/` + CI en GitHub Actions ([ADR 0003](docs/decisions/0003-testing.md))
 - [x] Docs completas y al día: guía de usuario, referencia de HUD (con leyenda visual y campo GASTO), formato de datos, cómo contribuir, **glosario**
 - [x] **Los gaps `Alta` no bloquean la 1.0** (decidido 2026-06-21): el único vivo es `--format prores`, ya mitigado con el default `webm`; se difiere a post-1.0
-- [ ] **API interna (`core/`) estabilizada** — sin cambios breaking entre parches (es revisión, no código nuevo)
+- [x] **API interna (`core/`) estabilizada** — `__all__` declarado, prefijos `_` consistentes, `CANONICAL` muerta eliminada (v0.15.0)
 - [x] 👤 **Probado en AMS2 en ≥3 circuitos distintos** — **4 circuitos ✓** (Barcelona NC, Interlagos, Nordschleife 2025, Nürburgring GP) y **clases más allá de GT3** (Hypercar, Fórmula F3, Prototipo/LMP2). QA de cierre 2026-06-30 sobre telemetría real: el pipeline de análisis procesa todas las clases sin errores de lógica. Único hallazgo (corregido): un export del ORECA 07 sin canal de distancia, que ahora degrada con gracia y se avisa temprano ([ADR 0017](docs/decisions/0017-distancia-canal-requerido.md))
 - [ ] 👤 **`setup.ps1` probado en instalación limpia de Windows 11** — en curso (Armando lo prueba en otra PC). La detección de dependencias y el encoding ASCII ya se corrigieron (v0.7.1 / v0.7.2)
   - **Plan (2026-06-28):** dar acceso por **SSH** a una PC de Armando y, con apoyo de la IA, levantar **máquinas virtuales limpias de Windows y Linux** para correr pruebas de instalación reales y repetibles (Windows valida `setup.ps1` desde cero; Linux para igualar el entorno del CI y allanar un futuro soporte).
