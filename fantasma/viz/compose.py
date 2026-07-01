@@ -153,6 +153,37 @@ def _build_filter(position, scale, offset=0.0):
     return ";".join(steps)
 
 
+def _has_audio(ffprobe, video_path):
+    if not ffprobe:
+        return False
+    try:
+        r = subprocess.run(
+            [
+                ffprobe,
+                "-v",
+                "error",
+                "-select_streams",
+                "a:0",
+                "-show_entries",
+                "stream=index",
+                "-of",
+                "csv=p=0",
+                video_path,
+            ],
+            capture_output=True,
+            text=True,
+        )
+        return bool(r.stdout.strip())
+    except Exception:
+        return False
+
+
+def _audio_mix_filter(video_has_audio):
+    if video_has_audio:
+        return "[0:a][2:a]amix=inputs=2:duration=first:dropout_transition=0[aout]"
+    return "[2:a]anull[aout]"
+
+
 def compose_video(
     video,
     overlay,
@@ -162,6 +193,7 @@ def compose_video(
     scale=1.0,
     lap_duration=None,
     progress=None,
+    cue_audio=None,
 ):
     """Superpone overlay con canal alfa sobre el video de grabación.
 
@@ -205,6 +237,14 @@ def compose_video(
 
     n_frames = _total_frames(ffmpeg, video, lap_duration) if progress else 0
 
+    cue_inputs = ["-i", cue_audio] if cue_audio else []
+    audio_maps = ["-map", "0:a?"]
+    audio_filter = ""
+    if cue_audio:
+        ffprobe = _ffprobe_path(ffmpeg)
+        audio_filter = ";" + _audio_mix_filter(_has_audio(ffprobe, video))
+        audio_maps = ["-map", "[aout]"]
+
     if lap_duration:
         # Modo recorte: seek rápido al offset, output limitado a la vuelta.
         # El overlay empieza en t=0 del clip resultante (no necesita setpts).
@@ -218,12 +258,12 @@ def compose_video(
             video,
             "-i",
             overlay,
+            *cue_inputs,
             "-filter_complex",
-            fc,
+            fc + audio_filter,
             "-map",
             "[out]",
-            "-map",
-            "0:a?",
+            *audio_maps,
             *video_enc,
             "-c:a",
             "aac",
@@ -243,12 +283,12 @@ def compose_video(
             video,
             "-i",
             overlay,
+            *cue_inputs,
             "-filter_complex",
-            fc,
+            fc + audio_filter,
             "-map",
             "[out]",
-            "-map",
-            "0:a?",
+            *audio_maps,
             *video_enc,
             "-c:a",
             "aac",

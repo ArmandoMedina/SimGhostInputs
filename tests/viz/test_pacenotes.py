@@ -76,3 +76,56 @@ def test_metadata_json_format(tmp_path):
     assert "distanceRoundTrack" in entry
     assert "fileNames" in entry
     assert "recordingNames" in entry
+
+
+def test_plan_tone_events_limits_dense_corner():
+    from fantasma.viz.pacenotes import plan_tone_events
+
+    rows = [{"id": "C01", "name": "C01", "time_lost": 0.5, "flags": "vmin+frenada"}]
+    corners = [
+        {
+            "id": "C01",
+            "name": "C01",
+            "milestones": {
+                "brake_start": {"d": 1000},
+                "turn_in": {"d": 1015},
+                "apex": {"d": 1040},
+                "throttle_on": {"d": 1060},
+                "full_throttle": {"d": 1080},
+            },
+        }
+    ]
+    plan = plan_tone_events(rows, corners, top=1, min_gap_m=50, max_events_per_corner=3)
+    selected = plan["corners"][0]["selected"]
+    assert len(selected) <= 3
+    assert any(e["cue"] == "brake_countdown" for e in selected)
+    assert any(s["reason"] == "too_close_in_corner" for s in plan["corners"][0]["skipped"])
+
+
+def test_render_pace_notes_track_places_cues(tmp_path):
+    import wave
+
+    from fantasma.core.lap import Lap
+    from fantasma.viz.pacenotes import build_tone_pack, render_pace_notes_track
+
+    rows = [{"id": "C01", "name": "C01", "apex_d": 500, "time_lost": 0.4, "flags": "vmin"}]
+    corners = [
+        {
+            "id": "C01",
+            "name": "C01",
+            "milestones": {
+                "brake_start": {"d": 450},
+                "apex": {"d": 500},
+                "full_throttle": {"d": 560},
+            },
+        }
+    ]
+    pack = tmp_path / "pack"
+    build_tone_pack(rows, corners, str(pack), top=1)
+    lap = Lap(channels={"time": [0.0, 1.0, 2.0], "dist": [0.0, 500.0, 1000.0]})
+    out = tmp_path / "preview.wav"
+    render_pace_notes_track(str(pack), lap, str(out))
+    with wave.open(str(out), "rb") as wav:
+        assert wav.getframerate() == 24000
+        assert wav.getnchannels() == 1
+        assert wav.getnframes() > 24000

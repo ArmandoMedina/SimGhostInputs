@@ -150,6 +150,7 @@ def test_pacenotes_cli_genera_pack(tmp_path):
         gas_freq=220,
         tone_duration=0.05,
         volume=0.8,
+        legacy_all_tones=False,
     )
     cmd_pacenotes(args)
     assert (out / "metadata.json").exists()

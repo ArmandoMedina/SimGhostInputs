@@ -6,6 +6,7 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/). Versionado
 
 ### Añadido
 - **CrewChief Pace Notes (MVP)**: nuevo comando `fantasma pacenotes` para generar `metadata.json` + WAVs desde `corners_detected.json` y `corners_compare.csv`. El modo base (`--mode tones`) crea tonos por hito de curva sin dependencias externas adicionales; el extra opcional `[voice]` añade `edge-tts` para frases de voz. Incluye tests unitarios del generador WAV y smoke CLI del pack.
+- **Pace Notes — plan anti-saturación y preview en video**: `fantasma pacenotes` ahora escribe `plan.json` con las señales elegidas/omitidas por curva y usa un plan inteligente por defecto (máximo 3 eventos por curva, separación mínima entre sonidos, countdown compacto solo donde cabe). `fantasma compose` acepta `--pace-notes-dir` para mezclar esos WAVs con el audio del video y previsualizar cómo se sentirían en carrera, sincronizados por distancia usando `--driver`.
 
 ## [1.0.0] - 2026-06-30
 

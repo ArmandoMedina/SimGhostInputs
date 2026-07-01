@@ -127,6 +127,10 @@ fantasma compose --video "grabacion.mp4" --overlay "salida/overlay.webm" -o "res
 # detectar offset automáticamente y componer en un solo paso (requiere scipy)
 fantasma compose --video "grabacion.mp4" --overlay "salida/overlay.webm" \
     --auto-sync --driver "mi_vuelta.csv" -o "resultado.mp4"
+
+# preview con overlay + sonidos de Pace Notes mezclados en el audio del video
+fantasma compose --video "grabacion.mp4" --overlay "salida/overlay.webm" \
+    --driver "mi_vuelta.csv" --pace-notes-dir "salida/pace_notes" -o "preview_pacenotes.mp4"
 ```
 
 Salida de `compare`:
@@ -141,7 +145,8 @@ Salida de `compare`:
 
 Salida de `pacenotes`:
 - `metadata.json` + WAVs (`{distancia}_0.wav`) listos para usar en `Documents\CrewChiefV4\pace_notes\ams2\<pista>\`.
-- Por defecto genera tonos: agudo para frenada, medio para ápex y grave para gas. El modo de voz (`--mode voice` o `both`) requiere `edge-tts` y ffmpeg.
+- `plan.json` — auditoría de qué sonidos eligió u omitió por curva para no saturar al piloto.
+- Por defecto genera un plan inteligente: countdown compacto para frenadas prioritarias, ápex y gas a fondo/inicio de gas solo donde hay espacio. El modo de voz (`--mode voice` o `both`) requiere `edge-tts` y ffmpeg.
 
 Salida de `overlay`:
 - `overlay.webm` — video HUD **con canal alfa** (VP9) sincronizado con el tiempo de tu vuelta. Arrástralo como pista superior en tu editor sobre la grabación real y alinea el segundo 0 con tu cruce de meta. También `--format prores` (ProRes 4444 .mov para Final Cut / DaVinci) o `--format png` (frames sueltos).

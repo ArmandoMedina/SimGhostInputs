@@ -5,6 +5,7 @@ import csv
 import json
 import os
 import sys
+import tempfile
 
 from . import importers
 from .core.compare import compare
@@ -325,15 +326,44 @@ def cmd_compose(args):
     if not output:
         base = os.path.splitext(os.path.basename(args.video))[0]
         output = os.path.join(os.path.dirname(args.video) or ".", base + "_composed.mp4")
-    out = compose_video(
-        args.video,
-        args.overlay,
-        output,
-        position=args.position,
-        offset=offset,
-        scale=args.scale,
-        lap_duration=lap_duration,
-    )
+    if args.pace_notes_dir and lap is None:
+        print(
+            "error: --pace-notes-dir requiere --driver para sincronizar por distancia",
+            file=sys.stderr,
+        )
+        return 1
+
+    if args.pace_notes_dir:
+        from .viz.pacenotes import render_pace_notes_track
+
+        with tempfile.TemporaryDirectory() as tmp:
+            cue_audio = os.path.join(tmp, "pace_notes_preview.wav")
+            render_pace_notes_track(
+                args.pace_notes_dir,
+                lap,
+                cue_audio,
+                volume=args.pace_notes_volume,
+            )
+            out = compose_video(
+                args.video,
+                args.overlay,
+                output,
+                position=args.position,
+                offset=offset,
+                scale=args.scale,
+                lap_duration=lap_duration,
+                cue_audio=cue_audio,
+            )
+    else:
+        out = compose_video(
+            args.video,
+            args.overlay,
+            output,
+            position=args.position,
+            offset=offset,
+            scale=args.scale,
+            lap_duration=lap_duration,
+        )
     print("-> %s" % out)
 
 
@@ -355,6 +385,7 @@ def cmd_pacenotes(args):
         freqs=freqs,
         duration=args.tone_duration,
         volume=args.volume,
+        smart=not args.legacy_all_tones,
     )
     curves = _count_lost_curves(rows, args.top)
     print("✓ %d curvas, %d archivos en %s" % (curves, len(result["files"]), result["outdir"]))
@@ -605,6 +636,16 @@ def main(argv=None):
     sp.add_argument(
         "--map", action="append", help="columna=canal para CSV generico con --auto-sync"
     )
+    sp.add_argument(
+        "--pace-notes-dir",
+        help="pack de Pace Notes para mezclar sus sonidos en el video (preview)",
+    )
+    sp.add_argument(
+        "--pace-notes-volume",
+        type=float,
+        default=1.0,
+        help="volumen de los sonidos de Pace Notes en el preview (default: 1.0)",
+    )
     sp.set_defaults(func=cmd_compose)
 
     sp = sub.add_parser("pacenotes", help="generar pack de Pace Notes para CrewChief")
@@ -621,6 +662,11 @@ def main(argv=None):
     sp.add_argument("--gas-freq", type=float, default=220)
     sp.add_argument("--tone-duration", type=float, default=0.12)
     sp.add_argument("--volume", type=float, default=0.8)
+    sp.add_argument(
+        "--legacy-all-tones",
+        action="store_true",
+        help="genera todos los hitos pedidos sin plan anti-saturacion",
+    )
     sp.set_defaults(func=cmd_pacenotes)
 
     args = p.parse_args(argv)

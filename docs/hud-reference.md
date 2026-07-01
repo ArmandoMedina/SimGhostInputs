@@ -135,6 +135,19 @@ el overlay y el video de grabación están alineados:
 - Compara la marcha que muestra el HUD con la que muestra el sim en el video.
 - Si no coinciden, ajusta el offset con `fantasma compose --offset` o `--auto-sync`.
 
+### Preview con Pace Notes
+
+`fantasma compose` también puede mezclar un pack de Pace Notes en el audio del video para
+probar cómo se sienten los sonidos junto al HUD antes de llevarlos a CrewChief:
+
+```
+fantasma compose --video grabacion.mp4 --overlay salida/overlay.webm \
+    --driver mi_outing.csv --pace-notes-dir salida/pace_notes -o preview_pacenotes.mp4
+```
+
+El HUD no cambia visualmente. El comando convierte los metros de `metadata.json` a segundos usando
+la telemetría del piloto (`--driver`) y mezcla los WAVs como una pista de audio de preview.
+
 ---
 
 ## Avisos en el reporte de comparación

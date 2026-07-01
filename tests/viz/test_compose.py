@@ -36,6 +36,14 @@ def test_build_filter_unknown_position_falls_back_to_bottom_right():
     assert "overlay=x=%s:y=%s" % (px, py) in fc
 
 
+def test_audio_mix_filter_with_video_audio():
+    assert "amix=inputs=2" in compose._audio_mix_filter(video_has_audio=True)
+
+
+def test_audio_mix_filter_without_video_audio():
+    assert compose._audio_mix_filter(video_has_audio=False) == "[2:a]anull[aout]"
+
+
 # --- _nvenc_available (contrato del fallback) ------------------------------
 
 
