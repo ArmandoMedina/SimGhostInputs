@@ -1,7 +1,7 @@
 # Decisión de diseño: Integración con CrewChief via Pace Notes
 
 **Fecha:** 2026-06-14  
-**Estado:** Investigado y validado — pendiente implementación (v0.8.0)  
+**Estado:** Aceptada · implementada (v2.0, Unreleased)  
 **Pregunta:** ¿Puede SimGhostInputs generar coaching de voz en tiempo real para el piloto sin construir un sistema de TTS propio desde cero?
 
 ---
@@ -104,7 +104,7 @@ corners_compare.csv          → tiempo perdido + descripción del problema por 
 compare.py (rows)            → delta V-Min, delta frenada, flags por curva
 
                     ↓
-        [nuevo: fantasma pacenotess]
+        [nuevo: fantasma pacenotes]
                     ↓
 
 Para cada curva con time_lost > umbral:
@@ -138,7 +138,7 @@ CrewChief usa el string exacto que AMS2 reporta en su shared memory API (`mTrack
 
 **Opción B:** Ejecutar CrewChief una vez con AMS2 en pista y leer los logs en `Documents\CrewChiefV4\`. CrewChief loguea el nombre de pista recibido.
 
-**Opción C:** Hacer que `fantasma pacenotess` pregunte al usuario el nombre o lo detecte del nombre de archivo de telemetría.
+**Opción C:** Hacer que `fantasma pacenotes` pregunte al usuario el nombre o lo detecte del nombre de archivo de telemetría.
 
 ### Bloqueador 2 — Activación manual por el piloto (no bloqueador real)
 
@@ -212,9 +212,9 @@ Mensajes de voz que se disparan antes de llegar a la curva (100–200 m antes de
 ### Modos configurables
 
 ```
-fantasma pacenotess --mode tones   # solo tonos (sin dependencias extra)
-fantasma pacenotess --mode voice   # solo voz (requiere edge-tts)
-fantasma pacenotess --mode both    # voz contextual + tonos en hitos exactos
+fantasma pacenotes --mode tones   # solo tonos (sin dependencias extra)
+fantasma pacenotes --mode voice   # solo voz (requiere edge-tts)
+fantasma pacenotes --mode both    # voz contextual + tonos en hitos exactos
 ```
 
 Por defecto: `--mode tones` — máxima reacción, cero dependencias extra.
@@ -222,7 +222,7 @@ Por defecto: `--mode tones` — máxima reacción, cero dependencias extra.
 ### Parámetros configurables completos
 
 ```
-fantasma pacenotess \
+fantasma pacenotes \
   --corners corners.json \
   --compare salida/corners_compare.csv \
   --top 5 \                          # solo las N curvas con más pérdida
@@ -253,12 +253,12 @@ voice = ["edge-tts"]          # pip install 'fantasma-inputs[voice]'
 ```
 fantasma/
   viz/
-    pacenotess.py   ← generate_tone(), generate_voice(), build_pack()
+    pacenotes.py   ← generate_tone(), generate_voice(), build_pack()
 ```
 
 **Nuevo comando CLI:**
 ```
-fantasma pacenotess --corners ... --compare ... --mode tones --top 5 --output-dir ...
+fantasma pacenotes --corners ... --compare ... --mode tones --top 5 --output-dir ...
 ```
 
 ---
