@@ -14,11 +14,11 @@ async def render(state, navigate):
         "Es un archivo de video transparente (como un sticker animado) que en el Paso 4 "
         "se pega encima de tu grabacion. Muestra: barras de gas y freno, delta acumulado, "
         "velocidad, marcha, volante y G-lateral."
-    ).classes("text-sm text-gray-400 mb-4")
+    ).classes("text-sm mb-4").style("color:var(--muted)")
 
     if state.ref_lap is None:
-        ui.label("Primero carga los archivos en el Paso 1.").classes("text-yellow-400")
-        ui.button("← Ir al Paso 1", on_click=lambda: navigate(1)).props("flat color=secondary")
+        ui.label("Primero carga los archivos en el Paso 1.").style("color:var(--warning)")
+        ui.button("← Ir al Paso 1", on_click=lambda: navigate(1)).classes("btn-secondary").props("flat")
         return
 
     ref_lap = state.ref_lap
@@ -39,10 +39,10 @@ async def render(state, navigate):
     if state.last_overlay:
         ui.label(
             "✓ Ya tienes un overlay generado: %s" % os.path.basename(state.last_overlay)
-        ).classes("text-green-400 mb-1")
+        ).classes("mb-1").style("color:var(--success)")
         ui.label(
             "Si quieres regenerarlo con distintos parametros, usa las opciones de abajo."
-        ).classes("text-xs text-gray-400 mb-2")
+        ).classes("text-xs mb-2").style("color:var(--muted)")
         _render_next_btn(state, 3, navigate)
         ui.separator().classes("my-4")
 
@@ -67,30 +67,30 @@ async def render(state, navigate):
         if picked:
             out_dir_input.set_value(picked)
 
-    ui.button("Explorar...", on_click=pick_outdir).props("flat color=secondary").classes("mb-4")
+    ui.button("Explorar...", on_click=pick_outdir).classes("btn-secondary mb-4").props("flat")
 
     # FPS
     ui.label("FPS del overlay").classes("text-sm font-bold text-white mb-1")
     ui.label(
         "Usa el mismo valor que tiene tu video de grabacion. "
         "Si no sabes, 30 fps es el estandar mas comun."
-    ).classes("text-xs text-gray-400 mb-2")
+    ).classes("text-xs mb-2").style("color:var(--muted)")
 
     fps_radio = ui.radio({24: "24 fps", 30: "30 fps", 60: "60 fps"}, value=30).props("inline")
 
     # Formato (solo relevante en flujo Solo overlay)
     fmt_state = {"value": "webm"}
-    if "Solo overlay" in (state.flow_key or ""):
+    if state.flow_key == "overlay":
         with ui.expansion("Formato de salida", icon="settings").classes("w-full mb-2"):
             ui.label(
                 "webm — Recomendado. Compatible con DaVinci Resolve, Kdenlive, Premiere."
-            ).classes("text-xs text-gray-400")
+            ).classes("text-xs").style("color:var(--muted)")
             ui.label("prores — Para Final Cut Pro en Mac o maxima calidad sin compresion.").classes(
-                "text-xs text-gray-400"
-            )
+                "text-xs"
+            ).style("color:var(--muted)")
             ui.label("png — Frames sueltos (una imagen por fotograma). Uso avanzado.").classes(
-                "text-xs text-gray-400"
-            )
+                "text-xs"
+            ).style("color:var(--muted)")
             fmt_sel = ui.select(["webm", "prores", "png"], value="webm", label="Formato").classes(
                 "w-48"
             )
@@ -123,7 +123,7 @@ async def render(state, navigate):
             with result_area:
                 ui.label(
                     'Faltan dependencias. Ejecuta: pip install "fantasma-inputs[overlay]"'
-                ).classes("text-red-400")
+                ).style("color:var(--danger)")
             return
 
         os.makedirs(out_dir, exist_ok=True)
@@ -142,13 +142,13 @@ async def render(state, navigate):
         render_area.clear()
         with render_area:
             progress_bar = ui.linear_progress(value=0).classes("w-full")
-            status_label = ui.label("Iniciando...").classes("text-gray-400 text-sm")
+            status_label = ui.label("Iniciando...").classes("text-sm").style("color:var(--muted)")
 
             def cancel():
                 if job_holder["job"]:
                     job_holder["job"].cancel()
 
-            cancel_btn = ui.button("Detener render", on_click=cancel).props("color=secondary flat")
+            cancel_btn = ui.button("Detener render", on_click=cancel).classes("btn-secondary").props("flat")
 
         def poll():
             _job = job_holder["job"]
@@ -164,19 +164,19 @@ async def render(state, navigate):
                 result_area.clear()
                 with result_area:
                     if _job.error == "__CANCELLED__":
-                        ui.label("Render cancelado.").classes("text-yellow-400")
+                        ui.label("Render cancelado.").style("color:var(--warning)")
                     elif _job.error:
                         if "ImportError" in str(_job.error) or "No module" in str(_job.error):
                             ui.label(
                                 'Faltan dependencias. Ejecuta: pip install "fantasma-inputs[overlay]"'
-                            ).classes("text-red-400")
+                            ).style("color:var(--danger)")
                         else:
-                            ui.label(f"Error en el render: {_job.error}").classes("text-red-400")
+                            ui.label(f"Error en el render: {_job.error}").style("color:var(--danger)")
                     else:
                         state.last_overlay = _job.result
                         ui.label("✓ Overlay generado: %s" % os.path.basename(_job.result)).classes(
-                            "text-green-400 font-bold"
-                        )
+                            "font-bold"
+                        ).style("color:var(--success)")
                         _render_next_btn(state, 3, navigate)
                 return
             pct = _job.n / _job.total if _job.total > 0 else 0
@@ -192,16 +192,16 @@ async def render(state, navigate):
         ui.button(
             "Generar overlay",
             on_click=_start_render,
-        ).props("color=primary unelevated").classes("text-base px-6 py-2")
+        ).classes("btn-primary text-base px-6 py-2").props("flat")
 
 
 def _render_next_btn(state, current_step, navigate):
     flow = _FLOWS.get(state.flow_key, _FLOWS[_DEFAULT_FLOW])
     next_i = flow["next"].get(current_step)
     if next_i is None:
-        ui.label("Completaste todos los pasos de tu flujo!").classes("text-green-400 font-bold")
+        ui.label("Completaste todos los pasos de tu flujo!").classes("font-bold").style("color:var(--success)")
     else:
         ui.button(
             "Ir al Paso %d — %s →" % (next_i, _STEPS[next_i]),
             on_click=lambda: navigate(next_i),
-        ).props("color=primary unelevated")
+        ).classes("btn-primary").props("flat")

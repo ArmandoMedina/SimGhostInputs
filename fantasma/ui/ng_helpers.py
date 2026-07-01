@@ -16,7 +16,7 @@ _POS_LABELS = {
 }
 
 _FLOWS = {
-    "📊 Solo análisis": {
+    "analisis": {
         "desc": "Tabla por curva, gráficas ghost y reporte exportable. No necesitas video.",
         "requires": [
             "📄 CSV de la vuelta de referencia",
@@ -31,7 +31,7 @@ _FLOWS = {
         "steps": [0, 1, 2],
         "next": {1: 2, 2: None},
     },
-    "🎬 Solo overlay": {
+    "overlay": {
         "desc": "Genera el HUD transparente para pegarlo tú mismo en tu editor de video.",
         "requires": [
             "📄 CSV de la vuelta de referencia",
@@ -43,7 +43,7 @@ _FLOWS = {
         "steps": [0, 1, 3],
         "next": {1: 3, 3: None},
     },
-    "🎥 Video con HUD": {
+    "compose": {
         "desc": "El video final ya compuesto: tu grabación con el HUD integrado, listo para subir.",
         "requires": [
             "📄 CSV de la vuelta de referencia",
@@ -58,7 +58,7 @@ _FLOWS = {
         "next": {1: 3, 3: 4, 4: None},
     },
 }
-_DEFAULT_FLOW = "🎥 Video con HUD"
+_DEFAULT_FLOW = "compose"
 _STEPS = ["Inicio", "Importar", "Comparar", "Overlay", "Componer"]
 
 
