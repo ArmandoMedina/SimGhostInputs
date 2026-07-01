@@ -8,17 +8,15 @@
 
 ## Pendiente inmediato
 
-### PR #13 — UI NiceGUI v2.0 (`worktree-agent-a6afee076164bda53`)
+### Integración v2.0 — UI NiceGUI + CrewChief Pace Notes
 
-CI corriendo. Último fix empujado: `eaefd42` — registra `nicegui.testing` en `tests/ui/conftest.py`
-(el `pytest_plugins` en el archivo de test no registra fixtures globalmente).
-Revisar si los 6 checks pasan en verde → si sí, mergear a master.
+Las ramas `feature/pacenotes` y `worktree-agent-a6afee076164bda53` se integran en
+`codex/sgi-v2-merge` antes de llevar v2.0 a `master`.
 
-### PR #14 — CrewChief Pace Notes (`feature/pacenotes`)
+Incluye:
 
-Abierto: https://github.com/ArmandoMedina/SimGhostInputs/pull/14
-CI corriendo. 155 tests en verde localmente.
-Pendiente: revisar CI → mergear a master → QA manual en carrera real.
+- UI NiceGUI v2.0 + packaging/installer (`tools/build_installer.py`, `tools/installer.iss`).
+- CrewChief Pace Notes (`fantasma pacenotes`) con flags de compare y `trackName` en metadata.
 
 ## Pendiente después de los merges
 

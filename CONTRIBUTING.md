@@ -224,7 +224,9 @@ Cada hecho vive en **un** documento. Los demás enlazan, no duplican.
 | `docs/glosario.md` | Definición canónica de los términos del proyecto (vocabulario) |
 | `docs/flujo-de-trabajo.md` | El sistema de barreras y el flujo explorar→commit→push (linter, formato, tests, hook, CI, doc-gate) explicado desde cero |
 | `docs/benchmark-linter.md` | Por qué `ruff` y no las alternativas; cómo se configuró |
-| `docs/benchmark-ui-framework.md` | Por qué el framework de UI de v2.0 y no las alternativas; cómo se empaqueta como instalador doble-click |
+| `docs/benchmark-ui-framework.md` | Por qué NiceGUI y no las alternativas; cómo se empaqueta como instalador doble-click |
+| `tools/build_installer.py` | Cómo generar el bundle one-dir con nicegui-pack y medir su tamaño |
+| `tools/installer.iss` | Script Inno Setup para el instalador Windows doble-click de v2.0 |
 | `product/` (+ su `README.md`) | El **QUÉ**: jerarquía funcional (ecosistema→solución→dominio→módulo→capacidad), criterios de aceptación y backlog. Las notas **enlazan** a su dueño SSOT (p. ej. una capacidad de `core/` cede el esquema a `formato-datos`), no duplican |
 | `engineering/` (+ su `README.md`) | El **CÓMO**: panorama de arquitectura, especificaciones técnicas, modelos de datos y estrategia de pruebas. Igual: enlaza a los dueños canónicos (`formato-datos`, `hud-reference`, ADRs) |
 | `templates/` (+ su `README.md`) | Los moldes canónicos de cada tipo de nota de `product/`+`engineering/` |
