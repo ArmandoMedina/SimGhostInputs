@@ -23,15 +23,54 @@ _NO_DIST_MSG = (
 
 
 async def render(state, navigate):
-    ui.label("Paso 1 — Importar telemetría").classes("step-header")
-    ui.label(
-        "Sube los dos archivos CSV. La app detecta automaticamente las vueltas y pre-selecciona "
-        "la mas rapida completa de cada archivo."
-    ).classes("text-sm text-gray-400 mb-4")
+    # ── Flow / labels (computed early, needed for breadcrumb + load button) ──
+    flow = _FLOWS.get(state.flow_key)
+    _next_step = flow["next"].get(1, 2) if flow else 2
+    _load_labels = {2: "Cargar y ver análisis →", 3: "Cargar y generar overlay →"}
+    _load_label = _load_labels.get(_next_step, "Cargar →")
 
-    # Estado local (mutable dicts para que los closures capturen la referencia)
-    ref_state = {"laps": state.ref_laps, "path": state.ref_path, "name": state.ref_name, "sel_i": 0}
-    drv_state = {"laps": state.drv_laps, "path": state.drv_path, "name": state.drv_name, "sel_i": 0}
+    # ── Breadcrumb bar ──────────────────────────────────────────────────────
+    step_labels = ["Inicio", "Importar", "Análisis", "Overlay", "Video"]
+    breadcrumb_html = '<div class="breadcrumb-bar">'
+    for i, lbl in enumerate(step_labels[: _next_step + 1]):
+        if i > 0:
+            breadcrumb_html += '<span class="breadcrumb-arrow">›</span>'
+        if i < 1:
+            status = "done"
+            num = "✓"
+        elif i == 1:
+            status = "active"
+            num = str(i)
+        else:
+            status = ""
+            num = str(i)
+        breadcrumb_html += f'<div class="breadcrumb-step {status}">{num}</div>'
+        breadcrumb_html += f'<span class="breadcrumb-label">{lbl}</span>'
+    breadcrumb_html += "</div>"
+    ui.html(breadcrumb_html)
+
+    ui.html(
+        '<h1 class="page-heading" style="font-size:1rem;margin-bottom:4px">'
+        "Paso 1 — Importar telemetría</h1>"
+    )
+    ui.html(
+        '<p class="page-sub">Sube los dos archivos CSV. '
+        "La app detecta automáticamente las vueltas.</p>"
+    )
+
+    # ── Estado local (mutable dicts para que los closures capturen la referencia) ──
+    ref_state = {
+        "laps": state.ref_laps,
+        "path": state.ref_path,
+        "name": state.ref_name,
+        "sel_i": 0,
+    }
+    drv_state = {
+        "laps": state.drv_laps,
+        "path": state.drv_path,
+        "name": state.drv_name,
+        "sel_i": 0,
+    }
     corners_state = {"data": None}
 
     # Pre-seleccionar vueltas ya cargadas
@@ -40,23 +79,15 @@ async def render(state, navigate):
     if drv_state["laps"]:
         drv_state["sel_i"] = _best_lap_index(drv_state["laps"])
 
-    # ── Referencia ────────────────────────────────────────────────────────────
-    ui.label("① Vuelta de referencia").classes("text-lg font-bold mt-4 mb-1 text-white")
-    ui.label(
-        "La vuelta que quieres superar. Puede ser tu mejor tiempo anterior, "
-        "la de un coach, o la de otro piloto."
-    ).classes("text-sm text-gray-400 mb-2")
+    # Forward declarations — handlers close over these names; the variables are
+    # assigned to ui elements further below before any handler can fire.
+    ref_status = None  # noqa: F841  (assigned below)
+    ref_lap_col = None  # noqa: F841
+    drv_status = None  # noqa: F841
+    drv_lap_col = None  # noqa: F841
+    load_err = None  # noqa: F841
 
-    ref_status = ui.label(
-        "⬆ Sube el archivo de referencia para continuar."
-        if not ref_state["laps"]
-        else "✓ Referencia ya cargada: %s (%d vueltas)"
-        % (_fmt_lap(ref_state["laps"][ref_state["sel_i"]].laptime), len(ref_state["laps"]))
-    ).classes("text-yellow-400 mb-1" if not ref_state["laps"] else "text-green-400 mb-1")
-
-    ref_lap_col = ui.column().classes("w-full mb-2")
-    if ref_state["laps"] and len(ref_state["laps"]) > 1:
-        _render_lap_selector(ref_lap_col, ref_state, "ref")
+    # ── Upload handlers ──────────────────────────────────────────────────────
 
     async def handle_ref_upload(e):
         content = e.content.read()
@@ -66,19 +97,19 @@ async def render(state, navigate):
             laps = _load_laps(path)
         except Exception as ex:
             ref_status.set_text(f"Error al leer el archivo: {ex}")
-            ref_status.classes(remove="text-green-400 text-yellow-400")
+            ref_status.classes(remove="upload-status text-green-400 text-yellow-400")
             ref_status.classes("text-red-400")
             return
         if _missing_distance(laps):
             ref_status.set_text(_NO_DIST_MSG)
-            ref_status.classes(remove="text-green-400 text-yellow-400")
+            ref_status.classes(remove="upload-status text-green-400 text-yellow-400")
             ref_status.classes("text-red-400")
             return
         if not laps:
             ref_status.set_text(
                 "No se detectaron vueltas. Verifica que el CSV incluye distancia y tiempo."
             )
-            ref_status.classes(remove="text-green-400 text-yellow-400")
+            ref_status.classes(remove="upload-status text-green-400 text-red-400")
             ref_status.classes("text-yellow-400")
             return
         ref_state["laps"] = laps
@@ -91,35 +122,10 @@ async def render(state, navigate):
             % (_fmt_lap(laps[best_i].laptime), len(laps))
         )
         ref_status.classes(remove="text-red-400 text-yellow-400")
-        ref_status.classes("text-green-400")
+        ref_status.classes("upload-status")
         ref_lap_col.clear()
         if len(laps) > 1:
             _render_lap_selector(ref_lap_col, ref_state, "ref")
-
-    ui.upload(
-        label="Archivo CSV de referencia",
-        on_upload=handle_ref_upload,
-        auto_upload=True,
-    ).props('accept=".csv,.xlsx" max-file-size=52428800').classes("w-full mb-4")
-
-    ui.separator().classes("my-4")
-
-    # ── Tu telemetría ─────────────────────────────────────────────────────────
-    ui.label("② Tu vuelta de hoy").classes("text-lg font-bold mt-2 mb-1 text-white")
-    ui.label(
-        "Tus vueltas de la sesion de hoy. Se pre-selecciona automaticamente la mas rapida completa."
-    ).classes("text-sm text-gray-400 mb-2")
-
-    drv_status = ui.label(
-        "⬆ Sube tu archivo de telemetría para continuar."
-        if not drv_state["laps"]
-        else "✓ Tu vuelta cargada: %s (%d vueltas)"
-        % (_fmt_lap(drv_state["laps"][drv_state["sel_i"]].laptime), len(drv_state["laps"]))
-    ).classes("text-yellow-400 mb-1" if not drv_state["laps"] else "text-green-400 mb-1")
-
-    drv_lap_col = ui.column().classes("w-full mb-2")
-    if drv_state["laps"] and len(drv_state["laps"]) > 1:
-        _render_lap_selector(drv_lap_col, drv_state, "drv")
 
     async def handle_drv_upload(e):
         content = e.content.read()
@@ -129,19 +135,19 @@ async def render(state, navigate):
             laps = _load_laps(path)
         except Exception as ex:
             drv_status.set_text(f"Error al leer el archivo: {ex}")
-            drv_status.classes(remove="text-green-400 text-yellow-400")
+            drv_status.classes(remove="upload-status text-green-400 text-yellow-400")
             drv_status.classes("text-red-400")
             return
         if _missing_distance(laps):
             drv_status.set_text(_NO_DIST_MSG)
-            drv_status.classes(remove="text-green-400 text-yellow-400")
+            drv_status.classes(remove="upload-status text-green-400 text-yellow-400")
             drv_status.classes("text-red-400")
             return
         if not laps:
             drv_status.set_text(
                 "No se detectaron vueltas. Verifica que el CSV incluye distancia y tiempo."
             )
-            drv_status.classes(remove="text-green-400 text-yellow-400")
+            drv_status.classes(remove="upload-status text-green-400 text-red-400")
             drv_status.classes("text-yellow-400")
             return
         drv_state["laps"] = laps
@@ -154,16 +160,123 @@ async def render(state, navigate):
             % (_fmt_lap(laps[best_i].laptime), len(laps))
         )
         drv_status.classes(remove="text-red-400 text-yellow-400")
-        drv_status.classes("text-green-400")
+        drv_status.classes("upload-status")
         drv_lap_col.clear()
         if len(laps) > 1:
             _render_lap_selector(drv_lap_col, drv_state, "drv")
 
-    ui.upload(
-        label="Tu archivo CSV de telemetría",
-        on_upload=handle_drv_upload,
-        auto_upload=True,
-    ).props('accept=".csv,.xlsx" max-file-size=52428800').classes("w-full mb-4")
+    async def do_load():
+        if not ref_state["laps"]:
+            load_err.set_text("Sube el archivo de referencia primero.")
+            return
+        if not drv_state["laps"]:
+            load_err.set_text("Sube tu archivo de telemetría primero.")
+            return
+        load_err.set_text("")
+        try:
+            state.clear_analysis()
+            ref_lap = ref_state["laps"][ref_state["sel_i"]]
+            drv_lap = drv_state["laps"][drv_state["sel_i"]]
+            corners = corners_state["data"] or (state.corners if state.corners_editable else None)
+            ref_col_map = None
+            raw_map = col_map_state["text"].strip()
+            if raw_map:
+                ref_col_map = dict(p.partition("=")[::2] for p in raw_map.splitlines() if "=" in p)
+            state.ref_path = ref_state["path"]
+            state.drv_path = drv_state["path"]
+            state.ref_name = ref_state["name"]
+            state.drv_name = drv_state["name"]
+            state.ref_laps = ref_state["laps"]
+            state.drv_laps = drv_state["laps"]
+            state.ref_lap = ref_lap
+            state.drv_lap = drv_lap
+            state.corners = corners
+            state.ref_col_map = ref_col_map
+            if corners_state["data"]:
+                state.corners_editable = True
+            await navigate(_next_step)
+        except Exception as ex:
+            load_err.set_text(f"Error al cargar: {ex}")
+
+    # ── Upload grid ─────────────────────────────────────────────────────────
+    with ui.element("div").classes("upload-grid"):
+        # ── Panel izquierdo: Referencia ──────────────────────────────────
+        with ui.element("div").classes("upload-panel"):
+            ui.html(
+                '<div class="upload-panel-header">'
+                '<span class="upload-panel-title">① Vuelta de referencia</span>'
+                '<span class="lap-badge ref">REF</span>'
+                "</div>"
+            )
+
+            with ui.element("div").classes("upload-zone").style("position:relative"):
+                ui.html('<span class="upload-icon">📂</span>')
+                ui.html('<div class="upload-label">Arrastra o haz clic para subir</div>')
+                ui.html('<div class="upload-hint">.csv · .xlsx · máx. 50 MB</div>')
+                ui.upload(
+                    label="",
+                    on_upload=handle_ref_upload,
+                    auto_upload=True,
+                ).props('accept=".csv,.xlsx" max-file-size=52428800').classes(
+                    "absolute opacity-0 w-full h-full"
+                ).style("top:0;left:0;cursor:pointer")
+
+            ref_status = (
+                ui.label(
+                    "⬆ Sube el archivo de referencia para continuar."
+                    if not ref_state["laps"]
+                    else "✓ Referencia ya cargada: %s (%d vueltas)"
+                    % (
+                        _fmt_lap(ref_state["laps"][ref_state["sel_i"]].laptime),
+                        len(ref_state["laps"]),
+                    )
+                )
+                .classes("upload-status" if ref_state["laps"] else "text-yellow-400")
+                .style("margin:0 0 8px;display:block")
+            )
+
+            ref_lap_col = ui.column().classes("w-full")
+            if ref_state["laps"] and len(ref_state["laps"]) > 1:
+                _render_lap_selector(ref_lap_col, ref_state, "ref")
+
+        # ── Panel derecho: Driver ────────────────────────────────────────
+        with ui.element("div").classes("upload-panel"):
+            ui.html(
+                '<div class="upload-panel-header">'
+                '<span class="upload-panel-title">② Tu vuelta de hoy</span>'
+                '<span class="lap-badge own">HOY</span>'
+                "</div>"
+            )
+
+            with ui.element("div").classes("upload-zone").style("position:relative"):
+                ui.html('<span class="upload-icon">📂</span>')
+                ui.html('<div class="upload-label">Arrastra o haz clic para subir</div>')
+                ui.html('<div class="upload-hint">.csv · .xlsx · máx. 50 MB</div>')
+                ui.upload(
+                    label="",
+                    on_upload=handle_drv_upload,
+                    auto_upload=True,
+                ).props('accept=".csv,.xlsx" max-file-size=52428800').classes(
+                    "absolute opacity-0 w-full h-full"
+                ).style("top:0;left:0;cursor:pointer")
+
+            drv_status = (
+                ui.label(
+                    "⬆ Sube tu archivo de telemetría para continuar."
+                    if not drv_state["laps"]
+                    else "✓ Tu vuelta cargada: %s (%d vueltas)"
+                    % (
+                        _fmt_lap(drv_state["laps"][drv_state["sel_i"]].laptime),
+                        len(drv_state["laps"]),
+                    )
+                )
+                .classes("upload-status" if drv_state["laps"] else "text-yellow-400")
+                .style("margin:0 0 8px;display:block")
+            )
+
+            drv_lap_col = ui.column().classes("w-full")
+            if drv_state["laps"] and len(drv_state["laps"]) > 1:
+                _render_lap_selector(drv_lap_col, drv_state, "drv")
 
     # ── Opciones avanzadas ────────────────────────────────────────────────────
     col_map_state = {"text": ""}
@@ -226,89 +339,42 @@ async def render(state, navigate):
         ).classes("w-full")
         col_map_input.on("update:model-value", lambda e: col_map_state.update({"text": e.value}))
 
-    # ── Cargar ────────────────────────────────────────────────────────────────
-    ui.separator().classes("my-4")
+    # ── Bottom actions ────────────────────────────────────────────────────────
+    ref_ok = ref_state["laps"] is not None and len(ref_state["laps"]) > 0
+    drv_ok = drv_state["laps"] is not None and len(drv_state["laps"]) > 0
+    ref_class = "ok" if ref_ok else ""
+    drv_class = "ok" if drv_ok else ""
 
-    flow = _FLOWS.get(state.flow_key)
-    _next_step = flow["next"].get(1, 2) if flow else 2
-    _load_labels = {2: "Cargar y ver análisis →", 3: "Cargar y generar overlay →"}
-    _load_label = _load_labels.get(_next_step, "Cargar →")
-
-    load_err = ui.label("").classes("text-red-400 mb-2")
-
-    async def do_load():
-        if not ref_state["laps"]:
-            load_err.set_text("Sube el archivo de referencia primero.")
-            return
-        if not drv_state["laps"]:
-            load_err.set_text("Sube tu archivo de telemetría primero.")
-            return
-        load_err.set_text("")
-        try:
-            state.clear_analysis()
-            ref_lap = ref_state["laps"][ref_state["sel_i"]]
-            drv_lap = drv_state["laps"][drv_state["sel_i"]]
-            corners = corners_state["data"] or (state.corners if state.corners_editable else None)
-            ref_col_map = None
-            raw_map = col_map_state["text"].strip()
-            if raw_map:
-                ref_col_map = dict(p.partition("=")[::2] for p in raw_map.splitlines() if "=" in p)
-            state.ref_path = ref_state["path"]
-            state.drv_path = drv_state["path"]
-            state.ref_name = ref_state["name"]
-            state.drv_name = drv_state["name"]
-            state.ref_laps = ref_state["laps"]
-            state.drv_laps = drv_state["laps"]
-            state.ref_lap = ref_lap
-            state.drv_lap = drv_lap
-            state.corners = corners
-            state.ref_col_map = ref_col_map
-            if corners_state["data"]:
-                state.corners_editable = True
-            await navigate(_next_step)
-        except Exception as ex:
-            load_err.set_text(f"Error al cargar: {ex}")
-
-    ui.button(_load_label, on_click=do_load).props("color=primary unelevated").classes(
-        "text-base px-6 py-2"
-    )
-
-    # Resumen de vueltas ya cargadas
-    if state.ref_lap and state.drv_lap:
-        rl = state.ref_lap
-        dl = state.drv_lap
-        delta = dl.laptime - rl.laptime
-        ui.separator().classes("my-4")
-        with ui.row().classes("gap-8 mt-2"):
-            with ui.column().classes("items-center"):
-                ui.label("Referencia").classes("text-xs text-gray-400")
-                ui.label(_fmt_lap(rl.laptime)).classes("text-lg font-bold text-white")
-            with ui.column().classes("items-center"):
-                ui.label("Longitud").classes("text-xs text-gray-400")
-                ui.label("%.0f m" % rl.length).classes("text-lg font-bold text-white")
-            with ui.column().classes("items-center"):
-                ui.label("Tu vuelta").classes("text-xs text-gray-400")
-                ui.label(_fmt_lap(dl.laptime)).classes("text-lg font-bold text-white")
-            with ui.column().classes("items-center"):
-                ui.label("Delta").classes("text-xs text-gray-400")
-                _color = "text-green-400" if delta < 0 else "text-red-400"
-                ui.label("%+.3f s" % delta).classes(f"text-lg font-bold {_color}")
+    with ui.element("div").classes("bottom-actions"):
+        ui.html(
+            f'<div class="readiness-indicators">'
+            f'<span class="readiness-item {ref_class}">'
+            f'<span class="readiness-dot"></span>Referencia</span>'
+            f'<span class="readiness-item {drv_class}">'
+            f'<span class="readiness-dot"></span>Tu vuelta</span>'
+            f"</div>"
+        )
+        with ui.element("div").style("display:flex;gap:8px;align-items:center"):
+            ui.button("← Volver", on_click=lambda: navigate(0)).classes("btn-ghost").props("flat")
+            load_err = ui.label("").classes("text-xs").style("color:var(--danger)")
+            ui.button(_load_label, on_click=do_load).classes("btn-primary").props("flat")
 
 
 def _render_lap_selector(container, lap_state, key):
     with container:
-        opts = _lap_options(lap_state["laps"])
-        sel_label = ui.select(
-            options=opts,
-            value=opts[lap_state["sel_i"]],
-            label="Cambiar vuelta",
-        ).classes("w-full")
+        with ui.element("div").classes("lap-selector"):
+            opts = _lap_options(lap_state["laps"])
+            sel_label = ui.select(
+                options=opts,
+                value=opts[lap_state["sel_i"]],
+                label="Cambiar vuelta",
+            ).classes("w-full")
 
-        def on_change(e):
-            try:
-                idx = opts.index(e.value)
-                lap_state["sel_i"] = idx
-            except ValueError:
-                pass
+            def on_change(e):
+                try:
+                    idx = opts.index(e.value)
+                    lap_state["sel_i"] = idx
+                except ValueError:
+                    pass
 
-        sel_label.on("update:model-value", on_change)
+            sel_label.on("update:model-value", on_change)

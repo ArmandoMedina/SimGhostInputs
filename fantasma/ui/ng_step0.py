@@ -1,136 +1,122 @@
-"""Paso 0 — Inicio: selector de flujo y guia de exportacion (NiceGUI)."""
+"""Paso 0 — Inicio: selector de flujo (NiceGUI). Rediseno v2."""
 
 from nicegui import ui
 
-from .ng_helpers import _FLOWS
-
-_FLOW_PREVIEW = {
-    "📊 Solo análisis": {"need": "2 CSVs", "out": "Reporte, CSVs y gráficas"},
-    "🎬 Solo overlay": {"need": "2 CSVs", "out": "HUD transparente `.webm`"},
-    "🎥 Video con HUD": {"need": "2 CSVs + video", "out": "MP4 final con HUD"},
+# Datos de cada flujo definidos localmente para step0.
+# Tupla: (icon, title, desc, needs_list, out_list, featured)
+_FLOWS: dict[str, tuple] = {
+    "analisis": (
+        "📊",
+        "Solo análisis",
+        "Delta table, gráficas y reporte",
+        ["CSV referencia", "CSV piloto"],
+        ["Reporte .md", "corners_compare.csv", "Gráficas"],
+        False,
+    ),
+    "overlay": (
+        "🎬",
+        "Solo overlay",
+        "HUD transparente para edición de video",
+        ["CSV referencia", "CSV piloto"],
+        ["overlay.webm (VP9 + alfa)"],
+        False,
+    ),
+    "compose": (
+        "🎥",
+        "Video con HUD",
+        "El video final ya con overlay y pace notes",
+        ["CSV referencia", "CSV piloto", "Video de grabación (.mp4)"],
+        ["overlay.webm", "final_composed.mp4", "Pace notes WAVs"],
+        True,
+    ),
 }
 
 
 async def render(state, navigate):
-    ui.html("""<div class="sgi-hero">
-      <h1 style="font-size:1.55rem;font-weight:700;margin:0 0 0.35rem 0;color:#fafafa">
-        SimGhostInputs
-      </h1>
-      <p style="color:#8b949e;margin:0">
-        Convierte una tanda en un debrief por curva y, si quieres,
-        en un video con HUD listo para revisar.
-      </p>
-    </div>""")
+    # ── Encabezado de página ──────────────────────────────────────────────────
+    ui.html('<h1 class="page-heading">SimGhostInputs</h1>')
+    ui.html(
+        '<p class="page-sub">'
+        "Compara tu telemetría contra la vuelta de referencia, curva por curva."
+        "</p>"
+    )
+    ui.html(
+        '<div class="status-row">'
+        '  <div class="status-chip"><div class="status-dot live"></div>Motor listo</div>'
+        '  <div class="status-chip"><div class="status-dot"></div>Sin archivos</div>'
+        "</div>"
+    )
 
-    with ui.html('<div class="sgi-note" style="margin-bottom:1rem">').classes("w-full"):
-        ui.html(
-            "<strong>Una vuelta por flujo.</strong> Si quieres analizar varias, al terminar "
-            "puedes volver aqui sin recargar la referencia. Para compararte contra ti mismo, "
-            "carga el mismo CSV como referencia y piloto y elige dos vueltas distintas en el Paso 1."
-        )
+    # ── Subtítulo del selector ────────────────────────────────────────────────
+    ui.html(
+        '<div class="page-heading" style="font-size:1rem;margin-bottom:4px">'
+        "¿Qué quieres obtener hoy?"
+        "</div>"
+    )
+    ui.html(
+        '<p class="page-sub">Elige el flujo que mejor se adapta a lo que tienes disponible.</p>'
+    )
 
-    ui.label("¿Qué quieres obtener hoy?").classes("text-xl font-bold mt-4 mb-1 text-white")
-    ui.label(
-        "Elige el flujo que mejor describe tu objetivo. "
-        "La UI se adapta y solo te muestra los pasos que necesitas."
-    ).classes("text-sm text-gray-400 mb-3")
+    # ── Grid de tarjetas ──────────────────────────────────────────────────────
+    async def select_flow(fk: str):
+        state.flow_key = fk
+        state.flow_chosen = True
+        await navigate(0)
 
-    with ui.row().classes("gap-4 flex-wrap mb-4"):
-        for fk, fv in _FLOWS.items():
-            _render_flow_card(state, fk, fv, navigate)
+    flow_grid = ui.element("div").classes("flow-grid")
+    with flow_grid:
+        for flow_key, (icon, title, desc, needs_list, out_list, featured) in _FLOWS.items():
+            is_selected = state.flow_key == flow_key
+            border_style = "border-color: var(--highlight)" if is_selected else ""
+            card_classes = "flow-card" + ("  featured" if featured else "")
+
+            with ui.card().classes(card_classes).style(f"border-radius:0;{border_style}"):
+                if featured:
+                    ui.html('<span class="featured-badge">MÁS COMPLETO</span>')
+
+                ui.html(f'<span class="flow-icon">{icon}</span>')
+                ui.label(title).classes("flow-title")
+                ui.label(desc).classes("flow-desc")
+
+                needs_items = "".join(f"<li>{n}</li>" for n in needs_list)
+                out_items = "".join(f"<li>{d}</li>" for d in out_list)
+                ui.html(
+                    f'<div class="flow-needs">'
+                    f'  <div class="flow-needs-label">Necesitas</div>'
+                    f'  <ul class="needs-list">{needs_items}</ul>'
+                    f'  <div class="flow-needs-label">Obtienes</div>'
+                    f'  <ul class="needs-list">{out_items}</ul>'
+                    f"</div>"
+                )
+
+                btn_label = "✓ Seleccionado" if is_selected else "Elegir este"
+                btn_class = "btn-featured" if featured else "btn-secondary"
+                ui.button(
+                    btn_label,
+                    on_click=lambda fk=flow_key: select_flow(fk),
+                ).classes(btn_class).props("flat")
+
+    # ── Footer info ───────────────────────────────────────────────────────────
+    ui.html(
+        '<div class="footer-info">'
+        '  <span class="footer-text">'
+        "Exporta telemetría desde MoTeC i2 con Include Distance Data activado."
+        "  </span>"
+        '  <div class="footer-links">'
+        '    <span class="link-pill">Guía MoTeC</span>'
+        '    <span class="link-pill">Ejemplo CSV</span>'
+        "  </div>"
+        "</div>"
+    )
 
     ui.separator().classes("my-4")
 
-    # Guia de exportacion
-    ui.label("Exporta la telemetría con distancia").classes("text-lg font-bold text-white mb-2")
-
-    ui.markdown(
-        "Necesitas CSVs exportados desde **MoTeC i2** con **Include Time Stamp** e "
-        "**Include Distance Data** activados. Sin distancia, el análisis se detiene antes de comparar.\n\n"
-        "- **Referencia:** vuelta rápida propia, coach o compañero.\n"
-        "- **Piloto:** outing actual o el mismo CSV si quieres comparar dos vueltas tuyas.\n"
-        "- **Video:** solo para el flujo **Video con HUD**."
-    ).classes("text-sm text-gray-300 mb-2")
-
-    with ui.expansion("Ver guía de exportación paso a paso", icon="info").classes("w-full mb-4"):
-        ui.markdown("""
-### 1. Instalar y abrir Sim To MoTeC
-
-Descarga e instala **[Sim To MoTeC](https://github.com/GeekyDeaks/sim-to-motec/releases)**
-(compatible con AMS2, ACC, iRacing, rFactor 2 y más).
-Ábrelo **antes** de arrancar el sim — captura en segundo plano mientras corres.
-
-### 2. Configurar y arrancar la captura
-
-Ajusta **Sampling Frequency a 20 Hz** y haz clic en **Start**.
-Los campos Vehicle, Venue y Lap se rellenan solos cuando entras en pista.
-
-### 3. Abrir MoTeC i2 después de la sesión
-
-Abre **MoTeC i2 Standard** (se instala junto con Sim To MoTeC).
-Ve a **File → Open Log File** y abre el `.ld` que generó el logger
-(normalmente en `Documentos/MoTeC/`).
-
-### 4. Exportar como CSV
-
-En MoTeC i2: **File → Export Data...**
-
-Opciones recomendadas:
-- **Data Extent:** Entire Outing
-- **Output File Format:** CSV File
-- **Output Sample Rate:** Auto
-- ✅ Include Time Stamp
-- ✅ Include Distance Data
-
-Haz clic en **Export** y guarda el archivo.
-        """)
-
-    ui.separator().classes("my-4")
-
-    async def _start():
+    # ── Botón Empezar ─────────────────────────────────────────────────────────
+    async def go_to_import():
         state.flow_chosen = True
         await navigate(1)
 
     ui.button(
-        "Empezar — Ir a Importar →",
-        on_click=_start,
-    ).props("color=primary unelevated").classes("text-base px-6 py-2")
-
-
-def _render_flow_card(state, fk, fv, navigate):
-    selected = state.flow_key == fk
-    preview = _FLOW_PREVIEW[fk]
-    border_color = "#58a6ff" if selected else "#30363d"
-
-    with (
-        ui.card()
-        .classes("p-4 cursor-pointer")
-        .style(
-            "min-width:200px;max-width:280px;background:#161b22;"
-            f"border:1.5px solid {border_color};border-radius:8px"
-        )
-    ):
-        ui.label(fk).classes("text-base font-bold text-white mb-1")
-        ui.label(fv["desc"]).classes("text-sm text-gray-400 mb-2")
-        ui.label(f"Necesitas: {preview['need']}").classes("text-xs text-gray-300")
-        ui.label(f"Obtienes: {preview['out']}").classes("text-xs text-gray-300 mb-2")
-
-        with ui.expansion("Ver detalle").classes("text-xs text-gray-400"):
-            ui.label("Requisitos").classes("text-xs font-bold text-gray-300 mt-1")
-            for r in fv["requires"]:
-                ui.label(f"· {r}").classes("text-xs text-gray-400")
-            ui.label("Archivos de salida").classes("text-xs font-bold text-gray-300 mt-1")
-            for d in fv["deliverables"]:
-                ui.label(f"· {d}").classes("text-xs text-gray-400")
-
-        if selected:
-            ui.label("✓ Seleccionado").classes("text-green-400 text-xs font-bold mt-2")
-        else:
-
-            async def _choose(fk=fk):
-                state.flow_key = fk
-                state.flow_chosen = True
-                # Rerender la pagina para reflejar la seleccion
-                await navigate(0)
-
-            ui.button("Elegir este", on_click=_choose).classes("w-full text-sm mt-2")
+        "Empezar → Ir a Importar",
+        on_click=go_to_import,
+    ).classes("btn-primary").props("flat")
