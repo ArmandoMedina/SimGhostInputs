@@ -12,11 +12,6 @@ pytest.importorskip(
 pytest_plugins = ["nicegui.testing"]
 
 
-@pytest.fixture
-def user(user):
-    return user
-
-
 @pytest.mark.asyncio
 async def test_step0_hero_visible(user):
     from fantasma.ui.ng_app import main_page  # noqa: F401
