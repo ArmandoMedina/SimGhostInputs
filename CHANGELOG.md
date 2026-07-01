@@ -14,12 +14,16 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/). Versionado
 - `fantasma/viz/compose.py`: `compose_video()` devuelve dict `{"path", "encoder", "duration_s"}`. La UI NiceGUI Paso 4 muestra el encoder usado (h264_nvenc o libx264) y la duración del encode al terminar.
 - `fantasma/core/compare.py`: aviso en `summary["avisos"]` cuando el piloto va más de 1 s más rápido que la referencia — indica posible inversión de `--reference` y `--driver`.
 - UI NiceGUI Paso 1: hint colapsable "¿No tienes vuelta de referencia externa?" para el caso C10 (compararse contra sí mismo).
+- **UX NiceGUI post-auditoría v2.0**: breadcrumb de navegación en todos los pasos; links "Guía MoTeC" y "Ejemplo CSV" en Paso 0 con dialogs; slider de escala con valor dinámico en tiempo real; sidebar con checkmark ✅ cuando el paso está completo; guard de ffmpeg en Paso 3 con instrucción de instalación por plataforma; CSS vars para colores de los paneles de Paso 4.
+- **C19 — aviso proactivo de ffmpeg en Paso 0**: al seleccionar el flujo "Video con HUD" o "Solo overlay", la UI muestra inmediatamente un aviso si ffmpeg no está instalado — sin esperar al paso de render.
 
 ### Cambiado
 - `setup.ps1`: la instalación de GitHub CLI (`gh`) se mueve detrás del flag `-Dev`; el setup de usuario final no instala herramientas de desarrollo.
+- Suite de tests ampliada a **185 tests**: nuevos archivos `tests/ui/test_ng_state.py`, `test_ng_step1–4.py`, `tests/viz/test_compose_encoder.py` y casos edge en `test_compare.py` y `test_pacenotes.py`.
 
 ### Corregido
 - `fantasma/ui/ng_state.py`: `clear_drv()` ahora elimina `drv_name` al cambiar vuelta del piloto — el nombre del archivo quedaba huérfano de la sesión anterior.
+- UI NiceGUI — `F-01`: la tarjeta del flujo por defecto ya no se muestra como "✓ Seleccionado" hasta que el usuario hace clic en ella explícitamente.
 
 ## [1.0.0] - 2026-06-30
 
