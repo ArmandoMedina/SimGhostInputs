@@ -120,5 +120,16 @@
     "doc_avisa": ["README.md", "docs/flujo-de-trabajo.md"],
     "product_avisa": [],
     "rol": "Reviewer"
+  },
+  {
+    "nombre": "raiz",
+    "desc": "archivos nuevos sueltos en la raiz del repo: tierra de nadie que ningun auditor escanea. Convenciones del matcher (starter v0.5.0): patron SIN '/' solo casa la raiz; 'excluye' resta rutas; 'mensaje' se anexa al aviso",
+    "fuente": ["*.md", "*.txt", "*.json", "*.png", "*.wav", "*.csv", "*.spec", "*.canvas", "*.base"],
+    "excluye": ["README.md", "CHANGELOG.md", "ROADMAP.md", "HANDOFF.md", "PRODUCT_BRIEF.md", "CONTRIBUTING.md", "CLAUDE.md"],
+    "doc_bloquea": [],
+    "doc_avisa": ["CONTRIBUTING.md"],
+    "mensaje": "un archivo nuevo en la raiz casi siempre esta mal ubicado: muevelo a su carpeta (docs/, product/, tools/, qa_runs/) o declarale un area en tools/blast-radius.json, o agregalo a .gitignore si es artefacto",
+    "product_avisa": [],
+    "rol": "Armando"
   }
 ]

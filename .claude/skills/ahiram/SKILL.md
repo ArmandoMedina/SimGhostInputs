@@ -65,4 +65,9 @@ Modelo según la tarea:
   requiere razonamiento profundo (p. ej. cambiar la normalización por distancia en `core/`).
 
 El orquestador pasa la tarea con el contexto mínimo necesario. Ahiram no lee transcripts
-largos — recibe una brief limpia.
+largos — recibe una brief limpia. Ojo: los skills **no** son `subagent_type` válidos — se
+spawnea un subagente general con este `SKILL.md` + la brief en el prompt.
+
+## Entorno (lecciones pagadas — Windows/PS 5.1)
+
+Commits: mensaje a archivo UTF-8 **sin BOM** + `git commit -F`; sin `->` ni ` / ` en el cuerpo. Sin `&&`, `head`, `tail` (usa `Select-Object -First/-Last`). Rutas con espacios entre comillas. El aviso `LF will be replaced by CRLF` no es error. Recetario completo: [`docs/entorno-windows-powershell51.md`](../../../docs/entorno-windows-powershell51.md). Y **nada de memorias: todo al repo** (un hook lo bloquea).

@@ -6,7 +6,10 @@ dist/
 .venv/
 salida/
 output/
-qa_runs/
+# Evidencia de QA (ADR 0019): el bulto se ignora; el README de la convencion y
+# la evidencia CITADA desde HANDOFF/CHANGELOG se commitean (git add -f).
+qa_runs/*
+!qa_runs/README.md
 reference/
 driver/
 *.ld

@@ -5,12 +5,18 @@
 > Reparto por caducidad: el [ADR](docs/decisions/) guarda *lo permanente* (por qué), el
 > [CHANGELOG](CHANGELOG.md) *lo enviado* (qué cambió), el [ROADMAP](ROADMAP.md) *el camino*,
 > y este HANDOFF *lo efímero* (dónde voy, qué falta ahora).
+>
+> **Ciclo de vida (ADR 0019): se llena al cerrar, se lee y se LIMPIA al abrir.** Al arrancar
+> sesión (`/arranca` lo instruye): lee esto y borra lo ya atendido — un HANDOFF que acumula
+> historia deja de leerse. La historia va al CHANGELOG; el porqué, a los ADRs.
 
 ## Estado actual
 
 **Rama de trabajo:** `codex/sgi-v2-merge` (no tocar `master` hasta cerrar los pendientes de QA abajo).
 
 **Suite:** 185 tests verdes. `verificar.ps1` y `auditar.ps1` pasan sin bloqueos.
+
+**Homologación starter v0.5.0 adoptada** (ADR 0019, mergeada aquí desde `homologacion-starter-v0.5.0`): job `audit` en CI, Mariana exige evidencia en `qa_runs/`, hook no-memorias, `/arranca` reforzado, `docs/recursos-del-proyecto.md`, recetario PS 5.1. **Pendiente del PO:** marcar `audit`, `docs-graph`, `lint` y `pytest` como *required checks* en el ruleset de master — sin eso el job nuevo es cosmético.
 
 La integración v2.0 está **completa en código**:
 - UI NiceGUI v2.0 (5 pasos, AppState, breadcrumb, F-01 neutral, ffmpeg guards, encoder info, C10 hint)

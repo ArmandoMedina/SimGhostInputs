@@ -6,6 +6,13 @@ on:
   pull_request:
     branches: [master]
 
+# ===> REQUIRED CHECKS (homologado del starter v0.5.0, ADR 0019): un job VERDE
+#      no garantiza nada si no es requerido - un rojo no-requerido deja pasar el
+#      merge igual (dolor real: "como pudiste hacer PR sin documentar?"). En el
+#      ruleset de master marca required: 'audit', 'docs-graph', 'lint', 'pytest'.
+#      Todo lo local (hooks, verificar.ps1) es aviso que se puede saltar; el
+#      required check es el unico muro.
+
 jobs:
   lint:
     # Barrera determinista: ruff (lint + formato) en cada push/PR. Ver docs/benchmark-linter.md.
@@ -25,6 +32,21 @@ jobs:
         run: ruff check .
       - name: Ruff format check
         run: ruff format --check .
+
+  audit:
+    # Blast-radius DETERMINISTA sobre el rango del PR (lee tools/blast-radius.json,
+    # la ley de la seccion 8). Cierra la ventana que ni el hook (working tree) ni
+    # verificar.ps1 (push local, saltable con --no-verify) cubren: commits que
+    # llegaron al PR sin sus docs duenos. Debe ser REQUIRED CHECK (nota de arriba).
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0   # historia completa: el auditor necesita el diff del rango
+      - name: Auditar blast-radius (seccion 8)
+        shell: pwsh
+        run: ./tools/auditar-radius.ps1 -Range "origin/${{ github.base_ref }}...HEAD"
 
   docs-graph:
     # Auditor determinista del grafo de docs (product/ + engineering/): frontmatter,

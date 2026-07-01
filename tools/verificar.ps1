@@ -20,9 +20,15 @@ function Note($msg)  { Write-Host "  [AVISO] $msg"   -ForegroundColor Yellow; $s
 function Block($msg) { Write-Host "  [BLOQUEA] $msg" -ForegroundColor Red;    $script:block++ }
 function Ok($msg)    { Write-Host "  [OK] $msg"      -ForegroundColor Green }
 
-# Devuelve $true si algun elemento de $list hace -like $pattern.
+# Matcher del manifiesto (homologado a starter v0.5.0, ADR 0019):
+# un patron SIN '/' solo casa archivos en la raiz del repo.
+function Test-Pattern($path, $pattern) {
+  if ($pattern -notlike '*/*' -and $path -like '*/*') { return $false }
+  return ($path -like $pattern)
+}
+# Devuelve $true si algun elemento de $list hace Test-Pattern con $pattern.
 function Match-Any($list, $pattern) {
-  foreach ($item in $list) { if ($item -like $pattern) { return $true } }
+  foreach ($item in $list) { if (Test-Pattern $item $pattern) { return $true } }
   return $false
 }
 
@@ -82,25 +88,33 @@ $hayBlastFalta = $false
 $hayBlastAviso = $false
 
 foreach ($entry in $manifest) {
-  # Chequear si el area fue tocada.
-  $areaMatch = $false
-  foreach ($pat in $entry.fuente) {
-    if (Match-Any $changed $pat) { $areaMatch = $true; break }
+  # Chequear si el area fue tocada (respetando 'excluye').
+  $tocados = @()
+  foreach ($f in $changed) {
+    $enFuente = $false
+    foreach ($pat in $entry.fuente) { if (Test-Pattern $f $pat) { $enFuente = $true; break } }
+    if ($enFuente -and $entry.excluye) {
+      foreach ($ex in $entry.excluye) { if (Test-Pattern $f $ex) { $enFuente = $false; break } }
+    }
+    if ($enFuente) { $tocados += $f }
   }
-  if (-not $areaMatch) { continue }
+  if ($tocados.Count -eq 0) { continue }
+  $quienes = ($tocados | Select-Object -First 3) -join ', '
 
   # docs_bloquea: BLOQUEA si falta alguno.
   foreach ($tgt in $entry.doc_bloquea) {
     if (-not (Match-Any $changed $tgt)) {
-      Block "[$($entry.nombre)] tocaste $($entry.fuente -join '/') sin $tgt ($($entry.desc)). Rol: $($entry.rol) -> pasalo al escribano."
+      Block "[$($entry.nombre)] tocaste $quienes sin $tgt ($($entry.desc)). Rol: $($entry.rol) -> pasalo al escribano."
       $hayBlastFalta = $true
     }
   }
 
-  # doc_avisa: AVISA si falta alguno.
+  # doc_avisa: AVISA si falta alguno. El aviso local se asume bypaseable:
+  # auditar-radius.ps1 lo re-verifica en el CI (rango del PR).
   foreach ($tgt in $entry.doc_avisa) {
     if (-not (Match-Any $changed $tgt)) {
-      Note "[$($entry.nombre)] considera actualizar $tgt ($($entry.desc)). Rol: $($entry.rol)."
+      $extra = ""; if ($entry.mensaje) { $extra = " $($entry.mensaje)." }
+      Note "[$($entry.nombre)] considera actualizar $tgt ($($entry.desc)). Rol: $($entry.rol).$extra El CI re-verifica esto."
       $hayBlastAviso = $true
     }
   }

@@ -196,17 +196,25 @@ El verificador corre, en orden:
 ### Paso 3 — Push (el CI **bloquea**)
 
 Al hacer `git push`, GitHub corre el **CI** (`.github/workflows/tests.yml`). Si algo falla, el
-push queda **en rojo**. Es el respaldo **que nadie puede saltar** desde su máquina. Cuatro jobs:
+push queda **en rojo**. Es el respaldo **que nadie puede saltar** desde su máquina. Cinco jobs:
 
 1. **`lint`** (Ubuntu): `ruff check` (basura) **y** `ruff format --check` (formato canónico).
 2. **`docs-graph`** (Ubuntu, pwsh): `tools/auditar.ps1 -Bloquea` — integridad del grafo de
    `product/`+`engineering/` (frontmatter, wikilinks, criterios). No necesita Python; solo lee los
    `.md`. Ver [ADR 0016](decisions/0016-gate-grafo-documentacion.md).
-3. **`pytest`** (Windows, Python 3.10 / 3.11 / 3.12): toda la suite de tests, en la plataforma
+3. **`audit`** (Ubuntu, pwsh, solo PRs): `tools/auditar-radius.ps1` — el **blast-radius §8 sobre
+   el rango del PR** (ADR 0019, homologado del starter v0.5.0). Cierra la ventana de "PR con docs
+   desfasadas" que el hook de sesión (solo working tree) y `verificar.ps1` (push local, saltable
+   con `--no-verify`) no cubren.
+4. **`pytest`** (Windows, Python 3.10 / 3.11 / 3.12): toda la suite de tests, en la plataforma
    objetivo del proyecto y en las tres versiones soportadas.
-4. **`visual-smoke`** (Ubuntu, Python 3.12): screenshot del Paso 0 de la UI con Playwright
+5. **`visual-smoke`** (Ubuntu, Python 3.12): screenshot del Paso 0 de la UI con Playwright
    (Chromium headless); falla si el layout se movió respecto al baseline ([ADR 0012](decisions/0012-playwright-smoke-visual-ui.md)).
    Ubuntu es el entorno consistente que actúa como fuente de verdad del baseline.
+
+> **Regla anti-bypass (ADR 0019):** un job de CI solo es **muro** si está marcado *required
+> check* en el ruleset de master; un rojo no-requerido deja pasar el merge igual. Todo aviso
+> local se asume bypaseable por diseño — lo que importa se re-verifica aquí como requerido.
 
 ### Las tres barreras, juntas
 
@@ -236,10 +244,13 @@ depender de que invoques nada. La mueven los **hooks de sesión** (`Stop`) en `.
   **Nota sobre las dos ventanas:** este hook evalúa `git status --porcelain` (cambios sin commitear).
   Si committeas código sin sus docs, el working tree queda limpio y el hook ya no dispara; el drift
   lo atrapa `verificar.ps1` al hacer push. Para que nada se pierda: commitea código y docs juntos.
-- **mariana-stop** → si tocaste `viz/` (HUD) o `ui/` (Streamlit), frena el cierre y manda hacer el
-  **QA visual** (abrir `fantasma ui` / mirar el HUD) antes de cerrar. Es un checkpoint que vuelve al PO:
-  **no detecta solo** si algo se ve mal (límite semántico), solo obliga a mirarlo. Marca el diff visual
-  revisado (`.claude/.mariana-marker`) para no re-pedir lo mismo. Ver [ADR 0011](decisions/0011-cablear-mariana-no-charbel.md).
+- **mariana-stop** → si tocaste áreas visuales (rol `Mariana` en el manifiesto: `viz/`, `ui/`),
+  exige **evidencia verificable en `qa_runs/`** posterior al cambio (screenshots, logs de la corrida)
+  antes de dejar cerrar — un veredicto de QA sin artefacto **no vale** (ADR 0019, homologado del
+  starter v0.5.0; el "probé clic por clic" sin rastro ya falló aquí). Sigue siendo checkpoint que
+  vuelve al PO: **no detecta solo** si algo se ve mal (límite semántico), obliga a mirar y a dejar
+  rastro. El marcador `.claude/.mariana-marker` queda como respaldo para el caso raro de aprobar
+  sin artefacto. Ver [ADR 0011](decisions/0011-cablear-mariana-no-charbel.md).
 
 Ambos son **auto-terminantes**: bloquean solo mientras falte el paso. Es poka-yoke: *el sistema no te
 deja olvidar; y si algo se cuela, el bloqueo del push (doc-gate §8) + git (todo reversible) te dejan corregir.*

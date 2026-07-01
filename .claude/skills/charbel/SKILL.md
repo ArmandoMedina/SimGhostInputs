@@ -43,4 +43,9 @@ Modelo según la tarea:
 - **haiku** — correr tests y reportar el resultado (mecánico, sin razonamiento).
 - **sonnet** — juzgar una anomalía de telemetría, interpretar un fallo no obvio, comparar resultados antes y después de un cambio en `core/`.
 
-El orquestador pasa esta brief como contexto al spawnear el subagente.
+El orquestador pasa esta brief como contexto al spawnear el subagente. Ojo: los skills **no**
+son `subagent_type` — se spawnea un subagente general con este `SKILL.md` + la tarea en el prompt.
+
+## Entorno (lecciones pagadas — Windows/PS 5.1)
+
+Artefactos de corridas (CSVs, reportes) a `qa_runs/charbel-<fecha>/`; el veredicto a HANDOFF/CHANGELOG citando la corrida. El material real vive en una **ruta con espacios** (ver `docs/recursos-del-proyecto.md`) — siempre entre comillas. Sin `&&`, `head`, `tail`. Recetario completo: [`docs/entorno-windows-powershell51.md`](../../../docs/entorno-windows-powershell51.md). Y **nada de memorias: todo al repo** (un hook lo bloquea).
