@@ -509,6 +509,11 @@ async def render(state, navigate):
                         ui.label("✓ Video guardado: %s" % os.path.basename(_out_path)).classes(
                             "font-bold"
                         ).style("color:var(--success)")
+                        if isinstance(_job.result, dict):
+                            ui.label(
+                                "Codificado con %s · %.0fs"
+                                % (_job.result["encoder"], _job.result["duration_s"])
+                            ).classes("text-sm opacity-60")
                         if _z_score is not None:
                             ui.label(
                                 "Calidad de sincronia: %s · offset %.2f s"

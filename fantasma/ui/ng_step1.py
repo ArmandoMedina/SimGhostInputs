@@ -223,6 +223,14 @@ async def render(state, navigate):
             if ref_state["laps"] and len(ref_state["laps"]) > 1:
                 _render_lap_selector(ref_lap_col, ref_state, "ref")
 
+            with ui.expansion(
+                "¿No tienes vuelta de referencia externa?", icon="help_outline"
+            ).classes("text-xs opacity-70 mt-1"):
+                ui.label(
+                    "Puedes cargar el mismo CSV como Referencia y como Piloto, "
+                    "y elegir vueltas distintas — así te comparas contra tu mejor vuelta del mismo archivo."
+                )
+
         # ── Panel derecho: Driver ────────────────────────────────────────
         with ui.element("div").classes("upload-panel"):
             ui.html(

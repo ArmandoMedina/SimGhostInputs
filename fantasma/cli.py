@@ -364,7 +364,7 @@ def cmd_compose(args):
             scale=args.scale,
             lap_duration=lap_duration,
         )
-    print("-> %s" % out)
+    print("-> %s  [%s, %.0fs]" % (out["path"], out["encoder"], out["duration_s"]))
 
 
 def cmd_pacenotes(args):

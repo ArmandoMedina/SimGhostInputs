@@ -5,6 +5,7 @@ import re
 import shutil
 import subprocess
 import tempfile
+import time
 
 POSITIONS = {
     "top-left": ("0", "0"),
@@ -245,6 +246,8 @@ def compose_video(
         audio_filter = ";" + _audio_mix_filter(_has_audio(ffprobe, video))
         audio_maps = ["-map", "[aout]"]
 
+    _t0 = time.time()
+
     if lap_duration:
         # Modo recorte: seek rápido al offset, output limitado a la vuelta.
         # El overlay empieza en t=0 del clip resultante (no necesita setpts).
@@ -328,4 +331,5 @@ def compose_video(
     else:
         subprocess.run(cmd, check=True)
 
-    return output
+    _enc_name = "h264_nvenc" if use_nvenc else "libx264"
+    return {"path": output, "encoder": _enc_name, "duration_s": round(time.time() - _t0, 1)}

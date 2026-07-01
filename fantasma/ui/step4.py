@@ -353,7 +353,7 @@ def render():
         elif _cp_err:
             st.error("Error: %s" % _cp_err)
         else:
-            st.success("✓ Video guardado: `%s`" % os.path.basename(_cp_result))
+            st.success("✓ Video guardado: `%s`" % os.path.basename(_cp_result["path"]))
             _z_score = st.session_state.get("_autosync_z")
             if _z_score is not None:
                 st.info(
