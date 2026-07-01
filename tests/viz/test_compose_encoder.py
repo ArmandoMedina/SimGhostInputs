@@ -4,7 +4,7 @@ Tanda A cambio compose_video() para retornar dict en lugar de string.
 Estos tests verifican el contrato: {path, encoder, duration_s}.
 """
 
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 
 def test_compose_video_returns_dict_with_encoder(tmp_path):
@@ -17,9 +17,11 @@ def test_compose_video_returns_dict_with_encoder(tmp_path):
     open(video, "wb").close()
     open(overlay, "wb").close()
 
-    with patch("shutil.which", return_value="/usr/bin/ffmpeg"), \
-         patch("fantasma.viz.compose._nvenc_available", return_value=False), \
-         patch("subprocess.run") as mock_run:
+    with (
+        patch("shutil.which", return_value="/usr/bin/ffmpeg"),
+        patch("fantasma.viz.compose._nvenc_available", return_value=False),
+        patch("subprocess.run") as mock_run,
+    ):
         mock_run.return_value = MagicMock(returncode=0)
         result = compose_video(video, overlay, output)
 
@@ -41,9 +43,11 @@ def test_compose_video_reports_nvenc_when_available(tmp_path):
     open(video, "wb").close()
     open(overlay, "wb").close()
 
-    with patch("shutil.which", return_value="/usr/bin/ffmpeg"), \
-         patch("fantasma.viz.compose._nvenc_available", return_value=True), \
-         patch("subprocess.run") as mock_run:
+    with (
+        patch("shutil.which", return_value="/usr/bin/ffmpeg"),
+        patch("fantasma.viz.compose._nvenc_available", return_value=True),
+        patch("subprocess.run") as mock_run,
+    ):
         mock_run.return_value = MagicMock(returncode=0)
         result = compose_video(video, overlay, output)
 
