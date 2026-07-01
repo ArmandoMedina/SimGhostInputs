@@ -58,8 +58,8 @@ Sistema (la UI detecta condiciones de aviso y las presenta al usuario en el paso
 - `tests/ui/test_step4_ffmpeg.py` · `test_paso4_avisa_si_falta_ffmpeg` — aviso de ffmpeg ausente en Paso 4.
 
 ### NiceGUI (v2.0)
-- `tests/ui/test_ng_step2.py` — avisos del motor de `summary["avisos"]` visibles en el Paso 2 NiceGUI — **pendiente de crear**.
-- `tests/ui/test_ng_step4.py` — aviso de ffmpeg ausente en el Paso 4 NiceGUI — **pendiente de crear**.
+- `tests/ui/test_ng_step2.py` — avisos del motor de `summary["avisos"]` visibles en el Paso 2 NiceGUI.
+- `tests/ui/test_ng_step4.py` — aviso de ffmpeg ausente en el Paso 4 NiceGUI.
 
 ## Relacionado con
 - [[Interfaz de usuario]]

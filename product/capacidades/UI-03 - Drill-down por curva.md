@@ -62,7 +62,7 @@ Usuario que revisa el Paso 2 de `fantasma ui` tras comparar una vuelta contra un
 - `tests/core/test_coaching.py`.
 
 ### NiceGUI (v2.0)
-- `tests/ui/test_ng_step2.py` — drill-down por curva NiceGUI: selección por mayor pérdida y omisión de canales ausentes — **pendiente de crear**.
+- `tests/ui/test_ng_step2.py` — drill-down por curva NiceGUI: selección por mayor pérdida y omisión de canales ausentes.
 - `tests/core/test_coaching.py` — la lógica de `corner_coaching(row, trace)` es compartida por ambas UIs.
 
 ## Relacionado con

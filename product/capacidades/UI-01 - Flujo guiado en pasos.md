@@ -66,7 +66,7 @@ Usuario (piloto o ingeniero de datos) que abre la app con `fantasma ui` (Streaml
 
 ### NiceGUI (v2.0)
 - `tests/ui/test_ng_step0.py` · `test_step0_hero_visible`, `test_step0_flow_cards_visible`, `test_step0_question_label`, `test_step0_start_button_visible` — Paso 0 muestra el hero, las tres tarjetas de flujo y el botón «Empezar».
-- `tests/ui/test_ng_step1.py` — Paso 1 (Importar) — **pendiente de crear**.
+- `tests/ui/test_ng_step1.py` — Paso 1 (Importar).
 - Cobertura de navegación entre pasos y `_step_done` en NiceGUI — **pendiente**.
 
 ## Relacionado con
