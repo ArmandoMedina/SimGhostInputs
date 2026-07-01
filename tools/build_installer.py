@@ -35,6 +35,8 @@ def main():
             print(f"Limpiado: {d}/")
 
     # Empaquetar con nicegui-pack
+    # Entry point: main_gui.py (wrapper sin relative imports).
+    # ng_app.py usa "from . import ..." que falla como __main__ en PyInstaller.
     cmd = [
         "nicegui-pack",
         "--onedir",
@@ -43,7 +45,7 @@ def main():
         "--windowed",  # sin terminal visible
         "--icon",
         "docs/icon.ico",  # icono (si existe; se quita si no esta)
-        "fantasma/ui/ng_app.py",
+        "main_gui.py",
     ]
     # Si no hay icono, quitar el flag
     if not os.path.exists("docs/icon.ico"):
