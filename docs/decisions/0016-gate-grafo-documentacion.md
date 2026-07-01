@@ -88,4 +88,8 @@ y se cablea en las barreras existentes. No se introducen archivos de auto-firma.
 - Al tocar las barreras (`verificar.ps1`, CI) este cambio actualiza `docs/flujo-de-trabajo.md` en el
   mismo commit (doc-gate §8: barreras → su doc dueño).
 - **Pendiente:** granularidad `-PorCommit` (auditar commit por commit en un rango) si el flujo lo
-  pide; hoy basta el modo árbol y el modo `-Range`. Backport a `project-starter` en la Fase 4.
+  pide; hoy basta el modo árbol y el modo `-Range`. ~~Backport a `project-starter` en la Fase 4.~~
+  **Enmienda 2026-07-01:** el backport se cumplió — el auditor ascendió al starter (su ADR 0032,
+  release v0.5.0) y la vuelta de esa homologación se adoptó aquí en el
+  [ADR 0019](0019-adopcion-homologacion-starter-v0.5.0.md). El `-PorCommit` llegó de regreso
+  en `tools/auditar-radius.ps1`.
