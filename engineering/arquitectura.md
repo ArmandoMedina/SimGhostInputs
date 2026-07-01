@@ -23,6 +23,8 @@ openpyxl. Todo lo pesado vive en **extras opcionales** que **degradan con gracia
 | `overlay` | HUD de video | Pillow, matplotlib, numpy |
 | `sync` | auto-sync video/telemetría | scipy, numpy |
 | `ui` | interfaz Streamlit | streamlit, pandas |
+| `ui-ng` | interfaz NiceGUI v2.0 | nicegui, pywebview, pandas |
+| `voice` | coaching de voz (pace notes) | edge-tts |
 
 Es uno de los [principios de diseño](../PRODUCT_BRIEF.md) no negociables: el núcleo funciona en
 cualquier Python ≥ 3.10; cada función avanzada se instala solo si se necesita.
@@ -47,8 +49,14 @@ fantasma/
     compose.py     composición con ffmpeg (NVENC si hay GPU NVIDIA)
     sync.py        auto-detección de offset por correlación de audio
     report.py      reporte Markdown + CSVs de salida
-  ui/          INTERFAZ — Streamlit, opcional
-    app.py         router; step0-4.py los pasos; _helpers.py compartido
+    pacenotes.py   generador de pack de pace notes CrewChief (tonos + voz)
+    hud_preview.py preview reactiva del HUD para la UI NiceGUI
+  ui/          INTERFAZ — NiceGUI v2.0 (principal) + Streamlit (legacy), opcional
+    ng_app.py      entry point NiceGUI v2.0 (router principal, CSS global)
+    ng_state.py    AppState proxy sobre app.storage.client
+    ng_helpers.py  constantes, CSS vars, helpers compartidos
+    ng_step0-4.py  los pasos del wizard NiceGUI
+    app.py         router; step0-4.py los pasos; _helpers.py compartido (Streamlit legacy)
   cli.py       PUNTO DE ENTRADA (consola `fantasma`)
 ```
 
@@ -64,7 +72,8 @@ La UI es una capa opcional sobre el CLI; todo lo que hace la UI se puede hacer e
 | `fantasma overlay` | genera el HUD `.webm` con canal alfa | viz (`overlay`) |
 | `fantasma compose` | superpone el HUD sobre el video con ffmpeg | viz |
 | `fantasma wear` | medidor de desgaste acumulable de un stint | core |
-| `fantasma ui` | abre la interfaz Streamlit en localhost | ui (`ui`) |
+| `fantasma-ng` | abre la interfaz NiceGUI v2.0 en ventana de escritorio nativa | ui (`ui-ng`) |
+| `fantasma ui` | abre la interfaz Streamlit en localhost (legacy, sigue disponible) | ui (`ui`) |
 
 ## Flujo de datos (runtime)
 
@@ -91,6 +100,8 @@ del modelo y el remuestreo en [`../docs/formato-datos.md`](../docs/formato-datos
 - Desgaste acumulable → [ADR 0004](../docs/decisions/0004-desgaste-acumulable.md), [ADR 0009](../docs/decisions/0009-unidad-desgaste-acumulado.md)
 - HUD (jerarquía visual, sin leyenda) → [ADR 0005](../docs/decisions/0005-indicadores-instantaneos.md)–[ADR 0007](../docs/decisions/0007-hud-sin-leyenda.md)
 - UI Streamlit (front custom diferido a v2.0) → [ADR 0010](../docs/decisions/0010-framework-ui-streamlit.md)
+- Framework UI: NiceGUI (enmienda al ADR 0010) → [ADR 0018](../docs/decisions/0018-framework-ui-nicegui.md)
+- CrewChief Pace Notes → [ADR 0002](../docs/decisions/0002-crewchief-pacenotes.md)
 
 ## Relacionado con
 - [[pruebas]]

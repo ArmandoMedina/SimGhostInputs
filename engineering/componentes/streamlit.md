@@ -7,6 +7,8 @@ estado: vigente
 
 # Streamlit
 
+> **Nota (v2.0):** Streamlit es ahora la UI **legacy** durante la transición a [[nicegui]] (NiceGUI v2.0, ver [ADR 0018](../../docs/decisions/0018-framework-ui-nicegui.md)). Se mantiene funcional (`fantasma ui`) mientras la UI NiceGUI (`fantasma-ng`) es la principal.
+
 ## Propósito
 Interfaz gráfica local (extra opcional `ui`). Es una **capa delgada sobre el CLI** ("CLI primero"): todo lo que hace la UI se puede hacer en terminal. Corre en localhost; los datos nunca salen de la máquina.
 
@@ -27,5 +29,6 @@ Interfaz gráfica local (extra opcional `ui`). Es una **capa delgada sobre el CL
 - Streamlit en v1.0; evaluar front de escritorio custom diferido a v2.0 ([ADR 0010](../../docs/decisions/0010-framework-ui-streamlit.md)). Restricción heredada: mantener `core/` desacoplado de la UI.
 
 ## Relacionado con
+- [[nicegui]] (sucesor, UI principal en v2.0)
 - [[arquitectura]]
 - [Patrones de UX](../../docs/ux-patterns.md)

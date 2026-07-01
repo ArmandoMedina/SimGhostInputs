@@ -7,6 +7,10 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/). Versionado
 ### Añadido
 - **CrewChief Pace Notes (MVP)**: nuevo comando `fantasma pacenotes` para generar `metadata.json` + WAVs desde `corners_detected.json` y `corners_compare.csv`. El modo base (`--mode tones`) crea tonos por hito de curva sin dependencias externas adicionales; el extra opcional `[voice]` añade `edge-tts` para frases de voz. Incluye tests unitarios del generador WAV y smoke CLI del pack.
 - **Pace Notes — plan anti-saturación y preview en video**: `fantasma pacenotes` ahora escribe `plan.json` con las señales elegidas/omitidas por curva y usa un plan inteligente por defecto (máximo 3 eventos por curva, separación mínima entre sonidos, countdown compacto solo donde cabe). `fantasma compose` acepta `--pace-notes-dir` para mezclar esos WAVs con el audio del video y previsualizar cómo se sentirían en carrera, sincronizados por distancia usando `--driver`.
+- **UI NiceGUI v2.0**: nuevo frontend de escritorio nativo (pywebview) que sustituye a Streamlit como UI principal. Entry point `fantasma-ng`. Módulos: `ng_app.py` (router), `ng_state.py` (AppState), `ng_helpers.py`, `ng_step0.py`–`ng_step4.py` (wizard de 5 pasos portado de Streamlit).
+- **Preview reactiva del HUD en Paso 4** (`viz/hud_preview.py`): actualización en tiempo real al cambiar posición, escala y overlay.
+- **Empaquetado Windows**: `tools/build_installer.py` (nicegui-pack) y `tools/installer.iss` (Inno Setup) para instalador doble-clic.
+- **CI**: job `build-installer` (tags `v*`) y migración de `visual-smoke` a import smoke NiceGUI.
 
 ## [1.0.0] - 2026-06-30
 
