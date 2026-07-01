@@ -43,3 +43,15 @@ async def test_step0_start_button_visible(user):
 
     await user.open("/")
     await user.should_see("Empezar")
+
+
+@pytest.mark.asyncio
+async def test_step0_no_ffmpeg_warning_without_flow_chosen(user):
+    """No muestra aviso ffmpeg hasta que el usuario elige un flujo explícitamente."""
+    from unittest.mock import patch
+
+    from fantasma.ui.ng_app import main_page  # noqa: F401
+
+    with patch("fantasma.ui.ng_step0.shutil.which", return_value=None):
+        await user.open("/")
+        await user.should_not_see("ffmpeg no detectado")
