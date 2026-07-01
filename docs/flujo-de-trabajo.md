@@ -196,17 +196,25 @@ El verificador corre, en orden:
 ### Paso 3 — Push (el CI **bloquea**)
 
 Al hacer `git push`, GitHub corre el **CI** (`.github/workflows/tests.yml`). Si algo falla, el
-push queda **en rojo**. Es el respaldo **que nadie puede saltar** desde su máquina. Cuatro jobs:
+push queda **en rojo**. Es el respaldo **que nadie puede saltar** desde su máquina. Cinco jobs:
 
 1. **`lint`** (Ubuntu): `ruff check` (basura) **y** `ruff format --check` (formato canónico).
 2. **`docs-graph`** (Ubuntu, pwsh): `tools/auditar.ps1 -Bloquea` — integridad del grafo de
    `product/`+`engineering/` (frontmatter, wikilinks, criterios). No necesita Python; solo lee los
    `.md`. Ver [ADR 0016](decisions/0016-gate-grafo-documentacion.md).
-3. **`pytest`** (Windows, Python 3.10 / 3.11 / 3.12): toda la suite de tests, en la plataforma
+3. **`audit`** (Ubuntu, pwsh, solo PRs): `tools/auditar-radius.ps1` — el **blast-radius §8 sobre
+   el rango del PR** (ADR 0019, homologado del starter v0.5.0). Cierra la ventana de "PR con docs
+   desfasadas" que el hook de sesión (solo working tree) y `verificar.ps1` (push local, saltable
+   con `--no-verify`) no cubren.
+4. **`pytest`** (Windows, Python 3.10 / 3.11 / 3.12): toda la suite de tests, en la plataforma
    objetivo del proyecto y en las tres versiones soportadas.
-4. **`visual-smoke`** (Ubuntu, Python 3.12): screenshot del Paso 0 de la UI con Playwright
+5. **`visual-smoke`** (Ubuntu, Python 3.12): screenshot del Paso 0 de la UI con Playwright
    (Chromium headless); falla si el layout se movió respecto al baseline ([ADR 0012](decisions/0012-playwright-smoke-visual-ui.md)).
    Ubuntu es el entorno consistente que actúa como fuente de verdad del baseline.
+
+> **Regla anti-bypass (ADR 0019):** un job de CI solo es **muro** si está marcado *required
+> check* en el ruleset de master; un rojo no-requerido deja pasar el merge igual. Todo aviso
+> local se asume bypaseable por diseño — lo que importa se re-verifica aquí como requerido.
 
 ### Las tres barreras, juntas
 

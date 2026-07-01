@@ -235,7 +235,7 @@ Cada hecho vive en **un** documento. Los demás enlazan, no duplican.
 
 > `CHANGELOG.md` se actualiza **siempre** que el cambio sea liberable; se omite abajo por brevedad.
 
-> **Espejo ejecutable de esta tabla: `tools/blast-radius.json`.** Cada entrada de la tabla tiene su par en ese manifiesto, que consumen `verificar.ps1` (gate de push) y `escribano-stop.ps1` (hook de sesión). Para agregar un área: edita el JSON — nada más. Esta prosa es la explicación; el JSON es la ley que el gate ejecuta.
+> **Espejo ejecutable de esta tabla: `tools/blast-radius.json`.** Cada entrada de la tabla tiene su par en ese manifiesto, que consumen `verificar.ps1` (gate de push), `escribano-stop.ps1` (hook de sesión) y `auditar-radius.ps1` (CI, rango del PR). Para agregar un área: edita el JSON — nada más. Esta prosa es la explicación; el JSON es la ley que el gate ejecuta. Convenciones del matcher (starter v0.5.0): un patrón **sin `/`** solo casa archivos en la **raíz** del repo; `excluye` (opcional) resta rutas; `mensaje` (opcional) se anexa al aviso.
 
 | Cambio | Documentos a actualizar | Rol especialista que valida |
 | :-- | :-- | :-- |
@@ -251,8 +251,11 @@ Cada hecho vive en **un** documento. Los demás enlazan, no duplican.
 | Término o concepto nuevo (o renombrado) | `docs/glosario.md` (definición canónica) · busca el término en los demás docs para dejarlo consistente | _solo Reviewer_ (consistencia) |
 | Cambio en las barreras o la gobernanza (linter, formato, hook, CI, tests, doc-gate) | `docs/flujo-de-trabajo.md` · `docs/benchmark-linter.md` si cambia la herramienta · `.github/workflows/tests.yml` si cambia el CI | **PO / Armando** |
 | Capacidad/dominio/módulo nuevo, o cambio del motor que afecta una capacidad | la nota de `product/` correspondiente (`estado`, criterios de aceptación, wikilinks) · `engineering/` si cambia un algoritmo o modelo | **Armando** (lo verifica `auditar.ps1`) |
+| Archivo **nuevo suelto en la raíz** del repo | clasifícalo en su carpeta, decláralo área en el manifiesto, o `.gitignore` si es artefacto (área `raiz` — la raíz no es tierra de nadie) | **Armando** |
 
-> **La integridad de `product/`+`engineering/` se gatea determinísticamente.** Igual que `pytest` hace cumplir el código, [`tools/auditar.ps1`](docs/decisions/0016-gate-grafo-documentacion.md) audita el grafo de docs: **BLOQUEA** frontmatter ausente/incompleto, wikilinks rotos y capacidades `vigente` sin criterios Gherkin; **avisa** lo que es juicio (capacidad vigente sin test citado, notas huérfanas). Lo corre `verificar.ps1` (local) y el CI (job `docs-graph`, infranqueable). Modulado por estado: `en_definicion` solo exige frontmatter + enlaces. No hay archivos de auto-firma: el gate lee el artefacto, no confía en que un agente declare "ya validé" ([ADR 0016](docs/decisions/0016-gate-grafo-documentacion.md)).
+> **La integridad de `product/`+`engineering/` se gatea determinísticamente.** Igual que `pytest` hace cumplir el código, [`tools/auditar.ps1`](docs/decisions/0016-gate-grafo-documentacion.md) audita el grafo de docs: **BLOQUEA** frontmatter ausente/incompleto, wikilinks rotos y capacidades `vigente` sin criterios Gherkin; **avisa** lo que es juicio (capacidad vigente sin test citado, notas huérfanas). Lo corre `verificar.ps1` (local) y el CI (job `docs-graph`). Modulado por estado: `en_definicion` solo exige frontmatter + enlaces. No hay archivos de auto-firma: el gate lee el artefacto, no confía en que un agente declare "ya validé" ([ADR 0016](docs/decisions/0016-gate-grafo-documentacion.md)).
+
+> **El blast-radius también se audita en CI** (job `audit`, `tools/auditar-radius.ps1` sobre el rango del PR — ADR 0019): cierra la ventana de "PR con docs desfasadas" que el hook (working tree) y `verificar.ps1` (push local, saltable) no cubren. **Regla anti-bypass:** todo aviso local se asume bypaseable; un job de CI solo es muro si está marcado **required check** en el ruleset de master (`audit`, `docs-graph`, `lint`, `pytest`).
 
 ### Roles que validan
 
