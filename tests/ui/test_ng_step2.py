@@ -22,6 +22,7 @@ pytest.importorskip(
 async def test_step2_heading_visible(user):
     """El Paso 2 muestra su heading aunque no haya datos cargados."""
     from nicegui import ui
+
     from fantasma.ui.ng_app import main_page  # noqa: F401
 
     await user.open("/")
@@ -35,6 +36,7 @@ async def test_step2_heading_visible(user):
 async def test_step2_guard_without_data(user):
     """Sin ref_lap, el Paso 2 muestra mensaje pidiendo ir al Paso 1."""
     from nicegui import ui
+
     from fantasma.ui.ng_app import main_page  # noqa: F401
 
     await user.open("/")

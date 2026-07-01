@@ -198,7 +198,9 @@ async def render(state, navigate):
         except Exception as se:
             sync_result_area.clear()
             with sync_result_area:
-                ui.label(f"Error en auto-sync: {se}").classes("text-sm").style("color:var(--danger)")
+                ui.label(f"Error en auto-sync: {se}").classes("text-sm").style(
+                    "color:var(--danger)"
+                )
             return
 
         sync_result_area.clear()
@@ -251,7 +253,9 @@ async def render(state, navigate):
 
                     gz = sync_gray_zone_warning(_z)
                     if gz:
-                        ui.label("⚠ " + gz[0].upper() + gz[1:]).classes("text-sm").style("color:var(--warning)")
+                        ui.label("⚠ " + gz[0].upper() + gz[1:]).classes("text-sm").style(
+                            "color:var(--warning)"
+                        )
                 except ImportError:
                     pass
 
@@ -476,7 +480,11 @@ async def render(state, navigate):
                 if job_holder["job"]:
                     job_holder["job"].cancel()
 
-            cancel_btn = ui.button("Detener composicion", on_click=cancel).classes("btn-secondary").props("flat")
+            cancel_btn = (
+                ui.button("Detener composicion", on_click=cancel)
+                .classes("btn-secondary")
+                .props("flat")
+            )
 
         def poll():
             _job = job_holder["job"]
@@ -538,7 +546,9 @@ def _render_next_btn(state, current_step, navigate):
     flow = _FLOWS.get(state.flow_key, _FLOWS[_DEFAULT_FLOW])
     next_i = flow["next"].get(current_step)
     if next_i is None:
-        ui.label("Completaste todos los pasos de tu flujo!").classes("font-bold").style("color:var(--success)")
+        ui.label("Completaste todos los pasos de tu flujo!").classes("font-bold").style(
+            "color:var(--success)"
+        )
     else:
         ui.button(
             "Ir al Paso %d — %s →" % (next_i, _STEPS[next_i]),

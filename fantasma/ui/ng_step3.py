@@ -37,7 +37,9 @@ async def render(state, navigate):
 
     if state.ref_lap is None:
         ui.label("Primero carga los archivos en el Paso 1.").style("color:var(--warning)")
-        ui.button("← Ir al Paso 1", on_click=lambda: navigate(1)).classes("btn-secondary").props("flat")
+        ui.button("← Ir al Paso 1", on_click=lambda: navigate(1)).classes("btn-secondary").props(
+            "flat"
+        )
         return
 
     ref_lap = state.ref_lap
@@ -167,7 +169,9 @@ async def render(state, navigate):
                 if job_holder["job"]:
                     job_holder["job"].cancel()
 
-            cancel_btn = ui.button("Detener render", on_click=cancel).classes("btn-secondary").props("flat")
+            cancel_btn = (
+                ui.button("Detener render", on_click=cancel).classes("btn-secondary").props("flat")
+            )
 
         def poll():
             _job = job_holder["job"]
@@ -190,7 +194,9 @@ async def render(state, navigate):
                                 'Faltan dependencias. Ejecuta: pip install "fantasma-inputs[overlay]"'
                             ).style("color:var(--danger)")
                         else:
-                            ui.label(f"Error en el render: {_job.error}").style("color:var(--danger)")
+                            ui.label(f"Error en el render: {_job.error}").style(
+                                "color:var(--danger)"
+                            )
                     else:
                         state.last_overlay = _job.result
                         ui.label("✓ Overlay generado: %s" % os.path.basename(_job.result)).classes(
@@ -218,7 +224,9 @@ def _render_next_btn(state, current_step, navigate):
     flow = _FLOWS.get(state.flow_key, _FLOWS[_DEFAULT_FLOW])
     next_i = flow["next"].get(current_step)
     if next_i is None:
-        ui.label("Completaste todos los pasos de tu flujo!").classes("font-bold").style("color:var(--success)")
+        ui.label("Completaste todos los pasos de tu flujo!").classes("font-bold").style(
+            "color:var(--success)"
+        )
     else:
         ui.button(
             "Ir al Paso %d — %s →" % (next_i, _STEPS[next_i]),

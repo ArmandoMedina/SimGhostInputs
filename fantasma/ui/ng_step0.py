@@ -116,9 +116,9 @@ async def render(state, navigate):
 
     with ui.dialog() as csv_dialog, ui.card().style("max-width:500px"):
         ui.label("Formato CSV esperado").classes("font-bold text-lg mb-3")
-        ui.label(
-            "El CSV debe tener estas columnas (los nombres pueden variar):"
-        ).classes("text-sm mb-2")
+        ui.label("El CSV debe tener estas columnas (los nombres pueden variar):").classes(
+            "text-sm mb-2"
+        )
         ui.html(
             "<pre style='font-size:11px;background:#111;padding:12px;border-radius:4px'>"
             "Time,Distance,Speed,Throttle,Brake,Gear\n"

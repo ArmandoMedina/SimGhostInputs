@@ -181,7 +181,9 @@ async def main_page():
         for i, btn in enumerate(nav_buttons):
             _done = _step_done(state, i)
             _is_current = i == step
-            btn.text = ("✓ " + _all_step_labels[i]) if (_done and not _is_current) else _all_step_labels[i]
+            btn.text = (
+                ("✓ " + _all_step_labels[i]) if (_done and not _is_current) else _all_step_labels[i]
+            )
             if i == step:
                 btn.classes("nav-btn-active", remove="")
             else:
