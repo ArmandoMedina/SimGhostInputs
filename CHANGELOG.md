@@ -4,6 +4,9 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/). Versionado
 
 ## [Unreleased]
 
+### Añadido
+- **CrewChief Pace Notes (MVP)**: nuevo comando `fantasma pacenotes` para generar `metadata.json` + WAVs desde `corners_detected.json` y `corners_compare.csv`. El modo base (`--mode tones`) crea tonos por hito de curva sin dependencias externas adicionales; el extra opcional `[voice]` añade `edge-tts` para frases de voz. Incluye tests unitarios del generador WAV y smoke CLI del pack.
+
 ## [1.0.0] - 2026-06-30
 
 **Hito — pipeline AMS2 completo, documentado y probado.** `setup.ps1` validado en instalación limpia de Windows 11 (Hyper-V VM). Alcance declarado: AMS2, pipeline offline (análisis + overlay + compose), interfaz gráfica de 5 pasos. 142 tests en verde.

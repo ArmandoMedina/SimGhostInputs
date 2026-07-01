@@ -1,7 +1,9 @@
 """CLI de SimGhostInputs: fantasma laps | detect | compare"""
 
 import argparse
+import csv
 import json
+import os
 import sys
 
 from . import importers
@@ -241,8 +243,6 @@ def cmd_ui(args):
 
 
 def cmd_compose(args):
-    import os
-
     from .viz.compose import compose_video
 
     offset = args.offset
@@ -335,6 +335,73 @@ def cmd_compose(args):
         lap_duration=lap_duration,
     )
     print("-> %s" % out)
+
+
+def cmd_pacenotes(args):
+    from .viz.pacenotes import build_pack
+
+    data = _load_corners_json(args.corners)
+    corners = data["corners"]
+    rows = _load_compare_csv(args.compare)
+    outdir = args.output_dir or _default_pacenotes_outdir(data)
+    freqs = {"brake": args.brake_freq, "apex": args.apex_freq, "gas": args.gas_freq}
+    result = build_pack(
+        rows,
+        corners,
+        outdir,
+        mode=args.mode,
+        top=args.top,
+        lang=args.lang,
+        freqs=freqs,
+        duration=args.tone_duration,
+        volume=args.volume,
+    )
+    curves = _count_lost_curves(rows, args.top)
+    print("✓ %d curvas, %d archivos en %s" % (curves, len(result["files"]), result["outdir"]))
+
+
+def _load_corners_json(path):
+    with open(path, encoding="utf-8") as f:
+        data = json.load(f)
+    if isinstance(data, list):
+        return {"corners": data}
+    corners = data.get("corners")
+    if corners is None:
+        raise ValueError("el archivo de corners no contiene la clave 'corners'")
+    return data
+
+
+def _load_compare_csv(path):
+    with open(path, newline="", encoding="utf-8") as f:
+        return list(csv.DictReader(f))
+
+
+def _default_pacenotes_outdir(corners_data):
+    track = corners_data.get("track") or corners_data.get("trackName")
+    if not track:
+        track = input("Nombre exacto de pista en CrewChief/AMS2: ").strip()
+    if not track:
+        raise ValueError("se requiere nombre de pista o --output-dir")
+    return os.path.join(
+        os.path.expanduser("~"),
+        "Documents",
+        "CrewChiefV4",
+        "pace_notes",
+        "ams2",
+        track,
+    )
+
+
+def _count_lost_curves(rows, top):
+    losses = []
+    for row in rows:
+        try:
+            loss = float(row.get("time_lost", 0) or 0)
+        except ValueError:
+            loss = 0
+        if loss > 0:
+            losses.append(loss)
+    return min(len(losses), top)
 
 
 def cmd_wear(args):
@@ -539,6 +606,22 @@ def main(argv=None):
         "--map", action="append", help="columna=canal para CSV generico con --auto-sync"
     )
     sp.set_defaults(func=cmd_compose)
+
+    sp = sub.add_parser("pacenotes", help="generar pack de Pace Notes para CrewChief")
+    sp.add_argument("--corners", required=True, help="corners.json generado por fantasma detect")
+    sp.add_argument(
+        "--compare", required=True, help="corners_compare.csv generado por fantasma compare"
+    )
+    sp.add_argument("--top", type=int, default=5, help="solo las N curvas con mayor perdida")
+    sp.add_argument("--mode", choices=["tones", "voice", "both"], default="tones")
+    sp.add_argument("--lang", default="es-MX", help="idioma/voz para mode voice o both")
+    sp.add_argument("--output-dir", help="directorio destino del pack")
+    sp.add_argument("--brake-freq", type=float, default=880)
+    sp.add_argument("--apex-freq", type=float, default=440)
+    sp.add_argument("--gas-freq", type=float, default=220)
+    sp.add_argument("--tone-duration", type=float, default=0.12)
+    sp.add_argument("--volume", type=float, default=0.8)
+    sp.set_defaults(func=cmd_pacenotes)
 
     args = p.parse_args(argv)
     try:

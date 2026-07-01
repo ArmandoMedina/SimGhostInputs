@@ -33,6 +33,7 @@ Por eso el código se publica bajo **AGPL-3.0-or-later**: puedes usar, estudiar,
 - Compara piloto vs referencia **por distancia**: delta de tiempo continuo, Δ V-Min, Δ metro de frenada, tiempo perdido por curva.
 - Calcula indicadores de desgaste de goma: índice de deslizamiento (slip rueda vs velocidad real), activaciones de ABS/TCS por curva, temperatura media de gomas y combustible consumido.
 - Genera reporte en Markdown + CSVs de salida listos para graficar.
+- Genera packs de **Pace Notes para CrewChief** (`fantasma pacenotes`): tonos por hito de curva (frenada, ápex, gas) para escuchar referencias durante la siguiente vuelta.
 - **Overlay HUD animado** con canal alfa (VP9/WebM): velocímetro, gas/freno con color por ABS/TCS, delta continuo, marcha y distancia. Render paralelo en todos los cores.
 - **Sincronía automática video/telemetría** (`--auto-sync`): correlación cruzada del audio del motor (150–500 Hz) contra RPM/velocidad. Detecta el offset en ~30 s con precisión ~0.5 s. Valida la correlación (z-score ≥ 3σ) y verifica que no haya pausas de juego en el audio de la vuelta.
 - **Composición del video final** con NVENC automático si hay GPU NVIDIA disponible (3.7× más rápido que CPU en RTX 2060). El output es un clip recortado exactamente a la duración de la vuelta — sin re-codificar toda la sesión.
@@ -64,6 +65,7 @@ pip install -e ".[overlay]"               # + fantasma overlay (HUD de video)
 pip install -e ".[charts]"                # + fantasma compare con gráficas
 pip install -e ".[ui]"                    # + fantasma ui (interfaz gráfica local)
 pip install -e ".[sync]"                  # + fantasma compose --auto-sync (detección de offset)
+pip install -e ".[voice]"                 # + fantasma pacenotes --mode voice (edge-tts)
 pip install -e ".[full]"                  # todo lo anterior
 pip install -e ".[test]"                  # + correr la suite de tests (pytest); no lo instala setup.ps1
 ```
@@ -77,6 +79,7 @@ pip install -e ".[test]"                  # + correr la suite de tests (pytest);
 | `Pillow` | Python opcional | `fantasma overlay` — renderizado de frames auxiliares | `pip install Pillow` |
 | `streamlit` + `pandas` | Python opcional | `fantasma ui` — interfaz gráfica local | `pip install 'fantasma-inputs[ui]'` |
 | `scipy` | Python opcional | `fantasma compose --auto-sync` — detección automática de offset video/telemetría | `pip install 'fantasma-inputs[sync]'` |
+| `edge-tts` | Python opcional | `fantasma pacenotes --mode voice` — frases de voz para CrewChief | `pip install 'fantasma-inputs[voice]'` |
 | `ffmpeg` | Sistema opcional | Codificar `.webm`/`.mov` con canal alfa y `fantasma compose` (auto-detecta NVENC si hay GPU NVIDIA) | `winget install Gyan.FFmpeg` |
 | `gh` (GitHub CLI) | Sistema opcional | Publicar y gestionar el repositorio en GitHub | `winget install GitHub.cli` |
 
@@ -111,6 +114,10 @@ fantasma detect "referencia.csv" -o salida/
 # comparar tu vuelta contra la referencia
 fantasma compare --reference "referencia.csv" --driver "mi_vuelta.csv" -o salida/
 
+# pack de tonos para CrewChief con las 5 curvas donde más pierdes
+fantasma pacenotes --corners salida/corners_detected.json --compare salida/corners_compare.csv \
+    --top 5 --mode tones --output-dir "%USERPROFILE%\Documents\CrewChiefV4\pace_notes\ams2\nordschleife"
+
 # video HUD transparente para superponer sobre tu grabación
 fantasma overlay --reference "referencia.csv" --driver "mi_vuelta.csv" -o salida/
 
@@ -131,6 +138,10 @@ Salida de `compare`:
 - `curva_<ID>.png` — gráficas ghost por curva (hasta 5 paneles: velocidad / gas / freno / volante / G-lat) de las curvas donde más pierdes.
 - `frenada_<ID>.png` — zoom en las zonas de frenada: velocidad + freno + G-long con el punto de frenada de referencia vs el tuyo marcado.
 - `delta.csv` / `corners_compare.csv` — los datos, listos para graficar otra cosa.
+
+Salida de `pacenotes`:
+- `metadata.json` + WAVs (`{distancia}_0.wav`) listos para usar en `Documents\CrewChiefV4\pace_notes\ams2\<pista>\`.
+- Por defecto genera tonos: agudo para frenada, medio para ápex y grave para gas. El modo de voz (`--mode voice` o `both`) requiere `edge-tts` y ffmpeg.
 
 Salida de `overlay`:
 - `overlay.webm` — video HUD **con canal alfa** (VP9) sincronizado con el tiempo de tu vuelta. Arrástralo como pista superior en tu editor sobre la grabación real y alinea el segundo 0 con tu cruce de meta. También `--format prores` (ProRes 4444 .mov para Final Cut / DaVinci) o `--format png` (frames sueltos).

@@ -77,7 +77,22 @@ Genera `corners_detected.json`. Edítalo: añade `"name": "Curva del puente"` a 
 
 Ahí mismo puedes ajustar `"tolerances"` por curva: `vmin_kmh` y `brake_start_m` controlan cuándo el reporte marca avisos.
 
-## 6. Video con HUD transparente
+## 6. Pace Notes para CrewChief
+
+Después de comparar, puedes convertir las curvas donde más pierdes en un pack de audio para CrewChief:
+
+```
+fantasma pacenotes --corners salida/corners_detected.json --compare salida/corners_compare.csv \
+    --top 5 --mode tones --output-dir "%USERPROFILE%\Documents\CrewChiefV4\pace_notes\ams2\nordschleife"
+```
+
+El modo `tones` no usa red ni TTS: genera WAVs 24 kHz mono con un tono agudo en la frenada, uno medio en el ápex y uno grave en el punto de gas. CrewChief dispara cada archivo al cruzar el metro exacto de pista declarado en `metadata.json`.
+
+Si no pasas `--output-dir`, Fantasma intenta usar el campo `track` del JSON de curvas; si no existe, te pregunta el nombre exacto de pista que CrewChief/AMS2 espera. Para voz contextual instala `pip install "fantasma-inputs[voice]"` y usa `--mode voice` o `--mode both`; requiere ffmpeg para convertir el audio a WAV.
+
+Activa las Pace Notes dentro de CrewChief antes de salir a pista. Una vez activas, CrewChief reproduce los audios automáticamente en la siguiente vuelta.
+
+## 7. Video con HUD transparente
 
 > Para una descripción detallada de cada elemento visual del HUD (paneles, colores, franja de datos) consulta la [referencia del HUD](hud-reference.md).
 

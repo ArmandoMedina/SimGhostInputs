@@ -19,7 +19,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from fantasma.cli import _force_utf8_console, _overlay_progress, cmd_compare
+from fantasma.cli import _force_utf8_console, _overlay_progress, cmd_compare, cmd_pacenotes
 from fantasma.core.lap import Lap
 
 
@@ -112,3 +112,45 @@ def test_compare_avisa_driver_sin_distancia(monkeypatch, tmp_path):
     )
     with pytest.raises(ValueError, match="piloto no tiene canal de distancia"):
         cmd_compare(args)
+
+
+def test_pacenotes_cli_genera_pack(tmp_path):
+    corners = tmp_path / "corners.json"
+    compare = tmp_path / "corners_compare.csv"
+    out = tmp_path / "pace_notes"
+    corners.write_text(
+        """{
+  "corners": [
+    {
+      "id": "C01",
+      "name": "Hatzenbach",
+      "milestones": {
+        "brake": {"d": 1800},
+        "apex": {"d": 1847},
+        "gas": {"d": 1900}
+      }
+    }
+  ]
+}""",
+        encoding="utf-8",
+    )
+    compare.write_text(
+        "id,name,apex_d,time_lost\nC01,Hatzenbach,1847,0.4\n",
+        encoding="utf-8",
+    )
+    args = SimpleNamespace(
+        corners=str(corners),
+        compare=str(compare),
+        top=1,
+        mode="tones",
+        lang="es-MX",
+        output_dir=str(out),
+        brake_freq=880,
+        apex_freq=440,
+        gas_freq=220,
+        tone_duration=0.05,
+        volume=0.8,
+    )
+    cmd_pacenotes(args)
+    assert (out / "metadata.json").exists()
+    assert len(list(out.glob("*.wav"))) == 3
