@@ -102,6 +102,49 @@ def test_plan_tone_events_limits_dense_corner():
     assert any(s["reason"] == "too_close_in_corner" for s in plan["corners"][0]["skipped"])
 
 
+def test_voice_text_frenada_flag():
+    """flags='frenada' -> texto incluye 'Frena mas tarde'."""
+    from fantasma.viz.pacenotes import _voice_text
+
+    row = {"time_lost": 0.5, "flags": "frenada"}
+    text = _voice_text(row, "Hatzenbach")
+    assert "Frena mas tarde" in text
+    assert "Hatzenbach" in text
+    assert "0.5" in text
+
+
+def test_voice_text_vmin_flag():
+    """flags='vmin' -> texto incluye 'Sube la velocidad'."""
+    from fantasma.viz.pacenotes import _voice_text
+
+    row = {"time_lost": 0.3, "flags": "vmin"}
+    text = _voice_text(row, "Bergwerk")
+    assert "Sube la velocidad" in text
+    assert "Bergwerk" in text
+
+
+def test_voice_text_both_flags():
+    """flags='vmin+frenada' -> texto incluye ambas indicaciones."""
+    from fantasma.viz.pacenotes import _voice_text
+
+    row = {"time_lost": 0.8, "flags": "vmin+frenada"}
+    text = _voice_text(row, "Brunnchen")
+    assert "Frena mas tarde" in text
+    assert "apex" in text.lower()
+    assert "Brunnchen" in text
+
+
+def test_voice_text_no_flags():
+    """flags='' -> mensaje generico con 'Pierdes'."""
+    from fantasma.viz.pacenotes import _voice_text
+
+    row = {"time_lost": 0.2, "flags": ""}
+    text = _voice_text(row, "Caracciola")
+    assert "Pierdes" in text
+    assert "Caracciola" in text
+    assert "0.2" in text
+
+
 def test_render_pace_notes_track_places_cues(tmp_path):
     import wave
 

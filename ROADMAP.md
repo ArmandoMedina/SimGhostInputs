@@ -73,11 +73,11 @@ El criterio para llamarla v1.0 es que el pipeline offline esté **completo, docu
 - [ ] Subir el `.exe` a VirusTotal: detectar false positives de antivirus antes de publicar
 
 **Migración (post-spike):**
-- [ ] Skeleton NiceGUI: `ng_app.py` + sidebar con navegación de 5 pasos + gestión de estado
-- [ ] Portar pasos 0–4 a NiceGUI (mantener `app.py` Streamlit en paralelo hasta completar)
-- [ ] Preview reactiva del HUD en Paso 4 (el feature que justificó la migración)
-- [ ] Empaquetado: `nicegui-pack --onedir` + script `.iss` de Inno Setup
-- [ ] CI: job `build-installer` en `release.yml` → artefacto en GitHub Release
+- [x] Skeleton NiceGUI: `ng_app.py` + sidebar con navegación de 5 pasos + gestión de estado
+- [x] Portar pasos 0–4 a NiceGUI (mantener `app.py` Streamlit en paralelo hasta completar)
+- [x] Preview reactiva del HUD en Paso 4 (el feature que justificó la migración)
+- [x] Empaquetado: `nicegui-pack --onedir` + script `.iss` de Inno Setup
+- [x] CI: job `build-installer` en `release.yml` → artefacto en GitHub Release
 - [ ] Mockups con Claude Design antes de implementar cada paso
 
 ### Coaching de voz — CrewChief Pace Notes
@@ -97,11 +97,11 @@ El criterio para llamarla v1.0 es que el pipeline offline esté **completo, docu
 - **Modos:** `--mode tones` (default) · `--mode voice` · `--mode both`.
 
 **Cambios previstos:**
-- [ ] Módulo `fantasma/viz/pacenotes.py` (`generate_tone`, `generate_voice`, `build_pack`).
-- [ ] Comando `fantasma pacenotes --corners --compare --mode {tones|voice|both} --top --output-dir`.
-- [ ] Frases de voz basadas en los flags de `compare` (`late_brake`, `early_gas`, `d_vmin`).
-- [ ] Dependencia opcional `edge-tts` → `pip install 'fantasma-inputs[voice]'`.
-- [ ] Resolver el nombre de pista AMS2 (campo `Venue` del CSV o preguntar al usuario).
+- [x] Módulo `fantasma/viz/pacenotes.py` (`generate_tone`, `generate_voice`, `build_pack`).
+- [x] Comando `fantasma pacenotes --corners --compare --mode {tones|voice|both} --top --output-dir`.
+- [x] Frases de voz basadas en los flags de `compare` (`late_brake`, `early_gas`, `d_vmin`).
+- [x] Dependencia opcional `edge-tts` → `pip install 'fantasma-inputs[voice]'`.
+- [x] Resolver el nombre de pista AMS2 (campo `Venue` del CSV o preguntar al usuario).
 
 **QA antes de publicar:**
 - [ ] `--mode tones`: genera `metadata.json` + WAV de tonos sin instalar edge-tts.
