@@ -80,9 +80,9 @@ y empuja el update al browser sin rerun completo. Este es el patrón exacto que 
 preview reactiva del HUD.
 
 **Packaging oficial documentado.** `nicegui-pack` es un wrapper de PyInstaller mantenido por
-el mismo equipo de NiceGUI. Con `ui.run(native=False, reload=False)` la app levanta el servidor
-local, abre el browser del sistema automáticamente y sirve la UI en `http://localhost:PUERTO`.
-El `.exe` generado embebe Python y todas las deps — sin Python instalado en la máquina.
+el mismo equipo de NiceGUI. Con `ui.run(native=True, reload=False)` la app levanta el servidor
+local y abre una ventana pywebview — el usuario no ve localhost, no ve browser, no ve terminal.
+El `.exe` generado embebe Python y todas las deps — sin Python instalado en la maquina.
 
 **v3.0 ya salió.** La versión anterior de este benchmark dejaba como incertidumbre "NiceGUI v3.0
 en progreso". Resuelto: v3.14.0 se publicó el 30-jun-2026. No hay riesgo de breaking change
@@ -228,7 +228,7 @@ rápido porque no descomprime).
 - Aparece en "Agregar o quitar programas" con opción de desinstalar
 - Se genera con ~60 líneas de script `.iss`
 
-La experiencia del usuario final: descarga `SimGhostInputs-v2.0-Setup.exe`, doble-click, "Siguiente" tres veces, el ícono aparece en el Escritorio. Doble-click en el ícono → se abre su browser con la app.
+La experiencia del usuario final: descarga `SimGhostInputs-v2.0-Setup.exe`, doble-click, "Siguiente" tres veces, el icono aparece en el Escritorio. Doble-click en el icono: se abre una ventana propia con la app (sin browser, sin terminal).
 
 **Por qué no Nuitka ahora.** Compilar el stack científico tarda 30–60 minutos. Para ciclos de
 release frecuentes, eso mata el flujo. Reevaluar si hay reportes de false positives de antivirus.
@@ -270,8 +270,10 @@ flujo. Sin pytest fixture. Costo de migración mayor sin ventaja alguna sobre Ni
 
 **Gradio** — Diseñado para demos de ML de una pantalla. Packaging frágil. Descartado.
 
-**NiceGUI native=True** — Abre ventana pywebview. No pasa el criterio del PO de "browser del
-usuario". En Linux depende de webkit2gtk que no siempre está. Descartado para este proyecto.
+**NiceGUI native=False (como modo de entrega)** — Abre el browser del sistema. Para el usuario
+zero-tecnico genera confusion: pestanas abiertas, proceso colgado en segundo plano, no sabe
+como cerrar. Valido como modo de dev y como fallback en macOS/Linux sin webkit2gtk, pero NO
+es la entrega final para Windows.
 
 **Tauri + sidecar** — Sin ahorro de tamaño con el stack científico. Añade Rust + Node.js al
 toolchain. Descartado.
@@ -303,12 +305,12 @@ La migración toca exclusivamente `fantasma/ui/`. El core no cambia.
 
 **Paso 0 — Spike (1–2 días)**
 - Crear venv limpio: `pip install nicegui numpy Pillow matplotlib scipy openpyxl pandas`
-- Prototipo mínimo: `ui.run(native=False, reload=False)` — confirmar que abre el browser
+- Prototipo mínimo: `ui.run(native=True, reload=False)` — confirmar que abre ventana pywebview
 - Correr `nicegui-pack --onedir` y medir bundle size real
 - Verificar sistema tray o mecanismo de cierre del proceso
 
 **Paso 1 — Skeleton (1 día)**
-- Crear `fantasma/ui/ng_app.py` con `ui.run(native=False, reload=False)`
+- Crear `fantasma/ui/ng_app.py` con `ui.run(native=True, reload=False)`
 - Sidebar (`ui.left_drawer`) con navegación de 5 pasos
 - Estado de sesión (`app.storage.user` o dict global)
 - Mantener `fantasma/ui/app.py` (Streamlit) en paralelo hasta que la migración esté completa
