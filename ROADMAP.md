@@ -8,13 +8,13 @@
 
 ---
 
-## Estado actual — v1.0.0
+## Estado actual — v1.0.0 (estable) · v2.0 en merge
 
 Último release: **v1.0.0** (2026-06-30) — **Pipeline AMS2 completo, documentado y probado.** `setup.ps1` validado en instalación limpia de Windows 11 (Hyper-V VM). Drill-down por curva en UI Paso 2. 142 tests en verde.
 
-La v1.0 está declarada estable. El camino a continuación es la **v2.0**: nuevos importadores, coaching de voz (CrewChief Pace Notes), histórico entre sesiones, y evaluación del front de escritorio. Ver «Diferido post-v1.0» abajo.
+La v1.0 está declarada estable. **La v2.0 está en integración activa** (`codex/sgi-v2-merge`): UI NiceGUI v2.0 + CrewChief Pace Notes implementados, docs sincronizadas, suite en verde. Pendiente: QA de pacenotes en sesión real y medición de bundle size.
 
-> **▶️ Para la próxima sesión:** ver [`HANDOFF.md`](HANDOFF.md). La v1.0 está cortada — continuar con el roadmap post-v1.0.
+> **▶️ Para la próxima sesión:** ver [`HANDOFF.md`](HANDOFF.md). La v2.0 avanza por `codex/sgi-v2-merge` — revisar pendientes allí antes de mergear a `master`.
 
 ---
 
@@ -67,9 +67,9 @@ El criterio para llamarla v1.0 es que el pipeline offline esté **completo, docu
 **Decisión tomada (2026-06-30):** la UI de v2.0 migra a **NiceGUI** (MIT), empaquetada con `nicegui-pack` + Inno Setup. El instalador final es `SimGhostInputs-vX.Y-Setup.exe` — doble-click, sin Python, sin terminal. El benchmark completo está en [`docs/benchmark-ui-framework.md`](docs/benchmark-ui-framework.md).
 
 **Antes de iniciar la migración — spike obligatorio:**
-- [ ] `nicegui-pack --onedir` en venv limpio: medir bundle size real con el stack completo (numpy + scipy + PIL + matplotlib)
+- [ ] `nicegui-pack --onedir` en venv limpio: medir bundle size real con el stack completo (numpy + scipy + PIL + matplotlib) — **implementación procedió antes de cerrar el spike; medición real pendiente (ver HANDOFF)**
 - [ ] Probar `native=True` en VM limpia Windows 11 24H2 (ya tenemos Hyper-V del spike de v1.0)
-- [ ] Prototipo de preview HUD reactiva: slider → PIL → `image.set_source()` → medir latencia percibida
+- [x] Prototipo de preview HUD reactiva: slider → PIL → `image.set_source()` → medir latencia percibida (`hud_preview.py` implementado)
 - [ ] Subir el `.exe` a VirusTotal: detectar false positives de antivirus antes de publicar
 
 **Migración (post-spike):**

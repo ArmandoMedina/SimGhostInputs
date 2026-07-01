@@ -73,7 +73,7 @@ piloto puede ser "league racer + ACC + sin GPU + UI".
 | # | Caso | Veredicto | Notas |
 | :-- | :-- | :-- | :-- |
 | C11 | Reporte por curva, delta, tiempo perdido | ✅ | `compare` + report.md + CSVs + PNGs. Núcleo sólido. |
-| C12 | Avisos de comparación inválida (circuitos/autos distintos) | ⚠️ | Implementados en el motor (`summary["avisos"]`: delta sospechoso, autos distintos) y visibles en CLI/`report.md`, pero **el Paso 2 de la UI no los muestra** — solo la columna "Avisos" por curva. Un usuario de UI no ve la alerta global. |
+| C12 | Avisos de comparación inválida (circuitos/autos distintos) | ⚠️→✅ | **Resuelto en NiceGUI v2.0** — `ng_step2.py` muestra cada aviso de `summary["avisos"]` al inicio del Paso 2 (etiqueta ⚠ amarilla por aviso). La UI Streamlit legacy aún no los muestra a nivel global (solo en la columna "Avisos" por curva). |
 | C13 | Nombrar curvas / track pack | ✅ | CLI (`detect` + editar JSON) **y UI**: Paso 1 → "⚙️ Opciones avanzadas" detecta curvas y ofrece un `data_editor` para nombrarlas, o subir un `corners.json`. |
 | C14 | Drill-down interactivo por curva | ❌ (futuro) | Visión capturada en PRODUCT_BRIEF §10, no implementada. Es el siguiente salto de valor de análisis. |
 
