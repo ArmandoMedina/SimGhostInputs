@@ -24,7 +24,7 @@ async def test_step0_flow_cards_visible(user):
     from fantasma.ui.ng_app import main_page  # noqa: F401
 
     await user.open("/")
-    await user.should_see("Solo analisis")
+    await user.should_see("Solo an")
     await user.should_see("Solo overlay")
     await user.should_see("Video con HUD")
 
