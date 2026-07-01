@@ -104,3 +104,14 @@ def test_appstate_nav_step_advance(mock_state):
     state = mock_state
     state.nav_step = 3
     assert state.nav_step == 3
+
+
+def test_appstate_clear_drv_removes_drv_name(mock_state):
+    """clear_drv() debe borrar drv_name para no dejar datos viejos del piloto."""
+    mock_state.drv_lap = object()
+    mock_state.drv_laps = []
+    mock_state.drv_path = "/ruta/piloto.csv"
+    mock_state.drv_name = "archivo_piloto.csv"
+    mock_state.clear_drv()
+    assert mock_state.drv_name is None, "drv_name debe quedar None tras clear_drv()"
+    assert mock_state.drv_lap is None

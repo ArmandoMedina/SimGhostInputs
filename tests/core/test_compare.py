@@ -6,8 +6,9 @@ Aquí viven las afirmaciones que SON la promesa del producto:
 - faltar un canal opcional (gear/glat) NO rompe la comparación (degradación graceful).
 """
 
-from conftest import make_lap
+import pytest
 
+from conftest import make_lap
 from fantasma.core.compare import compare, delta_trace
 
 
@@ -144,3 +145,42 @@ def test_compare_sin_aviso_vehicle_solo_en_ref():
     _, _, summary = compare(ref, drv, step=5.0)
     avisos = summary.get("avisos", [])
     assert not any("autos distintos" in a for a in avisos)
+
+
+# ---------------------------------------------------------------------------
+# FIX 4 — aviso cuando piloto es más rápido que referencia (posible inversión)
+# ---------------------------------------------------------------------------
+
+
+def test_compare_avisa_piloto_mas_rapido():
+    """Delta muy negativo (piloto mucho más rápido) dispara aviso de inversión.
+
+    Caso típico: usuario subió los archivos al revés — referencia lenta, piloto rápido.
+    """
+    ref = make_lap(base_speed=100.0)  # vuelta lenta como "referencia"
+    drv = make_lap(base_speed=200.0)  # piloto claramente más rápido
+    _, _, summary = compare(ref, drv, step=5.0)
+    avisos = summary.get("avisos", [])
+    assert any("piloto más rápido" in a for a in avisos), (
+        "Se esperaba aviso de piloto invertido; avisos actuales: %r" % avisos
+    )
+
+
+def test_compare_sin_aviso_piloto_ligeramente_mas_rapido():
+    """Un piloto ligeramente más rápido (delta < -1 s) NO dispara el aviso."""
+    ref = make_lap(base_speed=180.0)
+    drv = make_lap(base_speed=182.0)  # mínimamente más rápido
+    _, _, summary = compare(ref, drv, step=5.0)
+    avisos = summary.get("avisos", [])
+    assert not any("piloto más rápido" in a for a in avisos), (
+        "Aviso inesperado de inversión: %r" % avisos
+    )
+
+
+def test_compare_sin_aviso_piloto_mas_lento():
+    """Piloto más lento (delta positivo) -> no hay aviso de inversión."""
+    ref = make_lap(base_speed=180.0)
+    drv = make_lap(base_speed=150.0)
+    _, _, summary = compare(ref, drv, step=5.0)
+    avisos = summary.get("avisos", [])
+    assert not any("piloto más rápido" in a for a in avisos)
