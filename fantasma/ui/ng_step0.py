@@ -1,5 +1,7 @@
 """Paso 0 — Inicio: selector de flujo (NiceGUI). Rediseno v2."""
 
+import shutil
+
 from nicegui import ui
 
 from .ng_helpers import render_breadcrumb
@@ -99,6 +101,14 @@ async def render(state, navigate):
                     btn_label,
                     on_click=lambda fk=flow_key: select_flow(fk),
                 ).classes(btn_class).props("flat")
+
+    # ── Aviso ffmpeg temprano ─────────────────────────────────────────────────
+    if state.flow_chosen and state.flow_key in ("overlay", "compose"):
+        if shutil.which("ffmpeg") is None:
+            ui.label(
+                "⚠️ ffmpeg no detectado — este flujo lo necesita para generar el video. "
+                "Instálalo antes de continuar: winget install Gyan.FFmpeg"
+            ).classes("text-sm mt-2").style("color:var(--warning)")
 
     # ── Dialogs de ayuda ──────────────────────────────────────────────────────
     with ui.dialog() as motec_dialog, ui.card().style("max-width:500px"):
