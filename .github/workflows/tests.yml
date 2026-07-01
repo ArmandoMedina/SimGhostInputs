@@ -89,3 +89,31 @@ jobs:
           from fantasma.viz import hud_preview
           print('NiceGUI UI v2.0 imports OK')
           "
+
+  build-installer:
+    # Genera el bundle Windows en cada release tag (v*). No corre en PRs.
+    # El paso Inno Setup (--inno) se agrega cuando se confirme el bundle size
+    # en el spike de validacion (requiere chocolatey install innosetup en el runner).
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [lint, pytest]
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install deps
+        run: pip install -e ".[ui-ng,overlay,sync,xlsx]" nicegui-pack
+
+      - name: Build bundle
+        run: python tools/build_installer.py
+
+      - name: Upload bundle as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: SimGhostInputs-bundle-windows
+          path: dist/SimGhostInputs/
+          retention-days: 7

@@ -8,7 +8,9 @@
 
 ## Pendiente inmediato
 
-**v1.0.0 cortada (2026-06-30).** Continuar con el roadmap post-v1.0 — ver [ROADMAP.md](ROADMAP.md) → «Diferido post-v1.0».
+**PR #13 abierto — UI NiceGUI v2.0 + packaging.** Esperar CI verde (6 checks) y mergear.
+
+Cuando mergee: ejecutar `python tools/build_installer.py` en la PC potente (SERVER via Oscar) para medir el bundle size real y resolver la incertidumbre del spike (objetivo: 150-250 MB one-dir). Ver checklist en [ROADMAP.md](ROADMAP.md) → «Front de escritorio custom (v2.0)».
 
 ## Para retomar en frío
 
