@@ -38,7 +38,16 @@ _SEARCH_SEC = 300  # s  — lag maximo buscado en cada direccion
 def _ffmpeg_path():
     f = shutil.which("ffmpeg")
     if not f:
-        raise RuntimeError("ffmpeg no encontrado en PATH — instala con: winget install Gyan.FFmpeg")
+        import platform as _pl
+
+        _cmd = (
+            "winget install Gyan.FFmpeg"
+            if _pl.system() == "Windows"
+            else "brew install ffmpeg"
+            if _pl.system() == "Darwin"
+            else "sudo apt install ffmpeg"
+        )
+        raise RuntimeError("ffmpeg no encontrado en PATH — instálalo con: %s" % _cmd)
     return f
 
 
