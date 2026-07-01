@@ -2,13 +2,15 @@
 # Uso: powershell -ExecutionPolicy Bypass -File setup.ps1
 # Parametros opcionales:
 #   -Full       instala dependencias Python completas (openpyxl + Pillow + matplotlib)
-#   -SkipSystem omite instalacion de herramientas del sistema (ffmpeg, gh)
+#   -Dev        instala herramientas de desarrollo (GitHub CLI gh)
+#   -SkipSystem omite instalacion de herramientas del sistema (ffmpeg)
 #   -Yes        modo desatendido: responde "si" a todas las confirmaciones, sin Read-Host
 #               (para CI / pruebas en VM limpia). Combina con -SkipSystem para evitar las apps
 #               grandes (VLC, Kdenlive). En -Yes no se relanza una terminal nueva tras instalar
 #               Python (inservible en headless): se resuelve la ruta de Python en la misma sesion.
 param(
     [switch]$Full,
+    [switch]$Dev,
     [switch]$SkipSystem,
     [switch]$Yes,
     [switch]$Relaunched   # uso interno: marca que ya se reabrio tras instalar Python (anti-bucle)
@@ -176,16 +178,20 @@ if ($SkipSystem) {
         }
     }
 
-    # gh: GitHub CLI, para subir el repositorio
-    if (Get-Command gh -ErrorAction SilentlyContinue) {
-        Write-Skip "GitHub CLI ya instalado"
-    } else {
-        if (Confirm-Action "    Instalar GitHub CLI (gh) via winget? (s/n)") {
-            winget install GitHub.cli --source winget --accept-source-agreements --accept-package-agreements
-            Write-OK "gh instalado  (autenticate con: gh auth login)"
+    # gh: GitHub CLI — solo para desarrollo (uso interno, CI, releases)
+    if ($Dev) {
+        if (Get-Command gh -ErrorAction SilentlyContinue) {
+            Write-Skip "GitHub CLI ya instalado"
         } else {
-            Write-Skip "gh omitido  (puedes subir el repo manualmente desde github.com/new)"
+            if (Confirm-Action "    Instalar GitHub CLI (gh) via winget? (s/n)") {
+                winget install GitHub.cli --source winget --accept-source-agreements --accept-package-agreements
+                Write-OK "gh instalado  (autenticate con: gh auth login)"
+            } else {
+                Write-Skip "gh omitido"
+            }
         }
+    } else {
+        Write-Skip "GitHub CLI omitido (solo necesario para desarrollo; usa -Dev para instalarlo)"
     }
 
     # VLC: para previsualizar overlay.webm con canal alfa
