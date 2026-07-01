@@ -112,7 +112,21 @@ limpio si no hay Chromium), como ya hace con lint/formato/tests. El CI es el que
 
 ---
 
-## 4. Registro de cambios de patrón por versión
+## 4. Patrones específicos de NiceGUI (agregados en v2.0)
+
+La UI principal de v2.0 migró de Streamlit a **NiceGUI** ([ADR 0018](decisions/0018-framework-ui-nicegui.md), enmienda al [ADR 0010](decisions/0010-framework-ui-streamlit.md)). NiceGUI es reactivo y asíncrono, así que impone patrones distintos a los de Streamlit (rerun completo del script). Estos son los que el código de `fantasma/ui/ng_*.py` sigue y que cualquier cambio nuevo debe respetar.
+
+1. **Operaciones en background (render async).** Para operaciones largas (componer video, generar overlay) **no** se bloquea el event loop con `asyncio.sleep` en un loop. Se usa un objeto `RenderJob` (`ng_helpers.py`) que corre `fn` en un thread daemon (`start_bg_render`), y en la UI un `ui.timer(0.5, poll)` hace polling del job: lee `job.n/job.total` para actualizar la barra de progreso y, cuando `job.done`, cancela el timer y refresca la UI con el resultado. El `RenderJob` también expone `cancel()` (un `threading.Event`) para el botón «Detener». Patrón vivo en `ng_step4.py::_start_compose`.
+
+2. **Forward-declaration de elementos UI.** En NiceGUI los handlers (closures) se definen **antes** de que existan los elementos que manipulan; el closure captura el nombre, no el valor. Patrón: declarar `ref_status = None  # noqa: F841` (y `drv_status`, `load_err`, etc.), definir los handlers que usan `ref_status`, y **más abajo** hacer la asignación real `ref_status = ui.label(...)`. El `# noqa: F841` es necesario porque ruff no ve que la variable se reasigna dentro de un closure — **no es dead code**, es la forma correcta en NiceGUI. Ejemplo en `ng_step1.py`.
+
+3. **Diálogos de archivo nativos (`native=True`).** `_pick_file()` y `_pick_folder()` (`ng_helpers.py`) abren el selector nativo del OS vía Tkinter (`filedialog`). Solo funcionan de forma fiable en modo `native=True` (ventana pywebview, que es como arranca `fantasma-ng` en `ng_app.py::run`); en modo browser/desarrollo el selector puede fallar o abrir una ventana separada extraña. Ambos helpers atrapan cualquier excepción y devuelven `""`. Las operaciones potencialmente lentas (leer overlay, componer preview) se envuelven con `await run.io_bound(...)` para no bloquear el event loop.
+
+4. **Corrección F-01 (NiceGUI) — pendiente.** El selector de flujo del Paso 0 (`ng_step0.py`) no debe mostrar ningún flujo como «✓ Seleccionado» al cargar la app. Hoy `is_selected = state.flow_key == flow_key` compara contra `flow_key`, que tiene un default (`_DEFAULT_FLOW = "compose"`), por lo que la tarjeta por defecto aparece pre-seleccionada aunque el usuario no haya elegido nada. El estado ya tiene el booleano `flow_chosen` (separado de `flow_key`) para distinguir «default cargado» de «usuario eligió explícitamente»; la corrección es que el Paso 0 use `flow_chosen` para decidir el marcado. Registrado para corrección en v2.0.x. Es el equivalente NiceGUI del F-01 ya resuelto en Streamlit (ver §5, v0.14.0).
+
+---
+
+## 5. Registro de cambios de patrón por versión
 
 Historial de decisiones de UX que alteraron el layout o el flujo de la UI — para que el baseline visual tenga contexto al regenerarse.
 

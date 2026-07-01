@@ -164,6 +164,30 @@ def _pick_folder(title="Seleccionar carpeta", initialdir=None):
         return ""
 
 
+# ── UI components ────────────────────────────────────────────────────────────
+
+
+def render_breadcrumb(step: int):
+    """Renderiza la barra de breadcrumb con el paso actual resaltado."""
+    from nicegui import ui
+
+    _STEP_LABELS = ["Inicio", "Importar", "Análisis", "Overlay", "Video"]
+    html = '<div class="breadcrumb-bar">'
+    for i, lbl in enumerate(_STEP_LABELS):
+        if i > 0:
+            html += '<span class="breadcrumb-arrow">›</span>'
+        if i < step:
+            status, num = "done", "✓"
+        elif i == step:
+            status, num = "active", str(i)
+        else:
+            status, num = "", str(i)
+        html += f'<div class="breadcrumb-step {status}">{num}</div>'
+        html += f'<span class="breadcrumb-label">{lbl}</span>'
+    html += "</div>"
+    ui.html(html)
+
+
 # ── render en background ──────────────────────────────────────────────────────
 
 
