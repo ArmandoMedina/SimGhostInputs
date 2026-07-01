@@ -29,6 +29,7 @@ Cada plantilla trae frontmatter (para Obsidian) y `## Relacionado con` con `[[wi
 | Plantilla | Va en | Para qué |
 |---|---|---|
 | [`glosario.md`](glosario.md) | `docs/glosario.md` | Lenguaje ubicuo: un término, un significado. |
+| [`plan-de-trabajo.md`](plan-de-trabajo.md) | `docs/planes/` (efímero) | Plan persistido para tareas largas con IA: sobrevive al corte de tokens y se borra al cerrar (ADR 0019). |
 
 > Qué significa cada nivel y cuándo usar cada uno: [`engineering/README.md`](../engineering/README.md) y [`product/README.md`](../product/README.md). El porqué de adoptar esta estructura: [ADR 0015](../docs/decisions/0015-estructura-product-engineering.md).
 

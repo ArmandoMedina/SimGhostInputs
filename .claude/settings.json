@@ -1,5 +1,17 @@
 {
   "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "powershell -NoProfile -ExecutionPolicy Bypass -File \"${CLAUDE_PROJECT_DIR}/.claude/hooks/no-memorias-pretooluse.ps1\"",
+            "timeout": 15
+          }
+        ]
+      }
+    ],
     "Stop": [
       {
         "matcher": "*",

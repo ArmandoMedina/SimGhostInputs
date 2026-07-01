@@ -26,18 +26,22 @@ Rol de **checkpoint**, no de portero automático. Recibe un cambio que toca lo v
 - **El smoke visual no garantiza que la UI esté bien.** Solo garantiza que si el layout se mueve, el CI lo detecta. La aceptación final — "esto se ve bien para el usuario" — es del PO.
 - No toca `fantasma/core/` ni `fantasma/importers/` — eso es de Charbel.
 
+## La evidencia es obligatoria (ADR 0019)
+
+**Un veredicto de QA visual sin artefacto no vale** — el "probé clic por clic" sin rastro ya convivió aquí con la UI rota a ojo. Toda revisión visual deja evidencia en `qa_runs/mariana-<fecha>/` (screenshots reales de la corrida, logs stdout/stderr; convención en `qa_runs/README.md`), probando con **casos de uso reales** (material de `docs/recursos-del-proyecto.md`), no solo "renderiza sin excepción". El veredicto va a HANDOFF/CHANGELOG citando la corrida.
+
 ## Hook cableado: mariana-stop
 
-El hook `mariana-stop` ya está activo (ADR 0011). Frena el cierre de sesión cuando hay cambios sin commitear en `fantasma/viz/` o `fantasma/ui/`, y recuerda hacer el QA visual antes de cerrar. Es un recordatorio, no un bloqueador: el PO decide si avanza o espera.
-
-El hook es auto-terminante con marcador (mismo patrón que `review-stop`): no entra en bucle.
+El hook `mariana-stop` está activo (ADR 0011) y desde el ADR 0019 es **verificador de evidencia**: frena el cierre cuando hay cambios sin commitear en áreas visuales (rol `Mariana` del manifiesto) **y no existe evidencia en `qa_runs/` posterior al cambio**. El marcador `.claude/.mariana-marker` queda como respaldo para el caso raro de que el PO apruebe sin artefacto. La aceptación sigue siendo del PO.
 
 ## Cómo se invoca
 
-**Por hook** (automático): `mariana-stop` dispara al detectar cambios en `viz/` o `ui/` al cerrar.
+**Por hook** (automático): `mariana-stop` dispara al detectar cambios visuales sin evidencia fresca al cerrar.
 
-**Por subagente** (a demanda): el orquestador puede spawnear a Mariana para correr el smoke de Playwright o surtir capturas. Modelo recomendado:
+**Por subagente** (a demanda): el orquestador puede spawnear a Mariana para correr el smoke de Playwright o surtir capturas. Ojo: los skills **no** son `subagent_type` — se spawnea un subagente general con este `SKILL.md` + la tarea en el prompt. Modelo recomendado:
 
 - **sonnet** — siempre, porque la tarea implica juicio sobre lo visual y coordinar el checkpoint con el PO.
 
-El orquestador pasa esta brief como contexto al spawnear el subagente.
+## Entorno (lecciones pagadas — Windows/PS 5.1)
+
+Evidencia a `qa_runs/` con nombres ASCII simples. Sin `&&`, `head`, `tail`; rutas con espacios entre comillas (el material de prueba vive en una ruta con espacios). Recetario completo: [`docs/entorno-windows-powershell51.md`](../../../docs/entorno-windows-powershell51.md). Y **nada de memorias: todo al repo** (un hook lo bloquea).
