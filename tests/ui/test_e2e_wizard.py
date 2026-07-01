@@ -146,7 +146,10 @@ async def test_e2e_step0_select_flow_overlay(user):
     await user.should_see("Solo overlay")
     await user.should_see("Video con HUD")
 
-    # "Empezar" marca flow_chosen=True y navega al Paso 1
+    # Seleccionar un flujo antes de "Empezar" (F-01: guard requiere seleccion)
+    user.find("Elegir este").click()
+    await user.should_see("Seleccionado")
+
     user.find("Empezar").click()
     await user.should_see("Paso 1")
 
