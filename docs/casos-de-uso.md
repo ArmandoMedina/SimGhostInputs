@@ -66,7 +66,7 @@ piloto puede ser "league racer + ACC + sin GPU + UI".
 | C07 | CSV genérico (SimHub/AC) con `--map` | ✅ | CLI con `--map`; **la UI sí tiene editor de mapeo** de columnas en "⚙️ Opciones avanzadas" del Paso 1 (`columna_original = canal`). Mejora posible: que aparezca de forma más visible cuando el archivo no parsea bien. |
 | C08 | **Export europeo (coma decimal, `;`)** | ✅ | **Soportado en el código actual:** el importador maneja separador `;` y coma decimal; cubierto por tests (`test_semicolon_separator_supported`, `test_semicolon_with_decimal_comma`), **sin xfail**. (La memoria vieja del 17-jun lo daba como gap; se resolvió desde entonces — verificado contra el código de hoy.) |
 | C09 | Elegir la vuelta a analizar | ✅ | Tabla por radio, marca la más rápida (🏆) y completas/incompletas. |
-| C10 | Comparar dos vueltas del **mismo** outing (sin referencia externa) | ⚠️ | **Funciona** (cargar el mismo archivo como ref y piloto y elegir vueltas distintas con la tabla de vueltas), pero **no hay atajo guiado** "compárate contra ti mismo": el usuario sin referencia externa no sabe que puede. Mejora de onboarding, no un gap técnico. |
+| C10 | Comparar dos vueltas del **mismo** outing (sin referencia externa) | ⚠️ | **Funciona** (cargar el mismo archivo como ref y piloto y elegir vueltas distintas con la tabla de vueltas), pero **no hay atajo guiado** "compárate contra ti mismo": el usuario sin referencia externa no sabe que puede. Mejora de onboarding, no un gap técnico. Parcialmente mejorado: el Paso 1 NiceGUI incluye un hint explicando cómo cargar el mismo CSV como referencia y piloto para compararse contra sí mismo. |
 
 ### 3.3 Análisis (Producto 1)
 
@@ -83,10 +83,10 @@ piloto puede ser "league racer + ACC + sin GPU + UI".
 | :-- | :-- | :-- | :-- |
 | C15 | Generar overlay.webm con alfa | ✅ | Render paralelo (N-1 cores). |
 | C16 | Auto-sync por audio | ✅ | Correlación + aviso de zona gris (ADR 0008). |
-| C17 | Compose con **GPU NVENC** | ⚠️ | NVENC se auto-detecta, pero en equipos con GPU NVIDIA usable la detección puede **caer a CPU** (hallazgo en la PC potente — en diagnóstico). Sofía (P4) con GPU paga render lento sin saber por qué. |
+| C17 | Compose con **GPU NVENC** | ⚠️ | NVENC se auto-detecta, pero en equipos con GPU NVIDIA usable la detección puede **caer a CPU** (hallazgo en la PC potente — en diagnóstico). Sofía (P4) con GPU paga render lento sin saber por qué. Parcialmente mejorado: ahora el Paso 4 confirma qué encoder se usó realmente; si cae a CPU siendo inexplicable, el usuario puede reportarlo con evidencia. |
 | C18 | Compose **sin GPU** (CPU libx264) | ✅ | Fallback correcto. |
 | C19 | Compose **sin ffmpeg** | ⚠️ | `overlay` cae a frames PNG; `compose` falla con mensaje. No hay aviso temprano en la UI de que ffmpeg falta hasta que lo intentas. |
-| C20 | Saber qué encoder se usó (GPU vs CPU) | ⚠️ | El Paso 4 anuncia la **política** ("NVENC si está disponible, libx264 si no") *antes* de componer, pero **no confirma el encoder real usado ni el tiempo** después; `compose_video()` no lo devuelve. El usuario no sabe si su GPU se aprovechó. Ata con C17. |
+| C20 | Saber qué encoder se usó (GPU vs CPU) | ✅ | Resuelto — `compose_video()` devuelve `encoder` y `duration_s`; el Paso 4 NiceGUI los muestra post-compose. |
 | C21 | Overlay legible / profesional | ⚠️ | Sujeto a evaluación visual (ver `ux-patterns.md` + ADR 0005-0007). Pendiente diagnóstico con capturas. |
 
 ### 3.5 Volumen, recurrencia y batch

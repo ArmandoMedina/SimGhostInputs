@@ -11,6 +11,15 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/). Versionado
 - **Preview reactiva del HUD en Paso 4** (`viz/hud_preview.py`): actualización en tiempo real al cambiar posición, escala y overlay.
 - **Empaquetado Windows**: `tools/build_installer.py` (nicegui-pack) y `tools/installer.iss` (Inno Setup) para instalador doble-clic.
 - **CI**: job `build-installer` (tags `v*`) y migración de `visual-smoke` a import smoke NiceGUI.
+- `fantasma/viz/compose.py`: `compose_video()` devuelve dict `{"path", "encoder", "duration_s"}`. La UI NiceGUI Paso 4 muestra el encoder usado (h264_nvenc o libx264) y la duración del encode al terminar.
+- `fantasma/core/compare.py`: aviso en `summary["avisos"]` cuando el piloto va más de 1 s más rápido que la referencia — indica posible inversión de `--reference` y `--driver`.
+- UI NiceGUI Paso 1: hint colapsable "¿No tienes vuelta de referencia externa?" para el caso C10 (compararse contra sí mismo).
+
+### Cambiado
+- `setup.ps1`: la instalación de GitHub CLI (`gh`) se mueve detrás del flag `-Dev`; el setup de usuario final no instala herramientas de desarrollo.
+
+### Corregido
+- `fantasma/ui/ng_state.py`: `clear_drv()` ahora elimina `drv_name` al cambiar vuelta del piloto — el nombre del archivo quedaba huérfano de la sesión anterior.
 
 ## [1.0.0] - 2026-06-30
 
