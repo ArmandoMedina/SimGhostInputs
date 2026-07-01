@@ -9,7 +9,6 @@ import pytest
 pytest.importorskip(
     "nicegui.testing", reason="nicegui no instalado; ejecuta: pip install -e '.[ui-ng]'"
 )
-pytest_plugins = ["nicegui.testing"]
 
 
 @pytest.mark.asyncio
