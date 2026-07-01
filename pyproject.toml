@@ -21,7 +21,7 @@ charts  = ["matplotlib>=3.7,<4"]
 # pip install -e ".[ui]"        -> interfaz grafica local (streamlit)
 ui      = ["streamlit>=1.35,<2", "pandas>=2,<3"]
 # pip install -e ".[ui-ng]"     -> interfaz NiceGUI (alternativa moderna a Streamlit)
-ui-ng   = ["nicegui>=3.14,<4", "pandas>=2,<3"]
+ui-ng   = ["nicegui>=3.14,<4", "pandas>=2,<3", "pywebview>=5,<6"]
 # pip install -e ".[sync]"      -> auto-deteccion de offset video/telemetria (fantasma compose --auto-sync)
 sync    = ["scipy>=1.11,<2", "numpy>=1.24,<3"]
 # pip install -e ".[full]"      -> todo lo anterior

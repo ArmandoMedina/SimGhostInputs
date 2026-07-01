@@ -100,7 +100,7 @@ async def render(state, navigate):
         label="Archivo CSV de referencia",
         on_upload=handle_ref_upload,
         auto_upload=True,
-    ).props('accept=".csv,.xlsx"').classes("w-full mb-4")
+    ).props('accept=".csv,.xlsx" max-file-size=52428800').classes("w-full mb-4")
 
     ui.separator().classes("my-4")
 
@@ -163,7 +163,7 @@ async def render(state, navigate):
         label="Tu archivo CSV de telemetría",
         on_upload=handle_drv_upload,
         auto_upload=True,
-    ).props('accept=".csv,.xlsx"').classes("w-full mb-4")
+    ).props('accept=".csv,.xlsx" max-file-size=52428800').classes("w-full mb-4")
 
     # ── Opciones avanzadas ────────────────────────────────────────────────────
     col_map_state = {"text": ""}
