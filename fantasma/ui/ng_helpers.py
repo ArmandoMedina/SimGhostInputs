@@ -172,18 +172,19 @@ def render_breadcrumb(step: int):
     from nicegui import ui
 
     _STEP_LABELS = ["Inicio", "Importar", "Análisis", "Overlay", "Video"]
-    html = '<div class="breadcrumb-bar">'
+    html = (
+        '<div style="display:flex;align-items:center;gap:6px;'
+        'padding:8px 0 16px;font-size:0.85rem;flex-wrap:wrap">'
+    )
     for i, lbl in enumerate(_STEP_LABELS):
         if i > 0:
-            html += '<span class="breadcrumb-arrow">›</span>'
+            html += '<span style="color:var(--text-dim);opacity:0.6;margin:0 2px">›</span>'
         if i < step:
-            status, num = "done", "✓"
+            html += f'<span style="color:var(--text-dim)">{lbl}</span>'
         elif i == step:
-            status, num = "active", str(i)
+            html += f'<span style="color:var(--highlight);font-weight:600">{lbl}</span>'
         else:
-            status, num = "", str(i)
-        html += f'<div class="breadcrumb-step {status}">{num}</div>'
-        html += f'<span class="breadcrumb-label">{lbl}</span>'
+            html += f'<span style="color:var(--text-dim);opacity:0.4">{lbl}</span>'
     html += "</div>"
     ui.html(html)
 

@@ -1,4 +1,4 @@
-"""Tier 5 -- smoke visual del Paso 0 de la UI Streamlit (ADR 0012).
+"""Tier 5 -- smoke visual del Paso 0 de la UI NiceGUI (ADR 0012).
 
 Captura un screenshot del Paso 0 y lo compara contra un baseline local.
 Tolerancia GENEROSA: detecta "el layout se movio" (seccion desaparecida,
@@ -17,7 +17,7 @@ VERDAD DEL BASELINE (ADR 0012 - Consecuencias):
 Skip automatico (no rompe la suite existente):
   - Si playwright no esta instalado: importorskip al inicio del modulo.
   - Si Chromium no esta instalado: capturado en conftest.pw_page.
-  - Si Streamlit no levanta en 40 s: capturado en conftest.streamlit_url.
+  - Si NiceGUI no levanta en 30 s: capturado en conftest.nicegui_url.
   - Si no hay baseline: se genera y se skipea con mensaje.
 """
 
@@ -26,8 +26,7 @@ from pathlib import Path
 
 import pytest
 
-# Skipea el modulo completo si playwright no esta disponible (igual que
-# test_app_smoke.py skipea si streamlit no esta disponible).
+# Skipea el modulo completo si playwright no esta disponible.
 pytest.importorskip("playwright.sync_api")
 
 from PIL import Image  # noqa: E402 -- disponible junto con playwright en [dev]
@@ -78,26 +77,26 @@ def _diff_ratio(img_a: "Image.Image", img_b: "Image.Image") -> float:
 
 
 # ---------------------------------------------------------------------------
-# Test
+# Tests
 # ---------------------------------------------------------------------------
 
 
-def test_step0_layout_smoke(pw_page, streamlit_url):
+def test_step0_layout_smoke(pw_page, nicegui_url):
     """Screenshot del Paso 0 dentro del umbral de tolerancia contra el baseline.
 
     Primera corrida (sin baseline): guarda el screenshot y skipea con mensaje.
     Corridas posteriores: compara contra el baseline con tolerancia generosa.
     """
-    # Navegar al Paso 0 (pagina raiz de la app)
-    pw_page.goto(streamlit_url, wait_until="domcontentloaded")
+    # Navegar al Paso 0 (pagina raiz de NiceGUI)
+    pw_page.goto(nicegui_url, wait_until="domcontentloaded")
 
-    # Esperar a que el contenido del Paso 0 este renderizado.
-    # Streamlit dibuja el paso 0 con un div class="step-header"; esperar ese
-    # texto es mas robusto que esperar networkidle (que puede tardar mucho).
-    pw_page.wait_for_selector(".step-header", timeout=20_000)
+    # Esperar a que el titulo principal del Paso 0 este renderizado.
+    # NiceGUI/Quasar dibuja el contenido dentro de div.q-page; buscar el
+    # texto del encabezado es mas robusto que esperar networkidle.
+    pw_page.wait_for_selector("text=SimGhostInputs", timeout=20_000)
 
-    # Pausa breve para que terminen las animaciones de carga de Streamlit
-    # (spinner, transiciones) antes de capturar.
+    # Pausa breve para que terminen las animaciones de carga de NiceGUI
+    # (transiciones, fade-in del sidebar) antes de capturar.
     pw_page.wait_for_timeout(1500)
 
     screenshot_bytes = pw_page.screenshot(full_page=False)
@@ -124,3 +123,19 @@ def test_step0_layout_smoke(pw_page, streamlit_url):
         "El layout se movio -- si fue intencional, actualiza el baseline: "
         "borra baselines/step0.png y vuelve a correr."
     )
+
+
+def test_step0_ui_elements(nicegui_url, pw_page):
+    """Verifica que los elementos clave del Paso 0 son visibles por texto.
+
+    Mas estable que la comparacion de pixels: no depende de fuentes, DPI
+    ni diferencias de renderizado entre maquinas. Atrapa elementos que
+    desaparecen o cuyo texto cambia.
+    """
+    pw_page.goto(nicegui_url)
+    pw_page.wait_for_selector("text=SimGhostInputs", timeout=20_000)
+
+    assert pw_page.locator("text=Solo análisis").is_visible()
+    assert pw_page.locator("text=Solo overlay").is_visible()
+    assert pw_page.locator("text=Video con HUD").is_visible()
+    assert pw_page.locator("text=Empezar").is_visible()

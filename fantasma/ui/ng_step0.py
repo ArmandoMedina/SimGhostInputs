@@ -49,7 +49,6 @@ async def render(state, navigate):
     ui.html(
         '<div class="status-row">'
         '  <div class="status-chip"><div class="status-dot live"></div>Motor listo</div>'
-        '  <div class="status-chip"><div class="status-dot"></div>Sin archivos</div>'
         "</div>"
     )
 
@@ -111,10 +110,10 @@ async def render(state, navigate):
             ).classes("text-sm mt-2").style("color:var(--warning)")
 
     # ── Dialogs de ayuda ──────────────────────────────────────────────────────
-    with ui.dialog() as motec_dialog, ui.card().style("max-width:500px"):
+    with ui.dialog() as motec_dialog, ui.card().style("max-width:500px; background:var(--card-bg); color:var(--text); border:1px solid var(--border)"):
         ui.label("Guía MoTeC i2 — Exportar telemetría").classes("font-bold text-lg mb-3")
         ui.html(
-            "<ol style='padding-left:1.5rem;line-height:2;font-size:13px'>"
+            "<ol style='padding-left:1.5rem;line-height:2;font-size:13px;color:var(--text)'>"
             "<li>Abre tu sesión en MoTeC i2.</li>"
             "<li>Ve a <strong>File &gt; Export</strong>.</li>"
             "<li>Elige el formato <strong>CSV</strong>.</li>"
@@ -124,7 +123,7 @@ async def render(state, navigate):
         )
         ui.button("Cerrar", on_click=motec_dialog.close).props("flat").classes("mt-2")
 
-    with ui.dialog() as csv_dialog, ui.card().style("max-width:500px"):
+    with ui.dialog() as csv_dialog, ui.card().style("max-width:500px; background:var(--card-bg); color:var(--text); border:1px solid var(--border)"):
         ui.label("Formato CSV esperado").classes("font-bold text-lg mb-3")
         ui.label("El CSV debe tener estas columnas (los nombres pueden variar):").classes(
             "text-sm mb-2"

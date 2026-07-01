@@ -1,5 +1,7 @@
 """NiceGUI entry point para SimGhostInputs v2.0."""
 
+import os
+
 from nicegui import ui
 
 from . import ng_step0, ng_step1, ng_step2, ng_step3, ng_step4
@@ -267,10 +269,14 @@ def _step_done(state, i):
 
 
 def run():
+    # SGI_HEADLESS=1 desactiva la ventana nativa y el auto-open del browser.
+    # Lo usa el fixture de Playwright para arrancar el servidor en modo web puro.
+    headless = os.environ.get("SGI_HEADLESS") == "1"
     ui.run(
         title="SimGhostInputs",
         favicon="👻",
-        native=True,
+        native=not headless,
+        show=not headless,
         reload=False,
         storage_secret="sgi-v2-secret",
         port=8765,

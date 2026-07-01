@@ -12,7 +12,7 @@ from .ng_helpers import (
     _lap_options,
     _load_laps,
     _missing_distance,
-    _save_upload,
+    _pick_file,
     render_breadcrumb,
 )
 
@@ -73,10 +73,7 @@ async def render(state, navigate):
 
     # ── Upload handlers ──────────────────────────────────────────────────────
 
-    async def handle_ref_upload(e):
-        content = e.content.read()
-        suffix = os.path.splitext(e.name)[1] or ".csv"
-        path = _save_upload(content, suffix)
+    async def handle_ref_upload(path):
         try:
             laps = _load_laps(path)
         except Exception as ex:
@@ -98,7 +95,7 @@ async def render(state, navigate):
             return
         ref_state["laps"] = laps
         ref_state["path"] = path
-        ref_state["name"] = e.name
+        ref_state["name"] = os.path.basename(path)
         best_i = _best_lap_index(laps)
         ref_state["sel_i"] = best_i
         ref_status.set_text(
@@ -111,10 +108,7 @@ async def render(state, navigate):
         if len(laps) > 1:
             _render_lap_selector(ref_lap_col, ref_state, "ref")
 
-    async def handle_drv_upload(e):
-        content = e.content.read()
-        suffix = os.path.splitext(e.name)[1] or ".csv"
-        path = _save_upload(content, suffix)
+    async def handle_drv_upload(path):
         try:
             laps = _load_laps(path)
         except Exception as ex:
@@ -136,7 +130,7 @@ async def render(state, navigate):
             return
         drv_state["laps"] = laps
         drv_state["path"] = path
-        drv_state["name"] = e.name
+        drv_state["name"] = os.path.basename(path)
         best_i = _best_lap_index(laps)
         drv_state["sel_i"] = best_i
         drv_status.set_text(
@@ -148,6 +142,22 @@ async def render(state, navigate):
         drv_lap_col.clear()
         if len(laps) > 1:
             _render_lap_selector(drv_lap_col, drv_state, "drv")
+
+    async def pick_ref():
+        path = _pick_file(
+            title="Seleccionar CSV de referencia",
+            filetypes=[("CSV / Excel", "*.csv *.xlsx"), ("Todos los archivos", "*.*")],
+        )
+        if path:
+            await handle_ref_upload(path)
+
+    async def pick_drv():
+        path = _pick_file(
+            title="Seleccionar CSV de tu vuelta",
+            filetypes=[("CSV / Excel", "*.csv *.xlsx"), ("Todos los archivos", "*.*")],
+        )
+        if path:
+            await handle_drv_upload(path)
 
     async def do_load():
         if not ref_state["laps"]:
@@ -193,17 +203,11 @@ async def render(state, navigate):
                 "</div>"
             )
 
-            with ui.element("div").classes("upload-zone").style("position:relative"):
+            with ui.element("div").classes("upload-zone"):
                 ui.html('<span class="upload-icon">📂</span>')
-                ui.html('<div class="upload-label">Arrastra o haz clic para subir</div>')
+                ui.html('<div class="upload-label">Haz clic para seleccionar tu archivo</div>')
                 ui.html('<div class="upload-hint">.csv · .xlsx · máx. 50 MB</div>')
-                ui.upload(
-                    label="",
-                    on_upload=handle_ref_upload,
-                    auto_upload=True,
-                ).props('accept=".csv,.xlsx" max-file-size=52428800').classes(
-                    "absolute opacity-0 w-full h-full"
-                ).style("top:0;left:0;cursor:pointer")
+                ui.button("📂  Seleccionar CSV", on_click=pick_ref).classes("btn-secondary").props("flat")
 
             ref_status = (
                 ui.label(
@@ -240,17 +244,11 @@ async def render(state, navigate):
                 "</div>"
             )
 
-            with ui.element("div").classes("upload-zone").style("position:relative"):
+            with ui.element("div").classes("upload-zone"):
                 ui.html('<span class="upload-icon">📂</span>')
-                ui.html('<div class="upload-label">Arrastra o haz clic para subir</div>')
+                ui.html('<div class="upload-label">Haz clic para seleccionar tu archivo</div>')
                 ui.html('<div class="upload-hint">.csv · .xlsx · máx. 50 MB</div>')
-                ui.upload(
-                    label="",
-                    on_upload=handle_drv_upload,
-                    auto_upload=True,
-                ).props('accept=".csv,.xlsx" max-file-size=52428800').classes(
-                    "absolute opacity-0 w-full h-full"
-                ).style("top:0;left:0;cursor:pointer")
+                ui.button("📂  Seleccionar CSV", on_click=pick_drv).classes("btn-secondary").props("flat")
 
             drv_status = (
                 ui.label(
