@@ -172,3 +172,49 @@ def test_render_pace_notes_track_places_cues(tmp_path):
         assert wav.getframerate() == 24000
         assert wav.getnchannels() == 1
         assert wav.getnframes() > 24000
+
+
+# ── Edge cases: entradas vacias ────────────────────────────────────────────────
+
+
+def test_plan_tone_events_empty_rows_no_crash():
+    """plan_tone_events con rows=[] no lanza excepcion y devuelve estructura valida."""
+    from fantasma.viz.pacenotes import plan_tone_events
+
+    corners = [
+        {
+            "id": "C01",
+            "name": "C01",
+            "milestones": {
+                "brake_start": {"d": 450},
+                "apex": {"d": 500},
+                "full_throttle": {"d": 560},
+            },
+        }
+    ]
+    result = plan_tone_events(rows=[], corners=corners, top=5)
+    # Sin filas no hay eventos ni corners planificados
+    assert result["events"] == []
+    assert result["corners"] == []
+
+
+def test_build_tone_pack_empty_rows_no_crash(tmp_path):
+    """build_tone_pack con rows=[] no lanza excepcion y retorna entries=0."""
+    from fantasma.viz.pacenotes import build_tone_pack
+
+    corners = [
+        {
+            "id": "C01",
+            "name": "C01",
+            "milestones": {
+                "brake_start": {"d": 450},
+                "apex": {"d": 500},
+                "full_throttle": {"d": 560},
+            },
+        }
+    ]
+    result = build_tone_pack(rows=[], corners=corners, outdir=str(tmp_path), top=5)
+    # Sin filas con time_lost > 0 no se genera ningun tono
+    assert result["entries"] == 0
+    # El directorio de salida y metadata.json deben existir igual
+    assert (tmp_path / "metadata.json").exists()
