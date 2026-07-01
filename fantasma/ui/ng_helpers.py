@@ -94,7 +94,9 @@ def _lap_options(laps):
     for i, l in enumerate(laps):
         _c = l.meta.get("is_complete", False)
         estado = "🏆 Más rápida" if i == best_i else ("✓ Completa" if _c else "⚠️ Incompleta")
-        options.append("#%d  ·  %s  ·  %dm  ·  %s" % (i, _fmt_lap(l.laptime), int(l.length), estado))
+        options.append(
+            "#%d  ·  %s  ·  %dm  ·  %s" % (i, _fmt_lap(l.laptime), int(l.length), estado)
+        )
     return options
 
 
@@ -112,6 +114,7 @@ def _save_upload(content_bytes, suffix):
 
 def _load_laps(path, column_map=None):
     from fantasma import importers
+
     return importers.load_laps(path, column_map)
 
 
@@ -129,6 +132,7 @@ def _pick_file(title="Seleccionar archivo", filetypes=None):
     try:
         import tkinter as tk
         from tkinter import filedialog
+
         root = tk.Tk()
         root.withdraw()
         root.wm_attributes("-topmost", 1)
@@ -146,6 +150,7 @@ def _pick_folder(title="Seleccionar carpeta", initialdir=None):
     try:
         import tkinter as tk
         from tkinter import filedialog
+
         root = tk.Tk()
         root.withdraw()
         root.wm_attributes("-topmost", 1)

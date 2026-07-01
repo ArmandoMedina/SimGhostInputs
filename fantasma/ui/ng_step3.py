@@ -1,25 +1,24 @@
 """Paso 3 — Overlay: generar el HUD animado (NiceGUI)."""
 
 import os
-import threading
 
 from nicegui import ui
 
-from .ng_helpers import _FLOWS, _STEPS, _DEFAULT_FLOW, start_bg_render
+from .ng_helpers import _DEFAULT_FLOW, _FLOWS, _STEPS, start_bg_render
 
 
 async def render(state, navigate):
-    ui.label('Paso 3 — Generar overlay HUD').classes('step-header')
+    ui.label("Paso 3 — Generar overlay HUD").classes("step-header")
     ui.label(
-        'Genera el HUD animado sincronizado con tu vuelta. '
-        'Es un archivo de video transparente (como un sticker animado) que en el Paso 4 '
-        'se pega encima de tu grabacion. Muestra: barras de gas y freno, delta acumulado, '
-        'velocidad, marcha, volante y G-lateral.'
-    ).classes('text-sm text-gray-400 mb-4')
+        "Genera el HUD animado sincronizado con tu vuelta. "
+        "Es un archivo de video transparente (como un sticker animado) que en el Paso 4 "
+        "se pega encima de tu grabacion. Muestra: barras de gas y freno, delta acumulado, "
+        "velocidad, marcha, volante y G-lateral."
+    ).classes("text-sm text-gray-400 mb-4")
 
     if state.ref_lap is None:
-        ui.label('Primero carga los archivos en el Paso 1.').classes('text-yellow-400')
-        ui.button('← Ir al Paso 1', on_click=lambda: navigate(1)).props('flat color=secondary')
+        ui.label("Primero carga los archivos en el Paso 1.").classes("text-yellow-400")
+        ui.button("← Ir al Paso 1", on_click=lambda: navigate(1)).props("flat color=secondary")
         return
 
     ref_lap = state.ref_lap
@@ -29,6 +28,7 @@ async def render(state, navigate):
     if not corners:
         try:
             from fantasma.core.corners import detect_corners, extract_milestones
+
             _evs, _ = detect_corners(ref_lap)
             corners = extract_milestones(ref_lap, _evs)
             state.corners = corners
@@ -38,79 +38,98 @@ async def render(state, navigate):
     # Si ya hay overlay generado
     if state.last_overlay:
         ui.label(
-            '✓ Ya tienes un overlay generado: %s' % os.path.basename(state.last_overlay)
-        ).classes('text-green-400 mb-1')
-        ui.label('Si quieres regenerarlo con distintos parametros, usa las opciones de abajo.').classes('text-xs text-gray-400 mb-2')
+            "✓ Ya tienes un overlay generado: %s" % os.path.basename(state.last_overlay)
+        ).classes("text-green-400 mb-1")
+        ui.label(
+            "Si quieres regenerarlo con distintos parametros, usa las opciones de abajo."
+        ).classes("text-xs text-gray-400 mb-2")
         _render_next_btn(state, 3, navigate)
-        ui.separator().classes('my-4')
+        ui.separator().classes("my-4")
 
     # Carpeta de salida
-    _def_out = os.path.join(os.path.expanduser('~'), 'fantasma_salida')
-    out_dir_input = ui.input(
-        label='Carpeta donde guardar el overlay',
-        value=_def_out,
-        placeholder=_def_out,
-    ).classes('w-full mb-2').style('max-width:600px')
+    _def_out = os.path.join(os.path.expanduser("~"), "fantasma_salida")
+    out_dir_input = (
+        ui.input(
+            label="Carpeta donde guardar el overlay",
+            value=_def_out,
+            placeholder=_def_out,
+        )
+        .classes("w-full mb-2")
+        .style("max-width:600px")
+    )
 
     def pick_outdir():
         from .ng_helpers import _pick_folder
-        picked = _pick_folder('Elegir carpeta de salida', initialdir=out_dir_input.value or _def_out)
+
+        picked = _pick_folder(
+            "Elegir carpeta de salida", initialdir=out_dir_input.value or _def_out
+        )
         if picked:
             out_dir_input.set_value(picked)
 
-    ui.button('Explorar...', on_click=pick_outdir).props('flat color=secondary').classes('mb-4')
+    ui.button("Explorar...", on_click=pick_outdir).props("flat color=secondary").classes("mb-4")
 
     # FPS
-    ui.label('FPS del overlay').classes('text-sm font-bold text-white mb-1')
+    ui.label("FPS del overlay").classes("text-sm font-bold text-white mb-1")
     ui.label(
-        'Usa el mismo valor que tiene tu video de grabacion. '
-        'Si no sabes, 30 fps es el estandar mas comun.'
-    ).classes('text-xs text-gray-400 mb-2')
+        "Usa el mismo valor que tiene tu video de grabacion. "
+        "Si no sabes, 30 fps es el estandar mas comun."
+    ).classes("text-xs text-gray-400 mb-2")
 
-    fps_radio = ui.radio({24: '24 fps', 30: '30 fps', 60: '60 fps'}, value=30).props('inline')
+    fps_radio = ui.radio({24: "24 fps", 30: "30 fps", 60: "60 fps"}, value=30).props("inline")
 
     # Formato (solo relevante en flujo Solo overlay)
-    fmt_state = {'value': 'webm'}
-    if 'Solo overlay' in (state.flow_key or ''):
-        with ui.expansion('Formato de salida', icon='settings').classes('w-full mb-2'):
-            ui.label('webm — Recomendado. Compatible con DaVinci Resolve, Kdenlive, Premiere.').classes('text-xs text-gray-400')
-            ui.label('prores — Para Final Cut Pro en Mac o maxima calidad sin compresion.').classes('text-xs text-gray-400')
-            ui.label('png — Frames sueltos (una imagen por fotograma). Uso avanzado.').classes('text-xs text-gray-400')
-            fmt_sel = ui.select(['webm', 'prores', 'png'], value='webm', label='Formato').classes('w-48')
-            fmt_sel.on('update:model-value', lambda e: fmt_state.update({'value': e.value}))
+    fmt_state = {"value": "webm"}
+    if "Solo overlay" in (state.flow_key or ""):
+        with ui.expansion("Formato de salida", icon="settings").classes("w-full mb-2"):
+            ui.label(
+                "webm — Recomendado. Compatible con DaVinci Resolve, Kdenlive, Premiere."
+            ).classes("text-xs text-gray-400")
+            ui.label("prores — Para Final Cut Pro en Mac o maxima calidad sin compresion.").classes(
+                "text-xs text-gray-400"
+            )
+            ui.label("png — Frames sueltos (una imagen por fotograma). Uso avanzado.").classes(
+                "text-xs text-gray-400"
+            )
+            fmt_sel = ui.select(["webm", "prores", "png"], value="webm", label="Formato").classes(
+                "w-48"
+            )
+            fmt_sel.on("update:model-value", lambda e: fmt_state.update({"value": e.value}))
 
-    ui.html('''<div class="sgi-note" style="margin-bottom:1rem">
+    ui.html("""<div class="sgi-note" style="margin-bottom:1rem">
       <strong>Tiempo estimado de render:</strong> entre 5 y 30 minutos dependiendo de la duracion
       de la vuelta y el numero de cores de tu PC. El render usa todos los cores disponibles en paralelo.
       Tu PC seguira disponible mientras renderiza, solo ira mas lenta.
-    </div>''')
+    </div>""")
 
-    ui.separator().classes('my-4')
+    ui.separator().classes("my-4")
 
     # Area de resultado/progreso
-    result_area = ui.column().classes('w-full')
-    render_area = ui.column().classes('w-full')
+    result_area = ui.column().classes("w-full")
+    render_area = ui.column().classes("w-full")
 
     # Variable de estado del job activo (en closure)
-    job_holder = {'job': None, 'timer': None}
+    job_holder = {"job": None, "timer": None}
 
     def _start_render():
         out_dir = out_dir_input.value or _def_out
         _fps = fps_radio.value or 30
-        _fmt = fmt_state['value']
+        _fmt = fmt_state["value"]
 
         try:
             from fantasma.viz.overlay import render_overlay as _ro
         except ImportError:
             result_area.clear()
             with result_area:
-                ui.label('Faltan dependencias. Ejecuta: pip install "fantasma-inputs[overlay]"').classes('text-red-400')
+                ui.label(
+                    'Faltan dependencias. Ejecuta: pip install "fantasma-inputs[overlay]"'
+                ).classes("text-red-400")
             return
 
         os.makedirs(out_dir, exist_ok=True)
         job = start_bg_render(
             _ro,
-            progress_kw='progress',
+            progress_kw="progress",
             ref=ref_lap,
             drv=drv_lap,
             corners=corners or [],
@@ -118,69 +137,71 @@ async def render(state, navigate):
             fps=_fps,
             fmt=_fmt,
         )
-        job_holder['job'] = job
+        job_holder["job"] = job
 
         render_area.clear()
         with render_area:
-            progress_bar = ui.linear_progress(value=0).classes('w-full')
-            status_label = ui.label('Iniciando...').classes('text-gray-400 text-sm')
+            progress_bar = ui.linear_progress(value=0).classes("w-full")
+            status_label = ui.label("Iniciando...").classes("text-gray-400 text-sm")
 
             def cancel():
-                if job_holder['job']:
-                    job_holder['job'].cancel()
+                if job_holder["job"]:
+                    job_holder["job"].cancel()
 
-            cancel_btn = ui.button('Detener render', on_click=cancel).props('color=secondary flat')
+            cancel_btn = ui.button("Detener render", on_click=cancel).props("color=secondary flat")
 
         def poll():
-            _job = job_holder['job']
+            _job = job_holder["job"]
             if _job is None:
                 return
             if _job.done:
-                if job_holder['timer']:
-                    job_holder['timer'].cancel()
-                    job_holder['timer'] = None
+                if job_holder["timer"]:
+                    job_holder["timer"].cancel()
+                    job_holder["timer"] = None
                 progress_bar.delete()
                 status_label.delete()
                 cancel_btn.delete()
                 result_area.clear()
                 with result_area:
-                    if _job.error == '__CANCELLED__':
-                        ui.label('Render cancelado.').classes('text-yellow-400')
+                    if _job.error == "__CANCELLED__":
+                        ui.label("Render cancelado.").classes("text-yellow-400")
                     elif _job.error:
-                        if 'ImportError' in str(_job.error) or 'No module' in str(_job.error):
-                            ui.label('Faltan dependencias. Ejecuta: pip install "fantasma-inputs[overlay]"').classes('text-red-400')
+                        if "ImportError" in str(_job.error) or "No module" in str(_job.error):
+                            ui.label(
+                                'Faltan dependencias. Ejecuta: pip install "fantasma-inputs[overlay]"'
+                            ).classes("text-red-400")
                         else:
-                            ui.label(f'Error en el render: {_job.error}').classes('text-red-400')
+                            ui.label(f"Error en el render: {_job.error}").classes("text-red-400")
                     else:
                         state.last_overlay = _job.result
-                        ui.label(
-                            '✓ Overlay generado: %s' % os.path.basename(_job.result)
-                        ).classes('text-green-400 font-bold')
+                        ui.label("✓ Overlay generado: %s" % os.path.basename(_job.result)).classes(
+                            "text-green-400 font-bold"
+                        )
                         _render_next_btn(state, 3, navigate)
                 return
             pct = _job.n / _job.total if _job.total > 0 else 0
             progress_bar.set_value(pct)
             status_label.set_text(
-                _job.status or ('Frame %d / %d (%.0f%%)' % (_job.n, _job.total, pct * 100))
+                _job.status or ("Frame %d / %d (%.0f%%)" % (_job.n, _job.total, pct * 100))
             )
 
         timer = ui.timer(0.5, poll)
-        job_holder['timer'] = timer
+        job_holder["timer"] = timer
 
-    if not job_holder['job'] or job_holder['job'].done:
+    if not job_holder["job"] or job_holder["job"].done:
         ui.button(
-            'Generar overlay',
+            "Generar overlay",
             on_click=_start_render,
-        ).props('color=primary unelevated').classes('text-base px-6 py-2')
+        ).props("color=primary unelevated").classes("text-base px-6 py-2")
 
 
 def _render_next_btn(state, current_step, navigate):
     flow = _FLOWS.get(state.flow_key, _FLOWS[_DEFAULT_FLOW])
-    next_i = flow['next'].get(current_step)
+    next_i = flow["next"].get(current_step)
     if next_i is None:
-        ui.label('Completaste todos los pasos de tu flujo!').classes('text-green-400 font-bold')
+        ui.label("Completaste todos los pasos de tu flujo!").classes("text-green-400 font-bold")
     else:
         ui.button(
-            'Ir al Paso %d — %s →' % (next_i, _STEPS[next_i]),
+            "Ir al Paso %d — %s →" % (next_i, _STEPS[next_i]),
             on_click=lambda: navigate(next_i),
-        ).props('color=primary unelevated')
+        ).props("color=primary unelevated")

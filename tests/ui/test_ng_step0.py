@@ -6,7 +6,9 @@ Ejecutar: pytest tests/ui/test_ng_step0.py -v
 
 import pytest
 
-pytest.importorskip("nicegui.testing", reason="nicegui no instalado; ejecuta: pip install -e '.[ui-ng]'")
+pytest.importorskip(
+    "nicegui.testing", reason="nicegui no instalado; ejecuta: pip install -e '.[ui-ng]'"
+)
 pytest_plugins = ["nicegui.testing"]
 
 
@@ -18,6 +20,7 @@ def user(user):
 @pytest.mark.asyncio
 async def test_step0_hero_visible(user):
     from fantasma.ui.ng_app import main_page  # noqa: F401
+
     await user.open("/")
     await user.should_see("SimGhostInputs")
 
@@ -25,6 +28,7 @@ async def test_step0_hero_visible(user):
 @pytest.mark.asyncio
 async def test_step0_flow_cards_visible(user):
     from fantasma.ui.ng_app import main_page  # noqa: F401
+
     await user.open("/")
     await user.should_see("Solo analisis")
     await user.should_see("Solo overlay")
@@ -34,6 +38,7 @@ async def test_step0_flow_cards_visible(user):
 @pytest.mark.asyncio
 async def test_step0_question_label(user):
     from fantasma.ui.ng_app import main_page  # noqa: F401
+
     await user.open("/")
     await user.should_see("quieres obtener hoy")
 
@@ -41,5 +46,6 @@ async def test_step0_question_label(user):
 @pytest.mark.asyncio
 async def test_step0_start_button_visible(user):
     from fantasma.ui.ng_app import main_page  # noqa: F401
+
     await user.open("/")
     await user.should_see("Empezar")

@@ -208,8 +208,16 @@ class AppState:
     def clear_drv(self):
         """Limpia datos de la vuelta del piloto para procesar otra vuelta."""
         for k in (
-            "drv_lap", "drv_laps", "drv_path", "summary", "trace", "rows",
-            "charts_paths", "last_overlay", "corners", "corners_editable",
+            "drv_lap",
+            "drv_laps",
+            "drv_path",
+            "summary",
+            "trace",
+            "rows",
+            "charts_paths",
+            "last_overlay",
+            "corners",
+            "corners_editable",
             "compose_offset",
         ):
             _ng_app.storage.user.pop(k, None)
