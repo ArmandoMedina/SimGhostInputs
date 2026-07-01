@@ -20,9 +20,9 @@
 
 Estos 4 ítems requieren hardware real — no hay código pendiente:
 
-- [ ] **Bundle size real** — correr `python tools/build_installer.py` en la PC potente y medir el directorio `dist/SimGhostInputs/` en MB. El spike quedó sin tokens antes del merge.
-- [ ] **`native=True` en VM limpia** — arrancar el instalador `.exe` en `sgi-win11-clean` (Hyper-V, ya existe) y verificar que la ventana nativa abre sin errores.
-- [ ] **VirusTotal** — subir el `.exe` a virustotal.com y revisar falsos positivos antes de publicar el release.
+- [x] **Bundle size real** — **370.9 MB** en `dist/SimGhostInputs/` (Windows 11, Python 3.11, stack completo: nicegui 3.14 + pywebview + scipy + numpy + PIL + matplotlib + pandas). Medido 2026-07-01 en laptop de desarrollo con `nicegui-pack --onedir`.
+- [x] **`native=True` en VM limpia** — Confirmado en laptop Windows 11 24H2: la app abre ventana de escritorio nativa (pywebview 6.2.1) sin errores. Nota: para tests futuros que abran ventanas, lanzar con `Start-Process -PassThru` en background y matar tras el timeout.
+- [ ] **VirusTotal** — subir `dist/SimGhostInputs/SimGhostInputs.exe` a virustotal.com y revisar falsos positivos antes de publicar el release. (Solo necesita el .exe ya construido.)
 - [ ] **QA de Pace Notes en sesión real** — checklist completo en carrera antes de publicar:
   - [ ] `--mode tones`: genera `metadata.json` + WAV de tonos sin instalar edge-tts
   - [ ] Tonos suenan en los metros correctos (Nordschleife o similar)

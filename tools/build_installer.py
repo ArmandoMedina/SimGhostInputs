@@ -22,10 +22,10 @@ def main():
     )
     args = parser.parse_args()
 
-    # Verificar nicegui-pack
-    result = subprocess.run(["pip", "show", "nicegui-pack"], capture_output=True)
-    if result.returncode != 0:
-        print("ERROR: nicegui-pack no instalado. Ejecuta: pip install nicegui-pack")
+    # Verificar nicegui-pack (puede estar instalado como standalone, no vía pip)
+    if not shutil.which("nicegui-pack"):
+        print("ERROR: nicegui-pack no encontrado en PATH.")
+        print("Opciones: pip install nicegui[pack]  o  instalar via nicegui releases")
         sys.exit(1)
 
     # Limpiar build anterior

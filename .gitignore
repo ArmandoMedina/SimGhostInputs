@@ -18,3 +18,4 @@ driver/
 CLAUDE.md
 docs/demo/_*
 .obsidian/
+.nicegui/
