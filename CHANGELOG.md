@@ -17,9 +17,18 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/). Versionado
 - **UX NiceGUI post-auditoría v2.0**: breadcrumb de navegación en todos los pasos; links "Guía MoTeC" y "Ejemplo CSV" en Paso 0 con dialogs; slider de escala con valor dinámico en tiempo real; sidebar con checkmark ✅ cuando el paso está completo; guard de ffmpeg en Paso 3 con instrucción de instalación por plataforma; CSS vars para colores de los paneles de Paso 4.
 - **C19 — aviso proactivo de ffmpeg en Paso 0**: al seleccionar el flujo "Video con HUD" o "Solo overlay", la UI muestra inmediatamente un aviso si ffmpeg no está instalado — sin esperar al paso de render.
 
+### Añadido (QA 2026-07-01)
+- **QA con datos reales — 4 combinaciones auto-circuito ejecutadas**: Nordschleife BMW vs Audi (cross-car), Barcelona BMW vs Mercedes, Interlagos GT3 vs Hypercar (classes diferentes — aviso "piloto más rápido" +7.5 s), F3 vs LMP2 (fallo limpio por canal Distance ausente en CSV de ORECA). Edge cases documentados en `docs/casos-de-uso.md` C30–C35.
+- **`docs/casos-de-uso.md` — C30–C35**: seis escenarios nuevos basados en el material real: circuito corto vs largo, cross-car dentro de clase, clases distintas (LMP2 vs GT3, Hypercar vs GT3), flujo headless sin video, dos sesiones del mismo piloto.
+- **Tests e2e NiceGUI** (`tests/ui/test_e2e_wizard.py`): 5 tests end-to-end del wizard de 5 pasos con datos reales de Nordschleife. Usa `_SharedState` (dict en memoria, sin I/O a disco) para inyectar datos pre-calculados en AppState sin abrir el browser.
+- **`tests/ui/conftest.py`**: `pytest_configure` que parchea `Storage.clear()` para ignorar `PermissionError` de teardown en Windows (archivo temporal bloqueado por proceso de overlay activo en paralelo).
+
 ### Cambiado
 - `setup.ps1`: la instalación de GitHub CLI (`gh`) se mueve detrás del flag `-Dev`; el setup de usuario final no instala herramientas de desarrollo.
-- Suite de tests ampliada a **185 tests**: nuevos archivos `tests/ui/test_ng_state.py`, `test_ng_step1–4.py`, `tests/viz/test_compose_encoder.py` y casos edge en `test_compare.py` y `test_pacenotes.py`.
+- Suite de tests ampliada a **190 tests**: nuevos e2e wizard (5), corrección import directo en `test_sync.py`.
+
+### Corregido
+- `fantasma/ui/ng_step2.py`: `ui.download().classes()` fallaba con `AttributeError` en entorno sin browser real — añadido None-check (`ui.download()` devuelve None sin conexión WebSocket activa).
 
 ### Corregido
 - `fantasma/ui/ng_state.py`: `clear_drv()` ahora elimina `drv_name` al cambiar vuelta del piloto — el nombre del archivo quedaba huérfano de la sesión anterior.
