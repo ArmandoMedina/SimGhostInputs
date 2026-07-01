@@ -1,0 +1,741 @@
+<!-- @dsCard group="Screens" -->
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SimGhostInputs — Importar Telemetría</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:         #08090d;
+    --card-bg:    #111318;
+    --sidebar-bg: #0d0e13;
+    --accent:     #2d6cdf;
+    --highlight:  #4f8ef7;
+    --text:       #f0f2f5;
+    --muted:      #6b7280;
+    --success:    #22c55e;
+    --danger:     #ef4444;
+    --warning:    #f59e0b;
+    --border:     #1e2330;
+    --sidebar-w:  240px;
+  }
+
+  html, body {
+    height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  .app {
+    display: flex;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  /* ── Sidebar ── */
+  .sidebar {
+    width: var(--sidebar-w);
+    min-width: var(--sidebar-w);
+    background: var(--sidebar-bg);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+  }
+
+  .sidebar-brand {
+    padding: 20px 20px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .brand-logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 4px;
+  }
+
+  .brand-icon {
+    width: 28px;
+    height: 28px;
+    background: var(--accent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    flex-shrink: 0;
+  }
+
+  .brand-name {
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    color: var(--text);
+    text-transform: uppercase;
+  }
+
+  .brand-sub {
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 0.02em;
+    padding-left: 38px;
+  }
+
+  .sidebar-nav {
+    padding: 12px 0;
+    flex: 1;
+  }
+
+  .nav-section-label {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    text-transform: uppercase;
+    padding: 8px 20px 4px;
+  }
+
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 20px;
+    cursor: pointer;
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 500;
+    border-left: 2px solid transparent;
+    text-decoration: none;
+    transition: color 0.15s, background 0.15s;
+  }
+
+  .nav-item:hover { color: var(--text); background: rgba(255,255,255,0.03); }
+  .nav-item.active {
+    color: var(--highlight);
+    background: rgba(79, 142, 247, 0.08);
+    border-left-color: var(--highlight);
+  }
+
+  .nav-icon { width: 16px; text-align: center; font-size: 13px; opacity: 0.8; }
+
+  .sidebar-footer {
+    border-top: 1px solid var(--border);
+    padding: 12px 20px;
+  }
+
+  .version-badge { font-size: 10px; color: var(--muted); letter-spacing: 0.04em; }
+  .version-badge span { color: var(--accent); font-weight: 600; }
+
+  /* ── Main ── */
+  .main {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .topbar {
+    height: 48px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    padding: 0 28px;
+    gap: 12px;
+    flex-shrink: 0;
+  }
+
+  .topbar-title { font-size: 12px; color: var(--muted); letter-spacing: 0.04em; text-transform: uppercase; }
+  .topbar-dot { width: 4px; height: 4px; background: var(--border); border-radius: 50%; }
+
+  /* ── Breadcrumb ── */
+  .breadcrumb-bar {
+    border-bottom: 1px solid var(--border);
+    padding: 0 40px;
+    display: flex;
+    align-items: center;
+    height: 44px;
+    gap: 0;
+    flex-shrink: 0;
+  }
+
+  .breadcrumb-step {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--muted);
+    padding: 0 12px 0 0;
+  }
+
+  .breadcrumb-step:first-child { padding-left: 0; }
+
+  .step-num {
+    width: 18px;
+    height: 18px;
+    border: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 9px;
+    font-weight: 700;
+  }
+
+  .breadcrumb-step.done .step-num {
+    background: var(--success);
+    border-color: var(--success);
+    color: #000;
+  }
+
+  .breadcrumb-step.active {
+    color: var(--highlight);
+  }
+
+  .breadcrumb-step.active .step-num {
+    background: var(--highlight);
+    border-color: var(--highlight);
+    color: #fff;
+  }
+
+  .breadcrumb-arrow {
+    color: var(--border);
+    font-size: 14px;
+    margin: 0 4px;
+    user-select: none;
+  }
+
+  /* ── Content ── */
+  .content {
+    flex: 1;
+    padding: 32px 40px 32px;
+  }
+
+  .page-heading {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--text);
+    letter-spacing: -0.02em;
+    margin-bottom: 4px;
+  }
+
+  .page-sub {
+    font-size: 13px;
+    color: var(--muted);
+    margin-bottom: 28px;
+  }
+
+  /* ── Upload grid ── */
+  .upload-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-bottom: 20px;
+  }
+
+  .upload-panel {
+    border: 1px solid var(--border);
+    background: var(--card-bg);
+  }
+
+  .upload-panel-header {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .upload-panel-title {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .lap-badge {
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 7px;
+    letter-spacing: 0.04em;
+  }
+
+  .lap-badge.ref {
+    background: rgba(45, 108, 223, 0.15);
+    color: var(--accent);
+    border: 1px solid rgba(45, 108, 223, 0.3);
+  }
+
+  .lap-badge.own {
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--danger);
+    border: 1px solid rgba(239, 68, 68, 0.25);
+  }
+
+  .upload-zone {
+    margin: 16px;
+    border: 1.5px dashed var(--border);
+    padding: 32px 16px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+    min-height: 140px;
+  }
+
+  .upload-zone:hover {
+    border-color: var(--accent);
+    background: rgba(45, 108, 223, 0.04);
+  }
+
+  .upload-zone.loaded {
+    border-style: solid;
+    border-color: var(--success);
+    background: rgba(34, 197, 94, 0.04);
+  }
+
+  .upload-icon { font-size: 28px; opacity: 0.5; }
+  .upload-zone.loaded .upload-icon { font-size: 24px; opacity: 1; }
+
+  .upload-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    text-align: center;
+  }
+
+  .upload-hint {
+    font-size: 11px;
+    color: var(--muted);
+    text-align: center;
+  }
+
+  .upload-filename {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--success);
+    letter-spacing: 0.02em;
+    font-family: 'Courier New', monospace;
+  }
+
+  /* ── Loaded state ── */
+  .upload-status {
+    margin: 0 16px 16px;
+    padding: 10px 12px;
+    background: rgba(34, 197, 94, 0.06);
+    border: 1px solid rgba(34, 197, 94, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .status-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+  }
+
+  .status-ok { color: var(--success); font-size: 14px; }
+  .status-filename { color: var(--text); font-weight: 500; font-family: 'Courier New', monospace; }
+  .status-size { color: var(--muted); font-size: 11px; }
+
+  /* ── Lap selector ── */
+  .lap-selector {
+    margin: 0 16px 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .field-label {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  .select-wrap {
+    flex: 1;
+    position: relative;
+  }
+
+  .field-select {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 6px 28px 6px 10px;
+    font-size: 12px;
+    font-family: inherit;
+    appearance: none;
+    cursor: pointer;
+    outline: none;
+  }
+
+  .field-select:focus { border-color: var(--accent); }
+
+  .select-arrow {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--muted);
+    font-size: 10px;
+    pointer-events: none;
+  }
+
+  .time-badge {
+    font-size: 11px;
+    font-weight: 700;
+    font-family: 'Courier New', monospace;
+    padding: 4px 10px;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+  }
+
+  .time-badge.ref { background: rgba(45,108,223,0.15); color: var(--accent); border: 1px solid rgba(45,108,223,0.25); }
+  .time-badge.own { background: rgba(239,68,68,0.1); color: var(--danger); border: 1px solid rgba(239,68,68,0.2); }
+
+  /* ── Advanced options ── */
+  .advanced-section {
+    border: 1px solid var(--border);
+    background: var(--card-bg);
+    margin-bottom: 28px;
+  }
+
+  .advanced-header {
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+    user-select: none;
+  }
+
+  .advanced-header:hover { background: rgba(255,255,255,0.02); }
+
+  .advanced-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .advanced-title::before {
+    content: '⚙';
+    font-size: 13px;
+  }
+
+  .chevron { font-size: 11px; color: var(--muted); transition: transform 0.2s; }
+  .chevron.open { transform: rotate(180deg); }
+
+  .advanced-body {
+    border-top: 1px solid var(--border);
+    padding: 16px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+
+  .field-group { display: flex; flex-direction: column; gap: 6px; }
+
+  .field-input {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 7px 10px;
+    font-size: 12px;
+    font-family: 'Courier New', monospace;
+    outline: none;
+    width: 100%;
+  }
+
+  .field-input:focus { border-color: var(--accent); }
+  .field-input::placeholder { color: var(--muted); }
+
+  .field-hint {
+    font-size: 10px;
+    color: var(--muted);
+    line-height: 1.5;
+  }
+
+  /* ── Bottom actions ── */
+  .bottom-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-top: 8px;
+  }
+
+  .action-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  .check-icon { font-size: 14px; }
+  .check-icon.ok { color: var(--success); }
+  .check-icon.wait { color: var(--warning); }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 20px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    cursor: pointer;
+    border: 1px solid transparent;
+    font-family: inherit;
+    text-transform: uppercase;
+    transition: background 0.15s, border-color 0.15s;
+  }
+
+  .btn-ghost {
+    background: transparent;
+    border-color: var(--border);
+    color: var(--muted);
+  }
+
+  .btn-ghost:hover { border-color: var(--text); color: var(--text); }
+
+  .btn-primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+  }
+
+  .btn-primary:hover { background: var(--highlight); border-color: var(--highlight); }
+
+  .scanline {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px);
+    pointer-events: none;
+    z-index: 9999;
+  }
+</style>
+</head>
+<body>
+<div class="scanline"></div>
+<div class="app">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-logo">
+        <div class="brand-icon">⚡</div>
+        <span class="brand-name">SimGhostInputs</span>
+      </div>
+      <div class="brand-sub">Análisis de simracing</div>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">Principal</div>
+      <a class="nav-item" href="#">
+        <span class="nav-icon">⊞</span> Inicio
+      </a>
+      <a class="nav-item active" href="#">
+        <span class="nav-icon">↑</span> Importar
+      </a>
+      <a class="nav-item" href="#">
+        <span class="nav-icon">◈</span> Análisis
+      </a>
+      <div class="nav-section-label" style="margin-top:8px;">Salidas</div>
+      <a class="nav-item" href="#">
+        <span class="nav-icon">◉</span> Overlay
+      </a>
+      <a class="nav-item" href="#">
+        <span class="nav-icon">▶</span> Video
+      </a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="version-badge">v<span>1.1.0</span> · AMS2 · MoTeC</div>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="main">
+    <div class="topbar">
+      <span class="topbar-title">Importar telemetría</span>
+      <span class="topbar-dot"></span>
+      <span style="font-size:12px;color:var(--muted);">Flujo: Video con HUD</span>
+    </div>
+
+    <!-- Breadcrumb -->
+    <div class="breadcrumb-bar">
+      <div class="breadcrumb-step done">
+        <div class="step-num">✓</div>
+        Inicio
+      </div>
+      <span class="breadcrumb-arrow">›</span>
+      <div class="breadcrumb-step active">
+        <div class="step-num">1</div>
+        Importar
+      </div>
+      <span class="breadcrumb-arrow">›</span>
+      <div class="breadcrumb-step">
+        <div class="step-num">2</div>
+        Análisis
+      </div>
+      <span class="breadcrumb-arrow">›</span>
+      <div class="breadcrumb-step">
+        <div class="step-num">3</div>
+        Overlay
+      </div>
+      <span class="breadcrumb-arrow">›</span>
+      <div class="breadcrumb-step">
+        <div class="step-num">4</div>
+        Video
+      </div>
+    </div>
+
+    <!-- Content -->
+    <div class="content">
+      <h1 class="page-heading">Paso 1 — Importar telemetría</h1>
+      <p class="page-sub">Carga dos CSVs exportados desde MoTeC i2. Cada archivo debe corresponder a una vuelta individual.</p>
+
+      <!-- Upload grid -->
+      <div class="upload-grid">
+
+        <!-- Left: referencia -->
+        <div class="upload-panel">
+          <div class="upload-panel-header">
+            <div class="upload-panel-title">
+              <span>① Vuelta de referencia</span>
+            </div>
+            <span class="lap-badge ref">REF</span>
+          </div>
+
+          <div class="upload-zone loaded">
+            <span class="upload-icon">✓</span>
+            <span class="upload-filename">nordschleife_ref_6m47s.csv</span>
+            <span class="upload-hint">Haz clic para reemplazar</span>
+          </div>
+
+          <div class="upload-status">
+            <div class="status-left">
+              <span class="status-ok">✓</span>
+              <span class="status-filename">nordschleife_ref_6m47s.csv</span>
+              <span class="status-size">· 2.1 MB · 4 832 filas</span>
+            </div>
+            <span style="font-size:10px;color:var(--muted);">CSV</span>
+          </div>
+
+          <div class="lap-selector">
+            <span class="field-label">Vuelta</span>
+            <div class="select-wrap">
+              <select class="field-select">
+                <option>Vuelta 3 — 6:47.231</option>
+                <option>Vuelta 5 — 6:49.018</option>
+                <option>Vuelta 7 — 6:52.340</option>
+              </select>
+              <span class="select-arrow">▾</span>
+            </div>
+            <span class="time-badge ref">6:47.231</span>
+          </div>
+        </div>
+
+        <!-- Right: tu vuelta -->
+        <div class="upload-panel">
+          <div class="upload-panel-header">
+            <div class="upload-panel-title">
+              <span>② Tu vuelta de hoy</span>
+            </div>
+            <span class="lap-badge own">HOY</span>
+          </div>
+
+          <div class="upload-zone">
+            <span class="upload-icon">⬆</span>
+            <span class="upload-label">Arrastra el CSV aquí</span>
+            <span class="upload-hint">o haz clic para seleccionar archivo</span>
+            <span class="upload-hint">Acepta: .csv · .xlsx</span>
+          </div>
+
+          <div class="lap-selector" style="margin-top:4px;">
+            <span class="field-label">Vuelta</span>
+            <div class="select-wrap">
+              <select class="field-select" disabled>
+                <option>— carga un archivo primero —</option>
+              </select>
+              <span class="select-arrow">▾</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Advanced options -->
+      <div class="advanced-section">
+        <div class="advanced-header">
+          <span class="advanced-title">Opciones avanzadas</span>
+          <span class="chevron open">▾</span>
+        </div>
+        <div class="advanced-body">
+          <div class="field-group">
+            <label class="field-label">Archivo de corners (JSON)</label>
+            <input class="field-input" type="text" placeholder="corners/nordschleife.json" value="corners/nordschleife.json">
+            <span class="field-hint">JSON con nombre, distancia y zona de frenada de cada curva. Se autodetecta si el nombre de pista está en el CSV.</span>
+          </div>
+          <div class="field-group">
+            <label class="field-label">Columna de velocidad</label>
+            <input class="field-input" type="text" placeholder="Speed (km/h)" value="Speed (km/h)">
+            <span class="field-hint">Nombre exacto de la columna en el CSV. Acepta km/h o mph — se convierte automáticamente.</span>
+          </div>
+          <div class="field-group">
+            <label class="field-label">Columna de distancia</label>
+            <input class="field-input" type="text" placeholder="Distance (m)" value="Distance (m)">
+            <span class="field-hint">Distancia recorrida en la vuelta. Requerido para alinear las dos trayectorias.</span>
+          </div>
+          <div class="field-group">
+            <label class="field-label">Tolerancia de alineación (m)</label>
+            <input class="field-input" type="text" placeholder="50" value="50">
+            <span class="field-hint">Desplazamiento máximo en metros para alinear el inicio de las dos vueltas por correlación.</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bottom actions -->
+      <div class="bottom-actions">
+        <div class="action-left">
+          <span class="check-icon ok">✓</span>
+          <span>Referencia lista</span>
+          <span style="color:var(--border);margin:0 4px;">·</span>
+          <span class="check-icon wait">○</span>
+          <span>Tu vuelta pendiente</span>
+        </div>
+        <div style="display:flex;gap:10px;">
+          <button class="btn btn-ghost">← Volver</button>
+          <button class="btn btn-primary" disabled style="opacity:0.4;cursor:not-allowed;">Cargar y ver análisis →</button>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+</div>
+</body>
+</html>

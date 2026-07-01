@@ -1,0 +1,781 @@
+<!-- @dsCard group="Screens" -->
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SimGhostInputs — Análisis de vuelta</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:         #08090d;
+    --card-bg:    #111318;
+    --sidebar-bg: #0d0e13;
+    --accent:     #2d6cdf;
+    --highlight:  #4f8ef7;
+    --text:       #f0f2f5;
+    --muted:      #6b7280;
+    --success:    #22c55e;
+    --danger:     #ef4444;
+    --warning:    #f59e0b;
+    --border:     #1e2330;
+    --sidebar-w:  240px;
+  }
+
+  html, body {
+    height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  .app {
+    display: flex;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  /* ── Sidebar ── */
+  .sidebar {
+    width: var(--sidebar-w);
+    min-width: var(--sidebar-w);
+    background: var(--sidebar-bg);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+  }
+
+  .sidebar-brand {
+    padding: 20px 20px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .brand-logo { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
+
+  .brand-icon {
+    width: 28px; height: 28px;
+    background: var(--accent);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; flex-shrink: 0;
+  }
+
+  .brand-name {
+    font-size: 13px; font-weight: 700; letter-spacing: 0.04em;
+    color: var(--text); text-transform: uppercase;
+  }
+
+  .brand-sub { font-size: 11px; color: var(--muted); letter-spacing: 0.02em; padding-left: 38px; }
+
+  .sidebar-nav { padding: 12px 0; flex: 1; }
+
+  .nav-section-label {
+    font-size: 10px; font-weight: 600; letter-spacing: 0.08em;
+    color: var(--muted); text-transform: uppercase; padding: 8px 20px 4px;
+  }
+
+  .nav-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 20px; cursor: pointer; color: var(--muted);
+    font-size: 13px; font-weight: 500;
+    border-left: 2px solid transparent;
+    text-decoration: none; transition: color 0.15s, background 0.15s;
+  }
+
+  .nav-item:hover { color: var(--text); background: rgba(255,255,255,0.03); }
+  .nav-item.active {
+    color: var(--highlight); background: rgba(79, 142, 247, 0.08);
+    border-left-color: var(--highlight);
+  }
+
+  .nav-icon { width: 16px; text-align: center; font-size: 13px; opacity: 0.8; }
+
+  .sidebar-footer { border-top: 1px solid var(--border); padding: 12px 20px; }
+  .version-badge { font-size: 10px; color: var(--muted); letter-spacing: 0.04em; }
+  .version-badge span { color: var(--accent); font-weight: 600; }
+
+  /* ── Main ── */
+  .main { flex: 1; overflow-y: auto; display: flex; flex-direction: column; }
+
+  .topbar {
+    height: 48px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; padding: 0 28px; gap: 12px; flex-shrink: 0;
+  }
+
+  .topbar-title { font-size: 12px; color: var(--muted); letter-spacing: 0.04em; text-transform: uppercase; }
+  .topbar-dot { width: 4px; height: 4px; background: var(--border); border-radius: 50%; }
+
+  /* ── Breadcrumb ── */
+  .breadcrumb-bar {
+    border-bottom: 1px solid var(--border); padding: 0 40px;
+    display: flex; align-items: center; height: 44px; flex-shrink: 0;
+  }
+
+  .breadcrumb-step {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 11px; font-weight: 600; letter-spacing: 0.04em;
+    text-transform: uppercase; color: var(--muted);
+  }
+
+  .step-num {
+    width: 18px; height: 18px; border: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 9px; font-weight: 700;
+  }
+
+  .breadcrumb-step.done .step-num { background: var(--success); border-color: var(--success); color: #000; }
+  .breadcrumb-step.active { color: var(--highlight); }
+  .breadcrumb-step.active .step-num { background: var(--highlight); border-color: var(--highlight); color: #fff; }
+  .breadcrumb-arrow { color: var(--border); font-size: 14px; margin: 0 4px; user-select: none; padding: 0 8px; }
+
+  /* ── Content ── */
+  .content { flex: 1; padding: 24px 32px 32px; }
+
+  .page-heading {
+    font-size: 20px; font-weight: 700; color: var(--text);
+    letter-spacing: -0.02em; margin-bottom: 16px;
+  }
+
+  /* ── Summary bar ── */
+  .summary-bar {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    border: 1px solid var(--border);
+    background: var(--card-bg);
+    margin-bottom: 20px;
+  }
+
+  .summary-cell {
+    padding: 12px 16px;
+    border-right: 1px solid var(--border);
+  }
+
+  .summary-cell:last-child { border-right: none; }
+
+  .summary-label {
+    font-size: 9px; font-weight: 700; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--muted); margin-bottom: 4px;
+  }
+
+  .summary-value {
+    font-size: 18px; font-weight: 700; letter-spacing: -0.02em;
+    font-family: 'Courier New', monospace;
+  }
+
+  .summary-value.ref { color: var(--accent); }
+  .summary-value.own { color: var(--danger); }
+  .summary-value.delta-neg { color: var(--danger); }
+  .summary-value.track { color: var(--text); font-size: 14px; }
+  .summary-value.date { color: var(--muted); font-size: 13px; font-family: inherit; font-weight: 500; }
+
+  .summary-sub {
+    font-size: 10px; color: var(--muted); margin-top: 2px;
+  }
+
+  /* ── Two-col layout ── */
+  .analysis-cols {
+    display: grid;
+    grid-template-columns: 1fr 340px;
+    gap: 16px;
+    align-items: start;
+  }
+
+  /* ── Corner table ── */
+  .table-panel {
+    border: 1px solid var(--border);
+    background: var(--card-bg);
+  }
+
+  .panel-header {
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+
+  .panel-title {
+    font-size: 11px; font-weight: 700; letter-spacing: 0.06em;
+    text-transform: uppercase; color: var(--muted);
+    display: flex; align-items: center; gap: 8px;
+  }
+
+  .panel-title-icon { color: var(--accent); }
+
+  .panel-actions { display: flex; gap: 8px; }
+
+  .btn-mini {
+    font-size: 10px; font-weight: 600; letter-spacing: 0.04em;
+    text-transform: uppercase; padding: 4px 10px;
+    border: 1px solid var(--border); background: transparent;
+    color: var(--muted); cursor: pointer; font-family: inherit;
+    transition: color 0.15s, border-color 0.15s;
+  }
+
+  .btn-mini:hover { color: var(--text); border-color: var(--text); }
+
+  .btn-mini.primary {
+    background: rgba(45,108,223,0.15); border-color: var(--accent); color: var(--accent);
+  }
+
+  .btn-mini.primary:hover { background: rgba(45,108,223,0.25); }
+
+  table {
+    width: 100%; border-collapse: collapse;
+    font-size: 12px;
+  }
+
+  thead th {
+    padding: 8px 12px;
+    text-align: left;
+    font-size: 10px; font-weight: 700; letter-spacing: 0.06em;
+    text-transform: uppercase; color: var(--muted);
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+    background: rgba(0,0,0,0.2);
+  }
+
+  thead th.right { text-align: right; }
+
+  tbody tr { border-bottom: 1px solid rgba(30,35,48,0.7); }
+  tbody tr:last-child { border-bottom: none; }
+
+  tbody tr:hover { background: rgba(255,255,255,0.02); }
+
+  tbody td {
+    padding: 9px 12px;
+    color: var(--text);
+    white-space: nowrap;
+  }
+
+  tbody td.right { text-align: right; }
+  tbody td.mono { font-family: 'Courier New', monospace; }
+
+  .corner-num {
+    font-size: 10px; font-weight: 700; color: var(--muted);
+    font-family: 'Courier New', monospace;
+  }
+
+  .corner-name { font-weight: 600; font-size: 12px; }
+
+  .flag-chip {
+    font-size: 9px; font-weight: 700; letter-spacing: 0.04em;
+    padding: 2px 6px; margin-right: 3px;
+    display: inline-block;
+  }
+
+  .flag-brake { background: rgba(239,68,68,0.15); color: var(--danger); border: 1px solid rgba(239,68,68,0.25); }
+  .flag-entry  { background: rgba(245,158,11,0.12); color: var(--warning); border: 1px solid rgba(245,158,11,0.2); }
+  .flag-exit   { background: rgba(79,142,247,0.12); color: var(--highlight); border: 1px solid rgba(79,142,247,0.2); }
+  .flag-clean  { background: rgba(34,197,94,0.1); color: var(--success); border: 1px solid rgba(34,197,94,0.2); }
+
+  .delta-cell {
+    font-family: 'Courier New', monospace; font-weight: 700; font-size: 12px;
+  }
+
+  .delta-big-loss   { color: var(--danger); }
+  .delta-small-loss { color: var(--warning); }
+  .delta-gain       { color: var(--success); }
+  .delta-neutral    { color: var(--muted); }
+
+  /* ── Row highlight: worst ── */
+  tr.worst-row { background: rgba(239,68,68,0.04); }
+
+  /* ── Right column ── */
+  .right-col { display: flex; flex-direction: column; gap: 16px; }
+
+  .chart-panel {
+    border: 1px solid var(--border);
+    background: var(--card-bg);
+  }
+
+  .chart-area {
+    height: 180px;
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(180deg, #0a0b10 0%, #08090d 100%);
+  }
+
+  /* Fake SVG delta chart */
+  .chart-svg {
+    width: 100%; height: 100%;
+  }
+
+  .chart-label {
+    position: absolute;
+    font-size: 9px; font-weight: 700; letter-spacing: 0.06em;
+    text-transform: uppercase; color: var(--muted);
+    padding: 6px 10px;
+  }
+
+  .chart-label.top-left { top: 0; left: 0; }
+  .chart-label.top-right { top: 0; right: 0; }
+  .chart-label.bot-left { bottom: 0; left: 0; }
+
+  .chart-zero {
+    position: absolute;
+    left: 0; right: 0;
+    top: 50%;
+    border-top: 1px dashed rgba(255,255,255,0.07);
+  }
+
+  /* ── Pace notes panel ── */
+  .notes-panel {
+    border: 1px solid var(--border);
+    background: var(--card-bg);
+  }
+
+  .notes-body {
+    padding: 16px;
+  }
+
+  .notes-desc {
+    font-size: 12px; color: var(--muted); line-height: 1.7; margin-bottom: 14px;
+  }
+
+  .notes-corners-preview {
+    display: flex; flex-direction: column; gap: 4px; margin-bottom: 14px;
+  }
+
+  .preview-row {
+    display: flex; align-items: center; justify-content: space-between;
+    font-size: 11px; padding: 5px 8px;
+    border: 1px solid var(--border);
+    background: rgba(0,0,0,0.2);
+  }
+
+  .preview-corner { color: var(--text); font-weight: 500; }
+  .preview-note { color: var(--muted); font-family: 'Courier New', monospace; font-size: 10px; }
+  .preview-delta { font-family: 'Courier New', monospace; font-size: 11px; font-weight: 700; }
+  .preview-delta.loss { color: var(--danger); }
+  .preview-delta.gain { color: var(--success); }
+
+  .btn-pacenotes {
+    width: 100%; display: flex; align-items: center; justify-content: center;
+    gap: 8px; padding: 10px; font-size: 12px; font-weight: 700;
+    letter-spacing: 0.04em; text-transform: uppercase;
+    background: rgba(79,142,247,0.1); border: 1px solid var(--highlight);
+    color: var(--highlight); cursor: pointer; font-family: inherit;
+    transition: background 0.15s;
+  }
+
+  .btn-pacenotes:hover { background: rgba(79,142,247,0.2); }
+
+  /* ── Export strip ── */
+  .export-strip {
+    border-top: 1px solid var(--border);
+    padding: 12px 16px;
+    display: flex; align-items: center; justify-content: space-between;
+    flex-shrink: 0;
+  }
+
+  .export-info { font-size: 11px; color: var(--muted); }
+  .export-info strong { color: var(--text); }
+
+  .export-actions { display: flex; gap: 8px; }
+
+  .btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 8px 16px; font-size: 11px; font-weight: 600;
+    letter-spacing: 0.04em; cursor: pointer;
+    border: 1px solid transparent; font-family: inherit;
+    text-transform: uppercase; transition: background 0.15s, border-color 0.15s;
+  }
+
+  .btn-ghost {
+    background: transparent; border-color: var(--border); color: var(--muted);
+  }
+
+  .btn-ghost:hover { border-color: var(--text); color: var(--text); }
+
+  .btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .btn-primary:hover { background: var(--highlight); border-color: var(--highlight); }
+
+  .scanline {
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px);
+    pointer-events: none; z-index: 9999;
+  }
+
+  /* Total row */
+  tr.total-row td {
+    border-top: 1px solid var(--border);
+    background: rgba(0,0,0,0.3);
+    font-weight: 700;
+  }
+</style>
+</head>
+<body>
+<div class="scanline"></div>
+<div class="app">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-logo">
+        <div class="brand-icon">⚡</div>
+        <span class="brand-name">SimGhostInputs</span>
+      </div>
+      <div class="brand-sub">Análisis de simracing</div>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">Principal</div>
+      <a class="nav-item" href="#">
+        <span class="nav-icon">⊞</span> Inicio
+      </a>
+      <a class="nav-item" href="#">
+        <span class="nav-icon">↑</span> Importar
+      </a>
+      <a class="nav-item active" href="#">
+        <span class="nav-icon">◈</span> Análisis
+      </a>
+      <div class="nav-section-label" style="margin-top:8px;">Salidas</div>
+      <a class="nav-item" href="#">
+        <span class="nav-icon">◉</span> Overlay
+      </a>
+      <a class="nav-item" href="#">
+        <span class="nav-icon">▶</span> Video
+      </a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="version-badge">v<span>1.1.0</span> · AMS2 · MoTeC</div>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="main">
+    <div class="topbar">
+      <span class="topbar-title">Análisis de vuelta</span>
+      <span class="topbar-dot"></span>
+      <span style="font-size:12px;color:var(--muted);">Nordschleife · Porsche 911 GT3 Cup</span>
+    </div>
+
+    <!-- Breadcrumb -->
+    <div class="breadcrumb-bar">
+      <div class="breadcrumb-step done">
+        <div class="step-num">✓</div>
+        Inicio
+      </div>
+      <span class="breadcrumb-arrow">›</span>
+      <div class="breadcrumb-step done">
+        <div class="step-num">✓</div>
+        Importar
+      </div>
+      <span class="breadcrumb-arrow">›</span>
+      <div class="breadcrumb-step active">
+        <div class="step-num">2</div>
+        Análisis
+      </div>
+      <span class="breadcrumb-arrow">›</span>
+      <div class="breadcrumb-step">
+        <div class="step-num">3</div>
+        Overlay
+      </div>
+      <span class="breadcrumb-arrow">›</span>
+      <div class="breadcrumb-step">
+        <div class="step-num">4</div>
+        Video
+      </div>
+    </div>
+
+    <!-- Content -->
+    <div class="content">
+      <h1 class="page-heading">Paso 2 — Análisis de la vuelta</h1>
+
+      <!-- Summary bar -->
+      <div class="summary-bar">
+        <div class="summary-cell">
+          <div class="summary-label">Referencia</div>
+          <div class="summary-value ref">6:47.231</div>
+          <div class="summary-sub">nordschleife_ref · Vuelta 3</div>
+        </div>
+        <div class="summary-cell">
+          <div class="summary-label">Tu vuelta</div>
+          <div class="summary-value own">6:51.884</div>
+          <div class="summary-sub">nordschleife_hoy · Vuelta 1</div>
+        </div>
+        <div class="summary-cell">
+          <div class="summary-label">Delta total</div>
+          <div class="summary-value delta-neg">+4.653 s</div>
+          <div class="summary-sub">Tiempo perdido vs referencia</div>
+        </div>
+        <div class="summary-cell">
+          <div class="summary-label">Pista</div>
+          <div class="summary-value track">Nordschleife</div>
+          <div class="summary-sub">25 curvas analizadas</div>
+        </div>
+        <div class="summary-cell">
+          <div class="summary-label">Fecha</div>
+          <div class="summary-value date">2026-07-01</div>
+          <div class="summary-sub">AMS2 · Sesión online</div>
+        </div>
+      </div>
+
+      <!-- Two-column layout -->
+      <div class="analysis-cols">
+
+        <!-- Corner table -->
+        <div class="table-panel">
+          <div class="panel-header">
+            <span class="panel-title">
+              <span class="panel-title-icon">◈</span>
+              Análisis por curva
+            </span>
+            <div class="panel-actions">
+              <button class="btn-mini">Exportar CSV</button>
+              <button class="btn-mini primary">Exportar PDF</button>
+            </div>
+          </div>
+
+          <table>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Nombre</th>
+                <th class="right">Dist (m)</th>
+                <th class="right">V_min REF</th>
+                <th class="right">V_min TÚ</th>
+                <th class="right">ΔV (km/h)</th>
+                <th class="right">ΔT (s)</th>
+                <th>Flags</th>
+              </tr>
+            </thead>
+            <tbody>
+
+              <tr>
+                <td class="corner-num">01</td>
+                <td class="corner-name">Hatzenbach</td>
+                <td class="right mono" style="color:var(--muted);">680</td>
+                <td class="right mono">118.4</td>
+                <td class="right mono">116.1</td>
+                <td class="right mono delta-cell delta-small-loss">-2.3</td>
+                <td class="right mono delta-cell delta-small-loss">+0.18</td>
+                <td><span class="flag-chip flag-entry">ENTRADA</span></td>
+              </tr>
+
+              <tr>
+                <td class="corner-num">02</td>
+                <td class="corner-name">Flugplatz</td>
+                <td class="right mono" style="color:var(--muted);">1 840</td>
+                <td class="right mono">97.2</td>
+                <td class="right mono">97.8</td>
+                <td class="right mono delta-cell delta-gain">+0.6</td>
+                <td class="right mono delta-cell delta-gain">-0.04</td>
+                <td><span class="flag-chip flag-clean">OK</span></td>
+              </tr>
+
+              <tr class="worst-row">
+                <td class="corner-num">03</td>
+                <td class="corner-name">Schwedenkreuz</td>
+                <td class="right mono" style="color:var(--muted);">3 210</td>
+                <td class="right mono">142.7</td>
+                <td class="right mono">135.9</td>
+                <td class="right mono delta-cell delta-big-loss">-6.8</td>
+                <td class="right mono delta-cell delta-big-loss">+1.23</td>
+                <td><span class="flag-chip flag-brake">FRENADA</span><span class="flag-chip flag-entry">ENTRADA</span></td>
+              </tr>
+
+              <tr>
+                <td class="corner-num">04</td>
+                <td class="corner-name">Aremberg</td>
+                <td class="right mono" style="color:var(--muted);">4 580</td>
+                <td class="right mono">83.1</td>
+                <td class="right mono">82.4</td>
+                <td class="right mono delta-cell delta-small-loss">-0.7</td>
+                <td class="right mono delta-cell delta-small-loss">+0.11</td>
+                <td><span class="flag-chip flag-clean">OK</span></td>
+              </tr>
+
+              <tr>
+                <td class="corner-num">05</td>
+                <td class="corner-name">Fuchsröhre</td>
+                <td class="right mono" style="color:var(--muted);">5 920</td>
+                <td class="right mono">179.3</td>
+                <td class="right mono">173.6</td>
+                <td class="right mono delta-cell delta-big-loss">-5.7</td>
+                <td class="right mono delta-cell delta-big-loss">+0.87</td>
+                <td><span class="flag-chip flag-brake">FRENADA</span></td>
+              </tr>
+
+              <tr>
+                <td class="corner-num">06</td>
+                <td class="corner-name">Adenauer Forst</td>
+                <td class="right mono" style="color:var(--muted);">7 140</td>
+                <td class="right mono">66.8</td>
+                <td class="right mono">67.3</td>
+                <td class="right mono delta-cell delta-gain">+0.5</td>
+                <td class="right mono delta-cell delta-gain">-0.06</td>
+                <td><span class="flag-chip flag-exit">SALIDA</span></td>
+              </tr>
+
+              <tr>
+                <td class="corner-num">07</td>
+                <td class="corner-name">Metzgesfeld</td>
+                <td class="right mono" style="color:var(--muted);">9 360</td>
+                <td class="right mono">103.4</td>
+                <td class="right mono">100.1</td>
+                <td class="right mono delta-cell delta-small-loss">-3.3</td>
+                <td class="right mono delta-cell delta-small-loss">+0.44</td>
+                <td><span class="flag-chip flag-entry">ENTRADA</span></td>
+              </tr>
+
+              <tr>
+                <td class="corner-num">08</td>
+                <td class="corner-name">Kallenhard</td>
+                <td class="right mono" style="color:var(--muted);">10 780</td>
+                <td class="right mono">91.7</td>
+                <td class="right mono">93.2</td>
+                <td class="right mono delta-cell delta-gain">+1.5</td>
+                <td class="right mono delta-cell delta-gain">-0.09</td>
+                <td><span class="flag-chip flag-clean">OK</span></td>
+              </tr>
+
+              <tr class="total-row">
+                <td colspan="2" style="color:var(--muted);font-size:10px;letter-spacing:0.06em;text-transform:uppercase;">
+                  Total analizado (8 curvas)
+                </td>
+                <td class="right mono" style="color:var(--muted);">—</td>
+                <td class="right mono" style="color:var(--muted);">—</td>
+                <td class="right mono" style="color:var(--muted);">—</td>
+                <td class="right mono delta-cell delta-big-loss">-17.7</td>
+                <td class="right mono delta-cell delta-big-loss">+2.64 s</td>
+                <td style="color:var(--muted);font-size:10px;">de 4.653 s total</td>
+              </tr>
+
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Right column -->
+        <div class="right-col">
+
+          <!-- Delta chart -->
+          <div class="chart-panel">
+            <div class="panel-header">
+              <span class="panel-title">
+                <span class="panel-title-icon">◈</span>
+                Delta acumulado
+              </span>
+            </div>
+            <div class="chart-area">
+              <div class="chart-label top-left">Ganando</div>
+              <div class="chart-label bot-left">Perdiendo</div>
+              <div class="chart-label top-right" style="color:var(--danger);font-size:10px;">+4.653 s</div>
+              <div class="chart-zero"></div>
+              <!-- SVG fake chart -->
+              <svg class="chart-svg" viewBox="0 0 340 180" preserveAspectRatio="none">
+                <!-- Grid lines -->
+                <line x1="0" y1="45"  x2="340" y2="45"  stroke="#1e2330" stroke-width="0.5"/>
+                <line x1="0" y1="90"  x2="340" y2="90"  stroke="#1e2330" stroke-width="1"/>
+                <line x1="0" y1="135" x2="340" y2="135" stroke="#1e2330" stroke-width="0.5"/>
+
+                <!-- Vertical corner markers -->
+                <line x1="40"  y1="0" x2="40"  y2="180" stroke="#1e2330" stroke-width="0.5" stroke-dasharray="2,4"/>
+                <line x1="80"  y1="0" x2="80"  y2="180" stroke="#1e2330" stroke-width="0.5" stroke-dasharray="2,4"/>
+                <line x1="120" y1="0" x2="120" y2="180" stroke="#1e2330" stroke-width="0.5" stroke-dasharray="2,4"/>
+                <line x1="160" y1="0" x2="160" y2="180" stroke="#1e2330" stroke-width="0.5" stroke-dasharray="2,4"/>
+                <line x1="200" y1="0" x2="200" y2="180" stroke="#1e2330" stroke-width="0.5" stroke-dasharray="2,4"/>
+                <line x1="240" y1="0" x2="240" y2="180" stroke="#1e2330" stroke-width="0.5" stroke-dasharray="2,4"/>
+                <line x1="280" y1="0" x2="280" y2="180" stroke="#1e2330" stroke-width="0.5" stroke-dasharray="2,4"/>
+
+                <!-- Delta curve: starts at zero, drops into loss territory -->
+                <!-- Area fill -->
+                <path d="M0,90 L40,94 L80,87 L120,122 L160,140 L200,128 L240,143 L280,136 L340,148 L340,90 Z"
+                      fill="rgba(239,68,68,0.08)"/>
+                <!-- Line -->
+                <polyline
+                  points="0,90 40,94 80,87 120,122 160,140 200,128 240,143 280,136 340,148"
+                  fill="none" stroke="#ef4444" stroke-width="1.5"/>
+                <!-- Gain segment (80 -> 87 = slight gain) -->
+                <path d="M40,94 L80,87 L80,90 L40,90 Z" fill="rgba(34,197,94,0.1)"/>
+                <polyline points="40,94 80,87" fill="none" stroke="#22c55e" stroke-width="1.5"/>
+
+                <!-- Dots at each corner -->
+                <circle cx="40"  cy="94"  r="3" fill="#ef4444"/>
+                <circle cx="80"  cy="87"  r="3" fill="#22c55e"/>
+                <circle cx="120" cy="122" r="3" fill="#ef4444"/>
+                <circle cx="160" cy="140" r="4" fill="#ef4444" stroke="#ef444466" stroke-width="6"/>
+                <circle cx="200" cy="128" r="3" fill="#ef4444"/>
+                <circle cx="240" cy="143" r="3" fill="#ef4444"/>
+                <circle cx="280" cy="136" r="3" fill="#22c55e"/>
+                <circle cx="340" cy="148" r="3" fill="#ef4444"/>
+
+                <!-- Corner labels -->
+                <text x="40"  y="175" font-size="7" fill="#6b7280" text-anchor="middle" font-family="monospace">C1</text>
+                <text x="80"  y="175" font-size="7" fill="#6b7280" text-anchor="middle" font-family="monospace">C2</text>
+                <text x="120" y="175" font-size="7" fill="#ef4444" text-anchor="middle" font-family="monospace">C3</text>
+                <text x="160" y="175" font-size="7" fill="#ef4444" text-anchor="middle" font-family="monospace">C5</text>
+                <text x="200" y="175" font-size="7" fill="#6b7280" text-anchor="middle" font-family="monospace">C6</text>
+                <text x="240" y="175" font-size="7" fill="#6b7280" text-anchor="middle" font-family="monospace">C7</text>
+                <text x="280" y="175" font-size="7" fill="#22c55e" text-anchor="middle" font-family="monospace">C8</text>
+              </svg>
+            </div>
+          </div>
+
+          <!-- Pace notes panel -->
+          <div class="notes-panel">
+            <div class="panel-header">
+              <span class="panel-title">
+                <span class="panel-title-icon">🔔</span>
+                Pace Notes
+              </span>
+              <span style="font-size:10px;color:var(--muted);border:1px solid var(--border);padding:2px 6px;">CrewChief</span>
+            </div>
+            <div class="notes-body">
+              <p class="notes-desc">
+                Genera notas de audio por curva para CrewChief con las pérdidas detectadas.
+                Se reproducen en sesión o se exportan como JSON.
+              </p>
+
+              <div class="notes-corners-preview">
+                <div class="preview-row">
+                  <span class="preview-corner">Schwedenkreuz</span>
+                  <span class="preview-note">"Frenada 15m antes, apex lento"</span>
+                  <span class="preview-delta loss">+1.23s</span>
+                </div>
+                <div class="preview-row">
+                  <span class="preview-corner">Fuchsröhre</span>
+                  <span class="preview-note">"Velocidad baja en la bajada"</span>
+                  <span class="preview-delta loss">+0.87s</span>
+                </div>
+                <div class="preview-row">
+                  <span class="preview-corner">Metzgesfeld</span>
+                  <span class="preview-note">"Entrada conservadora"</span>
+                  <span class="preview-delta loss">+0.44s</span>
+                </div>
+                <div class="preview-row">
+                  <span class="preview-corner">Flugplatz</span>
+                  <span class="preview-note">"Buena vuelta aqui"</span>
+                  <span class="preview-delta gain">-0.04s</span>
+                </div>
+              </div>
+
+              <button class="btn-pacenotes">
+                🔔 Generar Pace Notes
+              </button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- Export strip -->
+    <div class="export-strip">
+      <div class="export-info">
+        Análisis: <strong>8 de 25 curvas</strong> mostradas ·
+        Mayor pérdida: <strong style="color:var(--danger);">Schwedenkreuz +1.23 s</strong> ·
+        Ganancia neta: <strong style="color:var(--success);">Kallenhard -0.09 s</strong>
+      </div>
+      <div class="export-actions">
+        <button class="btn btn-ghost">← Volver</button>
+        <button class="btn btn-ghost">Exportar PDF</button>
+        <button class="btn btn-primary">Generar Overlay →</button>
+      </div>
+    </div>
+
+  </main>
+
+</div>
+</body>
+</html>
