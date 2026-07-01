@@ -12,7 +12,7 @@
 
 Último release: **v1.0.0** (2026-06-30) — **Pipeline AMS2 completo, documentado y probado.** `setup.ps1` validado en instalación limpia de Windows 11 (Hyper-V VM). Drill-down por curva en UI Paso 2. 142 tests en verde.
 
-La v1.0 está declarada estable. **La v2.0 está en integración activa** (`codex/sgi-v2-merge`): UI NiceGUI v2.0 + CrewChief Pace Notes implementados, docs sincronizadas, suite en verde. Pendiente: QA de pacenotes en sesión real y medición de bundle size.
+La v1.0 está declarada estable. **La v2.0 está en integración activa** (`codex/sgi-v2-merge`): UI NiceGUI v2.0 + CrewChief Pace Notes implementados, docs sincronizadas, **185 tests en verde**. UX post-auditoría aplicada (F-01, breadcrumb, ffmpeg guards, encoder info, aviso piloto invertido). Pendiente de cierre: QA de pacenotes en sesión real, medición de bundle size, `native=True` en VM, VirusTotal.
 
 > **▶️ Para la próxima sesión:** ver [`HANDOFF.md`](HANDOFF.md). La v2.0 avanza por `codex/sgi-v2-merge` — revisar pendientes allí antes de mergear a `master`.
 
@@ -202,15 +202,15 @@ _Contexto: cosas en el código sin cobertura de QA formal ni documentación. Nin
 - [ ] **Probar circuitos cuya vuelta cruza meta más de una vez** (en 8 o con chicane en meta) — podrían romper la detección de vueltas. _Prioridad: Media._
 - [x] **Agregar test sistemático de degradación por canales ausentes** (combinaciones de glat/glong/gear/abs/tcs) — hecho: `tests/core/test_degradacion_canales.py` cubre las 32 combinaciones.
 - [~] **Avisar cuando todos los candidatos de auto-sync tienen calidad baja** ("¿seguro que el video corresponde?"). _Cubierto parcialmente_ por la zona gris de la [enmienda 2026-06-28 al ADR 0008](docs/decisions/0008-sync-multivuelta-candidatos.md): si el candidato aceptado tiene confianza moderada (`3σ ≤ z < 6.5σ`) se acepta pero se avisa. _Pendiente:_ el caso de varios candidatos todos débiles pero sobre 3σ, a medir con más datos. _Prioridad: Baja._
-- [ ] **Avisar al renderizar si el piloto va más rápido que la referencia** (atajar el `--reference`/`--driver` invertido, que pinta el GAP verde cuando debería ser rojo). _Prioridad: Baja._
+- [~] **Avisar al renderizar si el piloto va más rápido que la referencia** — `compare()` ya emite aviso en `summary["avisos"]` (FIX 4, v2.0); la UI NiceGUI lo muestra en el Paso 2. Pendiente: invertir colores del HUD en el overlay cuando se detecta inversión. _Prioridad: Baja._
 - [ ] **Diferenciar colores ABS/TC de referencia vs piloto** (tonos distintos, opción B del [ADR 0006](docs/decisions/0006-grosor-uniforme-lineas-hud.md)). _Contexto:_ hoy el tono codifica «qué» y solo el brillo «quién», lo que confunde. _Prioridad: Baja._
 - [ ] **Mejorar el mensaje de error de `fantasma compose` cuando falta ffmpeg.** _Prioridad: Baja._
-- [ ] **Separar el propósito dev del de usuario en `setup.ps1`** (mover la instalación de GitHub CLI detrás de un flag `-Dev` o quitarla del flujo de usuario). _Prioridad: Baja._
+- [x] **Separar el propósito dev del de usuario en `setup.ps1`** — `gh` CLI movido detrás de `-Dev`; usuario final no ve el prompt de instalación. _Completado en v2.0._
 
 ### Deuda técnica
 
 _Contexto: lo conocido a saldar cuando toque. Los pendientes puntuales:_
 
-- [ ] **Ampliar la cobertura de tests** conforme crezca el código. _Contexto:_ la suite (121 tests, Tier 1–4 + smoke de UI) y el CI ya cumplen el requisito de v1.0. Estrategia en [ADR 0003](docs/decisions/0003-testing.md).
+- [ ] **Ampliar la cobertura de tests** conforme crezca el código. _Contexto:_ la suite (185 tests en v2.0, Tier 1–4 + smoke NiceGUI) y el CI cumplen el requisito. Estrategia en [ADR 0003](docs/decisions/0003-testing.md).
 - [ ] **Manejar encodings distintos a `utf-8-sig` en `motec_csv.py`** (CSV de i2 en Windows con setups no-inglés pueden traer otro encoding).
 - [ ] **Activar branch protection en `master` al sumar al primer colaborador** (requiere PR + checks `lint` y `pytest` en verde). _Contexto:_ hoy el CI avisa pero no bloquea el merge (single-author no lo necesita). Ya documentado en `CONTRIBUTING.md` §6 y `docs/flujo-de-trabajo.md`.

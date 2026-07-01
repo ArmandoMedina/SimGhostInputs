@@ -85,7 +85,7 @@ piloto puede ser "league racer + ACC + sin GPU + UI".
 | C16 | Auto-sync por audio | ✅ | Correlación + aviso de zona gris (ADR 0008). |
 | C17 | Compose con **GPU NVENC** | ⚠️ | NVENC se auto-detecta, pero en equipos con GPU NVIDIA usable la detección puede **caer a CPU** (hallazgo en la PC potente — en diagnóstico). Sofía (P4) con GPU paga render lento sin saber por qué. Parcialmente mejorado: ahora el Paso 4 confirma qué encoder se usó realmente; si cae a CPU siendo inexplicable, el usuario puede reportarlo con evidencia. |
 | C18 | Compose **sin GPU** (CPU libx264) | ✅ | Fallback correcto. |
-| C19 | Compose **sin ffmpeg** | ⚠️ | `overlay` cae a frames PNG; `compose` falla con mensaje. No hay aviso temprano en la UI de que ffmpeg falta hasta que lo intentas. |
+| C19 | Compose **sin ffmpeg** | ⚠️→⚠️ | `overlay` cae a frames PNG; `compose` falla con mensaje. Parcialmente mejorado: el Paso 3 y el Paso 4 NiceGUI ahora detectan `ffmpeg` al entrar y muestran un aviso con el comando de instalación antes de que el usuario pulse el botón — ya no falla tarde. Queda sin cubrir: aviso proactivo al elegir el flujo "Video con HUD" en el Paso 0, antes de llegar al paso de render. |
 | C20 | Saber qué encoder se usó (GPU vs CPU) | ✅ | Resuelto — `compose_video()` devuelve `encoder` y `duration_s`; el Paso 4 NiceGUI los muestra post-compose. |
 | C21 | Overlay legible / profesional | ⚠️ | Sujeto a evaluación visual (ver `ux-patterns.md` + ADR 0005-0007). Pendiente diagnóstico con capturas. |
 
