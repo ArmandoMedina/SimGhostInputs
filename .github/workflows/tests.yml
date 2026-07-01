@@ -57,19 +57,18 @@ jobs:
           cache: pip
 
       - name: Install package with test extras
-        # [ui] habilita el smoke de Streamlit; [sync] aporta numpy/scipy para los
-        # tests puros de viz/sync. ffmpeg NO es necesario: los tests no lo invocan.
-        run: pip install -e ".[test,ui,sync]"
+        # [ui] mantiene los tests Streamlit existentes. [ui-ng] agrega NiceGUI (UI v2.0).
+        # [sync] aporta numpy/scipy para viz/sync. ffmpeg NO es necesario.
+        run: pip install -e ".[test,ui,ui-ng,sync]"
 
       - name: Run pytest
         run: pytest --ignore=tests/ui/visual
 
   visual-smoke:
-    # Smoke visual del Paso 0 (Playwright + Chromium headless). ADR 0012.
-    # Corre en ubuntu-latest como entorno CONSISTENTE -- es la fuente de verdad
-    # del baseline. Si el layout del Paso 0 se mueve, este job truena.
-    # Solo una version de Python (3.12) porque lo que se verifica es el render
-    # visual, no la compatibilidad de version.
+    # Smoke de importacion de la UI NiceGUI v2.0. Verifica que todos los modulos
+    # ng_* cargan sin error y que el entry point existe. Reemplaza el smoke visual
+    # de Streamlit (ADR 0012) ahora que la UI migra a NiceGUI (ADR 0018).
+    # Playwright completo contra NiceGUI se agrega en un PR posterior al merge.
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -79,12 +78,14 @@ jobs:
           python-version: "3.12"
           cache: pip
 
-      - name: Install package with visual extras
-        # [ui] -> streamlit (para arrancar la app); [dev] -> playwright + Pillow
-        run: pip install -e ".[test,ui,dev]"
+      - name: Install NiceGUI UI
+        run: pip install -e ".[ui-ng,overlay]"
 
-      - name: Install Chromium browser
-        run: playwright install chromium --with-deps
-
-      - name: Run visual smoke tests
-        run: pytest tests/ui/visual/ -v
+      - name: NiceGUI import smoke
+        run: |
+          python -c "
+          from fantasma.ui import ng_app, ng_state, ng_helpers
+          from fantasma.ui import ng_step0, ng_step1, ng_step2, ng_step3, ng_step4
+          from fantasma.viz import hud_preview
+          print('NiceGUI UI v2.0 imports OK')
+          "

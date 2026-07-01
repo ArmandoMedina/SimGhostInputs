@@ -20,17 +20,20 @@ overlay = ["Pillow>=10,<12", "matplotlib>=3.7,<4", "numpy>=1.24,<3"]
 charts  = ["matplotlib>=3.7,<4"]
 # pip install -e ".[ui]"        -> interfaz grafica local (streamlit)
 ui      = ["streamlit>=1.35,<2", "pandas>=2,<3"]
+# pip install -e ".[ui-ng]"     -> interfaz NiceGUI (alternativa moderna a Streamlit)
+ui-ng   = ["nicegui>=3.14,<4", "pandas>=2,<3"]
 # pip install -e ".[sync]"      -> auto-deteccion de offset video/telemetria (fantasma compose --auto-sync)
 sync    = ["scipy>=1.11,<2", "numpy>=1.24,<3"]
 # pip install -e ".[full]"      -> todo lo anterior
 full    = ["openpyxl>=3,<4", "Pillow>=10,<12", "matplotlib>=3.7,<4", "numpy>=1.24,<3", "streamlit>=1.35,<2", "pandas>=2,<3", "scipy>=1.11,<2"]
 # pip install -e ".[test]"      -> suite de pruebas automatizadas (solo desarrollo)
-test    = ["pytest>=8,<9"]
+test    = ["pytest>=8,<9", "pytest-asyncio>=0.21,<1"]
 # pip install -e ".[dev]"       -> herramientas de desarrollo: linter + formatter + smoke visual (solo desarrollo)
 dev     = ["ruff>=0.15,<1", "playwright>=1.40,<2", "Pillow>=10,<12"]
 
 [project.scripts]
 fantasma = "fantasma.cli:main"
+fantasma-ng = "fantasma.ui.ng_app:run"
 
 [tool.setuptools.packages.find]
 include = ["fantasma*"]
