@@ -211,6 +211,7 @@ class AppState:
             "drv_lap",
             "drv_laps",
             "drv_path",
+            "drv_name",
             "summary",
             "trace",
             "rows",
