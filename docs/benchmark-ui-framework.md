@@ -1,19 +1,31 @@
 # Benchmark — Framework UI para v2.0
 
-> Por qué **NiceGUI (browser mode) + nicegui-pack + Inno Setup** y no las alternativas.
+> Por qué **NiceGUI (ventana nativa) + nicegui-pack + Inno Setup** y no las alternativas.
 > Alimenta [ADR 0018](decisions/0018-framework-ui-nicegui.md) (enmienda al [ADR 0010](decisions/0010-framework-ui-streamlit.md)).
 
-**Fecha de actualización:** 2026-06-30
+**Fecha de actualización:** 2026-07-01
 **Contexto:** SimGhostInputs v1.0 usa Streamlit. La migración está decidida en dirección. El PO
-confirma criterio determinante actualizado: **la UI debe correr en el browser del usuario**
-(Chrome, Edge o Firefox instalado en su máquina), no en una ventana nativa empaquetada. Razón:
-el browser es el denominador cross-platform común entre Windows, macOS y Linux; una ventana
-pywebview en Linux depende de webkit2gtk que no siempre está.
+confirma el criterio determinante: **la UI debe darle al usuario una experiencia de app de
+escritorio** (una ventana propia que se abre y se cierra como cualquier programa de Windows),
+con tecnologías web (HTML/CSS) bajo el capó. Esto se logra con `ui.run(native=True)`, que abre
+una ventana **pywebview** usando el motor web embebido del sistema — el usuario no ve `localhost`,
+no ve pestañas de browser, no ve terminal. El código sigue siendo web por dentro, así que el
+mismo `.exe` corre igual en macOS y Linux (donde el modo `native=False` sirve como alternativa
+para dev y para plataformas sin webkit2gtk).
+
+> **Nota de reconciliación (2026-07-01):** una versión anterior de este benchmark fijaba
+> `native=False` (abrir el browser del sistema) como criterio innegociable y descartaba
+> `native=True`. El PO revisó esa premisa: para el usuario zero-técnico, abrir el browser del
+> sistema crea confusión (pestañas, servidor colgado en segundo plano, no sabe cómo cerrar). La
+> decisión correcta es `native=True` — combina HTML/CSS multiplataforma con la UX de una app de
+> escritorio de Windows. Este documento ya refleja esa decisión.
 
 Los objetivos por orden de prioridad:
 
-1. **UI web en el browser del usuario — cross-platform.** El `.exe` levanta un servidor local
-   y abre el browser. No pywebview, no Chromium bundleado, no ventana Flutter.
+1. **Experiencia de app de escritorio (pywebview nativo) — web bajo el capó.** El `.exe` abre
+   una ventana propia con `ui.run(native=True)`; la UI la renderiza el motor web embebido del OS.
+   Sin browser visible, sin `localhost` a la vista, sin ventana Flutter. Como el motor es web,
+   el mismo código es multiplataforma (`native=False` cubre dev/macOS/Linux).
 2. **Instalación doble-click en Windows — sin Python, sin terminal, sin PS1.**
    Un `.exe` descargable. Esto es el dolor #2 de ADR 0010 y es **innegociable para v2.0**.
 3. **Sin techo de personalización UI** — preview reactiva del HUD, sliders con imagen en
@@ -25,25 +37,28 @@ ningún escenario — solo la capa UI (`fantasma/ui/`).
 
 ---
 
-## Criterio de entrada: web-based en el browser del usuario
+## Criterio de entrada: experiencia de app de escritorio (pywebview nativo), web bajo el capó
 
-Este criterio elimina de plano varios candidatos:
+El criterio combina dos exigencias: (a) el usuario final ve una **ventana de app de escritorio**
+propia (no una pestaña de browser ni una terminal) y (b) por dentro es **web** (HTML/CSS), para
+no reescribir la UI en un toolkit nativo y conservar la portabilidad. Con esa lente:
 
 | Candidato | Modo de renderizado | Cumple criterio |
 |:--|:--|:--|
-| **NiceGUI** (modo default `native=False`) | `localhost` en el browser del usuario | SI |
-| **Streamlit** | `localhost` en el browser del usuario | SI |
-| **FastAPI + frontend custom** | `localhost` en el browser del usuario | SI |
-| Electron | Chromium bundleado, ventana propia | NO — no usa el browser del usuario |
-| NiceGUI `native=True` | Ventana pywebview (WebView nativo del OS) | NO — mismo problema que Electron/Tauri |
-| Tauri | WebView nativo del OS | NO — Linux frágil sin webkit2gtk |
-| pywebview | WebView nativo del OS | NO — Linux frágil |
-| Flet | Flutter nativo | NO — no es web UI |
-| Gradio | `localhost` en el browser del usuario | SI — pero orientado a ML demos, descartado |
+| **NiceGUI** `native=True` | Ventana **pywebview** (motor web embebido del OS); HTML/CSS bajo el capó | SI — decisión tomada |
+| NiceGUI `native=False` | `localhost` + browser del sistema | Parcial — útil solo para dev/macOS/Linux, no es la entrega final |
+| **Streamlit** | `localhost` + browser del sistema | NO — sin ventana propia ni ruta oficial a `.exe` |
+| **FastAPI + frontend custom** | `localhost` + browser del sistema | NO — igual que Streamlit y hay que escribir el front |
+| Electron | Chromium bundleado, ventana propia | Parcial — logra la ventana pero suma un runtime JS pesado |
+| Tauri | WebView nativo del OS | Parcial — Linux frágil sin webkit2gtk; añade Rust + Node |
+| pywebview solo | WebView nativo del OS | Parcial — daría la ventana pero habría que construir toda la UI a mano |
+| Flet | Flutter nativo | NO — no es web UI (widgets Flutter tipados) |
+| Gradio | `localhost` + browser del sistema | NO — sin ventana propia; orientado a ML demos |
 
-**Nota importante:** NiceGUI tiene dos modos. `ui.run(native=False)` (default) abre el browser
-del usuario — pasa el criterio. `ui.run(native=True)` abre una ventana pywebview — NO pasa el
-criterio. Este benchmark recomienda **exclusivamente el modo `native=False`**.
+**Nota importante:** NiceGUI tiene dos modos y aquí conviven los dos. `ui.run(native=True)` abre
+una ventana pywebview — **es el modo de entrega del `.exe`** para el usuario final y la decisión
+del PO. `ui.run(native=False)` sirve en `localhost` y abre el browser — se usa en desarrollo y
+como alternativa en macOS/Linux. Mismo código, distinto modo de entrega.
 
 ---
 
@@ -51,7 +66,7 @@ criterio. Este benchmark recomienda **exclusivamente el modo `native=False`**.
 
 | Framework | Browser del usuario | Personalización UI | Licencia | Costo migración desde Streamlit | Testabilidad | Activo (jun 2026) |
 |:--|:--|:--|:--|:--|:--|:--|
-| **NiceGUI** | SI — `localhost` default | Sin techo — Vue.js, HTML/CSS/JS, `ui.interactive_image` reactivo | **MIT** | Medio (3/5) — Python-first, modelo mental cercano a Streamlit | `user` fixture (pytest sin browser) + `screen` (Selenium) | v3.14.0 (30-jun-2026) |
+| **NiceGUI** | NO — ventana pywebview (`native=True`); `localhost` en dev/macOS/Linux | Sin techo — Vue.js, HTML/CSS/JS, `ui.interactive_image` reactivo | **MIT** | Medio (3/5) — Python-first, modelo mental cercano a Streamlit | `user` fixture (pytest sin browser) + `screen` (Selenium) | v3.14.0 (30-jun-2026) |
 | **Streamlit** (baseline) | SI | Limitado — slider per-tick requiere custom component React/Svelte | Apache 2.0 | 0 (ya está) | `AppTest` oficial | v1.45+ |
 | **Flet** | NO — ventana Flutter nativa | Sin HTML/CSS | Apache 2.0 | Alto (4/5) — paradigma Flutter | Sin pytest fixture documentado | v0.85.3 pre-1.0, API en flujo |
 | **Gradio** | SI | Limitado — orientado a demos ML | Apache 2.0 | Medio-alto (3.5/5) | Sin framework propio | Activo |
@@ -116,35 +131,32 @@ sin deps científicas y hasta 700 MB sin optimización con numpy + matplotlib + 
 
 ### P2. El .exe: browser del usuario o ventana propia
 
-**El .exe puede hacer ambas cosas. Para cumplir el criterio del PO: usar `native=False`.**
+**El .exe puede hacer ambas cosas. Para cumplir el criterio del PO: usar `native=True`.**
 
 ```python
-# CORRECTO — abre el browser del usuario (Chrome, Edge, Firefox)
+# CORRECTO — abre ventana pywebview (WebView nativo del OS); sin browser visible
+ui.run(native=True, reload=False)
+```
+
+```python
+# SOLO PARA DEV/macOS/Linux — abre el browser del sistema
 ui.run(native=False, reload=False, port=8080)
 # Internamente hace: webbrowser.open("http://localhost:8080")
 ```
 
-```python
-# INCORRECTO para este proyecto — abre ventana pywebview (WebView nativo del OS)
-ui.run(native=True, reload=False)
-```
-
-El `.exe` generado con `nicegui-pack --onedir app.py` más `ui.run(native=False)`:
+El `.exe` generado con `nicegui-pack --onedir app.py` mas `ui.run(native=True)`:
 1. El usuario hace doble-click en `SimGhostInputs.exe`
-2. El proceso Python levanta el servidor FastAPI en `localhost:8080` (en background)
-3. NiceGUI llama `webbrowser.open("http://localhost:8080")` — el browser del sistema se abre
-   con la UI de SimGhostInputs
-4. El usuario ve la app en una pestaña normal de su browser (Chrome, Edge, etc.)
+2. El proceso Python levanta el servidor FastAPI en `localhost:PUERTO` (en background)
+3. NiceGUI abre una ventana **pywebview** — el motor web embebido del OS renderiza la UI
+4. El usuario ve la app en una ventana propia (sin browser, sin pestaña, sin localhost a la vista)
 
-**Caveat de UX a resolver:** cuando el usuario cierra el browser, el proceso Python sigue
-corriendo en el background. Opciones para el cierre limpio:
-- Icono en la bandeja del sistema (system tray) con opción "Cerrar SimGhostInputs" — patrón
-  estándar en apps Electron/NiceGUI de escritorio
-- Endpoint `/shutdown` que mata el proceso cuando se detecta cierre de la última pestaña
-- Documentar al usuario: cerrar la ventana del browser no cierra el app; usar el ícono de
-  la bandeja
+**Caveat de UX a resolver:** pywebview abre la ventana inmediatamente pero la UI tarda ~1-2 s
+en estar lista (servidor levantando). Opciones:
+- Pantalla de carga (splash) mientras el servidor inicializa — soporte oficial en NiceGUI
+- `ui.run(native=True, show=False)` y mostrar la ventana solo cuando la UI este lista
+- En Linux: webkit2gtk es requisito; si no esta instalado, caer a `native=False` automaticamente
 
-Esto es un detalle de UX — no un bloqueador técnico.
+Esto es un detalle de UX — no un bloqueador tecnico.
 
 ### P3. Testing: equivalente a AppTest de Streamlit
 
@@ -229,10 +241,11 @@ al toolchain. Sin contrapartida.
 
 ## Veredicto
 
-**NiceGUI (modo `native=False`) + nicegui-pack + Inno Setup.**
+**NiceGUI (modo `native=True`) + nicegui-pack + Inno Setup.**
 
-- **Objetivo #1 (browser del usuario):** `ui.run(native=False)` → el `.exe` levanta el servidor
-  y abre el browser del usuario automáticamente. Cross-platform por diseño.
+- **Objetivo #1 (ventana propia de escritorio, web bajo el capó):** `ui.run(native=True)` → el `.exe`
+  abre una ventana pywebview con motor web embebido. Sin browser visible, sin localhost a la vista.
+  Cross-platform: `native=False` cubre dev y macOS/Linux.
 - **Objetivo #2 (doble-click):** nicegui-pack → carpeta con Python embebido. Inno Setup →
   instalador estándar de Windows. Sin terminal, sin Python, sin PS1.
 - **Objetivo #3 (sin techo UI):** NiceGUI permite Vue.js, HTML/CSS/JS, `ui.interactive_image`
