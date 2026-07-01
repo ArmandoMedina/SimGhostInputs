@@ -13,6 +13,7 @@ from .ng_helpers import (
     _load_laps,
     _missing_distance,
     _save_upload,
+    render_breadcrumb,
 )
 
 _NO_DIST_MSG = (
@@ -30,24 +31,7 @@ async def render(state, navigate):
     _load_label = _load_labels.get(_next_step, "Cargar →")
 
     # ── Breadcrumb bar ──────────────────────────────────────────────────────
-    step_labels = ["Inicio", "Importar", "Análisis", "Overlay", "Video"]
-    breadcrumb_html = '<div class="breadcrumb-bar">'
-    for i, lbl in enumerate(step_labels[: _next_step + 1]):
-        if i > 0:
-            breadcrumb_html += '<span class="breadcrumb-arrow">›</span>'
-        if i < 1:
-            status = "done"
-            num = "✓"
-        elif i == 1:
-            status = "active"
-            num = str(i)
-        else:
-            status = ""
-            num = str(i)
-        breadcrumb_html += f'<div class="breadcrumb-step {status}">{num}</div>'
-        breadcrumb_html += f'<span class="breadcrumb-label">{lbl}</span>'
-    breadcrumb_html += "</div>"
-    ui.html(breadcrumb_html)
+    render_breadcrumb(1)
 
     ui.html(
         '<h1 class="page-heading" style="font-size:1rem;margin-bottom:4px">'

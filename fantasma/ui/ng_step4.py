@@ -18,11 +18,13 @@ from .ng_helpers import (
     _STEPS,
     _fmt_lap,
     _sync_quality_label,
+    render_breadcrumb,
     start_bg_render,
 )
 
 
 async def render(state, navigate):
+    render_breadcrumb(4)
     ui.label("Paso 4 — Componer video final").classes("step-header")
     ui.label(
         "Junta el overlay del Paso 3 con tu video de grabacion. "
@@ -50,15 +52,15 @@ async def render(state, navigate):
 
     with ui.row().classes("gap-4 mb-4 w-full"):
         ui.html(
-            '<div style="flex:1;background:#2a1f00;border:1px solid #60450a;border-radius:6px;padding:0.8rem">'
-            '<strong style="color:#fbbf24">El video DEBE tener audio del motor activado.</strong><br>'
+            '<div style="flex:1;background:var(--warning-bg);border:1px solid var(--warning-border);border-radius:6px;padding:0.8rem">'
+            '<strong style="color:var(--warning)">El video DEBE tener audio del motor activado.</strong><br>'
             '<span style="color:#d1b47a;font-size:0.8rem">La sincronia automatica analiza el sonido del motor para encontrar '
             "el segundo exacto en que cruzaste la meta. Sin audio tendras que calcular el offset manualmente.</span>"
             "</div>"
         )
         ui.html(
-            '<div style="flex:1;background:#0d1f33;border:1px solid #1d4f7a;border-radius:6px;padding:0.8rem">'
-            '<strong style="color:#60a5fa">El output no es el video completo de tu sesion.</strong><br>'
+            '<div style="flex:1;background:var(--info-bg);border:1px solid var(--info-border);border-radius:6px;padding:0.8rem">'
+            '<strong style="color:var(--info)">El output no es el video completo de tu sesion.</strong><br>'
             '<span style="color:#93c5fd;font-size:0.8rem">Se genera un clip recortado exactamente a tu vuelta: '
             "desde la meta hasta que la terminas. Mucho mas rapido de procesar y mas facil de compartir.</span>"
             "</div>"
@@ -282,7 +284,7 @@ async def render(state, navigate):
             ).classes("w-48")
 
             scale_slider = ui.slider(min=0.25, max=1.5, step=0.05, value=1.0).classes("w-48")
-            ui.label("Tamano del HUD (1.0 = original)").classes("text-xs").style("color:var(--muted)")
+            scale_label = ui.label("Tamaño: 1.00×").classes("text-xs").style("color:var(--muted)")
 
             offset_input = ui.number(
                 label="Offset (s desde inicio del video hasta la meta)",
@@ -326,6 +328,10 @@ async def render(state, navigate):
             preview_status.set_text(f"Preview no disponible: {e}")
 
     pos_select.on("update:model-value", lambda _: update_preview())
+    scale_slider.on(
+        "update:model-value",
+        lambda e: scale_label.set_text("Tamaño: %.2f×" % (e.value or 1.0)),
+    )
     scale_slider.on("update:model-value", lambda _: update_preview())
     overlay_input.on("update:model-value", lambda _: update_preview())
 

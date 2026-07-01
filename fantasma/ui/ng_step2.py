@@ -5,7 +5,7 @@ import tempfile
 
 from nicegui import run, ui
 
-from .ng_helpers import _fmt_lap
+from .ng_helpers import _fmt_lap, render_breadcrumb
 
 # ── helpers HTML ──────────────────────────────────────────────────────────────
 
@@ -100,6 +100,7 @@ def _build_corners_table_html(rows):
 
 
 async def render(state, navigate):
+    render_breadcrumb(2)
     ui.label("Paso 2 — Análisis por curva").classes("step-header")
 
     if state.ref_lap is None:

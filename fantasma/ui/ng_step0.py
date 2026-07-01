@@ -2,6 +2,8 @@
 
 from nicegui import ui
 
+from .ng_helpers import render_breadcrumb
+
 # Datos de cada flujo definidos localmente para step0.
 # Tupla: (icon, title, desc, needs_list, out_list, featured)
 _FLOWS: dict[str, tuple] = {
@@ -33,6 +35,8 @@ _FLOWS: dict[str, tuple] = {
 
 
 async def render(state, navigate):
+    render_breadcrumb(0)
+
     # ── Encabezado de página ──────────────────────────────────────────────────
     ui.html('<h1 class="page-heading">SimGhostInputs</h1>')
     ui.html(
@@ -66,7 +70,7 @@ async def render(state, navigate):
     flow_grid = ui.element("div").classes("flow-grid")
     with flow_grid:
         for flow_key, (icon, title, desc, needs_list, out_list, featured) in _FLOWS.items():
-            is_selected = state.flow_key == flow_key
+            is_selected = state.flow_chosen and state.flow_key == flow_key
             border_style = "border-color: var(--highlight)" if is_selected else ""
             card_classes = "flow-card" + ("  featured" if featured else "")
 
@@ -96,18 +100,45 @@ async def render(state, navigate):
                     on_click=lambda fk=flow_key: select_flow(fk),
                 ).classes(btn_class).props("flat")
 
+    # ── Dialogs de ayuda ──────────────────────────────────────────────────────
+    with ui.dialog() as motec_dialog, ui.card().style("max-width:500px"):
+        ui.label("Guía MoTeC i2 — Exportar telemetría").classes("font-bold text-lg mb-3")
+        ui.html(
+            "<ol style='padding-left:1.5rem;line-height:2;font-size:13px'>"
+            "<li>Abre tu sesión en MoTeC i2.</li>"
+            "<li>Ve a <strong>File &gt; Export</strong>.</li>"
+            "<li>Elige el formato <strong>CSV</strong>.</li>"
+            "<li>Activa la opción <strong>Include Distance Data</strong>.</li>"
+            "<li>Guarda el archivo y súbelo aquí.</li>"
+            "</ol>"
+        )
+        ui.button("Cerrar", on_click=motec_dialog.close).props("flat").classes("mt-2")
+
+    with ui.dialog() as csv_dialog, ui.card().style("max-width:500px"):
+        ui.label("Formato CSV esperado").classes("font-bold text-lg mb-3")
+        ui.label(
+            "El CSV debe tener estas columnas (los nombres pueden variar):"
+        ).classes("text-sm mb-2")
+        ui.html(
+            "<pre style='font-size:11px;background:#111;padding:12px;border-radius:4px'>"
+            "Time,Distance,Speed,Throttle,Brake,Gear\n"
+            "0.000,0.0,0.0,0.0,0.0,1\n"
+            "0.010,0.1,5.2,0.15,0.0,1\n"
+            "0.020,0.3,10.1,0.42,0.0,1"
+            "</pre>"
+        )
+        ui.button("Cerrar", on_click=csv_dialog.close).props("flat").classes("mt-2")
+
     # ── Footer info ───────────────────────────────────────────────────────────
-    ui.html(
-        '<div class="footer-info">'
-        '  <span class="footer-text">'
-        "Exporta telemetría desde MoTeC i2 con Include Distance Data activado."
-        "  </span>"
-        '  <div class="footer-links">'
-        '    <span class="link-pill">Guía MoTeC</span>'
-        '    <span class="link-pill">Ejemplo CSV</span>'
-        "  </div>"
-        "</div>"
-    )
+    with ui.element("div").classes("footer-info"):
+        ui.html(
+            '<span class="footer-text">'
+            "Exporta telemetría desde MoTeC i2 con Include Distance Data activado."
+            "</span>"
+        )
+        with ui.element("div").classes("footer-links"):
+            ui.html('<span class="link-pill">Guía MoTeC</span>').on("click", motec_dialog.open)
+            ui.html('<span class="link-pill">Ejemplo CSV</span>').on("click", csv_dialog.open)
 
     ui.separator().classes("my-4")
 

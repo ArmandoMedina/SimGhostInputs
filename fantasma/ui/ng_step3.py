@@ -1,13 +1,15 @@
 """Paso 3 — Overlay: generar el HUD animado (NiceGUI)."""
 
 import os
+import shutil
 
 from nicegui import ui
 
-from .ng_helpers import _DEFAULT_FLOW, _FLOWS, _STEPS, start_bg_render
+from .ng_helpers import _DEFAULT_FLOW, _FLOWS, _STEPS, render_breadcrumb, start_bg_render
 
 
 async def render(state, navigate):
+    render_breadcrumb(3)
     ui.label("Paso 3 — Generar overlay HUD").classes("step-header")
     ui.label(
         "Genera el HUD animado sincronizado con tu vuelta. "
@@ -15,6 +17,23 @@ async def render(state, navigate):
         "se pega encima de tu grabacion. Muestra: barras de gas y freno, delta acumulado, "
         "velocidad, marcha, volante y G-lateral."
     ).classes("text-sm mb-4").style("color:var(--muted)")
+
+    if shutil.which("ffmpeg") is None:
+        import platform as _pl
+
+        _os = _pl.system()
+        _install_cmd = (
+            "`winget install Gyan.FFmpeg`"
+            if _os == "Windows"
+            else "`brew install ffmpeg`"
+            if _os == "Darwin"
+            else "`sudo apt install ffmpeg`"
+        )
+        ui.label(
+            f"ffmpeg no esta instalado y este paso lo necesita. "
+            f"Instalalo y abre una terminal nueva: {_install_cmd}"
+        ).classes("mb-4").style("color:var(--danger)")
+        return
 
     if state.ref_lap is None:
         ui.label("Primero carga los archivos en el Paso 1.").style("color:var(--warning)")

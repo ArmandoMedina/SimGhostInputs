@@ -16,6 +16,8 @@ async def main_page():
         --accent: #2d6cdf; --highlight: #4f8ef7; --text: #f0f2f5;
         --muted: #6b7280; --border: #1e2330; --success: #22c55e;
         --danger: #ef4444; --warning: #f59e0b;
+        --warning-bg: #2a1f00; --warning-border: #60450a;
+        --info-bg: #0d1f33; --info-border: #1d4f7a; --info: #60a5fa;
       }
       html, body { background: var(--bg); color: var(--text); font-family: 'Inter', system-ui, -apple-system, sans-serif; font-size: 14px; }
 
@@ -170,11 +172,16 @@ async def main_page():
     content = ui.column().classes("w-full p-4")
     nav_buttons = []
 
+    _all_step_labels = ["Inicio", "Importar", "Análisis", "Overlay", "Video"]
+
     async def navigate(step: int):
         state.nav_step = step
         content.clear()
-        # Actualizar estado visual de botones
+        # Actualizar estado visual y etiquetas de botones
         for i, btn in enumerate(nav_buttons):
+            _done = _step_done(state, i)
+            _is_current = i == step
+            btn.text = ("✓ " + _all_step_labels[i]) if (_done and not _is_current) else _all_step_labels[i]
             if i == step:
                 btn.classes("nav-btn-active", remove="")
             else:
@@ -206,10 +213,12 @@ async def main_page():
             principal_steps = [(0, "Inicio"), (1, "Importar"), (2, "Análisis")]
             for step_idx, step_label in principal_steps:
                 _is_current = state.nav_step == step_idx
+                _done = _step_done(state, step_idx)
                 _active_cls = " nav-btn-active" if _is_current else ""
+                _display_label = ("✓ " + step_label) if (_done and not _is_current) else step_label
                 btn = (
                     ui.button(
-                        step_label,
+                        _display_label,
                         on_click=lambda s=step_idx: navigate(s),
                     )
                     .classes(f"nav-btn{_active_cls}")
@@ -223,10 +232,12 @@ async def main_page():
             salidas_steps = [(3, "Overlay"), (4, "Video")]
             for step_idx, step_label in salidas_steps:
                 _is_current = state.nav_step == step_idx
+                _done = _step_done(state, step_idx)
                 _active_cls = " nav-btn-active" if _is_current else ""
+                _display_label = ("✓ " + step_label) if (_done and not _is_current) else step_label
                 btn = (
                     ui.button(
-                        step_label,
+                        _display_label,
                         on_click=lambda s=step_idx: navigate(s),
                     )
                     .classes(f"nav-btn{_active_cls}")
