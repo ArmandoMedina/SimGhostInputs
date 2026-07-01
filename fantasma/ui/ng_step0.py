@@ -154,10 +154,13 @@ async def render(state, navigate):
 
     # ── Botón Empezar ─────────────────────────────────────────────────────────
     async def go_to_import():
-        state.flow_chosen = True
+        if not state.flow_chosen:
+            ui.notify("Elige un flujo antes de continuar.", type="warning", position="top")
+            return
         await navigate(1)
 
+    btn_cls = "btn-primary" if state.flow_chosen else "btn-secondary"
     ui.button(
         "Empezar → Ir a Importar",
         on_click=go_to_import,
-    ).classes("btn-primary").props("flat")
+    ).classes(btn_cls).props("flat")

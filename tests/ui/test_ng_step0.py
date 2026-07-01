@@ -55,3 +55,12 @@ async def test_step0_no_ffmpeg_warning_without_flow_chosen(user):
     with patch("fantasma.ui.ng_step0.shutil.which", return_value=None):
         await user.open("/")
         await user.should_not_see("ffmpeg no detectado")
+
+
+@pytest.mark.asyncio
+async def test_step0_no_card_selected_on_load(user):
+    """F-01: ninguna tarjeta muestra checkmark al cargar — estado neutro."""
+    from fantasma.ui.ng_app import main_page  # noqa: F401
+
+    await user.open("/")
+    await user.should_not_see("Seleccionado")
