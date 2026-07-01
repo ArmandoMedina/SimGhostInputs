@@ -307,7 +307,9 @@ async def render(state, navigate):
 
                 # Descarga CSV
                 if csv_bytes:
-                    ui.download(csv_bytes, "corners_compare.csv").classes("mt-2")
+                    _dl = ui.download(csv_bytes, "corners_compare.csv")
+                    if _dl is not None:
+                        _dl.classes("mt-2")
 
         # COLUMNA DERECHA
         with ui.html('<div class="right-col">'):

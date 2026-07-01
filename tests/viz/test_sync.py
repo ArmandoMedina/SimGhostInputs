@@ -10,7 +10,6 @@ import struct
 import pytest
 
 np = pytest.importorskip("numpy")
-from conftest import make_lap  # noqa: E402
 
 from fantasma.core.lap import Lap  # noqa: E402
 from fantasma.viz import sync  # noqa: E402
@@ -18,8 +17,8 @@ from fantasma.viz import sync  # noqa: E402
 # --- _lap_signal -----------------------------------------------------------
 
 
-def test_lap_signal_combines_rpm_and_speed():
-    lap = make_lap()  # tiene time, rpm, speed
+def test_lap_signal_combines_rpm_and_speed(lap_factory):
+    lap = lap_factory()  # tiene time, rpm, speed
     sig = sync._lap_signal(lap)
     assert len(sig) > 0
     assert np.all(np.isfinite(sig))
