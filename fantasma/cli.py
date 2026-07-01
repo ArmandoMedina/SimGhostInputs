@@ -373,7 +373,7 @@ def cmd_pacenotes(args):
     data = _load_corners_json(args.corners)
     corners = data["corners"]
     rows = _load_compare_csv(args.compare)
-    outdir = args.output_dir or _default_pacenotes_outdir(data)
+    track_name, outdir = _resolve_pacenotes_outdir(data, args.output_dir)
     freqs = {"brake": args.brake_freq, "apex": args.apex_freq, "gas": args.gas_freq}
     result = build_pack(
         rows,
@@ -386,6 +386,7 @@ def cmd_pacenotes(args):
         duration=args.tone_duration,
         volume=args.volume,
         smart=not args.legacy_all_tones,
+        track_name=track_name,
     )
     curves = _count_lost_curves(rows, args.top)
     print("✓ %d curvas, %d archivos en %s" % (curves, len(result["files"]), result["outdir"]))
@@ -407,13 +408,17 @@ def _load_compare_csv(path):
         return list(csv.DictReader(f))
 
 
-def _default_pacenotes_outdir(corners_data):
+def _resolve_pacenotes_outdir(corners_data, output_dir_arg):
+    """Devuelve (track_name, outdir). track_name puede ser None si se usa --output-dir."""
+    if output_dir_arg:
+        track = corners_data.get("track") or corners_data.get("trackName")
+        return track, output_dir_arg
     track = corners_data.get("track") or corners_data.get("trackName")
     if not track:
         track = input("Nombre exacto de pista en CrewChief/AMS2: ").strip()
     if not track:
         raise ValueError("se requiere nombre de pista o --output-dir")
-    return os.path.join(
+    outdir = os.path.join(
         os.path.expanduser("~"),
         "Documents",
         "CrewChiefV4",
@@ -421,6 +426,7 @@ def _default_pacenotes_outdir(corners_data):
         "ams2",
         track,
     )
+    return track, outdir
 
 
 def _count_lost_curves(rows, top):

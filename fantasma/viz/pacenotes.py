@@ -114,6 +114,7 @@ def build_tone_pack(
     duration=0.12,
     volume=0.8,
     smart=True,
+    track_name=None,
 ) -> dict:
     out = Path(outdir)
     out.mkdir(parents=True, exist_ok=True)
@@ -138,7 +139,7 @@ def build_tone_pack(
         files.append(str(path))
         entries.append(_metadata_entry(event["corner_name"], event["cue"], distance, filename))
 
-    metadata_path = _write_metadata(out, entries)
+    metadata_path = _write_metadata(out, entries, track_name=track_name)
     plan_path = _write_plan(out, plan)
     files.append(str(metadata_path))
     files.append(str(plan_path))
@@ -189,7 +190,7 @@ def plan_tone_events(
     return {"events": [_plan_public(e) for e in events], "corners": corners_plan}
 
 
-def build_voice_pack(rows, corners, outdir, top=5, lang="es-MX") -> dict:
+def build_voice_pack(rows, corners, outdir, top=5, lang="es-MX", track_name=None) -> dict:
     if importlib.util.find_spec("edge_tts") is None:
         raise RuntimeError("edge-tts no instalado: ejecuta pip install 'fantasma-inputs[voice]'")
 
@@ -206,7 +207,7 @@ def build_voice_pack(rows, corners, outdir, top=5, lang="es-MX") -> dict:
 
     if not ffmpeg:
         print("aviso: ffmpeg no disponible; se omiten las pace notes de voz", file=sys.stderr)
-        metadata_path = _write_metadata(out, entries)
+        metadata_path = _write_metadata(out, entries, track_name=track_name)
         return {"outdir": str(out), "files": [str(metadata_path)], "entries": 0}
 
     for row in _top_rows(rows, top):
@@ -248,26 +249,31 @@ def build_voice_pack(rows, corners, outdir, top=5, lang="es-MX") -> dict:
         files.append(str(out / filename))
         entries.append(_metadata_entry(name, "voice", distance, filename))
 
-    metadata_path = _write_metadata(out, entries)
+    metadata_path = _write_metadata(out, entries, track_name=track_name)
     files.append(str(metadata_path))
     return {"outdir": str(out), "files": files, "entries": len(entries)}
 
 
 def build_pack(rows, corners, outdir, mode="tones", top=5, **kwargs) -> dict:
+    track_name = kwargs.pop("track_name", None)
     if mode == "tones":
         tone_kwargs = {k: v for k, v in kwargs.items() if k != "lang"}
-        return build_tone_pack(rows, corners, outdir, top=top, **tone_kwargs)
+        return build_tone_pack(rows, corners, outdir, top=top, track_name=track_name, **tone_kwargs)
     if mode == "voice":
-        return build_voice_pack(rows, corners, outdir, top=top, lang=kwargs.get("lang", "es-MX"))
+        return build_voice_pack(
+            rows, corners, outdir, top=top, lang=kwargs.get("lang", "es-MX"), track_name=track_name
+        )
     if mode != "both":
         raise ValueError("modo invalido: %s" % mode)
 
     tone_kwargs = {k: v for k, v in kwargs.items() if k != "lang"}
-    tones = build_tone_pack(rows, corners, outdir, top=top, **tone_kwargs)
+    tones = build_tone_pack(rows, corners, outdir, top=top, track_name=track_name, **tone_kwargs)
     tone_entries = _read_entries(Path(outdir) / "metadata.json")
-    voice = build_voice_pack(rows, corners, outdir, top=top, lang=kwargs.get("lang", "es-MX"))
+    voice = build_voice_pack(
+        rows, corners, outdir, top=top, lang=kwargs.get("lang", "es-MX"), track_name=track_name
+    )
     voice_entries = _read_entries(Path(outdir) / "metadata.json")
-    _write_metadata(Path(outdir), tone_entries + voice_entries)
+    _write_metadata(Path(outdir), tone_entries + voice_entries, track_name=track_name)
     files = list(dict.fromkeys(tones["files"] + voice["files"]))
     return {
         "outdir": str(Path(outdir)),
@@ -471,12 +477,12 @@ def _generate_cue(cue, freqs, duration, volume):
     return generate_tone(freqs.get(cue, 440), duration, volume=volume)
 
 
-def _write_metadata(outdir, entries):
+def _write_metadata(outdir, entries, track_name=None):
     metadata = {
         "description": "Generado por SimGhostInputs",
         "gameEnumName": "AMS2",
         "carClassName": None,
-        "trackName": None,
+        "trackName": track_name,
         "entries": entries,
     }
     path = outdir / "metadata.json"
@@ -536,7 +542,16 @@ def _read_wav_int16(path):
 
 def _voice_text(row, name):
     loss = _as_float(row.get("time_lost", 0))
-    return "%s. Frena antes. Pierdes %.1f segundos." % (name, loss)
+    flags = str(row.get("flags", ""))
+    has_brake = "frenada" in flags
+    has_vmin = "vmin" in flags
+    if has_brake and has_vmin:
+        return "%s. Frena mas tarde y sube el apex. Pierdes %.1f segundos." % (name, loss)
+    if has_brake:
+        return "%s. Frena mas tarde. Pierdes %.1f segundos." % (name, loss)
+    if has_vmin:
+        return "%s. Sube la velocidad en el apex. Pierdes %.1f segundos." % (name, loss)
+    return "%s. Pierdes %.1f segundos." % (name, loss)
 
 
 def _voice_for_lang(lang):
