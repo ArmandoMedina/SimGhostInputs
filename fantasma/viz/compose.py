@@ -222,9 +222,17 @@ def compose_video(
     """
     ffmpeg = shutil.which("ffmpeg")
     if not ffmpeg:
-        raise RuntimeError(
-            "ffmpeg no encontrado en PATH — instálalo con: winget install Gyan.FFmpeg"
+        import platform as _platform
+
+        _sys = _platform.system()
+        _cmd = (
+            "winget install Gyan.FFmpeg"
+            if _sys == "Windows"
+            else "brew install ffmpeg"
+            if _sys == "Darwin"
+            else "sudo apt install ffmpeg"
         )
+        raise RuntimeError("ffmpeg no encontrado en PATH — instálalo con: %s" % _cmd)
 
     out_dir = os.path.dirname(output)
     if out_dir:

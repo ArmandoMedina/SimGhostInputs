@@ -204,7 +204,7 @@ _Contexto: cosas en el código sin cobertura de QA formal ni documentación. Nin
 - [~] **Avisar cuando todos los candidatos de auto-sync tienen calidad baja** ("¿seguro que el video corresponde?"). _Cubierto parcialmente_ por la zona gris de la [enmienda 2026-06-28 al ADR 0008](docs/decisions/0008-sync-multivuelta-candidatos.md): si el candidato aceptado tiene confianza moderada (`3σ ≤ z < 6.5σ`) se acepta pero se avisa. _Pendiente:_ el caso de varios candidatos todos débiles pero sobre 3σ, a medir con más datos. _Prioridad: Baja._
 - [~] **Avisar al renderizar si el piloto va más rápido que la referencia** — `compare()` ya emite aviso en `summary["avisos"]` (FIX 4, v2.0); la UI NiceGUI lo muestra en el Paso 2. Pendiente: invertir colores del HUD en el overlay cuando se detecta inversión. _Prioridad: Baja._
 - [ ] **Diferenciar colores ABS/TC de referencia vs piloto** (tonos distintos, opción B del [ADR 0006](docs/decisions/0006-grosor-uniforme-lineas-hud.md)). _Contexto:_ hoy el tono codifica «qué» y solo el brillo «quién», lo que confunde. _Prioridad: Baja._
-- [ ] **Mejorar el mensaje de error de `fantasma compose` cuando falta ffmpeg.** _Prioridad: Baja._
+- [x] **Mejorar el mensaje de error de `fantasma compose` cuando falta ffmpeg** — `compose_video()` detecta la plataforma (Windows/macOS/Linux) y da el comando de instalación correcto. _Completado en v2.0._
 - [x] **Separar el propósito dev del de usuario en `setup.ps1`** — `gh` CLI movido detrás de `-Dev`; usuario final no ve el prompt de instalación. _Completado en v2.0._
 
 ### Deuda técnica
