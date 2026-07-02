@@ -144,8 +144,8 @@ async def render(state, navigate):
         async def handle_sync_drv(e):
             from .ng_helpers import _load_laps, _save_upload
 
-            content = e.content.read()
-            suffix = os.path.splitext(e.name)[1] or ".csv"
+            content = await e.file.read()
+            suffix = os.path.splitext(e.file.name)[1] or ".csv"
             path = _save_upload(content, suffix)
             try:
                 laps = _load_laps(path)

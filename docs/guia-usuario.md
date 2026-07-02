@@ -45,6 +45,8 @@ La pantalla inicial muestra los tres insumos del flujo: **referencia**, **piloto
 
 El **sidebar izquierdo** muestra el progreso: ✅ paso completado, ▶️ paso actual, ○ paso pendiente en tu flujo, · paso opcional fuera del flujo elegido. El botón **🔄 Nueva sesión** al pie del sidebar borra todo el estado y vuelve al Paso 0 sin recargar la pestaña del navegador — útil para analizar otra tanda sin cerrar la app.
 
+El **Paso 1** muestra dos paneles de carga, uno para la vuelta de referencia y otro para la tuya. En cada panel aparece una zona de carga integrada en el browser: haz clic en ella para abrir el selector de archivos del sistema operativo, o arrastra el `.csv` (o `.xlsx`) directamente sobre la zona. La app detecta las vueltas del archivo automáticamente; si hay más de una, aparece un desplegable para elegir cuál usar (por defecto se pre-selecciona la más rápida). Una vez subidos ambos archivos, pulsa el botón de avance para continuar.
+
 ## 4. Compara
 
 ```

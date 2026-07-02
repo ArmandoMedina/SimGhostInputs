@@ -122,6 +122,8 @@ La UI principal de v2.0 migró de Streamlit a **NiceGUI** ([ADR 0018](decisions/
 
 3. **Diálogos de archivo nativos (`native=True`).** `_pick_file()` y `_pick_folder()` (`ng_helpers.py`) abren el selector nativo del OS vía Tkinter (`filedialog`). Solo funcionan de forma fiable en modo `native=True` (ventana pywebview, que es como arranca `fantasma-ng` en `ng_app.py::run`); en modo browser/desarrollo el selector puede fallar o abrir una ventana separada extraña. Ambos helpers atrapan cualquier excepción y devuelven `""`. Las operaciones potencialmente lentas (leer overlay, componer preview) se envuelven con `await run.io_bound(...)` para no bloquear el event loop.
 
+   *Excepción — upload de CSV en Paso 1:* los dos paneles de carga de `ng_step1.py` usan `ui.upload` (componente nativo del browser, `<input type="file">`) en lugar de `_pick_file()`. Esta ruta funciona en modo browser y en `native=True` por igual; no invoca Tkinter.
+
 4. **Corrección F-01 (NiceGUI) — pendiente.** El selector de flujo del Paso 0 (`ng_step0.py`) no debe mostrar ningún flujo como «✓ Seleccionado» al cargar la app. Hoy `is_selected = state.flow_key == flow_key` compara contra `flow_key`, que tiene un default (`_DEFAULT_FLOW = "compose"`), por lo que la tarjeta por defecto aparece pre-seleccionada aunque el usuario no haya elegido nada. El estado ya tiene el booleano `flow_chosen` (separado de `flow_key`) para distinguir «default cargado» de «usuario eligió explícitamente»; la corrección es que el Paso 0 use `flow_chosen` para decidir el marcado. Registrado para corrección en v2.0.x. Es el equivalente NiceGUI del F-01 ya resuelto en Streamlit (ver §5, v0.14.0).
 
 ---

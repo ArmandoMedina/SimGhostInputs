@@ -27,6 +27,7 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/). Versionado
 ### Cambiado
 - `setup.ps1`: la instalación de GitHub CLI (`gh`) se mueve detrás del flag `-Dev`; el setup de usuario final no instala herramientas de desarrollo.
 - Suite de tests ampliada a **190 tests**: nuevos e2e wizard (5), corrección import directo en `test_sync.py`.
+- UI NiceGUI Paso 1: zona de carga de CSV migra de botón con diálogo nativo (tkinter) a componente `ui.upload` de NiceGUI — el picker pasa a ser un componente integrado en el browser con soporte de arrastre, compatible tanto en modo native=True como en modo browser.
 
 ### Corregido
 - `fantasma/ui/ng_step2.py`: `ui.download().classes()` fallaba con `AttributeError` en entorno sin browser real — añadido None-check (`ui.download()` devuelve None sin conexión WebSocket activa).
