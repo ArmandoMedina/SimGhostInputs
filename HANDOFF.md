@@ -35,11 +35,13 @@ De los 4 ítems de QA, 3 completados en laptop de desarrollo (2026-07-01):
 | 1 | **Bundle size real** | ✅ **370.9 MB** | `python tools/build_installer.py` en Windows 11 24H2, Python 3.11. `dist/SimGhostInputs/` completo con nicegui 3.14 + pywebview + scipy + numpy + PIL + matplotlib + pandas. |
 | 2 | **`native=True` en Windows** | ✅ **Confirmado** | App abre ventana nativa (pywebview 6.2.1) en laptop de desarrollo. Sin errores. Nota: `fantasma-ng` entry point requiere `pip install -e ".[ui-ng]"` para registrarse en PATH. |
 | 3 | **Pace Notes CLI** | ✅ **5/5 PASS** | --mode tones sin edge-tts, WAV 24kHz mono 16-bit, error claro en --mode voice sin edge-tts, --top 3 selección correcta, campos metadata.json correctos para CrewChief. |
-| 4 | **VirusTotal** | ⏳ **Pendiente** | El .exe está en `dist/SimGhostInputs/SimGhostInputs.exe`. Solo falta subirlo manualmente a virustotal.com. |
+| 4 | **VirusTotal** | ✅ **OK** | Subido y verificado (2026-07-02). |
 
-**Nota sobre #4:** el directorio `dist/` se generó en el build de 2026-07-01 con nicegui-pack + PyInstaller 6.21.0. El .exe no se commitea; si no existe en tu máquina, corre `python tools/build_installer.py` para regenerarlo antes de subir.
+**QA adicional completado (2026-07-02, laptop de desarrollo):**
+- **E2E wizard 5/5 PASS** — `tests/ui/test_e2e_wizard.py` con CSV reales de `Paterial para test` (GO BMW M4 GT3 Nordschleife + jocmaster Race 2026-06-21). Todos los pasos del wizard ejercitados con clics reales.
+- **Playwright smoke visual 2/2 PASS** — layout del Paso 0 contra baseline. (Warning menor: `Image.getdata` deprecada en Pillow 14; no bloquea, deuda técnica.)
 
-**QA de pacenotes en sesión real** (separado del VirusTotal) — requiere AMS2 en pista:
+**QA de pacenotes en sesión real** (post-merge, no bloquea) — requiere AMS2 en pista:
 - Tonos suenan en los metros correctos (Nordschleife o similar)
 - Escala de frecuencias distinguible auditivamente (agudo ≠ medio ≠ grave)
 - `--mode voice` con edge-tts: frases coherentes con el problema detectado
@@ -47,11 +49,11 @@ De los 4 ítems de QA, 3 completados en laptop de desarrollo (2026-07-01):
 
 ## Para retomar en frío
 
-1. Lee este HANDOFF.
-2. Corre `verificar.ps1` para confirmar verde.
-3. Sube `dist/SimGhostInputs/SimGhostInputs.exe` a virustotal.com (si no lo hiciste antes).
-4. Cuando VirusTotal sea OK: `git checkout master; git merge codex/sgi-v2-merge --no-ff` y cortar el release con `gh release create v2.0.0`.
-5. El QA de pace notes en sesión real (AMS2) puede hacerse post-merge si hay prisa — no bloquea la funcionalidad core.
+**TODO el QA pre-merge está completo.** Siguiente paso:
+1. `gh auth switch --user ArmandoMedina` (verificar cuenta correcta con `gh auth status`).
+2. `git checkout master; git merge codex/sgi-v2-merge --no-ff`
+3. Cortar release con skill `release-helper` para v2.0.0.
+4. El QA de pace notes en sesión real (AMS2) puede hacerse post-merge — no bloquea.
 
 ## Deuda técnica registrada (no bloquea merge)
 
