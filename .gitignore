@@ -22,3 +22,6 @@ CLAUDE.md
 docs/demo/_*
 .obsidian/
 .nicegui/
+
+# Artefacto de build: nicegui-pack regenera el .spec en cada corrida (ruta absoluta local)
+SimGhostInputs.spec

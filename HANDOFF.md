@@ -12,21 +12,24 @@
 
 ## Estado actual
 
-**Rama:** `codex/sgi-v2-merge` — lista para mergear. R3 completado.
-
-**Suite:** 201 tests verdes (2026-07-03). CI en verde.
-
-**Auditoría integral pre-v2.0.0 completada.** Informe en `qa_runs/2026-07-03-auditoria-integral/informe.md`.
-
-- Remediación R1 aplicada: doble-append importers, exit codes CLI, ffmpeg stderr overlay, asyncio pacenotes, ffmpeg hud_preview, temp leak UI, event loop Paso 3, timers Paso 3/4, host 127.0.0.1.
-- R3 aplicado: retiro completo de la UI Streamlit (7 modulos, 6 archivos de test, pyproject, CI, docs). Decision en ADR 0018 enmienda 2026-07-03.
-- Decisiones asentadas: ADR 0020 (blast-radius viz), enmienda ADR 0018, enmienda ADR 0019.
-- `audit` configurado como required check en el ruleset de `master` (ADR 0019).
+**v2.0.0 LIBERADA (2026-07-03).** Tag y release publicados con el instalador
+`SimGhostInputs-v2.0.0-Setup.exe` (104.7 MB) como asset; bundle onedir 373 MB;
+smoke del exe PASA (HTTP 200 en 127.0.0.1:8765). PR #15 mergeado por squash
+(el ruleset solo permite squash). Suite: 202 tests verdes en local y en los
+7 required checks.
 
 ## Siguiente accion
 
-PR a master abierto, esperar checks y mergear; luego tag v2.0.0 + gh release + rebuild instalador.
+Ninguna en vuelo. Pendientes chicos del PO:
+
+- Mirar las capturas de QA visual (`qa_runs/mariana-20260703-0740/`) — checkpoint de Mariana.
+- Re-exportar el ORECA 07 INT desde MoTeC i2 (sin canal Distance; hallazgo de Charbel).
+- Decidir si se pinea la version de ruff en pyproject (el CI corre el ultimo de `>=0.15,<1` y ya divergio del local una vez).
 
 ## Backlog
 
-Ver [ROADMAP](ROADMAP.md) §"Post-v2.0" y §"Transversal".
+Ver [ROADMAP](ROADMAP.md) §"Post-v2.0" y §"Transversal". Destacados de la auditoría:
+cobertura de `charts.py`/`report.py`, endurecer hooks de sesión (ventanas de bypass,
+fase3-hooks), lockfile de dependencias, y la feature candidata a v2.1: monitoreo
+remoto del render desde otro dispositivo (requiere diseño de seguridad; hoy la UI
+escucha solo en 127.0.0.1 a propósito).

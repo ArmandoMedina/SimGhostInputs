@@ -13,6 +13,9 @@
 #define BundleDir "dist\SimGhostInputs"
 
 [Setup]
+; Las rutas relativas del script (LICENSE, dist\...) son respecto a la RAIZ
+; del repo; ISCC resuelve respecto al .iss (tools\), asi que se corrige aqui.
+SourceDir=..
 AppId={{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
@@ -40,7 +43,7 @@ Name: "spanish"; MessagesFile: "compiler:Languages\Spanish.isl"
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Tasks]
-Name: "desktopicon"; Description: "Crear icono en el {cm:DesktopFolder}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: checkedonce
+Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: checkedonce
 
 [Files]
 Source: "{#BundleDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
