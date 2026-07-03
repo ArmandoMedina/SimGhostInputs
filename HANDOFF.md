@@ -14,7 +14,7 @@
 
 **Rama de trabajo:** `codex/sgi-v2-merge` (no tocar `master` hasta cerrar los pendientes de QA abajo).
 
-**Suite:** 185 tests verdes. `verificar.ps1` y `auditar.ps1` pasan sin bloqueos.
+**Suite:** 193 tests verdes. `verificar.ps1` y `auditar.ps1` pasan sin bloqueos.
 
 **Homologación starter v0.5.0 adoptada** (ADR 0019, mergeada aquí desde `homologacion-starter-v0.5.0`): job `audit` en CI, Mariana exige evidencia en `qa_runs/`, hook no-memorias, `/arranca` reforzado, `docs/recursos-del-proyecto.md`, recetario PS 5.1. **Pendiente del PO:** marcar `audit`, `docs-graph`, `lint` y `pytest` como *required checks* en el ruleset de master — sin eso el job nuevo es cosmético.
 
@@ -56,6 +56,13 @@ De los 4 ítems de QA, 3 completados en laptop de desarrollo (2026-07-01):
 2. `git checkout master; git merge codex/sgi-v2-merge --no-ff`
 3. Cortar release con skill `release-helper` para v2.0.0.
 4. El QA de pace notes en sesión real (AMS2) puede hacerse post-merge — no bloquea.
+
+**Bugs visuales corregidos y tests de regresión en (commit `b14a3b3`, 2026-07-02):**
+- `.flow-card` ahora tiene flexbox — botones de tarjeta alineados verticalmente
+- `.props("flat")` removido de botones de tarjeta y CARGAR — texto visible en dark mode
+- `freeze_support()` en `main_gui.py` — exe PyInstaller ya no crashea al cerrar
+- Guard de doble clic en "Generar overlay" (ng_step3.py) — botón se deshabilita durante render
+- 4 tests nuevos confirman que estos bugs no regresarán (193 tests totales)
 
 ## Deuda técnica registrada (no bloquea merge)
 
