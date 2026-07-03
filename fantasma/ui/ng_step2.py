@@ -190,14 +190,19 @@ async def render(state, navigate):
   </div>
 </div>""")
 
-    # Generar gráficas si no existen
+    # Generar gráficas si no existen (cómputo matplotlib en thread; UI después)
     if state.charts_paths is None:
         _out = tempfile.mkdtemp()
+        _corners_snap = state.corners or []  # captura en contexto UI antes de entrar al thread
         charts_err = None
         try:
-            from fantasma.viz.charts import render_charts
 
-            state.charts_paths = render_charts(trace, rows, state.corners or [], _out, top=None)
+            def _do_render_charts():
+                from fantasma.viz.charts import render_charts
+
+                return render_charts(trace, rows, _corners_snap, _out, top=None)
+
+            state.charts_paths = await run.io_bound(_do_render_charts)
         except ImportError:
             state.charts_paths = []
             charts_err = 'matplotlib no instalado — ejecuta: pip install "fantasma-inputs[charts]"'
@@ -213,9 +218,9 @@ async def render(state, navigate):
         return [p for p in _charts if os.path.basename(p).startswith(prefix)]
 
     # ── Layout de dos columnas ────────────────────────────────────────────────
-    with ui.html('<div class="analysis-cols">').classes("w-full"):
+    with ui.element("div").classes("analysis-cols w-full"):
         # COLUMNA IZQUIERDA: tabla de curvas
-        with ui.html('<div class="panel">'):
+        with ui.element("div").classes("panel"):
             # CSV download preparado
             import pandas as _pd
 
@@ -245,7 +250,7 @@ async def render(state, navigate):
               <span class="panel-title">Curvas</span>
               <div></div>
             </div>""")
-            with ui.html('<div class="panel-body" style="padding:0">'):
+            with ui.element("div").classes("panel-body").style("padding:0"):
                 ui.html(_build_corners_table_html(rows))
 
             # Drill-down por curva
@@ -286,11 +291,7 @@ async def render(state, navigate):
                     )
                     with ui.row().classes("gap-2 flex-wrap"):
                         for p in corners_charts:
-                            try:
-                                with open(p, "rb") as f:
-                                    ui.image(f.read()).classes("rounded").style("max-width:400px")
-                            except Exception:
-                                pass
+                            ui.image(p).classes("rounded").style("max-width:400px")
 
                 brakes = _charts_of("frenada_")
                 if brakes:
@@ -299,11 +300,7 @@ async def render(state, navigate):
                     )
                     with ui.row().classes("gap-2 flex-wrap"):
                         for p in brakes:
-                            try:
-                                with open(p, "rb") as f:
-                                    ui.image(f.read()).classes("rounded").style("max-width:400px")
-                            except Exception:
-                                pass
+                            ui.image(p).classes("rounded").style("max-width:400px")
 
                 # Descarga CSV
                 if csv_bytes:
@@ -312,22 +309,18 @@ async def render(state, navigate):
                         _dl.classes("mt-2")
 
         # COLUMNA DERECHA
-        with ui.html('<div class="right-col">'):
+        with ui.element("div").classes("right-col"):
             # Panel gráfica delta
-            with ui.html('<div class="panel">'):
+            with ui.element("div").classes("panel"):
                 ui.html(
                     '<div class="panel-header"><span class="panel-title">Delta acumulado</span></div>'
                 )
-                with ui.html('<div class="panel-body">'):
+                with ui.element("div").classes("panel-body"):
                     overview = _charts_of("delta_map") + _charts_of("time_loss_bar")
                     if overview:
-                        with ui.html('<div class="chart-area" style="height:auto">'):
+                        with ui.element("div").classes("chart-area").style("height:auto"):
                             for p in overview:
-                                try:
-                                    with open(p, "rb") as f:
-                                        ui.image(f.read()).classes("rounded w-full")
-                                except Exception:
-                                    pass
+                                ui.image(p).classes("rounded w-full")
                     else:
                         ui.label("No hay gráfica de delta disponible.").classes("text-xs").style(
                             "color:var(--muted)"
@@ -338,32 +331,24 @@ async def render(state, navigate):
                         ui.label("Circulo de friccion (G-G)").classes(
                             "text-sm font-bold text-white mt-3 mb-1"
                         )
-                        try:
-                            with open(gg[0], "rb") as f:
-                                ui.image(f.read()).classes("rounded").style("max-width:300px")
-                        except Exception:
-                            pass
+                        ui.image(gg[0]).classes("rounded").style("max-width:300px")
 
                     full = _charts_of("full_lap")
                     if full:
                         ui.label("Vista completa de la vuelta").classes(
                             "text-sm font-bold text-white mt-3 mb-1"
                         )
-                        try:
-                            with open(full[0], "rb") as f:
-                                ui.image(f.read()).classes("rounded w-full")
-                        except Exception:
-                            pass
+                        ui.image(full[0]).classes("rounded w-full")
 
             # Panel Pace Notes
             def go_to_pacenotes():
                 navigate(3)
 
-            with ui.html('<div class="panel">'):
+            with ui.element("div").classes("panel"):
                 ui.html(
                     '<div class="panel-header"><span class="panel-title">Pace Notes</span></div>'
                 )
-                with ui.html('<div class="panel-body">'):
+                with ui.element("div").classes("panel-body"):
                     ui.label(
                         "Genera tonos de guia para CrewChief con las perdidas detectadas."
                     ).classes("text-xs").style(
@@ -375,9 +360,9 @@ async def render(state, navigate):
                     ).classes("btn-secondary w-full").props("flat")
 
     # ── Franja de exportación ─────────────────────────────────────────────────
-    with ui.html('<div class="export-strip">'):
+    with ui.element("div").classes("export-strip"):
         ui.html('<span style="font-size:11px;color:var(--muted)">Análisis completado</span>')
-        with ui.html('<div style="display:flex;gap:8px;align-items:center">'):
+        with ui.element("div").style("display:flex;gap:8px;align-items:center"):
             ui.button("← Volver", on_click=lambda: navigate(1)).props("flat").classes(
                 "btn-secondary"
             )

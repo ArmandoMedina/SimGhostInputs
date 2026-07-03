@@ -186,6 +186,13 @@ async def main_page():
     _all_step_labels = ["Inicio", "Importar", "Análisis", "Overlay", "Video"]
 
     async def navigate(step: int):
+        _cancel = getattr(navigate, "_cancel_render", None)
+        if _cancel is not None:
+            try:
+                _cancel()
+            except Exception:
+                pass
+            navigate._cancel_render = None
         state.nav_step = step
         content.clear()
         # Actualizar estado visual y etiquetas de botones
@@ -289,6 +296,7 @@ def run():
         reload=False,
         storage_secret="sgi-v2-secret",
         port=8765,
+        host="127.0.0.1",
     )
 
 

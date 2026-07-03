@@ -1,9 +1,31 @@
 """Helpers y constantes compartidas para la UI NiceGUI de SimGhostInputs."""
 
+import atexit
 import json
 import os
 import tempfile
 import threading
+
+# ── limpieza de archivos temporales de upload ─────────────────────────────────
+
+_upload_temps: set = set()
+
+
+def _cleanup_upload(path: str) -> None:
+    """Borra un archivo temporal de upload y lo elimina del registro."""
+    _upload_temps.discard(path)
+    try:
+        os.unlink(path)
+    except OSError:
+        pass
+
+
+def _cleanup_all_uploads() -> None:
+    for path in list(_upload_temps):
+        _cleanup_upload(path)
+
+
+atexit.register(_cleanup_all_uploads)
 
 _POS_LABELS = {
     "Abajo derecha": "bottom-right",
@@ -104,11 +126,12 @@ def _lap_options(laps):
 
 
 def _save_upload(content_bytes, suffix):
-    """Guarda bytes en un archivo temporal y devuelve la ruta."""
+    """Guarda bytes en un archivo temporal, registra la ruta para limpieza y devuelve la ruta."""
     tmp = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
     tmp.write(content_bytes)
     tmp.flush()
     tmp.close()
+    _upload_temps.add(tmp.name)
     return tmp.name
 
 

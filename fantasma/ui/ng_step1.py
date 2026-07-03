@@ -7,6 +7,7 @@ from nicegui import ui
 from .ng_helpers import (
     _FLOWS,
     _best_lap_index,
+    _cleanup_upload,
     _corners_from_json,
     _fmt_lap,
     _lap_options,
@@ -81,6 +82,8 @@ async def render(state, navigate):
             ref_status.classes(remove="upload-status text-green-400 text-yellow-400")
             ref_status.classes("text-red-400")
             return
+        finally:
+            _cleanup_upload(path)
         if _missing_distance(laps):
             ref_status.set_text(_NO_DIST_MSG)
             ref_status.classes(remove="upload-status text-green-400 text-yellow-400")
@@ -94,7 +97,7 @@ async def render(state, navigate):
             ref_status.classes("text-yellow-400")
             return
         ref_state["laps"] = laps
-        ref_state["path"] = path
+        ref_state["path"] = path  # ruta del temp ya borrado — solo informativa, no releer
         ref_state["name"] = original_name or os.path.basename(path)
         best_i = _best_lap_index(laps)
         ref_state["sel_i"] = best_i
@@ -116,6 +119,8 @@ async def render(state, navigate):
             drv_status.classes(remove="upload-status text-green-400 text-yellow-400")
             drv_status.classes("text-red-400")
             return
+        finally:
+            _cleanup_upload(path)
         if _missing_distance(laps):
             drv_status.set_text(_NO_DIST_MSG)
             drv_status.classes(remove="upload-status text-green-400 text-yellow-400")
@@ -129,7 +134,7 @@ async def render(state, navigate):
             drv_status.classes("text-yellow-400")
             return
         drv_state["laps"] = laps
-        drv_state["path"] = path
+        drv_state["path"] = path  # ruta del temp ya borrado — solo informativa, no releer
         drv_state["name"] = original_name or os.path.basename(path)
         best_i = _best_lap_index(laps)
         drv_state["sel_i"] = best_i

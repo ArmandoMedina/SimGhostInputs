@@ -1,11 +1,15 @@
 # -*- mode: python ; coding: utf-8 -*-
 
+import nicegui as _nicegui
+import os as _os
+
+_nicegui_src = _os.path.dirname(_nicegui.__file__)
 
 a = Analysis(
     ['main_gui.py'],
     pathex=[],
     binaries=[],
-    datas=[('C:\\Users\\amedina\\AppData\\Local\\Programs\\Python\\Python311\\Lib\\site-packages\\nicegui', 'nicegui')],
+    datas=[(_nicegui_src, 'nicegui')],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},

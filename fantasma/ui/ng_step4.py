@@ -142,7 +142,7 @@ async def render(state, navigate):
         sync_drv_state = {"laps": None}
 
         async def handle_sync_drv(e):
-            from .ng_helpers import _load_laps, _save_upload
+            from .ng_helpers import _cleanup_upload, _load_laps, _save_upload
 
             content = await e.file.read()
             suffix = os.path.splitext(e.file.name)[1] or ".csv"
@@ -152,6 +152,8 @@ async def render(state, navigate):
             except Exception as ex:
                 ui.notify(f"Error: {ex}", type="negative")
                 return
+            finally:
+                _cleanup_upload(path)
             if laps:
                 from fantasma.core.normalize import fastest_lap as _fl
 
@@ -535,6 +537,17 @@ async def render(state, navigate):
 
         timer = ui.timer(0.5, poll)
         job_holder["timer"] = timer
+
+        def _cancel_on_nav():
+            t = job_holder.get("timer")
+            if t is not None:
+                try:
+                    t.cancel()
+                except Exception:
+                    pass
+                job_holder["timer"] = None
+
+        navigate._cancel_render = _cancel_on_nav
 
     if not (job_holder["job"] and not job_holder["job"].done):
         ui.button(

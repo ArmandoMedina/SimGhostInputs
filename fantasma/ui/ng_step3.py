@@ -3,7 +3,7 @@
 import os
 import shutil
 
-from nicegui import ui
+from nicegui import run, ui
 
 from .ng_helpers import _DEFAULT_FLOW, _FLOWS, _STEPS, render_breadcrumb, start_bg_render
 
@@ -48,10 +48,14 @@ async def render(state, navigate):
 
     if not corners:
         try:
-            from fantasma.core.corners import detect_corners, extract_milestones
 
-            _evs, _ = detect_corners(ref_lap)
-            corners = extract_milestones(ref_lap, _evs)
+            def _detect():
+                from fantasma.core.corners import detect_corners, extract_milestones
+
+                _evs, _ = detect_corners(ref_lap)
+                return extract_milestones(ref_lap, _evs)
+
+            corners = await run.io_bound(_detect)
             state.corners = corners
         except Exception:
             corners = []
@@ -220,6 +224,17 @@ async def render(state, navigate):
 
         timer = ui.timer(0.5, poll)
         job_holder["timer"] = timer
+
+        def _cancel_on_nav():
+            t = job_holder.get("timer")
+            if t is not None:
+                try:
+                    t.cancel()
+                except Exception:
+                    pass
+                job_holder["timer"] = None
+
+        navigate._cancel_render = _cancel_on_nav
 
     if not job_holder["job"] or job_holder["job"].done:
         _gen_btn_ref["btn"] = (
