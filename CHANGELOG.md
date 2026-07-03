@@ -18,6 +18,11 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/). Versionado
 - **UX NiceGUI post-auditoría v2.0**: breadcrumb de navegación en todos los pasos; links "Guía MoTeC" y "Ejemplo CSV" en Paso 0 con dialogs; slider de escala con valor dinámico en tiempo real; sidebar con checkmark ✅ cuando el paso está completo; guard de ffmpeg en Paso 3 con instrucción de instalación por plataforma; CSS vars para colores de los paneles de Paso 4.
 - **C19 — aviso proactivo de ffmpeg en Paso 0**: al seleccionar el flujo "Video con HUD" o "Solo overlay", la UI muestra inmediatamente un aviso si ffmpeg no está instalado — sin esperar al paso de render.
 
+### Optimizado (2026-07-02 — render paralelo)
+- **Collect round-robin en `_render_parallel`** (`overlay.py`): el loop de recolección de workers era secuencial — esperaba al worker 0 aunque los demás ya hubieran terminado. Reemplazado por polling concurrente (while+pending): cada pasada sondea todos los workers pendientes y procesa inmediatamente los que terminaron. Tiempo de pared = tiempo del worker más lento, independientemente de su posición en el orden de lanzamiento.
+- **Pickle compacto por chunk** (`overlay.py`): cada subprocess de overlay recibía el tuple `base` completo con todos los arrays numpy (~1-5 MB por worker segun vuelta). Ahora cada worker recibe solo el slice de distancia que cubre su rango de frames, mas padding de ventana HUD (`W_BEFORE`/`W_AFTER`) y retención de luces ABS/TC (`HOLD_M`). En Nordschleife reduce el pkl de ~4-5 MB a ~1 MB por worker.
+- **`tests/viz/test_overlay.py`**: añadido `test_render_parallel_collect_round_robin` — 3 workers que terminan en orden inverso al de lanzamiento; verifica que todos son recolectados sin bloqueo y que el contador de frames llega a `n_frames`.
+
 ### Añadido (2026-07-02 — tests de regresión visual)
 - **`test_pw_step0_button_alignment`** y **`test_pw_step0_selected_button_visibility`** en `tests/ui/visual/test_e2e_playwright_wizard.py`: detectan bugs de alineación de botones y contraste de texto antes de que lleguen al exe empaquetado.
 - **`tests/test_main_gui.py`**: test AST que verifica que `freeze_support()` está presente en el entry point de PyInstaller.

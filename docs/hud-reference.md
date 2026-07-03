@@ -178,3 +178,7 @@ fantasma overlay --reference ref.csv --driver mi.csv -o salida/ --start 120 --en
 # Render en lote de todas las vueltas completas de la sesión
 fantasma overlay --reference ref.csv --driver mi.csv -o salida/ --all-laps
 ```
+
+El render usa automáticamente todos los núcleos disponibles (`cpu_count() - 1` workers). Cada worker
+recibe solo el segmento de arrays que necesita (slice por rango de distancia), lo que reduce el
+overhead de serialización de ~4 MB a ~1 MB por worker en vueltas largas (Nordschleife).
