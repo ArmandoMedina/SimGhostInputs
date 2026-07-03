@@ -14,7 +14,13 @@
 
 **Rama:** `codex/sgi-v2-merge` — lista para mergear. No tocar `master` sin autorización del PO.
 
-**Suite:** 193 tests verdes (2026-07-02). CI en verde. `verificar.ps1` sin bloqueos.
+**Suite:** 201 tests verdes (2026-07-03). CI en verde. `verificar.ps1` sin bloqueos.
+
+**Optimizaciones de render paralelo completadas (commit `73f5ac1`):**
+- Collect round-robin en `_render_parallel` (workers ya no esperan en orden).
+- Pickle compacto: slice por rango de distancia, ~1 MB por worker en Nordschleife.
+- Fallback serial reutiliza el slice del worker fallido.
+- Deuda técnica del ROADMAP cerrada (ambos ítems marcados `[x]`).
 
 **Todo el QA pre-merge completado.** Detalles en [CHANGELOG](CHANGELOG.md) §[Unreleased].
 
