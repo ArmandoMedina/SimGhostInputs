@@ -10,31 +10,21 @@
 
 ## Estado actual
 
-**v1.0.0** (2026-06-30) — estable. Pipeline AMS2 completo (análisis + overlay + compose + pace notes). 142 tests.
+**v1.0.0** (2026-06-30) — estable. 142 tests.
 
-**v2.0 en rama `codex/sgi-v2-merge`** — código completo. UI NiceGUI, CrewChief Pace Notes, empaquetado Windows, 191 tests (incluye e2e wizard con datos reales). QA completado (2026-07-01): bundle 370.9 MB, native=True ✅, Pace Notes CLI 5/5 ✅, VirusTotal 4/63 FPs ✅. Listo para merge a master.
-
----
-
-## Antes de mergear v2.0 a master
-
-Estos 4 ítems requieren hardware real — no hay código pendiente:
-
-- [x] **Bundle size real** — **370.9 MB** en `dist/SimGhostInputs/` (Windows 11, Python 3.11, stack completo: nicegui 3.14 + pywebview + scipy + numpy + PIL + matplotlib + pandas). Medido 2026-07-01 en laptop de desarrollo con `nicegui-pack --onedir`.
-- [x] **`native=True` en VM limpia** — Confirmado en laptop Windows 11 24H2: la app abre ventana de escritorio nativa (pywebview 6.2.1) sin errores. Nota: para tests futuros que abran ventanas, lanzar con `Start-Process -PassThru` en background y matar tras el timeout.
-- [x] **VirusTotal** — 4/63 falsos positivos (Bkav, APEX, Gridinsoft, Yandex). Todos los motores principales (Windows Defender, Kaspersky, Norton, Avast, ESET, etc.) limpios. Yandex etiqueta explícitamente "PyInstaller". Aceptable para publicar. Medido 2026-07-01.
-- [x] **QA de Pace Notes CLI** — 5/5 ítems verificados (2026-07-01): tones sin deps, metros correctos, escala distinguible, voice con edge-tts, --top 3. QA en sesión real en pista queda como deseable post-v2.0:
-  - [x] `--mode tones`: genera `metadata.json` + WAV de tonos sin instalar edge-tts
-  - [x] Tonos suenan en los metros correctos (Nordschleife)
-  - [x] Escala de frecuencias distinguible: agudo ≠ medio ≠ grave
-  - [x] `--mode voice`: frases coherentes con el problema detectado por curva
-  - [x] `--top 3`: solo las 3 curvas con más pérdida generan audio
-  - [ ] `--mode both` en sesión real en pista (deseable, no bloqueante)
-  - [ ] WAV validado con ffprobe (deseable, no bloqueante)
+**v2.0 en rama `codex/sgi-v2-merge`** — lista para mergear. 193 tests verdes. QA completo (2026-07-02): bugs visuales corregidos, freeze_support, guard doble clic, suite Playwright verde. Ver [CHANGELOG](CHANGELOG.md) §[Unreleased] para el detalle completo.
 
 ---
 
 ## Post-v2.0 — pendiente de iniciar
+
+### QA Pace Notes en sesión real en pista
+
+Requiere AMS2 en pista — no bloqueó el merge.
+
+- [ ] `--mode both` en sesión real: voz 200m antes + tono en el metro exacto, sin solaparse
+- [ ] WAV validado con ffprobe
+- [ ] Tonos suenan en los metros correctos auditivamente (Nordschleife o similar)
 
 ### Pipeline desatendido: overlay → compose en secuencia + notificación
 
