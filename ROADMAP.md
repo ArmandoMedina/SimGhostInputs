@@ -66,6 +66,12 @@ Tabla acumulada de vuelta + salida + calidad de sync para quien procesa varias s
 
 ---
 
+### Monitoreo remoto del render (candidata v2.1)
+
+Arrancar el overlay en la PC y seguir el progreso desde otro dispositivo (celular en la misma LAN). Hoy es imposible a propósito: la UI escucha solo en `127.0.0.1` (fix de seguridad de la auditoría 2026-07-03) y el estado vive en `app.storage.user` (por navegador). Requiere diseño: opt-in explícito (`--lan`), token de acceso, y estado del job compartido (`app.storage.general` o página de estado) — no reabrir el hueco de escritura arbitraria que se cerró.
+
+---
+
 ### fantasma-live (repo separado)
 
 Coaching adaptativo en tiempo real. Solo si Pace Notes no cubre el caso de uso.
@@ -98,3 +104,9 @@ Coaching adaptativo en tiempo real. Solo si Pace Notes no cubre el caso de uso.
 - [x] **Pickle overhead en render paralelo** — resuelto: slice por rango de distancia por chunk, ~1 MB en Nordschleife (antes ~4-5 MB) en `codex/sgi-v2-merge` (2026-07-03).
 - [x] **`_save_upload` no limpia archivos temporales** (`ng_helpers.py`) — resuelto: cleanup en `finally` tras cargar las vueltas + registro `atexit` como red de seguridad, en `codex/sgi-v2-merge` (2026-07-03, remediación de auditoría).
 - [ ] **Inconsistencia de tokens CSS entre pasos** — ng_step2 usa `.style("color:var(--muted)")` mientras ng_step3/4 usan `text-gray-400` Tailwind tras la migración de contraste. Uniformizar ng_step2 al mismo patrón. _Prioridad: Baja._
+- [ ] **Cobertura de `viz/charts.py` y `viz/report.py`** — 0% pese a ser el output primario del flujo de análisis; deterministas y testeables sin ffmpeg (auditoría 2026-07-03, `qa_runs/2026-07-03-auditoria-integral/fase1-suite.md`). _Prioridad: Alta._
+- [ ] **Pinear la versión de ruff en pyproject** — el CI instala el último de `>=0.15,<1` y ya divergió del local una vez (I001 solo en CI, PR #15). _Prioridad: Media._
+- [ ] **Endurecer los hooks de sesión** — ciegos ante commits durante la sesión, markers seteables sin hacer el trabajo, evidencia de Mariana sin validar relevancia (auditoría, `fase3-hooks.md`). _Prioridad: Media._
+- [ ] **Lockfile de dependencias** (uv.lock o pip-compile) — builds no reproducibles, drift de supply chain (auditoría, `fase1-seguridad.md`). _Prioridad: Media._
+- [ ] **PO: revisar las capturas del QA visual de v2.0** (`qa_runs/mariana-20260703-0740/`) — checkpoint de Mariana que vuelve al PO; la cadena H-01 del Paso 2 se cerró con esa evidencia. _Prioridad: Media._
+- [ ] **PO: re-exportar el ORECA 07 INT desde MoTeC i2** — el archivo del material de pruebas carece del canal Distance y el pipeline lo rechaza (correcto); es el único de 17 no procesable (Charbel, `fase1-charbel.md`). _Prioridad: Baja._
