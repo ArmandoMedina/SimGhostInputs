@@ -4,6 +4,13 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/). Versionado
 
 ## [Unreleased]
 
+### Corregido
+- **`tools/installer.iss` compilaba solo en CI-teoría**: primer build real del instalador destapó rutas relativas resueltas contra `tools\` (faltaba `SourceDir=..`) y un custom message inexistente (`{cm:DesktopFolder}` → `{cm:CreateDesktopIcon}`). Con esto se generó y publicó `SimGhostInputs-v2.0.0-Setup.exe` (104.7 MB) como asset del release.
+
+### Cambiado
+- **`SimGhostInputs.spec` fuera del versionado** (`.gitignore`): `nicegui-pack` lo regenera en cada build con la ruta absoluta local de nicegui, deshaciendo cualquier fix versionado — es artefacto de build, no fuente. La receta canónica de empaquetado es `tools/build_installer.py`.
+- **Deuda del ADR 0018 medida**: bundle onedir real de v2.0.0 = 373 MB; exe 30.7 MB; instalador 104.7 MB. Smoke del exe empaquetado: arranca y responde HTTP 200 en `127.0.0.1:8765`.
+
 ## [2.0.0] - 2026-07-03
 
 ### Añadido
