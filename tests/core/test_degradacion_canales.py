@@ -17,8 +17,8 @@ y glat ausentes; aquí el cubrimiento es sistemático y cruza todos los canales.
 import itertools
 
 import pytest
-from conftest import make_lap
 
+from conftest import make_lap
 from fantasma.core.compare import compare
 
 # ---------------------------------------------------------------------------

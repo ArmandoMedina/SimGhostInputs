@@ -81,6 +81,10 @@ async def test_render_guard_prevents_double_start(user, monkeypatch, lap_factory
         started_jobs.append(job)
         return job
 
+    # Sin ffmpeg el paso retorna antes del boton; se inyecta ruta fake para
+    # que el flujo llegue a "Generar overlay" sin ffmpeg real en el runner.
+    monkeypatch.setattr("shutil.which", lambda name: "/fake/ffmpeg")
+
     # Parche en el modulo ng_step3 (no en nicegui directamente).
     # Importar explicitamente antes de parcharlo: fantasma.ui.__init__ no
     # re-exporta ng_step3, por lo que la resolucion del string dotted-path falla

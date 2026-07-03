@@ -74,8 +74,24 @@ async def test_step3_heading_visible(user):
 
 
 @pytest.mark.asyncio
-async def test_step3_guard_without_data(user):
+async def test_step3_no_ffmpeg_shows_warning(user, monkeypatch):
+    """Sin ffmpeg instalado, el Paso 3 muestra el aviso de instalacion."""
+    monkeypatch.setattr("shutil.which", lambda name: None)
+
+    from fantasma.ui.ng_app import main_page  # noqa: F401
+
+    await user.open("/")
+    user.find("Overlay").click()
+    await user.should_see("ffmpeg no esta instalado")
+
+
+@pytest.mark.asyncio
+async def test_step3_guard_without_data(user, monkeypatch):
     """Sin ref_lap, el Paso 3 muestra mensaje pidiendo ir al Paso 1."""
+    # Sin ffmpeg el paso retorna antes del guard; se inyecta una ruta fake
+    # para que el flujo llegue al guard "Primero carga" sin ffmpeg real.
+    monkeypatch.setattr("shutil.which", lambda name: "/fake/ffmpeg")
+
     from fantasma.ui.ng_app import main_page  # noqa: F401
 
     await user.open("/")
@@ -120,6 +136,9 @@ async def test_step3_renders_with_ref_lap_and_detect_corners_mocked(user, monkey
     from nicegui import ui as _ui
 
     import fantasma.ui.ng_app as _ng_mod
+
+    # Sin ffmpeg el paso retorna antes del boton; se inyecta ruta fake.
+    monkeypatch.setattr("shutil.which", lambda name: "/fake/ffmpeg")
 
     # Stub para corners: evita importar fantasma.core.corners real
     _fake_corners_mod = types.ModuleType("fantasma.core.corners")
