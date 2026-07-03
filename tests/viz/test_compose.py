@@ -36,6 +36,14 @@ def test_build_filter_unknown_position_falls_back_to_bottom_right():
     assert "overlay=x=%s:y=%s" % (px, py) in fc
 
 
+def test_audio_mix_filter_with_video_audio():
+    assert "amix=inputs=2" in compose._audio_mix_filter(video_has_audio=True)
+
+
+def test_audio_mix_filter_without_video_audio():
+    assert compose._audio_mix_filter(video_has_audio=False) == "[2:a]anull[aout]"
+
+
 # --- _nvenc_available (contrato del fallback) ------------------------------
 
 
@@ -61,3 +69,49 @@ def test_nvenc_available_false_on_exception(monkeypatch):
 
     monkeypatch.setattr(compose.subprocess, "run", boom)
     assert compose._nvenc_available("ffmpeg") is False
+
+
+# --- compose_video return dict (C20) ---------------------------------------
+
+
+def test_compose_video_returns_dict_with_path_encoder_duration(monkeypatch, tmp_path):
+    """compose_video devuelve un dict con path, encoder y duration_s (C20).
+
+    Se monkeypatchea shutil.which para simular ffmpeg disponible y
+    subprocess.run para no invocar ffmpeg de verdad.
+    """
+    fake_out = str(tmp_path / "out.mp4")
+
+    # Simula que ffmpeg existe y que nvenc NO está disponible (returncode=1)
+    monkeypatch.setattr(
+        compose.shutil, "which", lambda name: "/usr/bin/ffmpeg" if name == "ffmpeg" else None
+    )
+    monkeypatch.setattr(compose.subprocess, "run", lambda *a, **k: _FakeProc(1))
+
+    # nvenc check returns 1 (no nvenc), luego el run real devuelve 0
+    run_calls = [0]
+
+    def dispatch_run(cmd, **kwargs):
+        run_calls[0] += 1
+        if run_calls[0] == 1:
+            # primera llamada: _nvenc_available
+            return _FakeProc(1)
+        # segunda llamada: el encode real
+        open(fake_out, "w").close()
+        return _FakeProc(0)
+
+    monkeypatch.setattr(compose.subprocess, "run", dispatch_run)
+
+    result = compose.compose_video(
+        video="fake_video.mp4",
+        overlay="fake_overlay.webm",
+        output=fake_out,
+    )
+
+    assert isinstance(result, dict), "compose_video debe devolver un dict"
+    assert "path" in result
+    assert "encoder" in result
+    assert "duration_s" in result
+    assert result["path"] == fake_out
+    assert result["encoder"] == "libx264"
+    assert isinstance(result["duration_s"], float)

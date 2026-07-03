@@ -4,6 +4,76 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/). Versionado
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-07-03
+
+### Añadido
+- **Homologación con project-starter v0.5.0** ([ADR 0019](docs/decisions/0019-adopcion-homologacion-starter-v0.5.0.md), cierra la Fase 4 del ADR 0016): job `audit` en CI (`tools/auditar-radius.ps1` — blast-radius §8 sobre el rango del PR; regla anti-bypass: required checks o nada); matcher del manifiesto homologado (raíz-sin-slash, `excluye`, `mensaje`) y área `raiz`; **Mariana exige evidencia verificable en `qa_runs/`** (un veredicto sin artefacto no vale, convención `qa_runs/<rol>-<fecha>/`); hook `no-memorias` (PreToolUse); `/arranca` con reglas duras de sesión; `docs/recursos-del-proyecto.md`; recetario `docs/entorno-windows-powershell51.md` con versión corta en los 5 SKILL.md; `templates/plan-de-trabajo.md`; ciclo de vida explícito del HANDOFF.
+- **CrewChief Pace Notes (MVP)**: nuevo comando `fantasma pacenotes` para generar `metadata.json` + WAVs desde `corners_detected.json` y `corners_compare.csv`. El modo base (`--mode tones`) crea tonos por hito de curva sin dependencias externas adicionales; el extra opcional `[voice]` añade `edge-tts` para frases de voz. Incluye tests unitarios del generador WAV y smoke CLI del pack.
+- **Pace Notes — plan anti-saturación y preview en video**: `fantasma pacenotes` ahora escribe `plan.json` con las señales elegidas/omitidas por curva y usa un plan inteligente por defecto (máximo 3 eventos por curva, separación mínima entre sonidos, countdown compacto solo donde cabe). `fantasma compose` acepta `--pace-notes-dir` para mezclar esos WAVs con el audio del video y previsualizar cómo se sentirían en carrera, sincronizados por distancia usando `--driver`.
+- **UI NiceGUI v2.0**: nuevo frontend de escritorio nativo (pywebview) que sustituye a Streamlit como UI principal. Entry point `fantasma-ng`. Módulos: `ng_app.py` (router), `ng_state.py` (AppState), `ng_helpers.py`, `ng_step0.py`–`ng_step4.py` (wizard de 5 pasos portado de Streamlit).
+- **Preview reactiva del HUD en Paso 4** (`viz/hud_preview.py`): actualización en tiempo real al cambiar posición, escala y overlay.
+- **Empaquetado Windows**: `tools/build_installer.py` (nicegui-pack) y `tools/installer.iss` (Inno Setup) para instalador doble-clic.
+- **CI**: job `build-installer` (tags `v*`) y migración de `visual-smoke` a import smoke NiceGUI.
+- `fantasma/viz/compose.py`: `compose_video()` devuelve dict `{"path", "encoder", "duration_s"}`. La UI NiceGUI Paso 4 muestra el encoder usado (h264_nvenc o libx264) y la duración del encode al terminar.
+- `fantasma/core/compare.py`: aviso en `summary["avisos"]` cuando el piloto va más de 1 s más rápido que la referencia — indica posible inversión de `--reference` y `--driver`.
+- UI NiceGUI Paso 1: hint colapsable "¿No tienes vuelta de referencia externa?" para el caso C10 (compararse contra sí mismo).
+- **UX NiceGUI post-auditoría v2.0**: breadcrumb de navegación en todos los pasos; links "Guía MoTeC" y "Ejemplo CSV" en Paso 0 con dialogs; slider de escala con valor dinámico en tiempo real; sidebar con checkmark ✅ cuando el paso está completo; guard de ffmpeg en Paso 3 con instrucción de instalación por plataforma; CSS vars para colores de los paneles de Paso 4.
+- **C19 — aviso proactivo de ffmpeg en Paso 0**: al seleccionar el flujo "Video con HUD" o "Solo overlay", la UI muestra inmediatamente un aviso si ffmpeg no está instalado — sin esperar al paso de render.
+
+### Optimizado (2026-07-02 — render paralelo)
+- **Collect round-robin en `_render_parallel`** (`overlay.py`): el loop de recolección de workers era secuencial — esperaba al worker 0 aunque los demás ya hubieran terminado. Reemplazado por polling concurrente (while+pending): cada pasada sondea todos los workers pendientes y procesa inmediatamente los que terminaron. Tiempo de pared = tiempo del worker más lento, independientemente de su posición en el orden de lanzamiento.
+- **Pickle compacto por chunk** (`overlay.py`): cada subprocess de overlay recibía el tuple `base` completo con todos los arrays numpy (~1-5 MB por worker segun vuelta). Ahora cada worker recibe solo el slice de distancia que cubre su rango de frames, mas padding de ventana HUD (`W_BEFORE`/`W_AFTER`) y retención de luces ABS/TC (`HOLD_M`). En Nordschleife reduce el pkl de ~4-5 MB a ~1 MB por worker.
+- **`tests/viz/test_overlay.py`**: añadido `test_render_parallel_collect_round_robin` — 3 workers que terminan en orden inverso al de lanzamiento; verifica que todos son recolectados sin bloqueo y que el contador de frames llega a `n_frames`.
+
+### Añadido (2026-07-02 — tests de regresión visual)
+- **`test_pw_step0_button_alignment`** y **`test_pw_step0_selected_button_visibility`** en `tests/ui/visual/test_e2e_playwright_wizard.py`: detectan bugs de alineación de botones y contraste de texto antes de que lleguen al exe empaquetado.
+- **`tests/test_main_gui.py`**: test AST que verifica que `freeze_support()` está presente en el entry point de PyInstaller.
+- **`tests/ui/test_step3_render_guard.py`**: test de regresión para el guard de doble-clic en "Generar overlay".
+
+### Añadido (QA 2026-07-01)
+- **QA con datos reales — 4 combinaciones auto-circuito ejecutadas**: Nordschleife BMW vs Audi (cross-car), Barcelona BMW vs Mercedes, Interlagos GT3 vs Hypercar (classes diferentes — aviso "piloto más rápido" +7.5 s), F3 vs LMP2 (fallo limpio por canal Distance ausente en CSV de ORECA). Edge cases documentados en `docs/casos-de-uso.md` C30–C35.
+- **`docs/casos-de-uso.md` — C30–C35**: seis escenarios nuevos basados en el material real: circuito corto vs largo, cross-car dentro de clase, clases distintas (LMP2 vs GT3, Hypercar vs GT3), flujo headless sin video, dos sesiones del mismo piloto.
+- **Tests e2e NiceGUI** (`tests/ui/test_e2e_wizard.py`): 5 tests end-to-end del wizard de 5 pasos con datos reales de Nordschleife. Usa `_SharedState` (dict en memoria, sin I/O a disco) para inyectar datos pre-calculados en AppState sin abrir el browser.
+- **`tests/ui/conftest.py`**: `pytest_configure` que parchea `Storage.clear()` para ignorar `PermissionError` de teardown en Windows (archivo temporal bloqueado por proceso de overlay activo en paralelo).
+
+### Cambiado
+- `setup.ps1`: la instalación de GitHub CLI (`gh`) se mueve detrás del flag `-Dev`; el setup de usuario final no instala herramientas de desarrollo.
+- Suite de tests ampliada a **190 tests**: nuevos e2e wizard (5), corrección import directo en `test_sync.py`.
+- UI NiceGUI Paso 1: zona de carga de CSV migra de botón con diálogo nativo (tkinter) a componente `ui.upload` de NiceGUI — el picker pasa a ser un componente integrado en el browser con soporte de arrastre, compatible tanto en modo native=True como en modo browser.
+
+### Corregido
+- `fantasma/ui/ng_step2.py`: `ui.download().classes()` fallaba con `AttributeError` en entorno sin browser real — añadido None-check (`ui.download()` devuelve None sin conexión WebSocket activa).
+- `fantasma/ui/ng_state.py`: `clear_drv()` ahora elimina `drv_name` al cambiar vuelta del piloto — el nombre del archivo quedaba huérfano de la sesión anterior.
+- UI NiceGUI — `F-01`: la tarjeta del flujo por defecto ya no se muestra como "✓ Seleccionado" hasta que el usuario hace clic en ella explícitamente.
+- **UI Paso 0 — alineación de botones**: `.flow-card` ahora usa `display:flex; flex-direction:column` con `margin-top:auto` en `.q-btn` — los botones "Elegir este" quedaban a diferentes alturas según la longitud del contenido de cada tarjeta.
+- **UI Paso 0 — texto invisible en botón seleccionado**: removido `.props("flat")` de los botones de tarjeta; Quasar `flat` overrideaba el `color:white` de `.btn-featured`, haciendo el texto invisible en dark mode.
+- **UI Paso 1 — botón CARGAR parece deshabilitado**: mismo fix que arriba — removido `.props("flat")` de `.btn-primary` en `ng_step1.py`.
+- **Exe PyInstaller — crash al cerrar**: `main_gui.py` ahora incluye `multiprocessing.freeze_support()` dentro del guard `if __name__ == "__main__"` — sin esto, Windows lanzaba `PermissionError [WinError 5]` al cerrar el proceso worker.
+- **Paso 3 — doble clic en "Generar overlay"**: el botón se deshabilita durante el render y se reactiva al terminar — antes era posible lanzar dos procesos de overlay simultáneos causando corrupción del archivo de salida.
+- **Importers — doble-append de columnas duplicadas** (`generic_csv.py`, `motec_csv.py`): al invocar `load()` más de una vez en la misma sesión las columnas mapeadas se añadían dos veces al `DataFrame`, corrompiendo silenciosamente las comparaciones posteriores.
+- **CLI — exit codes no propagados**: `fantasma compare`, `overlay` y `pacenotes` ignoraban el código de salida de los subprocesos; una falla interna devolvía exit 0 en lugar del código real.
+- **`overlay.py` — ffmpeg sin diagnóstico de stderr**: los errores de ffmpeg se descartaban (`stderr=DEVNULL`); ahora se captura el stderr y se anexa al mensaje de error visible al usuario.
+- **Pacenotes — asyncio en hilo de voz no seguro**: `asyncio.run()` desde el hilo de voz chocaba con el event loop de NiceGUI; reemplazado por `asyncio.new_event_loop()` en un hilo propio.
+- **`hud_preview.py` — ffmpeg falla sin mensaje útil**: el preview del HUD reventaba sin indicar la causa; ahora muestra el stderr de ffmpeg al usuario.
+- **UI — fuga de archivos temp de uploads** (`ng_helpers._save_upload`): usaba `NamedTemporaryFile(delete=False)` sin cleanup; los CSV subidos se acumulaban en el directorio temp del SO. `do_load()` ahora borra el temporal tras parsear.
+- **UI Paso 3 — event loop congelado durante el render**: `ng_step3` llamaba `time.sleep()` en el hilo de UI de NiceGUI bloqueando el event loop; reemplazado por `await asyncio.sleep()`.
+- **UI — timers de polling no cancelados al navegar**: los timers periódicos de los pasos 3 y 4 seguían corriendo al cambiar de paso, causando actualizaciones huérfanas en el componente abandonado; ahora se cancelan en el `on_cleanup`.
+- **UI Paso 2 — cadena H-01 (QA visual con material real)**: tres bugs encadenados que dejaban las gráficas vacías al correr con datos reales: las llamadas de render bloqueaban el event loop de NiceGUI — migradas a `run.io_bound` con snapshots de `AppState` capturados fuera del thread antes de entrar; `ui.image` recibía `bytes` en lugar de ruta de archivo (elemento zombie que Vue descartaba junto con el batch DOM completo del paso); 11 contenedores `ui.html` sin atributo `slot` cuyos hijos Vue descartaba silenciosamente — migrados a `ui.element("div")`. Evidencia en `qa_runs/mariana-20260703-0740/`.
+
+### Seguridad
+- **UI solo en `127.0.0.1`** (`ng_app.py`): NiceGUI arranca con `host="127.0.0.1"` — el servidor no expone el puerto a la red local (ajuste equivalente aplicado a Streamlit mientras convive con NiceGUI).
+
+### Añadido (2026-07-03 — auditoría integral pre-v2.0)
+- **Auditoría integral pre-v2.0.0** completada: revisión end-to-end de código, tests, docs, gates y método de la rama `codex/sgi-v2-merge`. Informe y evidencia en `qa_runs/2026-07-03-auditoria-integral/`. **212 tests** verdes tras la remediación R1.
+
+### Eliminado (2026-07-03)
+- **UI Streamlit retirada** (`fantasma/ui/{app,step0-4,_helpers}.py` + 6 tests AppTest): la interfaz Streamlit se retira por completo. El subcomando `fantasma ui` y el extra `[ui]` (incluyendo su presencia en `[full]` y en el CI) han sido eliminados. La única UI es NiceGUI (`fantasma-ng`, extra `[ui-ng]`), que es superconjunto funcional de la Streamlit en todos los flujos del wizard. Decisión registrada en la enmienda 2026-07-03 del [ADR 0018](docs/decisions/0018-framework-ui-nicegui.md); censo de archivos en `qa_runs/2026-07-03-auditoria-integral/decision-retiro-streamlit.md`.
+
+### Cambiado (2026-07-03)
+- **Blast-radius de `viz`** — `hud-reference` pasa de `doc_bloquea` a `doc_avisa` ([ADR 0020](docs/decisions/0020-blast-radius-viz-hud-reference-avisa.md)): los cambios no-visuales en `fantasma/viz/` ya no bloquean el push por no tocar `hud-reference.md`; el gate avisa y pregunta si el cambio es visual.
+- **`SimGhostInputs.spec`** — ruta de los recursos de NiceGUI ahora es dinámica (vía `importlib`); elimina la dependencia de la ruta exacta de la versión instalada.
+- **`audit` como required check del ruleset de `master`** (ADR 0019): el job `audit` (blast-radius §8 sobre el rango del PR) queda como barrera dura — un PR con docs desfasadas no puede mergearse.
+
 ## [1.0.0] - 2026-06-30
 
 **Hito — pipeline AMS2 completo, documentado y probado.** `setup.ps1` validado en instalación limpia de Windows 11 (Hyper-V VM). Alcance declarado: AMS2, pipeline offline (análisis + overlay + compose), interfaz gráfica de 5 pasos. 142 tests en verde.

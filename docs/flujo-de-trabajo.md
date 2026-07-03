@@ -103,7 +103,7 @@ que corren en varios momentos, con autoridad creciente.
 ### 2.4 Los artefactos del repo (qué es cada cosa)
 
 - **Código** (`fantasma/`): el motor (núcleo `core/`, importadores, visualización `viz/`, UI
-  Streamlit). Es lo que el linter y los tests vigilan.
+  NiceGUI). Es lo que el linter y los tests vigilan.
 - **Tests** (`tests/`): las pruebas automáticas que espejan al paquete.
 - **ADR** (`docs/decisions/NNNN-*.md`): un **registro de decisión**. Guarda **qué se decidió,
   por qué, y el camino que NO se tomó**, para que la próxima sesión (o IA) no repita el error.
@@ -129,12 +129,12 @@ que corren en varios momentos, con autoridad creciente.
 | **Auditor del grafo de docs** | Audita `product/`+`engineering/`: **BLOQUEA** frontmatter incompleto, wikilinks rotos, capacidades `vigente` sin criterios; **avisa** sin-test-citado y huérfanos. Modulado por estado. Dueño: Armando | `tools/auditar.ps1` ([ADR 0016](decisions/0016-gate-grafo-documentacion.md)) |
 | **Hook `pre-push`** | Corre el verificador **solo**, justo antes de `git push` (avisa lint/formato/tests; **bloquea** doc-drift §8) | `.githooks/pre-push` |
 | **CI (pipeline)** | Barrera dura en la nube: lint + formato + tests en cada push/PR | `.github/workflows/tests.yml` |
-| **Smoke visual (Playwright)** | Screenshot del Paso 0 contra baseline; truena si el layout se mueve. Tolerancia generosa (detecta secciones corridas, no antialiasing). Dueño: Mariana | `tests/ui/visual/` ([ADR 0012](decisions/0012-playwright-smoke-visual-ui.md)) |
+| **Import-smoke NiceGUI** | Verifica que `ng_app` importa y arranca sin excepción — sustituyó al smoke visual Playwright al migrar la UI a NiceGUI (hallazgo de auditoría `fase3-ci`). Dueño: Mariana | `tests/ui/visual/` ([ADR 0012](decisions/0012-playwright-smoke-visual-ui.md)) |
 | **Decisiones (ADR)** | El porqué de todo, con su camino descartado | `docs/decisions/` + su `README.md` |
 | **Benchmark del linter** | Por qué ruff y no las alternativas (licencias verificadas) | `docs/benchmark-linter.md` |
 | **Reviewer** | Lee el diff y **aconseja** (bugs, calidad); su contenido no bloquea. **Auto-disparado** por hook de sesión cuando hay código sin revisar | `/code-review` + `.claude/hooks/review-stop.ps1` |
 | **Escribano** | Sincroniza los docs dueños (§8) tras un cambio de código. **Auto-disparado** por hook de sesión al detectar doc-drift | `.claude/skills/escribano/` + `.claude/hooks/escribano-stop.ps1` |
-| **Mariana** | Checkpoint de QA visual: al tocar `viz/` (HUD) o `ui/` (Streamlit) frena el cierre y manda revisar la UI a ojo. Vuelve al PO; **no juzga sola** lo visual. **Auto-disparado** por hook de sesión | `.claude/hooks/mariana-stop.ps1` ([ADR 0011](decisions/0011-cablear-mariana-no-charbel.md)) |
+| **Mariana** | Checkpoint de QA visual: al tocar `viz/` (HUD) o `ui/` (NiceGUI) frena el cierre y manda revisar la UI a ojo. Vuelve al PO; **no juzga sola** lo visual. **Auto-disparado** por hook de sesión | `.claude/hooks/mariana-stop.ps1` ([ADR 0011](decisions/0011-cablear-mariana-no-charbel.md)) |
 | **Hooks de sesión (Claude Code)** | Frenan el cierre de la IA y disparan Reviewer/Escribano/Mariana **sin que nadie los invoque** | `.claude/hooks/` + `.claude/settings.json` |
 | **Router de roles (§8 extendida)** | Mapea cada área a su doc dueño **y** su rol validador (Charbel, Mariana, Reviewer…) | `CONTRIBUTING.md` §8 |
 
@@ -196,17 +196,23 @@ El verificador corre, en orden:
 ### Paso 3 — Push (el CI **bloquea**)
 
 Al hacer `git push`, GitHub corre el **CI** (`.github/workflows/tests.yml`). Si algo falla, el
-push queda **en rojo**. Es el respaldo **que nadie puede saltar** desde su máquina. Cuatro jobs:
+push queda **en rojo**. Es el respaldo **que nadie puede saltar** desde su máquina. Cinco jobs:
 
 1. **`lint`** (Ubuntu): `ruff check` (basura) **y** `ruff format --check` (formato canónico).
 2. **`docs-graph`** (Ubuntu, pwsh): `tools/auditar.ps1 -Bloquea` — integridad del grafo de
    `product/`+`engineering/` (frontmatter, wikilinks, criterios). No necesita Python; solo lee los
    `.md`. Ver [ADR 0016](decisions/0016-gate-grafo-documentacion.md).
-3. **`pytest`** (Windows, Python 3.10 / 3.11 / 3.12): toda la suite de tests, en la plataforma
+3. **`audit`** (Ubuntu, pwsh, solo PRs): `tools/auditar-radius.ps1` — el **blast-radius §8 sobre
+   el rango del PR** (ADR 0019, homologado del starter v0.5.0). Cierra la ventana de "PR con docs
+   desfasadas" que el hook de sesión (solo working tree) y `verificar.ps1` (push local, saltable
+   con `--no-verify`) no cubren.
+4. **`pytest`** (Windows, Python 3.10 / 3.11 / 3.12): toda la suite de tests, en la plataforma
    objetivo del proyecto y en las tres versiones soportadas.
-4. **`visual-smoke`** (Ubuntu, Python 3.12): screenshot del Paso 0 de la UI con Playwright
-   (Chromium headless); falla si el layout se movió respecto al baseline ([ADR 0012](decisions/0012-playwright-smoke-visual-ui.md)).
-   Ubuntu es el entorno consistente que actúa como fuente de verdad del baseline.
+5. **`visual-smoke`** (Ubuntu, Python 3.12): import-smoke de NiceGUI — verifica que `ng_app` importa y arranca sin excepción; sustituyó al smoke Playwright al migrar la UI a NiceGUI ([ADR 0012](decisions/0012-playwright-smoke-visual-ui.md)).
+
+> **Regla anti-bypass (ADR 0019):** un job de CI solo es **muro** si está marcado *required
+> check* en el ruleset de master; un rojo no-requerido deja pasar el merge igual. Todo aviso
+> local se asume bypaseable por diseño — lo que importa se re-verifica aquí como requerido.
 
 ### Las tres barreras, juntas
 
@@ -236,10 +242,13 @@ depender de que invoques nada. La mueven los **hooks de sesión** (`Stop`) en `.
   **Nota sobre las dos ventanas:** este hook evalúa `git status --porcelain` (cambios sin commitear).
   Si committeas código sin sus docs, el working tree queda limpio y el hook ya no dispara; el drift
   lo atrapa `verificar.ps1` al hacer push. Para que nada se pierda: commitea código y docs juntos.
-- **mariana-stop** → si tocaste `viz/` (HUD) o `ui/` (Streamlit), frena el cierre y manda hacer el
-  **QA visual** (abrir `fantasma ui` / mirar el HUD) antes de cerrar. Es un checkpoint que vuelve al PO:
-  **no detecta solo** si algo se ve mal (límite semántico), solo obliga a mirarlo. Marca el diff visual
-  revisado (`.claude/.mariana-marker`) para no re-pedir lo mismo. Ver [ADR 0011](decisions/0011-cablear-mariana-no-charbel.md).
+- **mariana-stop** → si tocaste áreas visuales (rol `Mariana` en el manifiesto: `viz/`, `ui/`),
+  exige **evidencia verificable en `qa_runs/`** posterior al cambio (screenshots, logs de la corrida)
+  antes de dejar cerrar — un veredicto de QA sin artefacto **no vale** (ADR 0019, homologado del
+  starter v0.5.0; el "probé clic por clic" sin rastro ya falló aquí). Sigue siendo checkpoint que
+  vuelve al PO: **no detecta solo** si algo se ve mal (límite semántico), obliga a mirar y a dejar
+  rastro. El marcador `.claude/.mariana-marker` queda como respaldo para el caso raro de aprobar
+  sin artefacto. Ver [ADR 0011](decisions/0011-cablear-mariana-no-charbel.md).
 
 Ambos son **auto-terminantes**: bloquean solo mientras falte el paso. Es poka-yoke: *el sistema no te
 deja olvidar; y si algo se cuela, el bloqueo del push (doc-gate §8) + git (todo reversible) te dejan corregir.*
@@ -381,7 +390,7 @@ ver **qué cubre cada una y qué NO**, porque no todo se puede atar por máquina
 | **Basura de código** | ¿imports/vars sin usar, nombres indefinidos? | `ruff check` (`F`+`I`) | avisa local · **bloquea en CI** |
 | **Formato** | ¿el código está en el estilo canónico? | `ruff format --check` | avisa local · **bloquea en CI** |
 | **Comportamiento del motor** | ¿la lógica determinista sigue dando los números correctos? | `pytest` | avisa local · **bloquea en CI** |
-| **Layout de UI (Paso 0)** | ¿el layout del Paso 0 se movió respecto al baseline? | Playwright smoke visual (`tests/ui/visual/`) | skipea local si browser no instalado · **bloquea en CI** |
+| **Import-smoke UI (NiceGUI)** | ¿`ng_app` importa y arranca sin excepción? | import-smoke NiceGUI (`tests/ui/visual/`) | **bloquea en CI** |
 | **Documentación (CHANGELOG)** | ¿el cambio quedó anotado? | doc-gate CHANGELOG + checklist | **avisa** (ADR/ROADMAP son juicio) |
 | **Doc-drift §8 (doc dueño)** | ¿tocaste un área sin su `doc_bloquea`? (`blast-radius.json`) | doc-gate blast-radius | **BLOQUEA local** · el Escribano lo arregla |
 | **Doc-aviso §8 (product/eng)** | ¿tocaste un área sin actualizar `doc_avisa` o `product_avisa`? | doc-gate blast-radius | **AVISA** · Escribano sincroniza si cambió un criterio funcional |

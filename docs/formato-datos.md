@@ -100,3 +100,4 @@ El paquete declara `__all__` con los símbolos de uso externo: `Lap`, `samples`,
 
 - `"delta sospechosamente grande (X s sobre vuelta de Y s): ¿la referencia y el piloto son del mismo circuito?"` — se emite cuando `abs(total_delta) > ref_laptime * 0.5`. Indica que los datos probablemente no son del mismo circuito.
 - `"autos distintos: <ref> (ref) vs <piloto> (piloto)"` — aviso informativo cuando ambas vueltas tienen metadato `Vehicle` y difieren. Solo se emite si el metadato está disponible en los dos archivos; si falta en alguno, la degradación es silenciosa.
+- `"piloto más rápido que la referencia (X.X s de ventaja): ¿tienes la referencia y el piloto al revés?"` — se emite cuando `total_delta < -1.0` (el piloto es más de 1 s más rápido que la referencia). Indica probable inversión de los archivos de referencia y piloto.

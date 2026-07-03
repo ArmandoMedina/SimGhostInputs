@@ -1,8 +1,11 @@
 """CLI de SimGhostInputs: fantasma laps | detect | compare"""
 
 import argparse
+import csv
 import json
+import os
 import sys
+import tempfile
 
 from . import importers
 from .core.compare import compare
@@ -16,7 +19,7 @@ def _overlay_progress(n, total, status=None):
 
     Acepta el kwarg ``status`` con que overlay.py lo invoca
     (``progress(enc, n_frames, status="Codificando video… frame N / M")``)
-    y el piloto sin él (para homologar con el callback de la UI en _helpers.py).
+    y el piloto sin él (para homologar con RenderJob.progress_cb de ng_helpers.py).
     """
     pct = 100.0 * n / total if total else 0
     print("  frame %d/%d (%.0f%%)" % (n, total, pct))
@@ -225,24 +228,7 @@ def _concat_videos(paths, output, fmt):
         os.unlink(list_file)
 
 
-def cmd_ui(args):
-    import os
-    import shutil
-    import subprocess
-
-    if not shutil.which("streamlit"):
-        print(
-            "error: streamlit no instalado — ejecuta: pip install 'fantasma-inputs[ui]'",
-            file=sys.stderr,
-        )
-        return 1
-    app = os.path.join(os.path.dirname(__file__), "ui", "app.py")
-    subprocess.run(["streamlit", "run", app, "--server.port", str(args.port)], check=True)
-
-
 def cmd_compose(args):
-    import os
-
     from .viz.compose import compose_video
 
     offset = args.offset
@@ -325,16 +311,119 @@ def cmd_compose(args):
     if not output:
         base = os.path.splitext(os.path.basename(args.video))[0]
         output = os.path.join(os.path.dirname(args.video) or ".", base + "_composed.mp4")
-    out = compose_video(
-        args.video,
-        args.overlay,
-        output,
-        position=args.position,
-        offset=offset,
-        scale=args.scale,
-        lap_duration=lap_duration,
+    if args.pace_notes_dir and lap is None:
+        print(
+            "error: --pace-notes-dir requiere --driver para sincronizar por distancia",
+            file=sys.stderr,
+        )
+        return 1
+
+    if args.pace_notes_dir:
+        from .viz.pacenotes import render_pace_notes_track
+
+        with tempfile.TemporaryDirectory() as tmp:
+            cue_audio = os.path.join(tmp, "pace_notes_preview.wav")
+            render_pace_notes_track(
+                args.pace_notes_dir,
+                lap,
+                cue_audio,
+                volume=args.pace_notes_volume,
+            )
+            out = compose_video(
+                args.video,
+                args.overlay,
+                output,
+                position=args.position,
+                offset=offset,
+                scale=args.scale,
+                lap_duration=lap_duration,
+                cue_audio=cue_audio,
+            )
+    else:
+        out = compose_video(
+            args.video,
+            args.overlay,
+            output,
+            position=args.position,
+            offset=offset,
+            scale=args.scale,
+            lap_duration=lap_duration,
+        )
+    print("-> %s  [%s, %.0fs]" % (out["path"], out["encoder"], out["duration_s"]))
+
+
+def cmd_pacenotes(args):
+    from .viz.pacenotes import build_pack
+
+    data = _load_corners_json(args.corners)
+    corners = data["corners"]
+    rows = _load_compare_csv(args.compare)
+    track_name, outdir = _resolve_pacenotes_outdir(data, args.output_dir)
+    freqs = {"brake": args.brake_freq, "apex": args.apex_freq, "gas": args.gas_freq}
+    result = build_pack(
+        rows,
+        corners,
+        outdir,
+        mode=args.mode,
+        top=args.top,
+        lang=args.lang,
+        freqs=freqs,
+        duration=args.tone_duration,
+        volume=args.volume,
+        smart=not args.legacy_all_tones,
+        track_name=track_name,
     )
-    print("-> %s" % out)
+    curves = _count_lost_curves(rows, args.top)
+    print("✓ %d curvas, %d archivos en %s" % (curves, len(result["files"]), result["outdir"]))
+
+
+def _load_corners_json(path):
+    with open(path, encoding="utf-8") as f:
+        data = json.load(f)
+    if isinstance(data, list):
+        return {"corners": data}
+    corners = data.get("corners")
+    if corners is None:
+        raise ValueError("el archivo de corners no contiene la clave 'corners'")
+    return data
+
+
+def _load_compare_csv(path):
+    with open(path, newline="", encoding="utf-8") as f:
+        return list(csv.DictReader(f))
+
+
+def _resolve_pacenotes_outdir(corners_data, output_dir_arg):
+    """Devuelve (track_name, outdir). track_name puede ser None si se usa --output-dir."""
+    if output_dir_arg:
+        track = corners_data.get("track") or corners_data.get("trackName")
+        return track, output_dir_arg
+    track = corners_data.get("track") or corners_data.get("trackName")
+    if not track:
+        track = input("Nombre exacto de pista en CrewChief/AMS2: ").strip()
+    if not track:
+        raise ValueError("se requiere nombre de pista o --output-dir")
+    outdir = os.path.join(
+        os.path.expanduser("~"),
+        "Documents",
+        "CrewChiefV4",
+        "pace_notes",
+        "ams2",
+        track,
+    )
+    return track, outdir
+
+
+def _count_lost_curves(rows, top):
+    losses = []
+    for row in rows:
+        try:
+            loss = float(row.get("time_lost", 0) or 0)
+        except ValueError:
+            loss = 0
+        if loss > 0:
+            losses.append(loss)
+    return min(len(losses), top)
 
 
 def cmd_wear(args):
@@ -486,12 +575,6 @@ def main(argv=None):
     sp.set_defaults(func=cmd_wear)
 
     sp = sub.add_parser(
-        "ui", help="abre la interfaz grafica local en el navegador (requiere streamlit)"
-    )
-    sp.add_argument("--port", type=int, default=8501, help="puerto local (default: 8501)")
-    sp.set_defaults(func=cmd_ui)
-
-    sp = sub.add_parser(
         "compose", help="superponer overlay sobre tu grabacion y generar el video final"
     )
     sp.add_argument("--video", required=True, help="grabacion de la vuelta (.mp4, .mov, .mkv…)")
@@ -538,15 +621,45 @@ def main(argv=None):
     sp.add_argument(
         "--map", action="append", help="columna=canal para CSV generico con --auto-sync"
     )
+    sp.add_argument(
+        "--pace-notes-dir",
+        help="pack de Pace Notes para mezclar sus sonidos en el video (preview)",
+    )
+    sp.add_argument(
+        "--pace-notes-volume",
+        type=float,
+        default=1.0,
+        help="volumen de los sonidos de Pace Notes en el preview (default: 1.0)",
+    )
     sp.set_defaults(func=cmd_compose)
+
+    sp = sub.add_parser("pacenotes", help="generar pack de Pace Notes para CrewChief")
+    sp.add_argument("--corners", required=True, help="corners.json generado por fantasma detect")
+    sp.add_argument(
+        "--compare", required=True, help="corners_compare.csv generado por fantasma compare"
+    )
+    sp.add_argument("--top", type=int, default=5, help="solo las N curvas con mayor perdida")
+    sp.add_argument("--mode", choices=["tones", "voice", "both"], default="tones")
+    sp.add_argument("--lang", default="es-MX", help="idioma/voz para mode voice o both")
+    sp.add_argument("--output-dir", help="directorio destino del pack")
+    sp.add_argument("--brake-freq", type=float, default=880)
+    sp.add_argument("--apex-freq", type=float, default=440)
+    sp.add_argument("--gas-freq", type=float, default=220)
+    sp.add_argument("--tone-duration", type=float, default=0.12)
+    sp.add_argument("--volume", type=float, default=0.8)
+    sp.add_argument(
+        "--legacy-all-tones",
+        action="store_true",
+        help="genera todos los hitos pedidos sin plan anti-saturacion",
+    )
+    sp.set_defaults(func=cmd_pacenotes)
 
     args = p.parse_args(argv)
     try:
-        args.func(args)
+        return args.func(args) or 0
     except Exception as e:
         print("error: %s" % e, file=sys.stderr)
         return 1
-    return 0
 
 
 if __name__ == "__main__":

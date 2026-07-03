@@ -84,6 +84,13 @@ ROADMAP. Este ADR fija *que* se difiere y *con qué restricciones*, no *cuál* t
 
 ## Enmiendas
 
+- **2026-06-30 — [ADR 0018](0018-framework-ui-nicegui.md):** la evaluación del front custom
+  pendiente de v2.0 queda resuelta. La UI de v2.0 migra a **NiceGUI** (MIT) con
+  `nicegui-pack` + Inno Setup. Ver ADR 0018 para la decisión completa y las restricciones
+  que hereda de este ADR. El estado de este ADR pasa a **Parcialmente reemplazada por ADR 0018**
+  en lo que respecta a la arquitectura del front de v2.0; las restricciones de `core/`
+  desacoplado y testing a prueba de migración se honran y se detallan en ADR 0018.
+
 - **2026-06-28 — [ADR 0012](0012-playwright-smoke-visual-ui.md):** la restricción de
   testing de arriba ("Testing a prueba de migración": no Playwright sobre Streamlit) queda
   **acotada**. Sigue valiendo para la *lógica* de los flujos 0→4 (eso lo cubre AppTest,

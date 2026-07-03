@@ -23,16 +23,19 @@
   },
   {
     "nombre": "viz",
-    "desc": "overlay HUD, graficas, reportes, composicion de video, sincronía audio",
+    "desc": "overlay HUD, graficas, reportes, composicion de video, sincronía audio, pacenotes",
     "fuente": ["fantasma/viz/*"],
-    "doc_bloquea": ["docs/hud-reference.md"],
-    "doc_avisa": ["docs/ux-patterns.md"],
+    "doc_bloquea": [],
+    "doc_avisa": ["docs/hud-reference.md", "docs/ux-patterns.md"],
+    "mensaje": "el cambio es visual (color, panel, franja, layout del HUD)? entonces toca docs/hud-reference.md + README (tabla de colores) + docs/ux-patterns.md + ADR nuevo. Si es no-visual (perf, refactor, encoding), ninguno aplica (ADR 0020)",
     "product_avisa": [
       "product/capacidades/OVL-*",
       "product/capacidades/CHT-*",
       "product/capacidades/CMPO-*",
       "product/capacidades/SYN-*",
       "product/capacidades/REP-*",
+      "product/capacidades/PAC-*",
+      "product/modulos/PAC*",
       "product/modulos/OVL*",
       "product/modulos/CHT*",
       "product/modulos/CMPO*",
@@ -47,7 +50,7 @@
   },
   {
     "nombre": "ui",
-    "desc": "interfaz Streamlit: app.py, step0-4.py, _helpers.py",
+    "desc": "interfaz NiceGUI v2.0: ng_app.py, ng_step0-4.py, ng_helpers.py, ng_state.py",
     "fuente": ["fantasma/ui/*"],
     "doc_bloquea": ["docs/guia-usuario.md"],
     "doc_avisa": ["docs/ux-patterns.md"],
@@ -55,7 +58,8 @@
       "product/capacidades/UI-*",
       "product/modulos/UI*",
       "product/dominios/Interfaz de usuario*",
-      "engineering/componentes/streamlit*"
+      "engineering/componentes/streamlit*",
+      "engineering/componentes/nicegui*"
     ],
     "rol": "Mariana"
   },
@@ -117,5 +121,16 @@
     "doc_avisa": ["README.md", "docs/flujo-de-trabajo.md"],
     "product_avisa": [],
     "rol": "Reviewer"
+  },
+  {
+    "nombre": "raiz",
+    "desc": "archivos nuevos sueltos en la raiz del repo: tierra de nadie que ningun auditor escanea. Convenciones del matcher (starter v0.5.0): patron SIN '/' solo casa la raiz; 'excluye' resta rutas; 'mensaje' se anexa al aviso",
+    "fuente": ["*.md", "*.txt", "*.json", "*.png", "*.wav", "*.csv", "*.spec", "*.canvas", "*.base"],
+    "excluye": ["README.md", "CHANGELOG.md", "ROADMAP.md", "HANDOFF.md", "PRODUCT_BRIEF.md", "CONTRIBUTING.md", "CLAUDE.md"],
+    "doc_bloquea": [],
+    "doc_avisa": ["CONTRIBUTING.md"],
+    "mensaje": "un archivo nuevo en la raiz casi siempre esta mal ubicado: muevelo a su carpeta (docs/, product/, tools/, qa_runs/) o declarale un area en tools/blast-radius.json, o agregalo a .gitignore si es artefacto",
+    "product_avisa": [],
+    "rol": "Armando"
   }
 ]

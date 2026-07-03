@@ -1,70 +1,69 @@
-"""Fixtures para el smoke visual de la UI Streamlit (Playwright).
+"""Fixtures para el smoke visual de la UI NiceGUI (Playwright).
 
-Levanta la app Streamlit en un proceso aparte (puerto 8502) y lo mata al
-terminar la sesion de pytest. Session-scope para no reiniciar Streamlit
-entre tests del mismo modulo.
+Levanta la app NiceGUI en un proceso aparte (puerto 8765) con SGI_HEADLESS=1
+(sin ventana de escritorio, sin auto-open del browser) y lo mata al terminar
+la sesion de pytest. Session-scope para no reiniciar NiceGUI entre tests del
+mismo modulo.
 
 pw_page: devuelve una pagina de Chromium headless apuntando al servidor;
          skipea limpiamente si Chromium no esta instalado.
 """
 
+import os
 import subprocess
 import sys
 import time
 import urllib.error
 import urllib.request
-from pathlib import Path
 
 import pytest
 
-APP = Path(__file__).resolve().parents[3] / "fantasma" / "ui" / "app.py"
-_PORT = 8502
+_PORT = 8765
 _BASE_URL = f"http://localhost:{_PORT}"
 
 
-def _wait_for_streamlit(url: str, timeout: int = 40) -> bool:
-    """Sondea el endpoint de salud de Streamlit hasta que responde o se agota el tiempo."""
-    health = f"{url}/_stcore/health"
+def _wait_for_nicegui(url: str, timeout: int = 30) -> bool:
+    """Sondea la raiz de NiceGUI hasta que responde 200 o se agota el tiempo."""
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
         try:
-            with urllib.request.urlopen(health, timeout=2):
-                return True
+            with urllib.request.urlopen(url, timeout=2) as resp:
+                if resp.status == 200:
+                    return True
         except (urllib.error.URLError, OSError):
-            time.sleep(0.5)
+            pass
+        time.sleep(0.5)
     return False
 
 
 @pytest.fixture(scope="session")
-def streamlit_url():
-    """Servidor Streamlit local en el puerto 8502.
+def nicegui_url():
+    """Servidor NiceGUI local en el puerto 8765.
 
     Session-scope: la app arranca una sola vez y se comparte entre todos los
     tests visuales de la sesion. Se termina el proceso al finalizar pytest.
+
+    Usa SGI_HEADLESS=1 para que ng_app.py arranque con native=False y
+    show=False, sin abrir ventana de escritorio ni browser.
     """
-    pytest.importorskip("streamlit")
+    pytest.importorskip("nicegui")
+
+    env = os.environ.copy()
+    env["SGI_HEADLESS"] = "1"
+
+    # Eliminar PYTEST_CURRENT_TEST del entorno del subproceso:
+    # NiceGUI detecta esa variable y entra en modo test interno (lee
+    # NICEGUI_SCREEN_TEST_PORT) en vez de arrancar el servidor normal.
+    env.pop("PYTEST_CURRENT_TEST", None)
 
     proc = subprocess.Popen(
-        [
-            sys.executable,
-            "-m",
-            "streamlit",
-            "run",
-            str(APP),
-            "--server.port",
-            str(_PORT),
-            "--server.headless",
-            "true",
-            "--browser.serverAddress",
-            "localhost",
-            "--browser.gatherUsageStats",
-            "false",
-        ],
+        [sys.executable, "-m", "fantasma.ui.ng_app"],
+        env=env,
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
     )
 
-    ready = _wait_for_streamlit(_BASE_URL, timeout=40)
+    ready = _wait_for_nicegui(_BASE_URL, timeout=30)
     if not ready:
         proc.terminate()
         try:
@@ -72,7 +71,7 @@ def streamlit_url():
         except subprocess.TimeoutExpired:
             proc.kill()
             proc.wait()
-        pytest.skip("Streamlit no arranco en 40 s -- test visual omitido.")
+        pytest.skip("NiceGUI no arranco en 30 s -- test visual omitido.")
 
     yield _BASE_URL
 
@@ -85,8 +84,8 @@ def streamlit_url():
 
 
 @pytest.fixture
-def pw_page(streamlit_url):
-    """Pagina de Chromium headless apuntando al servidor Streamlit.
+def pw_page(nicegui_url):
+    """Pagina de Chromium headless apuntando al servidor NiceGUI.
 
     Skipea limpiamente si el browser no esta instalado
     (instala con: playwright install chromium).

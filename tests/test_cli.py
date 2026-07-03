@@ -19,7 +19,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from fantasma.cli import _force_utf8_console, _overlay_progress, cmd_compare
+from fantasma.cli import _force_utf8_console, _overlay_progress, cmd_compare, cmd_pacenotes, main
 from fantasma.core.lap import Lap
 
 
@@ -41,8 +41,8 @@ def test_overlay_progress_total_cero_no_crashea():
 
 
 def test_overlay_progress_firma_compatible_con_ui():
-    """Homologa la firma con el callback de la UI (_helpers.py:222):
-    def _cb(n, total, status=None) — mismos tres parametros."""
+    """Homologa la firma con el callback de la UI (RenderJob.progress_cb en ng_helpers.py):
+    def progress_cb(self, n, total, status=None) — mismos tres parametros (sin self)."""
     import inspect
 
     sig = inspect.signature(_overlay_progress)
@@ -112,3 +112,68 @@ def test_compare_avisa_driver_sin_distancia(monkeypatch, tmp_path):
     )
     with pytest.raises(ValueError, match="piloto no tiene canal de distancia"):
         cmd_compare(args)
+
+
+def test_pacenotes_cli_genera_pack(tmp_path):
+    corners = tmp_path / "corners.json"
+    compare = tmp_path / "corners_compare.csv"
+    out = tmp_path / "pace_notes"
+    corners.write_text(
+        """{
+  "corners": [
+    {
+      "id": "C01",
+      "name": "Hatzenbach",
+      "milestones": {
+        "brake": {"d": 1800},
+        "apex": {"d": 1847},
+        "gas": {"d": 1900}
+      }
+    }
+  ]
+}""",
+        encoding="utf-8",
+    )
+    compare.write_text(
+        "id,name,apex_d,time_lost\nC01,Hatzenbach,1847,0.4\n",
+        encoding="utf-8",
+    )
+    args = SimpleNamespace(
+        corners=str(corners),
+        compare=str(compare),
+        top=1,
+        mode="tones",
+        lang="es-MX",
+        output_dir=str(out),
+        brake_freq=880,
+        apex_freq=440,
+        gas_freq=220,
+        tone_duration=0.05,
+        volume=0.8,
+        legacy_all_tones=False,
+    )
+    cmd_pacenotes(args)
+    assert (out / "metadata.json").exists()
+    assert len(list(out.glob("*.wav"))) == 3
+
+
+def test_main_propaga_exit_code_del_subcomando(monkeypatch):
+    """main() retorna el valor que devuelve el subcomando: cli.py return args.func(args) or 0.
+
+    Monkeypatch de cmd_laps para que devuelva 1; main(["laps", "x.csv"]) debe retornar 1.
+    """
+    monkeypatch.setattr("fantasma.cli.cmd_laps", lambda args: 1)
+    assert main(["laps", "cualquier.csv"]) == 1
+
+
+def test_main_retorna_1_cuando_subcomando_lanza_excepcion(monkeypatch):
+    """main() atrapa Exception y retorna 1: cli.py except Exception → return 1.
+
+    Monkeypatch de cmd_laps para que lance RuntimeError; main no debe reraise y debe retornar 1.
+    """
+
+    def _cmd_boom(args):
+        raise RuntimeError("error simulado")
+
+    monkeypatch.setattr("fantasma.cli.cmd_laps", _cmd_boom)
+    assert main(["laps", "cualquier.csv"]) == 1

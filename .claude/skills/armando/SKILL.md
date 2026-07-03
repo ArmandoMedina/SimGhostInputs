@@ -22,6 +22,10 @@ el Escribano señala el hueco y Armando lo llena.
 - Los `templates/` del repo — el molde de cada tipo de nota.
 
 ## Tareas
+0. **Redactar notas nuevas COPIANDO su template** — toda capacidad/módulo/dominio/spec nace de su
+   molde en `templates/`: copia el archivo, renombra con su clave y llena; **no redactes de cero
+   ni inventes secciones** (si un formato queda corto, se mejora en `templates/`, no se improvisa
+   en la nota). Hacerlo desde el template es la forma de pasar `auditar.ps1` a la primera.
 1. **Crear/editar notas** de `product/` y `engineering/` con el frontmatter completo del template
    (`tipo`, `clave`, `modulo`/`dominio`, `producto`, `estado`, `prioridad` donde aplique).
 2. **Tejer el grafo:** cada nota enlaza hacia arriba (módulo→dominio→solución) y a sus dependencias
@@ -61,3 +65,10 @@ Modelo según la tarea:
 - **haiku** — mover/renombrar notas, aplicar un template mecánico, arreglar wikilinks listados.
 - **sonnet** — redactar capacidades/criterios desde tests, tejer el grafo de un dominio.
 - **opus** — redactar un ADR con trade-offs, rediseñar una rama de la jerarquía.
+
+Ojo: los skills **no** son `subagent_type` — se spawnea un subagente general con este `SKILL.md`
++ la tarea en el prompt.
+
+## Entorno (lecciones pagadas — Windows/PS 5.1)
+
+`.md` en UTF-8 **sin BOM**; wikilinks con el acento exacto del archivo destino. Commits: mensaje a archivo sin BOM + `git commit -F`, sin `->` ni ` / ` en el cuerpo. Recetario completo: [`docs/entorno-windows-powershell51.md`](../../../docs/entorno-windows-powershell51.md). Y **nada de memorias: todo al repo** (un hook lo bloquea).

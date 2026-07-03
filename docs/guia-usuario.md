@@ -35,7 +35,7 @@ Lista las vueltas con duración y longitud, y marca la más rápida (la que se u
 
 ### Desde la UI
 
-`fantasma ui` abre un asistente local. En el **Paso 0** eliges qué salida quieres:
+`fantasma-ng` abre un asistente en ventana de escritorio nativa (NiceGUI + pywebview) en **modo oscuro** (siempre activo, garantiza contraste legible). La app escucha exclusivamente en `127.0.0.1` — no es accesible desde otras máquinas en la red. En el **Paso 0** eliges qué salida quieres:
 
 - **📊 Solo análisis**: reporte, CSVs y gráficas.
 - **🎬 Solo overlay**: HUD transparente para editarlo aparte.
@@ -44,6 +44,8 @@ Lista las vueltas con duración y longitud, y marca la más rápida (la que se u
 La pantalla inicial muestra los tres insumos del flujo: **referencia**, **piloto** y **salida**. El flujo por defecto aparece pre-seleccionado con un aviso neutro; pulsa «Empezar» para confirmar o elige otro con «Elegir este». Si no tienes una referencia externa, puedes cargar el mismo CSV como referencia y piloto y elegir dos vueltas distintas en el Paso 1 para compararte contra ti mismo.
 
 El **sidebar izquierdo** muestra el progreso: ✅ paso completado, ▶️ paso actual, ○ paso pendiente en tu flujo, · paso opcional fuera del flujo elegido. El botón **🔄 Nueva sesión** al pie del sidebar borra todo el estado y vuelve al Paso 0 sin recargar la pestaña del navegador — útil para analizar otra tanda sin cerrar la app.
+
+El **Paso 1** muestra dos paneles de carga, uno para la vuelta de referencia y otro para la tuya. En cada panel aparece una zona de carga integrada en el browser: haz clic en ella para abrir el selector de archivos del sistema operativo, o arrastra el `.csv` (o `.xlsx`) directamente sobre la zona. La app detecta las vueltas del archivo automáticamente; si hay más de una, aparece un desplegable para elegir cuál usar (por defecto se pre-selecciona la más rápida). Una vez subidos ambos archivos, pulsa el botón de avance para continuar.
 
 ## 4. Compara
 
@@ -77,7 +79,22 @@ Genera `corners_detected.json`. Edítalo: añade `"name": "Curva del puente"` a 
 
 Ahí mismo puedes ajustar `"tolerances"` por curva: `vmin_kmh` y `brake_start_m` controlan cuándo el reporte marca avisos.
 
-## 6. Video con HUD transparente
+## 6. Pace Notes para CrewChief
+
+Después de comparar, puedes convertir las curvas donde más pierdes en un pack de audio para CrewChief:
+
+```
+fantasma pacenotes --corners salida/corners_detected.json --compare salida/corners_compare.csv \
+    --top 5 --mode tones --output-dir "%USERPROFILE%\Documents\CrewChiefV4\pace_notes\ams2\nordschleife"
+```
+
+El modo `tones` no usa red ni TTS: genera WAVs 24 kHz mono con tonos para los hitos elegidos. Por defecto no suena todo siempre: Fantasma escribe `plan.json` y limita cada curva a pocas señales útiles, con separación mínima entre eventos. En curvas prioritarias puede usar un countdown compacto antes de la frenada; en curvas densas omite señales demasiado juntas para no saturarte.
+
+Si no pasas `--output-dir`, Fantasma intenta usar el campo `track` del JSON de curvas; si no existe, te pregunta el nombre exacto de pista que CrewChief/AMS2 espera. Para voz contextual instala `pip install "fantasma-inputs[voice]"` y usa `--mode voice` o `--mode both`; requiere ffmpeg para convertir el audio a WAV.
+
+Activa las Pace Notes dentro de CrewChief antes de salir a pista. Una vez activas, CrewChief reproduce los audios automáticamente en la siguiente vuelta.
+
+## 7. Video con HUD transparente
 
 > Para una descripción detallada de cada elemento visual del HUD (paneles, colores, franja de datos) consulta la [referencia del HUD](hud-reference.md).
 
@@ -114,11 +131,17 @@ fantasma compose --video "grabacion.mp4" --overlay "salida/overlay.webm" --offse
 pip install "fantasma-inputs[sync]"
 fantasma compose --video "grabacion.mp4" --overlay "salida/overlay.webm" \
     --auto-sync --driver "mi_outing.csv" -o "resultado.mp4"
+
+# Preview de overlay + Pace Notes mezclados en el audio del video:
+fantasma compose --video "grabacion.mp4" --overlay "salida/overlay.webm" \
+    --driver "mi_outing.csv" --pace-notes-dir "salida/pace_notes" -o "preview_pacenotes.mp4"
 ```
 
 La detección automática extrae la energía del motor del audio del video (banda 150–500 Hz) y la correlaciona con la señal de RPM/velocidad de la telemetría. Precisión ~0.5 s. Funciona con cualquier sim que exporte RPM o velocidad.
 
-Si usas `fantasma ui`, el Paso 4 incluye un botón «Detectar sincronía automáticamente» que hace lo mismo desde la interfaz gráfica.
+El preview de Pace Notes no sustituye a CrewChief: mezcla los mismos WAVs dentro del MP4 para escuchar si el plan de sonidos está demasiado cargado o llega a buen tiempo. Requiere `--driver` porque los metros del `metadata.json` se convierten a segundos con la telemetría de la vuelta.
+
+Si usas `fantasma-ng`, el Paso 4 incluye un botón «Detectar sincronía automáticamente» que hace lo mismo desde la interfaz gráfica. Una vez completada la composición, el Paso 4 muestra qué encoder se usó realmente (`h264_nvenc` si se detectó GPU NVIDIA, `libx264` si no) y cuánto tardó — útil para diagnosticar si la GPU se está aprovechando.
 
 > **Aviso de «correlación moderada».** Si la sincronía se aceptó pero con una correlación solo
 > moderada (calidad media), verás un aviso de que el video **podría no corresponder a esa vuelta**

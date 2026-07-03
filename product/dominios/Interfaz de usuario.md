@@ -10,7 +10,7 @@ estado: vigente
 - Fantasma
 
 ## Propósito
-Dar una **interfaz gráfica local** (Streamlit) como capa delgada sobre el CLI, para que un piloto sin terminal pueda recorrer el flujo paso a paso (cargar → comparar → overlay → componer) sin que sus datos salgan de su máquina.
+Dar una **interfaz gráfica local** como capa delgada sobre el CLI, para que un piloto sin terminal pueda recorrer el flujo paso a paso (cargar → comparar → overlay → componer) sin que sus datos salgan de su máquina. Desde v2.0 la UI es NiceGUI (`fantasma-ng`, nativa vía pywebview) — única implementación activa.
 
 ## Alcance
 - Flujo en pasos 0-4 (carga, comparación, overlay, composición).
@@ -18,12 +18,12 @@ Dar una **interfaz gráfica local** (Streamlit) como capa delgada sobre el CLI, 
 - Avisos visibles del motor (autos distintos, delta sospechoso, falta ffmpeg).
 - "CLI primero": todo lo de la UI se puede hacer en terminal.
 
-**Fuera de alcance:** lógica de cálculo (vive en el motor `core/`, no en la UI); front de escritorio custom (diferido a v2.0, [ADR 0010](../../docs/decisions/0010-framework-ui-streamlit.md)).
+**Fuera de alcance:** lógica de cálculo (vive en el motor `core/`, no en la UI).
 
 ## Módulos
-- UI — Interfaz Streamlit (pasos 0-4)
+- [[UI - Interfaz NiceGUI]] (v2.0 — pasos 0-4, nativa)
+- [[UI - Interfaz Streamlit]] (obsoleto — retirado en v2.0)
 
 ## Relacionado con
 - [[Reportería]]
-- [[streamlit]]
 - [Patrones de UX](../../docs/ux-patterns.md)

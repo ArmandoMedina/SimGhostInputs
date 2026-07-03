@@ -37,3 +37,7 @@ no inventa decisiones (eso es un ADR). Solo **cierra el desfase doc↔código**.
   cambio detectas que hubo una *decisión* y no solo un cambio, **señálalo**, no lo escribas tú.
 - No garantiza que el contenido sea *correcto*, solo que el doc dueño quede **tocado y coherente**.
   El juicio fino lo confirma el PO.
+
+## Entorno (lecciones pagadas — Windows/PS 5.1)
+
+Commits: mensaje a archivo UTF-8 **sin BOM** + `git commit -F`; sin `->` ni ` / ` en el cuerpo. `.md` en UTF-8 sin BOM; wikilinks con el acento exacto. El aviso `LF will be replaced by CRLF` no es error. Recetario completo: [`docs/entorno-windows-powershell51.md`](../../../docs/entorno-windows-powershell51.md). Y **nada de memorias: todo al repo** (un hook lo bloquea). Como subagente: se spawnea general con este `SKILL.md` + el diff en el prompt (los skills no son `subagent_type`).

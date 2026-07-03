@@ -91,9 +91,13 @@ def load(path):
         if header is None:
             if first == "Time":
                 header = [str(c).strip() for c in row]
+                seen_canonical: set = set()
                 for i, name in enumerate(header):
                     if name in MOTEC_MAP:
-                        cols.append((i, MOTEC_MAP[name]))
+                        cn = MOTEC_MAP[name]
+                        if cn not in seen_canonical:
+                            cols.append((i, cn))
+                            seen_canonical.add(cn)
                     elif name:
                         extra[i] = name
                 for _, cn in cols:
@@ -123,9 +127,11 @@ def load(path):
                     if cn in ("time", "dist"):
                         bad = True
             # descartar filas de cierre sin tiempo/distancia validos
+            _dist_idxs = [i for i, c in cols if c == "dist"]
             if bad or (
-                ("dist" in vals)
-                and str(row[[i for i, c in cols if c == "dist"][0]]).strip() in ("", "None")
+                _dist_idxs
+                and "dist" in vals
+                and (_dist_idxs[0] >= len(row) or str(row[_dist_idxs[0]]).strip() in ("", "None"))
             ):
                 continue
             for _, cn in cols:

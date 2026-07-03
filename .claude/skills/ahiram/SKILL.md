@@ -36,9 +36,9 @@ acotada (feature, bugfix, refactor) y entrega código en `fantasma/` con su test
 - **Datos de test sintéticos**: `make_lap` del harness; nunca leer archivos reales de
   `C:\Repositorio personal\Paterial para test (no es un repo)` — son telemetría privada
   que **nunca entra al repo**.
-- **`st.download_button` no es accesible desde `AppTest`** en Streamlit 1.58.0 — solo
-  `at.button`, `at.button_group`, `at.menu_button`. Verificar que los tests usen lo que
-  existe.
+- **Tests de UI**: la UI es NiceGUI v2.0 (`fantasma-ng`, extra `[ui-ng]`). Los tests usan
+  la fixture `user` de `nicegui.testing` — no AppTest. Ver `tests/ui/conftest.py` y los
+  tests existentes en `tests/ui/test_ng_step*.py` como referencia.
 - **Imports**: ordenados por `ruff` (isort); no importar lo que no se usa.
 - **Sin magia**: si una función necesita más de ~40 líneas, es señal de que debe partirse o
   de que la decisión de diseño no está clara — señalarlo al PO en vez de seguir acumulando.
@@ -65,4 +65,9 @@ Modelo según la tarea:
   requiere razonamiento profundo (p. ej. cambiar la normalización por distancia en `core/`).
 
 El orquestador pasa la tarea con el contexto mínimo necesario. Ahiram no lee transcripts
-largos — recibe una brief limpia.
+largos — recibe una brief limpia. Ojo: los skills **no** son `subagent_type` válidos — se
+spawnea un subagente general con este `SKILL.md` + la brief en el prompt.
+
+## Entorno (lecciones pagadas — Windows/PS 5.1)
+
+Commits: mensaje a archivo UTF-8 **sin BOM** + `git commit -F`; sin `->` ni ` / ` en el cuerpo. Sin `&&`, `head`, `tail` (usa `Select-Object -First/-Last`). Rutas con espacios entre comillas. El aviso `LF will be replaced by CRLF` no es error. Recetario completo: [`docs/entorno-windows-powershell51.md`](../../../docs/entorno-windows-powershell51.md). Y **nada de memorias: todo al repo** (un hook lo bloquea).

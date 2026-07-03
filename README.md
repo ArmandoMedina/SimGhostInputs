@@ -1,6 +1,6 @@
 # 👻 SimGhostInputs
 
-[![Estado](https://img.shields.io/badge/estado-v1.0.0%20estable-brightgreen)](CHANGELOG.md)
+[![Estado](https://img.shields.io/badge/estado-v2.0.0%20estable-brightgreen)](CHANGELOG.md)
 [![tests](https://github.com/ArmandoMedina/SimGhostInputs/actions/workflows/tests.yml/badge.svg)](https://github.com/ArmandoMedina/SimGhostInputs/actions/workflows/tests.yml)
 [![Ko-fi](https://img.shields.io/badge/Ko--fi-Buy%20me%20a%20Coffee-FF5E5B?logo=ko-fi&logoColor=white)](https://ko-fi.com/armandomedina2255)
 [![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL--3.0-blue.svg)](LICENSE)
@@ -10,8 +10,8 @@
 ![HUD preview](docs/demo/overlay_hud_preview.gif)
 
 > [!NOTE]
-> **v1.0 — Pipeline AMS2 completo, documentado y probado.** El motor CLI, la interfaz gráfica (`fantasma ui`) y el flujo de video con HUD (`fantasma compose`) están validados con telemetría y grabaciones reales en AMS2 (4 circuitos, múltiples clases). `setup.ps1` probado en instalación limpia de Windows 11.
-> Alcance declarado de v1.0: AMS2, pipeline offline. Importadores adicionales (iRacing, ACC, rF2) y features avanzadas van en versiones siguientes.
+> **v2.0.0 — Auditoría integral, remediación crítica y retiro de Streamlit.** El motor CLI, la interfaz gráfica nativa (`fantasma-ng`, NiceGUI + pywebview) y el flujo de video con HUD (`fantasma compose`) están validados con telemetría y grabaciones reales en AMS2 (4 circuitos, múltiples clases). `setup.ps1` probado en instalación limpia de Windows 11. 212 tests verdes.
+> La UI Streamlit fue retirada en v2.0.0; la única interfaz es `fantasma-ng`. Importadores adicionales (iRacing, ACC, rF2) y features avanzadas van en versiones siguientes.
 
 **Compara tus inputs contra una vuelta de referencia, por distancia, no por tiempo.**
 
@@ -25,7 +25,7 @@ Por eso el código se publica bajo **AGPL-3.0-or-later**: puedes usar, estudiar,
 
 ## Qué hace
 
-- **Interfaz gráfica local** (`fantasma ui`): 5 pasos en el navegador (localhost, sin hosting). Flujos predefinidos: solo análisis, solo overlay, o video completo con HUD. Tus datos nunca salen de tu máquina.
+- **Interfaz gráfica local** (`fantasma-ng`): 5 pasos en ventana de escritorio nativa (NiceGUI + pywebview), sin hosting. Flujos predefinidos: solo análisis, solo overlay, o video completo con HUD. Tus datos nunca salen de tu máquina. Disponible también como instalador doble-clic (sin necesitar Python).
 - Importa telemetría desde **CSV exportado de MoTeC i2** (y el mismo formato en `.xlsx`), o CSV genérico con mapeo de columnas.
 - Separa las vueltas de un *outing* (por beacons, número de vuelta o reinicio de distancia) y elige la más rápida.
 - Normaliza todo a un formato interno estándar: **distancia de vuelta con metro 0 en meta**, remuestreo configurable (5 m por defecto).
@@ -33,6 +33,7 @@ Por eso el código se publica bajo **AGPL-3.0-or-later**: puedes usar, estudiar,
 - Compara piloto vs referencia **por distancia**: delta de tiempo continuo, Δ V-Min, Δ metro de frenada, tiempo perdido por curva.
 - Calcula indicadores de desgaste de goma: índice de deslizamiento (slip rueda vs velocidad real), activaciones de ABS/TCS por curva, temperatura media de gomas y combustible consumido.
 - Genera reporte en Markdown + CSVs de salida listos para graficar.
+- Genera packs de **Pace Notes para CrewChief** (`fantasma pacenotes`): tonos por hito de curva (frenada, ápex, gas) para escuchar referencias durante la siguiente vuelta.
 - **Overlay HUD animado** con canal alfa (VP9/WebM): velocímetro, gas/freno con color por ABS/TCS, delta continuo, marcha y distancia. Render paralelo en todos los cores.
 - **Sincronía automática video/telemetría** (`--auto-sync`): correlación cruzada del audio del motor (150–500 Hz) contra RPM/velocidad. Detecta el offset en ~30 s con precisión ~0.5 s. Valida la correlación (z-score ≥ 3σ) y verifica que no haya pausas de juego en el audio de la vuelta.
 - **Composición del video final** con NVENC automático si hay GPU NVIDIA disponible (3.7× más rápido que CPU en RTX 2060). El output es un clip recortado exactamente a la duración de la vuelta — sin re-codificar toda la sesión.
@@ -62,8 +63,9 @@ pip install -e .                          # núcleo (sin dependencias externas)
 pip install -e ".[xlsx]"                  # + leer archivos .xlsx de MoTeC i2
 pip install -e ".[overlay]"               # + fantasma overlay (HUD de video)
 pip install -e ".[charts]"                # + fantasma compare con gráficas
-pip install -e ".[ui]"                    # + fantasma ui (interfaz gráfica local)
+pip install -e ".[ui-ng]"                 # + fantasma-ng (interfaz gráfica NiceGUI, ventana nativa)
 pip install -e ".[sync]"                  # + fantasma compose --auto-sync (detección de offset)
+pip install -e ".[voice]"                 # + fantasma pacenotes --mode voice (edge-tts)
 pip install -e ".[full]"                  # todo lo anterior
 pip install -e ".[test]"                  # + correr la suite de tests (pytest); no lo instala setup.ps1
 ```
@@ -75,8 +77,9 @@ pip install -e ".[test]"                  # + correr la suite de tests (pytest);
 | `openpyxl` | Python opcional | Leer `.xlsx` exportados de MoTeC i2 | `pip install openpyxl` |
 | `matplotlib` | Python opcional | `fantasma overlay` — HUD animado; `fantasma compare` — gráficas ghost | `pip install matplotlib` |
 | `Pillow` | Python opcional | `fantasma overlay` — renderizado de frames auxiliares | `pip install Pillow` |
-| `streamlit` + `pandas` | Python opcional | `fantasma ui` — interfaz gráfica local | `pip install 'fantasma-inputs[ui]'` |
+| `nicegui` + `pywebview` + `pandas` | Python opcional | `fantasma-ng` — interfaz gráfica local (ventana nativa NiceGUI) | `pip install 'fantasma-inputs[ui-ng]'` |
 | `scipy` | Python opcional | `fantasma compose --auto-sync` — detección automática de offset video/telemetría | `pip install 'fantasma-inputs[sync]'` |
+| `edge-tts` | Python opcional | `fantasma pacenotes --mode voice` — frases de voz para CrewChief | `pip install 'fantasma-inputs[voice]'` |
 | `ffmpeg` | Sistema opcional | Codificar `.webm`/`.mov` con canal alfa y `fantasma compose` (auto-detecta NVENC si hay GPU NVIDIA) | `winget install Gyan.FFmpeg` |
 | `gh` (GitHub CLI) | Sistema opcional | Publicar y gestionar el repositorio en GitHub | `winget install GitHub.cli` |
 
@@ -94,13 +97,13 @@ El `setup.ps1` incluido pregunta si instalar VLC y Kdenlive junto con el resto.
 
 ## Uso rápido
 
-La forma más fácil es la interfaz gráfica: `fantasma ui` abre el navegador y te guía por 5 pasos (Inicio → Importar → Comparar / Overlay → Componer). No necesitas recordar ningún flag.
+La forma más fácil es la interfaz gráfica: `fantasma-ng` abre una ventana de escritorio nativa y te guía por 5 pasos (Inicio → Importar → Comparar / Overlay → Componer). No necesitas recordar ningún flag.
 
 Para usar el CLI directamente:
 
 ```
-# interfaz gráfica local (abre el navegador automáticamente)
-fantasma ui
+# interfaz gráfica local (ventana nativa NiceGUI)
+fantasma-ng
 
 # ver las vueltas que contiene un archivo
 fantasma laps "mi_export_motec.csv"
@@ -111,6 +114,10 @@ fantasma detect "referencia.csv" -o salida/
 # comparar tu vuelta contra la referencia
 fantasma compare --reference "referencia.csv" --driver "mi_vuelta.csv" -o salida/
 
+# pack de tonos para CrewChief con las 5 curvas donde más pierdes
+fantasma pacenotes --corners salida/corners_detected.json --compare salida/corners_compare.csv \
+    --top 5 --mode tones --output-dir "%USERPROFILE%\Documents\CrewChiefV4\pace_notes\ams2\nordschleife"
+
 # video HUD transparente para superponer sobre tu grabación
 fantasma overlay --reference "referencia.csv" --driver "mi_vuelta.csv" -o salida/
 
@@ -120,6 +127,10 @@ fantasma compose --video "grabacion.mp4" --overlay "salida/overlay.webm" -o "res
 # detectar offset automáticamente y componer en un solo paso (requiere scipy)
 fantasma compose --video "grabacion.mp4" --overlay "salida/overlay.webm" \
     --auto-sync --driver "mi_vuelta.csv" -o "resultado.mp4"
+
+# preview con overlay + sonidos de Pace Notes mezclados en el audio del video
+fantasma compose --video "grabacion.mp4" --overlay "salida/overlay.webm" \
+    --driver "mi_vuelta.csv" --pace-notes-dir "salida/pace_notes" -o "preview_pacenotes.mp4"
 ```
 
 Salida de `compare`:
@@ -131,6 +142,11 @@ Salida de `compare`:
 - `curva_<ID>.png` — gráficas ghost por curva (hasta 5 paneles: velocidad / gas / freno / volante / G-lat) de las curvas donde más pierdes.
 - `frenada_<ID>.png` — zoom en las zonas de frenada: velocidad + freno + G-long con el punto de frenada de referencia vs el tuyo marcado.
 - `delta.csv` / `corners_compare.csv` — los datos, listos para graficar otra cosa.
+
+Salida de `pacenotes`:
+- `metadata.json` + WAVs (`{distancia}_0.wav`) listos para usar en `Documents\CrewChiefV4\pace_notes\ams2\<pista>\`.
+- `plan.json` — auditoría de qué sonidos eligió u omitió por curva para no saturar al piloto.
+- Por defecto genera un plan inteligente: countdown compacto para frenadas prioritarias, ápex y gas a fondo/inicio de gas solo donde hay espacio. El modo de voz (`--mode voice` o `both`) requiere `edge-tts` y ffmpeg.
 
 Salida de `overlay`:
 - `overlay.webm` — video HUD **con canal alfa** (VP9) sincronizado con el tiempo de tu vuelta. Arrástralo como pista superior en tu editor sobre la grabación real y alinea el segundo 0 con tu cruce de meta. También `--format prores` (ProRes 4444 .mov para Final Cut / DaVinci) o `--format png` (frames sueltos).
@@ -192,6 +208,6 @@ En el roadmap: lectura directa de `.ld` (sin pasar por i2) e iRacing `.ibt`.
 
 Todas las dependencias Python del proyecto (openpyxl, matplotlib, Pillow, pandas, scipy, numpy) son MIT o BSD — completamente compatibles con AGPL-3.0 sin restricciones adicionales.
 
-**Streamlit** usa Apache 2.0, que es compatible con AGPL-3.0 en esta dirección: código AGPL-3.0 puede usar dependencias Apache 2.0, pero no al revés. Los contribuidores que incorporen código de este proyecto en otro proyecto deben respetar el copyleft de AGPL-3.0.
+**NiceGUI** usa Apache 2.0 y **pywebview** usa BSD-3-Clause — ambas compatibles con AGPL-3.0: código AGPL-3.0 puede usar dependencias Apache 2.0 / BSD, pero no al revés. Los contribuidores que incorporen código de este proyecto en otro proyecto deben respetar el copyleft de AGPL-3.0.
 
 **ffmpeg** se usa como proceso externo vía `subprocess` — nunca se linka contra sus bibliotecas. Al no existir linking no existe obra derivada, por lo que las obligaciones de licencia de ffmpeg (LGPL/GPL según el build del sistema) no se extienden al código de SimGhostInputs. ffmpeg debe instalarse por separado y bajo su propia licencia.

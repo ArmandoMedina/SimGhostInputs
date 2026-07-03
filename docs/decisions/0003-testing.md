@@ -1,9 +1,9 @@
 # Decisiones de diseño: estrategia de pruebas automatizadas
 
-> **Estado: en implementación.** Este documento fija el enfoque acordado para la
-> suite de tests. El primer PR (Tier 1 `core/` + regresiones + smoke de UI + Tier 2/3)
-> ya está implementado; ver [§ Estado de implementación](#estado-de-implementación)
-> al final. La decisión razonada queda aquí para no improvisarla en el momento.
+> **Estado: implementado y ampliado.** La estrategia original (4 tiers) está implementada
+> y se extendió con dos capas nuevas para v2.0 (NiceGUI testing framework y Playwright E2E).
+> Ver [§ Estado de implementación](#estado-de-implementación) al final para el inventario
+> actualizado. La decisión razonada queda aquí para no improvisarla en el momento.
 
 ## Problema
 
@@ -50,15 +50,17 @@ salida, sin GPU/ffmpeg/red/ojo humano.
 | `importers/` (motec_csv, generic_csv) | 🤖 Automática | Parsear texto → datos es determinista. |
 | `viz/` **helpers puros** (`_build_filter`, `_nvenc_available`, aritmética de `sync`) | 🤖 Automática | Construir un comando o calcular un offset es determinista; **sin invocar ffmpeg**. |
 | `ui/app.py` — arranque | 🤖 Smoke mínimo | Solo "¿levanta sin excepción?". |
-| `ui/` — navegación, copy, layout, que un botón "se sienta" bien | 👤 Manual | Criterio humano; automatizarlo es caro y frágil. |
+| `ui/` — comportamiento funcional (clics, navegación, mensajes de error) | 🤖 NiceGUI testing | El framework interno simula eventos sin browser real. |
+| `ui/` — apariencia visual (colores, alineación, contraste en dark mode) | 🤖 Playwright (solo laptop dev) | Requiere CSVs reales y Chromium; no corre en CI. |
 | Render real de overlay (`.webm` se ve bien, alfa correcto) | 👤 Manual | Ojo humano sobre el resultado. |
 | Composición ffmpeg + NVENC real, auto-sync con video real | 👤 Manual | Depende de GPU/drivers/video; el entorno manda. |
 
 **El matiz clave:** la UI se parte en dos. *La lógica detrás* de la UI vive en `core/`
-y **sí** se automatiza (si la pantalla muestra un número, ese número lo calculó una
-función testeada). *La presentación* — que se vea y se entienda bien — siempre es
-verificación manual. Como la UI es una capa delgada sobre el CLI ("CLI primero"),
-casi todo el "cerebro" ya es testeable.
+y **sí** se automatiza. *La presentación* tiene ahora dos niveles: el comportamiento
+funcional (el wizard avanza, los mensajes aparecen) se cubre con el NiceGUI testing
+framework; la apariencia visual (contrastes, posiciones, dark mode) se cubre con
+Playwright solo en el laptop de desarrollo, donde existen los CSVs reales y un
+Chromium instalado.
 
 **Cómo decidir un caso nuevo (3 preguntas):**
 1. ¿La respuesta correcta es un valor exacto (número, string, lista)? → 🤖 Automática.
@@ -169,10 +171,39 @@ Es donde vive el valor del producto y no tiene I/O. Cobertura objetivo:
   0 → `True`. Fija el contrato del fallback.
 - `sync` — la aritmética de offset/z-score sobre señales sintéticas.
 
-### Tier 4 — smoke de UI (barato, alto valor)
+### Tier 4 — smoke y contrato de UI (barato, alto valor)
 
-- `streamlit.testing.AppTest.from_file("fantasma/ui/app.py").run()` y afirmar
-  `not at.exception`. **Atrapa el `ImportError` de arranque** que tuvimos, en CI.
+- Smoke de importación: verifica que los módulos de UI importan sin error. Atrapa
+  `ImportError` de arranque antes de que llegue al usuario.
+- Tests de contrato: verifican firmas de funciones, atributos de clases y constantes
+  que otros módulos consumen (p. ej. `_FLOWS`, `_STEPS` en `ng_helpers`).
+- Tests AST: parsean el código Python sin ejecutarlo para verificar invariantes
+  estructurales críticos (p. ej. `test_main_gui.py` comprueba que `freeze_support()`
+  está presente en el entry point de PyInstaller).
+
+### Tier 5 — tests E2E con NiceGUI testing framework *(nuevo en v2.0)*
+
+Usan `nicegui.testing` (`user`, `user.find()`, `user.should_see()`). Levantan la app
+en un loop asyncio simulado — **sin servidor HTTP real ni browser** — pero pueden
+hacer clics y verificar que el DOM reacciona.
+
+- Comportamiento funcional del wizard: ¿avanza al paso correcto?, ¿muestra el mensaje
+  de error esperado?, ¿el guard de doble clic funciona?
+- Datos sintéticos inyectados vía monkeypatch de `AppState` — nunca CSVs reales.
+- **Corre en CI** (igual que Tier 1–4).
+- **No detecta bugs visuales** (colores, alineación, contraste) — solo comportamiento.
+
+### Tier 6 — tests Playwright E2E visual *(nuevo en v2.0, solo laptop de desarrollo)*
+
+Levantan un servidor NiceGUI real en el puerto 8765 (subprocess separado) y abren un
+Chromium headless real.
+
+- **Pueden detectar bugs visuales** que los otros tiers no ven: alineación de
+  elementos (`bounding_box()`), contraste de colores (`getComputedStyle`), opacidad.
+- Usan CSVs reales de telemetría (Nordschleife) para el flujo completo clic a clic.
+- **No corren en CI** (requieren los CSVs de `Paterial para test` y Chromium instalado).
+  El módulo se skip automáticamente si los archivos no existen en disco.
+- Screenshots guardados en `qa_runs/playwright_e2e/` como evidencia para QA.
 
 ---
 
@@ -181,29 +212,28 @@ Es donde vive el valor del producto y no tiene I/O. Cobertura objetivo:
 Cada bug corregido se blinda con un test que lo fija (filosofía: un bug que no se
 detecta vuelve):
 
-| Bug | Test que lo fija |
-| :-- | :-- |
-| UI no arrancaba (`ImportError` tras el split) | smoke de `app.py` (Tier 4) |
-| NVENC falso positivo sin GPU | `test_nvenc_available_false_on_nonzero` (Tier 3) |
-| Construcción de filtro ffmpeg | `test_build_filter_scale_has_operator` (Tier 3) |
-| Nombre de archivo / degradación sin canales | casos de `compare` sin gear/glat (Tier 1) |
+| Bug | Test que lo fija | Tier |
+| :-- | :-- | :-- |
+| UI no arrancaba (`ImportError` tras el split) | smoke de importación | 4 |
+| NVENC falso positivo sin GPU | `test_nvenc_available_false_on_nonzero` | 3 |
+| Construcción de filtro ffmpeg | `test_build_filter_scale_has_operator` | 3 |
+| Degradación sin canales gear/glat | casos de `compare` sin gear/glat | 1 |
+| `freeze_support()` ausente → crash PyInstaller en Windows | `tests/test_main_gui.py` (AST) | 4 |
+| Doble clic en "Generar overlay" lanzaba dos renders | `test_step3_render_guard.py` | 5 |
+| Botones de tarjeta desalineados verticalmente (flexbox) | `test_pw_step0_button_alignment` | 6 |
+| Texto invisible en botón seleccionado (contraste dark mode) | `test_pw_step0_selected_button_visibility` | 6 |
 
 ---
 
 ## Integración continua
 
-`.github/workflows/tests.yml` que corra `pytest` en cada push y PR, sobre **Windows**
-(plataforma objetivo del proyecto) con Python 3.10–3.12. ffmpeg no es necesario si los
-tests de `viz/` se quedan en los helpers puros (Tier 3) — lo cual es parte del diseño.
+`.github/workflows/tests.yml` corre `pytest --ignore=tests/ui/visual` en cada push y
+PR, sobre **Windows** (plataforma objetivo) con Python 3.10–3.12. Cubre Tier 1–5.
 
----
-
-## Plan de arranque realista
-
-Un primer PR de ~1 día que entregue: **Tier 1 + los tests de regresión + el smoke de
-UI**. Cubre el núcleo, blinda lo que ya se rompió, y es suficiente para tachar el
-requisito de "tests unitarios de `core/`" del camino a 1.0. Tier 2, 3 (resto) y CI
-pueden venir en PRs siguientes.
+Los tests Playwright (Tier 6) están en el repo pero **no corren en CI** — el job
+`visual-smoke` solo verifica que los módulos importan. Para correrlos: ejecutar
+`pytest tests/ui/visual/` en el laptop de desarrollo donde existen los CSVs reales
+y Chromium instalado (`playwright install chromium`).
 
 ## Alternativas consideradas
 
@@ -220,33 +250,65 @@ pueden venir en PRs siguientes.
 
 ## Estado de implementación
 
-Suite implementada. Se corre con `pip install -e ".[test]"` y luego `pytest`. **48 tests** verdes.
-CI en GitHub Actions corre la suite en cada push/PR sobre Windows con Python 3.10–3.12.
+**193 tests** verdes (2026-07-02). CI en GitHub Actions corre Tier 1–5 en cada push/PR.
 
 ```
 tests/
-  conftest.py                      # make_lap: constructor de Lap sintética determinista
+  conftest.py                        # make_lap + lap_factory: Lap sintética determinista
+  test_main_gui.py                   # [T4] AST: freeze_support() en entry point PyInstaller
+  test_cli.py                        # [T1] CLI end-to-end sin GPU/ffmpeg
+
   core/
-    test_normalize.py              # rejilla, interpolación lineal, gear discreto, split, fastest_lap
-    test_compare.py                # delta=0 idénticas; lento→delta+; ápex rápido→d_vmin+; sin gear/glat
-    test_corners.py                # nº de curvas por valle; ValueError sin speed; dirección; sin glat
-    test_wear.py                   # calibrate/slip con y sin canales de rueda; conteo de ABS
+    test_normalize.py                # [T1] rejilla, interpolación, gear discreto, split
+    test_compare.py                  # [T1] delta=0 idénticas; lento→delta+; sin gear/glat
+    test_corners.py                  # [T1] curvas por valle; ValueError sin speed; sin glat
+    test_wear.py                     # [T1] slip/assist con y sin canales de rueda
+    test_coaching.py                 # [T1] coaching adaptativo
+    test_degradacion_canales.py      # [T1] degradación graceful con canales ausentes
+
   importers/
-    fixtures/motec_mini.csv        # único dato versionado (24 filas sintéticas, layout i2)
-    test_motec_csv.py              # mapeo de canales, metadatos, beacons, split, separador ';' + coma decimal
-    test_generic_csv.py            # auto-detección de columnas (GUESS), mapeo manual, valores inválidos→0
+    fixtures/motec_mini.csv          # único dato versionado (24 filas sintéticas)
+    test_motec_csv.py                # [T2] mapeo, metadatos, beacons, separador ';'
+    test_generic_csv.py              # [T2] GUESS, mapeo manual, valores inválidos
+
   viz/
-    test_compose.py                # _build_filter (regresión filtro) + _nvenc_available (regresión fallback)
-    test_sync.py                   # _lap_signal, _detect_pause (silencio), _read_wav_mono — sin ffmpeg/scipy
+    test_compose.py                  # [T3] _build_filter + _nvenc_available (sin ffmpeg)
+    test_compose_encoder.py          # [T3] selección de encoder
+    test_overlay.py                  # [T3] helpers de overlay sin render real
+    test_sync.py                     # [T3] aritmética offset/z-score sin scipy
+    test_pacenotes.py                # [T3] generador WAV de pace notes
+
   ui/
-    test_app_smoke.py              # AppTest: app.py arranca sin excepción (omitido si falta streamlit)
+    conftest.py                      # parche Storage.clear() para teardown Windows
+    conftest_ng.py                   # fixtures NiceGUI testing (user, lap_factory)
+    test_app_smoke.py                # [T4] smoke de importación (omitido si falta NiceGUI)
+    test_ng_step0.py                 # [T4] contrato de ng_step0 (_FLOWS, render)
+    test_ng_step1.py                 # [T4] contrato de ng_step1 (handle_upload, firmas)
+    test_ng_step2.py                 # [T4] contrato de ng_step2
+    test_ng_step3.py                 # [T4] contrato de ng_step3
+    test_ng_step4.py                 # [T4] contrato de ng_step4
+    test_ng_state.py                 # [T4] AppState: atributos, clear_drv, clear_ref
+    test_paso1_estructura.py         # [T4] estructura del Paso 1
+    test_paso3_estructura.py         # [T4] estructura del Paso 3
+    test_paso4_estructura.py         # [T4] estructura del Paso 4
+    test_step2_avisos.py             # [T5] wizard: avisos en Paso 2 (NiceGUI testing)
+    test_step4_ffmpeg.py             # [T5] wizard: ffmpeg guard en Paso 4
+    test_step3_render_guard.py       # [T5] wizard: guard doble clic "Generar overlay"
+    test_e2e_wizard.py               # [T5] wizard 5 pasos con datos reales (NiceGUI testing)
+
+  ui/visual/
+    conftest.py                      # servidor NiceGUI en subprocess + fixture pw_page
+    test_step0_visual.py             # [T6] screenshot Paso 0 vs baseline (PIL diff)
+    test_e2e_playwright_wizard.py    # [T6] flujo clic a clic + aserciones visuales
 ```
 
-**Bugs blindados con regresión:** ImportError de arranque de UI (smoke), falso positivo
-de NVENC (`test_nvenc_available_false_on_nonzero`), construcción del filtro ffmpeg
-(`test_build_filter_scale_has_multiply_operator`), degradación sin gear/glat (Tier 1),
-separador `;` / coma decimal europea (`importers/_util.py`).
+**Resumen por tier:**
 
-**Pendiente para PRs siguientes:** ampliar Tier 2 (encoding no-inglés, más combinaciones de
-columnas ausentes) y Tier 3 (`sync` con señales sintéticas más realistas) conforme crezca el
-código. El render real de `overlay`/`compose` y el auto-sync con video siguen en QA manual.
+| Tier | Qué prueba | Tests | Corre en CI |
+| :--- | :--- | ---: | :---: |
+| 1 — `core/` puro | Matemáticas del motor | ~60 | ✅ |
+| 2 — `importers/` | Parseo de CSV | ~15 | ✅ |
+| 3 — `viz/` helpers puros | Helpers de render sin ffmpeg | ~25 | ✅ |
+| 4 — Smoke y contrato UI | Importación, firmas, AST | ~50 | ✅ |
+| 5 — NiceGUI testing framework | Comportamiento funcional del wizard | ~35 | ✅ |
+| 6 — Playwright visual | Apariencia, colores, alineación | ~8 | ❌ (solo dev) |

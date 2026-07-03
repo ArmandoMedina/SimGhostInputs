@@ -428,6 +428,13 @@ def compare(ref, drv, step=5.0, corners=None):
     if ref_car and drv_car and ref_car != drv_car:
         avisos.append("autos distintos: %s (ref) vs %s (piloto)" % (ref_car, drv_car))
 
+    # FIX 4: piloto más rápido que referencia — posible referencia y piloto invertidos
+    if total_delta < -1.0:
+        avisos.append(
+            "piloto más rápido que la referencia (%.1f s de ventaja): "
+            "¿tienes la referencia y el piloto al revés?" % abs(total_delta)
+        )
+
     summary = {
         "ref_laptime": ref_lt,
         "drv_laptime": drv_lt,

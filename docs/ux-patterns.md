@@ -2,7 +2,7 @@
 
 > **Para qué es este documento.** Así como el repo tiene convenciones de **código** (ruff, tests)
 > y de **docs** (§8 de `CONTRIBUTING.md`), este es el estándar de **interfaz**: las heurísticas que
-> la UI (`fantasma ui`, Streamlit) y el HUD deben cumplir, y **el gate que verifica que se cumplan
+> la UI (`fantasma-ng`, NiceGUI) y el HUD deben cumplir, y **el gate que verifica que se cumplan
 > antes de subir cambios** — análogo a "los tests deben pasar". Lo usa el rol **Mariana** (UX) como
 > rúbrica, y se integra con las barreras de [`flujo-de-trabajo.md`](flujo-de-trabajo.md).
 >
@@ -62,7 +62,7 @@ suite, corren en `pytest`/`verificar.ps1` y en `.github/workflows/tests.yml`.
   verdad canónica, ADR 0012), tolerancia generosa: atrapa "el layout se movió", no antialiasing.
   - *Hoy:* solo cubre el **Paso 0**. **Objetivo:** extender a Pasos 1-4 (con estado/datos
     sintéticos cargados por el harness), un baseline por pantalla.
-- **Aserciones estructurales (Streamlit AppTest).** Sin pixeles: que los elementos esperados
+- **Aserciones estructurales (fixture `user` de NiceGUI).** Sin pixeles: que los elementos esperados
   existan (los 3 flujos en el Paso 0, el botón primario de avance, la tabla de vueltas tras cargar,
   el progreso durante el render). Determinista y rápido.
 - **Contraste de texto.** Chequeo automatizable de ratio de contraste de los estilos propios
@@ -72,7 +72,7 @@ suite, corren en `pytest`/`verificar.ps1` y en `.github/workflows/tests.yml`.
 
 "¿Se ve profesional?", "¿el flujo se siente claro?", "¿el HUD es legible sobre ESTE video?" no son
 deterministas. No bloquean por máquina: los dispara el hook de sesión **`mariana-stop`** al tocar
-`fantasma/viz/` o `fantasma/ui/`, que **frena el cierre y obliga a mirar** (abrir `fantasma ui` /
+`fantasma/viz/` o `fantasma/ui/`, que **frena el cierre y obliga a mirar** (abrir `fantasma-ng` /
 revisar el HUD) con esta **checklist**:
 
 - [ ] El cambio respeta las 10 heurísticas de §1 (revisión rápida).
@@ -86,7 +86,7 @@ y el Escribano de docs proponen pero el contenido no bloquea lo irreversible.
 
 ### Capa C — Local, **AVISA** (temprano)
 
-`verificar.ps1` corre el smoke visual y las aserciones AppTest en modo aviso antes del push (skipea
+`verificar.ps1` corre el smoke visual y las aserciones estructurales NiceGUI en modo aviso antes del push (skipea
 limpio si no hay Chromium), como ya hace con lint/formato/tests. El CI es el que bloquea.
 
 > **Regla de oro del gate:** lo que se pueda medir (layout, contraste, presencia de elementos,
@@ -100,11 +100,11 @@ limpio si no hay Chromium), como ya hace con lint/formato/tests. El CI es el que
 | Pieza del gate | Estado | Acción |
 | :-- | :-- | :-- |
 | Smoke visual Paso 0 | ✅ existe (ADR 0012); baseline regenerado en v0.14.0 por cambio F-01 | — |
-| Smoke visual Pasos 1-4 | ⏸️ diferido | AppTest cubre la estructura; Playwright requiere inyectar estado en browser (no trivial). Diferido post-v1.0 |
-| Aserciones AppTest | ✅ Pasos 0-4 cubiertos (`tests/ui/`) — 18 tests en verde (v0.14.0) | — |
+| Smoke visual Pasos 1-4 | ⏸️ diferido | los tests NiceGUI cubren la estructura; Playwright requiere inyectar estado en browser (no trivial). Diferido post-v1.0 |
+| Aserciones estructurales NiceGUI | ✅ Pasos 0-4 cubiertos (`tests/ui/`) — 41 tests NiceGUI (`fixture user`) en verde | — |
 | Contraste WCAG | ⏸️ diferido post-v1.0 | Bajo riesgo: paleta reducida, colores revisados a ojo |
 | Checklist Mariana | ✅ hook formalizado con los 5 puntos de §2-B (v0.14.0) | — |
-| Integración en `verificar.ps1`/CI | ✅ (visual + AppTest vía pytest) | — |
+| Integración en `verificar.ps1`/CI | ✅ (visual + tests NiceGUI vía pytest) | — |
 
 > La decisión de tratar el gate de UX con la dualidad determinismo/juicio se asienta en un ADR
 > (ver `docs/decisions/`). Los hallazgos de UX concretos por pantalla se documentan tras el
@@ -112,9 +112,33 @@ limpio si no hay Chromium), como ya hace con lint/formato/tests. El CI es el que
 
 ---
 
-## 4. Registro de cambios de patrón por versión
+## 4. Patrones específicos de NiceGUI (agregados en v2.0)
+
+La UI principal de v2.0 migró de Streamlit a **NiceGUI** ([ADR 0018](decisions/0018-framework-ui-nicegui.md), enmienda al [ADR 0010](decisions/0010-framework-ui-streamlit.md)). NiceGUI es reactivo y asíncrono, así que impone patrones distintos a los de Streamlit (rerun completo del script). Estos son los que el código de `fantasma/ui/ng_*.py` sigue y que cualquier cambio nuevo debe respetar.
+
+1. **Operaciones en background (render async).** Para operaciones largas (componer video, generar overlay) **no** se bloquea el event loop con `asyncio.sleep` en un loop. Se usa un objeto `RenderJob` (`ng_helpers.py`) que corre `fn` en un thread daemon (`start_bg_render`), y en la UI un `ui.timer(0.5, poll)` hace polling del job: lee `job.n/job.total` para actualizar la barra de progreso y, cuando `job.done`, cancela el timer y refresca la UI con el resultado. El `RenderJob` también expone `cancel()` (un `threading.Event`) para el botón «Detener». Patrón vivo en `ng_step4.py::_start_compose`.
+
+2. **Forward-declaration de elementos UI.** En NiceGUI los handlers (closures) se definen **antes** de que existan los elementos que manipulan; el closure captura el nombre, no el valor. Patrón: declarar `ref_status = None  # noqa: F841` (y `drv_status`, `load_err`, etc.), definir los handlers que usan `ref_status`, y **más abajo** hacer la asignación real `ref_status = ui.label(...)`. El `# noqa: F841` es necesario porque ruff no ve que la variable se reasigna dentro de un closure — **no es dead code**, es la forma correcta en NiceGUI. Ejemplo en `ng_step1.py`.
+
+3. **Diálogos de archivo nativos (`native=True`).** `_pick_file()` y `_pick_folder()` (`ng_helpers.py`) abren el selector nativo del OS vía Tkinter (`filedialog`). Solo funcionan de forma fiable en modo `native=True` (ventana pywebview, que es como arranca `fantasma-ng` en `ng_app.py::run`); en modo browser/desarrollo el selector puede fallar o abrir una ventana separada extraña. Ambos helpers atrapan cualquier excepción y devuelven `""`. Las operaciones potencialmente lentas (leer overlay, componer preview) se envuelven con `await run.io_bound(...)` para no bloquear el event loop.
+
+   *Excepción — upload de CSV en Paso 1:* los dos paneles de carga de `ng_step1.py` usan `ui.upload` (componente nativo del browser, `<input type="file">`) en lugar de `_pick_file()`. Esta ruta funciona en modo browser y en `native=True` por igual; no invoca Tkinter.
+
+4. **Colores de texto: clases Tailwind, no vars CSS inline.** Los colores de estado usan clases Tailwind (`text-gray-400`, `text-red-400`, `text-yellow-400`, `text-green-400`) en lugar de `.style("color:var(--X)")` inline. Las vars CSS inline no se resuelven de forma fiable bajo el modo oscuro de Quasar en pywebview.
+
+5. **Corrección F-01 (NiceGUI) — pendiente.** El selector de flujo del Paso 0 (`ng_step0.py`) no debe mostrar ningún flujo como «✓ Seleccionado» al cargar la app. Hoy `is_selected = state.flow_key == flow_key` compara contra `flow_key`, que tiene un default (`_DEFAULT_FLOW = "compose"`), por lo que la tarjeta por defecto aparece pre-seleccionada aunque el usuario no haya elegido nada. El estado ya tiene el booleano `flow_chosen` (separado de `flow_key`) para distinguir «default cargado» de «usuario eligió explícitamente»; la corrección es que el Paso 0 use `flow_chosen` para decidir el marcado. Registrado para corrección en v2.0.x. Es el equivalente NiceGUI del F-01 ya resuelto en Streamlit (ver §5, v0.14.0).
+
+---
+
+## 5. Registro de cambios de patrón por versión
 
 Historial de decisiones de UX que alteraron el layout o el flujo de la UI — para que el baseline visual tenga contexto al regenerarse.
+
+### Unreleased
+
+**ng_app.py — modo oscuro activado globalmente (bugfix de contraste):**
+- `ui.dark_mode(True)` en `main_page()` establece el tema oscuro de Quasar como comportamiento por defecto; sin esto pywebview renderizaba en modo claro con problemas de contraste.
+- Colores de texto en `ng_step0–4.py` migrados de `style("color:var(--X)")` a clases Tailwind (ver patrón 4 de §4).
 
 ### v0.14.0 (2026-06-30)
 

@@ -101,3 +101,42 @@ def test_semicolon_with_decimal_comma(tmp_path):
     assert lap.col("speed")[0] == 100.5
     assert lap.col("dist")[1] == 2.5
     assert lap.col("time")[1] == 0.02
+
+
+def test_duplicate_columns_to_same_canonical_no_double_append(tmp_path):
+    """'Ground Speed' y 'Speed' ambas mapean a 'speed': primera gana, sin double-append (H-01)."""
+    csv_text = (
+        '"Venue","X"\n'
+        '"Time","Distance","Ground Speed","Speed"\n'
+        '"s","m","km/h","km/h"\n'
+        "\n"
+        '"0.000","0","120","99"\n'
+        '"0.020","2","121","100"\n'
+    )
+    p = tmp_path / "dup_speed.csv"
+    p.write_text(csv_text, encoding="utf-8")
+    lap = motec_csv.load(str(p))
+    # serie alineada: len(speed) == len(time)
+    assert len(lap.col("speed")) == len(lap.col("time")) == 2
+    # gana la primera columna mapeada ("Ground Speed" = 120, no "Speed" = 99)
+    assert lap.col("speed")[0] == 120.0
+
+
+def test_truncated_row_skipped_no_indexerror(tmp_path):
+    """Fila mas corta que el header se descarta sin IndexError (H-02)."""
+    csv_text = (
+        '"Venue","X"\n'
+        '"Time","Distance","Ground Speed"\n'
+        '"s","m","km/h"\n'
+        "\n"
+        '"0.000","0","100"\n'
+        '"0.020"\n'
+        '"0.040","4","102"\n'
+    )
+    p = tmp_path / "truncated.csv"
+    p.write_text(csv_text, encoding="utf-8")
+    # no debe lanzar IndexError
+    lap = motec_csv.load(str(p))
+    # la fila truncada se descarta; quedan las dos filas completas
+    assert len(lap.col("time")) == 2
+    assert lap.col("speed")[1] == pytest.approx(102.0)

@@ -66,10 +66,10 @@ pip install -e ".[full]"
 fantasma --help
 ```
 
-Para la UI:
+Para la UI NiceGUI:
 
 ```powershell
-fantasma ui
+fantasma-ng
 ```
 
 **Smoke test sin datos privados:** usa cualquier export de MoTeC i2 propio y corre
@@ -82,7 +82,7 @@ fantasma/
   core/         modelo de datos (lap.py), normalización, detección de curvas, comparación
   importers/    lectura de archivos (MoTeC CSV/XLSX, CSV genérico)
   viz/          gráficas, overlay HUD, composición de video, sincronía
-  ui/           interfaz Streamlit — app.py (router), step0-4.py (pasos), _helpers.py (compartido)
+  ui/           interfaz NiceGUI v2.0 — ng_app.py (router), ng_step0-4.py (pasos), ng_state.py (AppState), ng_helpers.py (helpers)
   cli.py        punto de entrada de comandos
 ```
 
@@ -113,7 +113,7 @@ ejecuta hooks de un clon sin que tú lo autorices). Actívalas al clonar:
 
 ```powershell
 # 1. Instala las herramientas de desarrollo (linter + tests)
-pip install -e ".[dev,test,ui,sync]"
+pip install -e ".[dev,test,ui-ng,sync]"
 
 # 2. Enciende el hook que corre las validaciones antes de cada push
 git config core.hooksPath .githooks
@@ -133,7 +133,7 @@ propósito** (`git push --no-verify`), nunca por desconocimiento.
 
 1. **Motor sin datos.** El repo nunca incluye telemetrías, referencias ni setups. Los tests usan datos sintéticos o aportados por quien los corre.
 2. **Comparación por distancia.** El metro de pista es el índice maestro, no el tiempo.
-3. **Sin dependencias en el núcleo.** `fantasma/core` e `importers` son librería estándar pura. Las dependencias viven en extras opcionales (`[overlay]`, `[ui]`, `[sync]`…) y deben degradar con gracia si faltan.
+3. **Sin dependencias en el núcleo.** `fantasma/core` e `importers` son librería estándar pura. Las dependencias viven en extras opcionales (`[overlay]`, `[ui-ng]`, `[sync]`…) y deben degradar con gracia si faltan.
 4. **Determinista.** Mismo archivo de entrada → misma salida, siempre.
 
 ---
@@ -188,7 +188,6 @@ docs: añadir guía de exportación para iRacing
 
 **También bienvenido:**
 
-- Empaquetado como `.exe` con PyInstaller para usuarios sin Python
 - Traducciones de la UI o documentación (inglés primero)
 - Guías de exportación para sims no documentados aún
 - Mejoras de rendimiento con benchmarks que las demuestren
@@ -224,6 +223,9 @@ Cada hecho vive en **un** documento. Los demás enlazan, no duplican.
 | `docs/glosario.md` | Definición canónica de los términos del proyecto (vocabulario) |
 | `docs/flujo-de-trabajo.md` | El sistema de barreras y el flujo explorar→commit→push (linter, formato, tests, hook, CI, doc-gate) explicado desde cero |
 | `docs/benchmark-linter.md` | Por qué `ruff` y no las alternativas; cómo se configuró |
+| `docs/benchmark-ui-framework.md` | Por qué NiceGUI y no las alternativas; cómo se empaqueta como instalador doble-click |
+| `tools/build_installer.py` | Cómo generar el bundle one-dir con nicegui-pack y medir su tamaño |
+| `tools/installer.iss` | Script Inno Setup para el instalador Windows doble-click de v2.0 |
 | `product/` (+ su `README.md`) | El **QUÉ**: jerarquía funcional (ecosistema→solución→dominio→módulo→capacidad), criterios de aceptación y backlog. Las notas **enlazan** a su dueño SSOT (p. ej. una capacidad de `core/` cede el esquema a `formato-datos`), no duplican |
 | `engineering/` (+ su `README.md`) | El **CÓMO**: panorama de arquitectura, especificaciones técnicas, modelos de datos y estrategia de pruebas. Igual: enlaza a los dueños canónicos (`formato-datos`, `hud-reference`, ADRs) |
 | `templates/` (+ su `README.md`) | Los moldes canónicos de cada tipo de nota de `product/`+`engineering/` |
@@ -232,13 +234,13 @@ Cada hecho vive en **un** documento. Los demás enlazan, no duplican.
 
 > `CHANGELOG.md` se actualiza **siempre** que el cambio sea liberable; se omite abajo por brevedad.
 
-> **Espejo ejecutable de esta tabla: `tools/blast-radius.json`.** Cada entrada de la tabla tiene su par en ese manifiesto, que consumen `verificar.ps1` (gate de push) y `escribano-stop.ps1` (hook de sesión). Para agregar un área: edita el JSON — nada más. Esta prosa es la explicación; el JSON es la ley que el gate ejecuta.
+> **Espejo ejecutable de esta tabla: `tools/blast-radius.json`.** Cada entrada de la tabla tiene su par en ese manifiesto, que consumen `verificar.ps1` (gate de push), `escribano-stop.ps1` (hook de sesión) y `auditar-radius.ps1` (CI, rango del PR). Para agregar un área: edita el JSON — nada más. Esta prosa es la explicación; el JSON es la ley que el gate ejecuta. Convenciones del matcher (starter v0.5.0): un patrón **sin `/`** solo casa archivos en la **raíz** del repo; `excluye` (opcional) resta rutas; `mensaje` (opcional) se anexa al aviso.
 
 | Cambio | Documentos a actualizar | Rol especialista que valida |
 | :-- | :-- | :-- |
 | Flag/comando CLI nuevo, o cambio de comportamiento de uno | `README` (uso rápido) · `guia-usuario` · `formato-datos` si cambian las salidas | _solo Reviewer_ |
-| Cambio visual del HUD/overlay (color, panel, franja de datos) | `hud-reference` · `README` (tabla de colores) · `ux-patterns.md` · **ADR nuevo** + `docs/decisions/README.md` | **Mariana** (UX) |
-| Cambio de UX/layout en la UI Streamlit (`fantasma/ui/`) | `guia-usuario` (BLOQUEA) · `ux-patterns.md` (AVISA) · `product/capacidades/UI-*` si cambia un criterio funcional (AVISA) | **Mariana** (UX) |
+| Cambio en `fantasma/viz/` (HUD/overlay, gráficas, video, sync). **Si es visual** (color, panel, franja, layout del HUD): `hud-reference` (AVISA) · `README` (tabla de colores) · `ux-patterns.md` (AVISA) · **ADR nuevo** + `docs/decisions/README.md`. **Si es no-visual** (perf, refactor, encoding): ninguno — el gate avisa, no bloquea ([ADR 0020](docs/decisions/0020-blast-radius-viz-hud-reference-avisa.md)) | **Mariana** (UX, solo si es visual) |
+| Cambio de UX/layout en la UI NiceGUI (`fantasma/ui/`) | `guia-usuario` (BLOQUEA) · `ux-patterns.md` (AVISA) · `product/capacidades/UI-*` si cambia un criterio funcional (AVISA) | **Mariana** (UX) |
 | Cambio en `core/` (detección de curvas, comparación, `wear`, normalización) | `formato-datos` (algoritmo + JSON + CSV, BLOQUEA) · `tests/` si cambian números/signos · `product/capacidades/CMP-*/COR-*/NRM-*/WER-*` si cambia un criterio (AVISA) · ADR si es una decisión | **Charbel** (telemetría) |
 | Dependencia o extra nuevo | `pyproject.toml` · `README` (tabla de deps + instalación) · §3 de este doc · `setup.ps1` | _solo Reviewer_ |
 | Importador o formato de entrada nuevo o modificado (`fantasma/importers/`) | `README` (tabla de sims, AVISA) · `guia-usuario` (AVISA) · `formato-datos` (canales, AVISA) · §7 (bienvenidas) · `product/capacidades/IMP-*` si cambia un criterio (AVISA) | **Charbel** (telemetría) |
@@ -248,8 +250,11 @@ Cada hecho vive en **un** documento. Los demás enlazan, no duplican.
 | Término o concepto nuevo (o renombrado) | `docs/glosario.md` (definición canónica) · busca el término en los demás docs para dejarlo consistente | _solo Reviewer_ (consistencia) |
 | Cambio en las barreras o la gobernanza (linter, formato, hook, CI, tests, doc-gate) | `docs/flujo-de-trabajo.md` · `docs/benchmark-linter.md` si cambia la herramienta · `.github/workflows/tests.yml` si cambia el CI | **PO / Armando** |
 | Capacidad/dominio/módulo nuevo, o cambio del motor que afecta una capacidad | la nota de `product/` correspondiente (`estado`, criterios de aceptación, wikilinks) · `engineering/` si cambia un algoritmo o modelo | **Armando** (lo verifica `auditar.ps1`) |
+| Archivo **nuevo suelto en la raíz** del repo | clasifícalo en su carpeta, decláralo área en el manifiesto, o `.gitignore` si es artefacto (área `raiz` — la raíz no es tierra de nadie) | **Armando** |
 
-> **La integridad de `product/`+`engineering/` se gatea determinísticamente.** Igual que `pytest` hace cumplir el código, [`tools/auditar.ps1`](docs/decisions/0016-gate-grafo-documentacion.md) audita el grafo de docs: **BLOQUEA** frontmatter ausente/incompleto, wikilinks rotos y capacidades `vigente` sin criterios Gherkin; **avisa** lo que es juicio (capacidad vigente sin test citado, notas huérfanas). Lo corre `verificar.ps1` (local) y el CI (job `docs-graph`, infranqueable). Modulado por estado: `en_definicion` solo exige frontmatter + enlaces. No hay archivos de auto-firma: el gate lee el artefacto, no confía en que un agente declare "ya validé" ([ADR 0016](docs/decisions/0016-gate-grafo-documentacion.md)).
+> **La integridad de `product/`+`engineering/` se gatea determinísticamente.** Igual que `pytest` hace cumplir el código, [`tools/auditar.ps1`](docs/decisions/0016-gate-grafo-documentacion.md) audita el grafo de docs: **BLOQUEA** frontmatter ausente/incompleto, wikilinks rotos y capacidades `vigente` sin criterios Gherkin; **avisa** lo que es juicio (capacidad vigente sin test citado, notas huérfanas). Lo corre `verificar.ps1` (local) y el CI (job `docs-graph`). Modulado por estado: `en_definicion` solo exige frontmatter + enlaces. No hay archivos de auto-firma: el gate lee el artefacto, no confía en que un agente declare "ya validé" ([ADR 0016](docs/decisions/0016-gate-grafo-documentacion.md)).
+
+> **El blast-radius también se audita en CI** (job `audit`, `tools/auditar-radius.ps1` sobre el rango del PR — ADR 0019): cierra la ventana de "PR con docs desfasadas" que el hook (working tree) y `verificar.ps1` (push local, saltable) no cubren. **Regla anti-bypass:** todo aviso local se asume bypaseable; un job de CI solo es muro si está marcado **required check** en el ruleset de master (`audit`, `docs-graph`, `lint`, `pytest`).
 
 ### Roles que validan
 
@@ -267,7 +272,7 @@ Los especialistas se encienden solo cuando aplica su área:
 
 > Estos nombres son **asientos** del casting; quién los ocupa y cómo (en sesión o como subagente), en [`docs/flujo-de-trabajo.md` §4 — El casting](docs/flujo-de-trabajo.md#el-casting--asientos-no-skills).
 
-> **Estado de cableado (sé honesto al leer esto: no todo está automatizado).** Hoy disparan solos por hook el **Reviewer**, el **Escribano** y **Mariana** (ver `.claude/hooks/`; Mariana se cableó en [ADR 0011](docs/decisions/0011-cablear-mariana-no-charbel.md) cuando un bug visual lo pidió). **Charbel** sigue **declarado aquí** —esta tabla es su router— pero **sin hook a propósito**: su validación de telemetría ya vive en los tests, y cablearlo sería sobre-orquestar (ADR 0011). **PO** y **Armando** (arquitecto) viven en la capa de ideación (tú + el chat), no en un hook.
+> **Estado de cableado (sé honesto al leer esto: no todo está automatizado).** Hoy disparan solos por hook el **Reviewer**, el **Escribano** y **Mariana** (ver `.claude/hooks/`; Mariana se cableó en [ADR 0011](docs/decisions/0011-cablear-mariana-no-charbel.md) cuando un bug visual lo pidió, y desde el ADR 0019 exige **evidencia en `qa_runs/`**, no solo la palabra del agente). **Charbel** sigue **declarado aquí** —esta tabla es su router— pero **sin hook a propósito**: su validación de telemetría ya vive en los tests, y cablearlo sería sobre-orquestar (ADR 0011). **PO** y **Armando** (arquitecto) viven en la capa de ideación (tú + el chat), no en un hook.
 
 ### Regla de consistencia de vocabulario
 

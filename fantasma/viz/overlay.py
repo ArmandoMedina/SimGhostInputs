@@ -93,13 +93,6 @@ def _interp_lap(lap, ds):
 # ── métricas por ventana ──────────────────────────────────────────────────────
 
 
-def _count_events(d_orig, flag_orig, lo, hi):
-    """Flancos de subida (0→1) de flag_orig en el tramo [lo, hi]."""
-    mask = (d_orig >= lo) & (d_orig <= hi)
-    f = (flag_orig[mask] > 0.5).astype(np.int8)
-    return int(np.sum(np.diff(f) > 0)) if len(f) >= 2 else 0
-
-
 def _flag_recent_grid(grid, i, hold):
     """True si el flag (rejilla 1 m) estuvo activo en los últimos `hold` m hasta
     el cursor. Da una luz instantánea con retención corta, no un conteo de ventana."""
@@ -359,10 +352,6 @@ def _render_chunk(args):
         p90,
         ref_slip,
         drv_slip,
-        ref_d_o,
-        ref_abs_o,
-        drv_d_o,
-        drv_abs_o,
         trace,
         n_tr,
         step,
@@ -374,6 +363,7 @@ def _render_chunk(args):
         t_start,
         ref_load_cum,
         drv_load_cum,
+        d_offset,
     ) = args
 
     hud = _HUDFigure()
@@ -405,8 +395,8 @@ def _render_chunk(args):
             slip_d0 = max(0.0, cur_d - SLIP_WIN_M)  # ventana corta detrás del cursor
             slip_val = _slip_window(drv_slip, ds, slip_d0, cur_d)
             ref_slip_val = _slip_window(ref_slip, ds, slip_d0, cur_d)
-            abs_on = _flag_recent_grid(drv_ch.get("abs"), cur_d, HOLD_M)
-            tcs_on = _flag_recent_grid(drv_ch.get("tcs"), cur_d, HOLD_M)
+            abs_on = _flag_recent_grid(drv_ch.get("abs"), cur_d - d_offset, HOLD_M)
+            tcs_on = _flag_recent_grid(drv_ch.get("tcs"), cur_d - d_offset, HOLD_M)
             corner_name, corner_txt = _corner_at(corners_by_seg, cur_d)
 
             gear = (
@@ -418,7 +408,7 @@ def _render_chunk(args):
             def _load_at(cum):
                 if cum is None:
                     return None
-                j = max(0, min(int(cur_d), len(cum) - 1))
+                j = max(0, min(int(cur_d) - d_offset, len(cum) - 1))
                 return float(cum[j])
 
             load_val = _load_at(drv_load_cum)
@@ -477,13 +467,93 @@ def _render_parallel(chunks, base, n_frames, progress):
 
     Soporta cancelación: si progress() lanza cualquier excepción (ej.
     RuntimeError("__CANCELLED__")), mata todos los workers inmediatamente.
+
+    Optimizaciones:
+    - Collect round-robin: todos los workers se sondean en cada iteración;
+      un worker lento no bloquea la recolección de los rápidos.
+    - Pickle compacto: cada worker recibe solo el slice de arrays que cubre
+      su rango de distancia (+ padding de ventana HUD y retención ABS/TC).
+      En Nordschleife esto reduce el pkl de ~4-5 MB a ~1 MB por worker.
     """
+    (
+        ds,
+        ref_ch,
+        drv_ch,
+        p75,
+        p90,
+        ref_slip,
+        drv_slip,
+        trace,
+        n_tr,
+        step,
+        t_arr,
+        d_arr,
+        corners_by_seg,
+        frames_dir,
+        fps,
+        t_start,
+        ref_load_cum,
+        drv_load_cum,
+        _,
+    ) = base
+
     worker_cmd = [sys.executable, "-m", "fantasma.viz._overlay_worker"]
     procs, tmp_files = [], []
+    chunk_args_map: dict = {}
 
     for s, e in chunks:
+        # Rango de tiempo de este chunk → rango de distancia recorrida.
+        t_min = t_start + s / fps
+        t_max = t_start + (e - 1) / fps
+        i_s = max(0, int(np.searchsorted(t_arr, t_min, "right")) - 1)
+        i_e = min(len(t_arr) - 1, int(np.searchsorted(t_arr, t_max, "right")))
+
+        d_chunk = d_arr[i_s : i_e + 1]
+        d_min = float(d_chunk.min()) if d_chunk.size else 0.0
+        d_max = float(d_chunk.max()) if d_chunk.size else float(ds[-1])
+
+        # Padding: ventana HUD (W_BEFORE/W_AFTER) + retención de luces ABS/TC.
+        d_lo = max(0, int(d_min) - W_BEFORE - HOLD_M)
+        d_hi = min(len(ds), int(d_max) + W_AFTER + 2)
+        d_offset = d_lo
+
+        ds_sl = ds[d_lo:d_hi].copy()
+        ref_ch_sl = {k: (v[d_lo:d_hi].copy() if v is not None else None) for k, v in ref_ch.items()}
+        drv_ch_sl = {k: (v[d_lo:d_hi].copy() if v is not None else None) for k, v in drv_ch.items()}
+        ref_slip_sl = ref_slip[d_lo:d_hi].copy() if ref_slip is not None else None
+        drv_slip_sl = drv_slip[d_lo:d_hi].copy() if drv_slip is not None else None
+        ref_load_sl = ref_load_cum[d_lo:d_hi].copy() if ref_load_cum is not None else None
+        drv_load_sl = drv_load_cum[d_lo:d_hi].copy() if drv_load_cum is not None else None
+        t_arr_sl = t_arr[max(0, i_s - 1) : i_e + 2].copy()
+        d_arr_sl = d_arr[max(0, i_s - 1) : i_e + 2].copy()
+
+        chunk_args = (
+            s,
+            e,
+            ds_sl,
+            ref_ch_sl,
+            drv_ch_sl,
+            p75,
+            p90,
+            ref_slip_sl,
+            drv_slip_sl,
+            trace,
+            n_tr,
+            step,
+            t_arr_sl,
+            d_arr_sl,
+            corners_by_seg,
+            frames_dir,
+            fps,
+            t_start,
+            ref_load_sl,
+            drv_load_sl,
+            d_offset,
+        )
+
+        chunk_args_map[(s, e)] = chunk_args
         tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".pkl")
-        pickle.dump((s, e, *base), tmp)
+        pickle.dump(chunk_args, tmp)
         tmp.close()
         tmp_files.append(tmp.name)
         procs.append(
@@ -497,22 +567,31 @@ def _render_parallel(chunks, base, n_frames, progress):
     failed = []
     done = 0
     try:
-        for p, tmp_f, (s, e) in zip(procs, tmp_files, chunks):
-            # Polling en lugar de p.wait() para detectar cancel entre checks.
-            while p.poll() is None:
+        # Round-robin: todos los workers se sondean en cada pasada.
+        # Un worker lento no bloquea la recolección de los que ya terminaron.
+        pending = list(zip(procs, tmp_files, chunks))
+        while pending:
+            still_pending = []
+            for p, tmp_f, (s, e) in pending:
+                ret = p.poll()
+                if ret is None:
+                    still_pending.append((p, tmp_f, (s, e)))
+                else:
+                    try:
+                        os.unlink(tmp_f)
+                    except OSError:
+                        pass
+                    if ret != 0:
+                        failed.append((s, e))
+                    else:
+                        done += e - s
+                        if progress:
+                            progress(done, n_frames)
+            pending = still_pending
+            if pending:
                 time.sleep(0.5)
                 if progress:
-                    progress(done, n_frames)  # lanza si cancel_event está activo
-            try:
-                os.unlink(tmp_f)
-            except OSError:
-                pass
-            if p.returncode != 0:
-                failed.append((s, e))
-            else:
-                done += e - s
-                if progress:
-                    progress(done, n_frames)
+                    progress(done, n_frames)  # para que cancel_event se chequee
     except BaseException:
         _kill_all(procs)
         # limpiar pkls restantes
@@ -523,9 +602,9 @@ def _render_parallel(chunks, base, n_frames, progress):
                 pass
         raise
 
-    # fallback serial para cualquier chunk que haya fallado
+    # fallback serial para cualquier chunk que haya fallado (usa el mismo slice que el worker)
     for s, e in failed:
-        _render_chunk((s, e, *base))
+        _render_chunk(chunk_args_map[(s, e)])
         done += e - s
         if progress:
             progress(done, n_frames)
@@ -538,7 +617,8 @@ def _run_ffmpeg(cmd, n_frames, progress):
     """Corre ffmpeg y alimenta el callback de progreso leyendo stdout en tiempo real."""
     cmd_p = [cmd[0], "-progress", "pipe:1", "-nostats"] + cmd[1:]
     pat = re.compile(r"^frame=(\d+)")
-    proc = subprocess.Popen(cmd_p, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
+    err_f = tempfile.TemporaryFile(mode="w+b")
+    proc = subprocess.Popen(cmd_p, stdout=subprocess.PIPE, stderr=err_f, text=True)
     try:
         for line in proc.stdout:
             if progress and n_frames > 0:
@@ -551,11 +631,18 @@ def _run_ffmpeg(cmd, n_frames, progress):
     except BaseException:
         proc.kill()
         proc.wait()
+        err_f.close()
         raise
     else:
         proc.wait()
     if proc.returncode != 0:
-        raise subprocess.CalledProcessError(proc.returncode, cmd)
+        err_f.seek(0)
+        tail = b"".join(err_f.readlines()[-15:]).decode("utf-8", errors="replace").strip()
+        err_f.close()
+        raise RuntimeError(
+            "ffmpeg falló (código %d). Últimas líneas:\n%s" % (proc.returncode, tail)
+        )
+    err_f.close()
 
 
 def render_overlay(
@@ -612,16 +699,6 @@ def render_overlay(
     ref_load_cum = _load_cum(ref_slip)
     drv_load_cum = _load_cum(drv_slip)
 
-    # ABS originales (sin interpolar) para conteo de flancos preciso
-    def _orig_flags(lap, ch):
-        d = np.array(lap.col("dist"), dtype=float)
-        raw = lap.col(ch)
-        f = np.array(raw, dtype=float) if raw else np.zeros(len(d))
-        return d, f
-
-    ref_d_o, ref_abs_o = _orig_flags(ref, "abs")
-    drv_d_o, drv_abs_o = _orig_flags(drv, "abs")
-
     # delta en tiempo (5 m de resolución)
     step = 5.0
     trace = delta_trace(ref, drv, step)
@@ -653,10 +730,6 @@ def render_overlay(
         p90,
         ref_slip,
         drv_slip,
-        ref_d_o,
-        ref_abs_o,
-        drv_d_o,
-        drv_abs_o,
         trace,
         n_tr,
         step,
@@ -668,6 +741,7 @@ def render_overlay(
         t_start,
         ref_load_cum,
         drv_load_cum,
+        0,  # d_offset — 0 para el caso serial (arrays completos)
     )
 
     if n_workers <= 1:
