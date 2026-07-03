@@ -124,13 +124,21 @@ La UI principal de v2.0 migró de Streamlit a **NiceGUI** ([ADR 0018](decisions/
 
    *Excepción — upload de CSV en Paso 1:* los dos paneles de carga de `ng_step1.py` usan `ui.upload` (componente nativo del browser, `<input type="file">`) en lugar de `_pick_file()`. Esta ruta funciona en modo browser y en `native=True` por igual; no invoca Tkinter.
 
-4. **Corrección F-01 (NiceGUI) — pendiente.** El selector de flujo del Paso 0 (`ng_step0.py`) no debe mostrar ningún flujo como «✓ Seleccionado» al cargar la app. Hoy `is_selected = state.flow_key == flow_key` compara contra `flow_key`, que tiene un default (`_DEFAULT_FLOW = "compose"`), por lo que la tarjeta por defecto aparece pre-seleccionada aunque el usuario no haya elegido nada. El estado ya tiene el booleano `flow_chosen` (separado de `flow_key`) para distinguir «default cargado» de «usuario eligió explícitamente»; la corrección es que el Paso 0 use `flow_chosen` para decidir el marcado. Registrado para corrección en v2.0.x. Es el equivalente NiceGUI del F-01 ya resuelto en Streamlit (ver §5, v0.14.0).
+4. **Colores de texto: clases Tailwind, no vars CSS inline.** Los colores de estado usan clases Tailwind (`text-gray-400`, `text-red-400`, `text-yellow-400`, `text-green-400`) en lugar de `.style("color:var(--X)")` inline. Las vars CSS inline no se resuelven de forma fiable bajo el modo oscuro de Quasar en pywebview.
+
+5. **Corrección F-01 (NiceGUI) — pendiente.** El selector de flujo del Paso 0 (`ng_step0.py`) no debe mostrar ningún flujo como «✓ Seleccionado» al cargar la app. Hoy `is_selected = state.flow_key == flow_key` compara contra `flow_key`, que tiene un default (`_DEFAULT_FLOW = "compose"`), por lo que la tarjeta por defecto aparece pre-seleccionada aunque el usuario no haya elegido nada. El estado ya tiene el booleano `flow_chosen` (separado de `flow_key`) para distinguir «default cargado» de «usuario eligió explícitamente»; la corrección es que el Paso 0 use `flow_chosen` para decidir el marcado. Registrado para corrección en v2.0.x. Es el equivalente NiceGUI del F-01 ya resuelto en Streamlit (ver §5, v0.14.0).
 
 ---
 
 ## 5. Registro de cambios de patrón por versión
 
 Historial de decisiones de UX que alteraron el layout o el flujo de la UI — para que el baseline visual tenga contexto al regenerarse.
+
+### Unreleased
+
+**ng_app.py — modo oscuro activado globalmente (bugfix de contraste):**
+- `ui.dark_mode(True)` en `main_page()` establece el tema oscuro de Quasar como comportamiento por defecto; sin esto pywebview renderizaba en modo claro con problemas de contraste.
+- Colores de texto en `ng_step0–4.py` migrados de `style("color:var(--X)")` a clases Tailwind (ver patrón 4 de §4).
 
 ### v0.14.0 (2026-06-30)
 

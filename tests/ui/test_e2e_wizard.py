@@ -47,6 +47,7 @@ _SKIP_CSVS = pytest.mark.skipif(
 
 # ── _SharedState ──────────────────────────────────────────────────────────────
 
+
 class _SharedState:
     """Reemplaza AppState con un dict de clase en memoria.
 
@@ -99,9 +100,18 @@ class _SharedState:
 
     def clear_drv(self) -> None:
         for k in (
-            "drv_lap", "drv_laps", "drv_path", "drv_name",
-            "summary", "trace", "rows", "charts_paths",
-            "last_overlay", "corners", "corners_editable", "compose_offset",
+            "drv_lap",
+            "drv_laps",
+            "drv_path",
+            "drv_name",
+            "summary",
+            "trace",
+            "rows",
+            "charts_paths",
+            "last_overlay",
+            "corners",
+            "corners_editable",
+            "compose_offset",
         ):
             type(self)._shared.pop(k, None)
 
@@ -117,6 +127,7 @@ class _SharedState:
 
 def _load_real_laps(path: Path):
     from fantasma.ui.ng_helpers import _load_laps
+
     return _load_laps(str(path))
 
 
@@ -178,6 +189,7 @@ async def test_e2e_step1_load_reference_and_driver(user, monkeypatch):
     )
 
     import fantasma.ui.ng_app as _ng_mod
+
     monkeypatch.setattr(_ng_mod, "AppState", _SharedState)
 
     from fantasma.ui.ng_app import main_page  # noqa: F401
@@ -222,9 +234,9 @@ async def test_e2e_step2_compare_runs_and_shows_summary(user, monkeypatch):
         drv_lap=drv_lap,
         ref_laps=ref_laps,
         drv_laps=drv_laps,
-        trace=[],          # trace vacío: sin gráficas (evita matplotlib en CI)
-        rows=[],           # rows vacío: ng_step2 NO llama ui.download → sin error
-        charts_paths=[],   # skip chart generation
+        trace=[],  # trace vacío: sin gráficas (evita matplotlib en CI)
+        rows=[],  # rows vacío: ng_step2 NO llama ui.download → sin error
+        charts_paths=[],  # skip chart generation
         summary=summary,
         corners=corners,
         flow_key="analisis",
@@ -232,6 +244,7 @@ async def test_e2e_step2_compare_runs_and_shows_summary(user, monkeypatch):
     )
 
     import fantasma.ui.ng_app as _ng_mod
+
     monkeypatch.setattr(_ng_mod, "AppState", _SharedState)
 
     from fantasma.ui.ng_app import main_page  # noqa: F401
@@ -280,6 +293,7 @@ async def test_e2e_step3_overlay_generates_output(user, monkeypatch):
     )
 
     import fantasma.ui.ng_app as _ng_mod
+
     monkeypatch.setattr(_ng_mod, "AppState", _SharedState)
 
     from fantasma.ui.ng_app import main_page  # noqa: F401
@@ -329,6 +343,7 @@ async def test_e2e_full_happy_path_compose_flow(user, monkeypatch):
     )
 
     import fantasma.ui.ng_app as _ng_mod
+
     monkeypatch.setattr(_ng_mod, "AppState", _SharedState)
 
     from fantasma.ui.ng_app import main_page  # noqa: F401

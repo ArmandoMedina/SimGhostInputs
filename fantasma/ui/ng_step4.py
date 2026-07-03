@@ -30,7 +30,7 @@ async def render(state, navigate):
         "Junta el overlay del Paso 3 con tu video de grabacion. "
         "El resultado es un clip MP4 recortado exactamente a la duracion de tu vuelta, "
         "con el HUD ya integrado y listo para subir."
-    ).classes("text-sm mb-4").style("color:var(--muted)")
+    ).classes("text-sm mb-4 text-gray-400")
 
     # Prerrequisito: ffmpeg
     if shutil.which("ffmpeg") is None:
@@ -47,20 +47,20 @@ async def render(state, navigate):
         ui.label(
             f"ffmpeg no esta instalado y este paso lo necesita. "
             f"Instalalo y abre una terminal nueva: {_install_cmd}"
-        ).classes("mb-4").style("color:var(--danger)")
+        ).classes("mb-4 text-red-400")
         return
 
     with ui.row().classes("gap-4 mb-4 w-full"):
         ui.html(
             '<div style="flex:1;background:var(--warning-bg);border:1px solid var(--warning-border);border-radius:6px;padding:0.8rem">'
-            '<strong style="color:var(--warning)">El video DEBE tener audio del motor activado.</strong><br>'
+            '<strong style="color:#facc15">El video DEBE tener audio del motor activado.</strong><br>'
             '<span style="color:#d1b47a;font-size:0.8rem">La sincronia automatica analiza el sonido del motor para encontrar '
             "el segundo exacto en que cruzaste la meta. Sin audio tendras que calcular el offset manualmente.</span>"
             "</div>"
         )
         ui.html(
             '<div style="flex:1;background:var(--info-bg);border:1px solid var(--info-border);border-radius:6px;padding:0.8rem">'
-            '<strong style="color:var(--info)">El output no es el video completo de tu sesion.</strong><br>'
+            '<strong style="color:#60a5fa">El output no es el video completo de tu sesion.</strong><br>'
             '<span style="color:#93c5fd;font-size:0.8rem">Se genera un clip recortado exactamente a tu vuelta: '
             "desde la meta hasta que la terminas. Mucho mas rapido de procesar y mas facil de compartir.</span>"
             "</div>"
@@ -120,7 +120,7 @@ async def render(state, navigate):
         "SimGhostInputs escucha el sonido del motor en tu video y lo compara con los RPM de la "
         "telemetria para encontrar automaticamente el segundo exacto en que cruzaste la meta. "
         "Precision ~0.5 s · tarda ~30 segundos · necesitas scipy instalado."
-    ).classes("text-xs mb-2").style("color:var(--muted)")
+    ).classes("text-xs mb-2 text-gray-400")
 
     drv_for_sync = state.drv_lap
     sync_result_area = ui.column().classes("w-full mb-2")
@@ -137,7 +137,7 @@ async def render(state, navigate):
         ui.label(
             "Sube TU telemetria — la misma vuelta que grabaste en el video. "
             "No subas la de referencia: el sync compara el audio de tu motor con tus RPM."
-        ).classes("text-sm mb-2").style("color:var(--warning)")
+        ).classes("text-sm mb-2 text-yellow-400")
 
         sync_drv_state = {"laps": None}
 
@@ -169,7 +169,7 @@ async def render(state, navigate):
         ui.label(
             "Usando tu vuelta del Paso 1 (%s) — la que corresponde al video."
             % _fmt_lap(drv_for_sync.laptime)
-        ).classes("text-xs mb-2").style("color:var(--muted)")
+        ).classes("text-xs mb-2 text-gray-400")
 
     async def do_autosync():
         _video = video_input.value
@@ -181,7 +181,7 @@ async def render(state, navigate):
             return
         sync_result_area.clear()
         with sync_result_area:
-            ui.label("Analizando audio... (~30 s)").classes("text-sm").style("color:var(--muted)")
+            ui.label("Analizando audio... (~30 s)").classes("text-sm text-gray-400")
         try:
 
             def _sync():
@@ -193,14 +193,12 @@ async def render(state, navigate):
         except ImportError as ie:
             sync_result_area.clear()
             with sync_result_area:
-                ui.label(str(ie)).classes("text-sm").style("color:var(--danger)")
+                ui.label(str(ie)).classes("text-sm text-red-400")
             return
         except Exception as se:
             sync_result_area.clear()
             with sync_result_area:
-                ui.label(f"Error en auto-sync: {se}").classes("text-sm").style(
-                    "color:var(--danger)"
-                )
+                ui.label(f"Error en auto-sync: {se}").classes("text-sm text-red-400")
             return
 
         sync_result_area.clear()
@@ -210,14 +208,14 @@ async def render(state, navigate):
                 ui.label(
                     "Correlacion insuficiente: el video no parece corresponder a tu vuelta. "
                     "Usa la sincronia manual de abajo."
-                ).classes("text-sm").style("color:var(--warning)")
+                ).classes("text-sm text-yellow-400")
                 sync_state["error"] = True
             elif res["ambiguous"]:
                 sync_state["ambiguous"] = True
                 sync_state["candidates"] = cs
                 ui.label(
                     "Tu video parece tener varias vueltas y suenan casi igual. Elige la que corresponde a tu vuelta."
-                ).classes("text-sm mb-2").style("color:var(--warning)")
+                ).classes("text-sm mb-2 text-yellow-400")
                 opts = {
                     i: "%s min · calidad %.1f sigma" % (cs[i]["mmss"], cs[i]["z"])
                     for i in range(len(cs))
@@ -246,16 +244,14 @@ async def render(state, navigate):
                 ui.label(
                     "Offset detectado: %.3f s desde el inicio del video hasta el cruce de meta. "
                     "Calidad de sincronia: %s." % (_off, _ql)
-                ).classes("text-sm").style("color:var(--success)")
+                ).classes("text-sm text-green-400")
                 # Zona gris
                 try:
                     from fantasma.viz.sync import sync_gray_zone_warning
 
                     gz = sync_gray_zone_warning(_z)
                     if gz:
-                        ui.label("⚠ " + gz[0].upper() + gz[1:]).classes("text-sm").style(
-                            "color:var(--warning)"
-                        )
+                        ui.label("⚠ " + gz[0].upper() + gz[1:]).classes("text-sm text-yellow-400")
                 except ImportError:
                     pass
 
@@ -288,7 +284,7 @@ async def render(state, navigate):
             ).classes("w-48")
 
             scale_slider = ui.slider(min=0.25, max=1.5, step=0.05, value=1.0).classes("w-48")
-            scale_label = ui.label("Tamaño: 1.00×").classes("text-xs").style("color:var(--muted)")
+            scale_label = ui.label("Tamaño: 1.00×").classes("text-xs text-gray-400")
 
             offset_input = ui.number(
                 label="Offset (s desde inicio del video hasta la meta)",
@@ -449,7 +445,7 @@ async def render(state, navigate):
         except ImportError as ie:
             result_area.clear()
             with result_area:
-                ui.label(f"ffmpeg o dependencias faltantes: {ie}").style("color:var(--danger)")
+                ui.label(f"ffmpeg o dependencias faltantes: {ie}").classes("text-red-400")
             return
 
         _drv_lap = state.drv_lap
@@ -474,7 +470,7 @@ async def render(state, navigate):
         compose_area.clear()
         with compose_area:
             progress_bar = ui.linear_progress(value=0).classes("w-full")
-            status_label = ui.label("Iniciando...").classes("text-sm").style("color:var(--muted)")
+            status_label = ui.label("Iniciando...").classes("text-sm text-gray-400")
 
             def cancel():
                 if job_holder["job"]:
@@ -500,15 +496,15 @@ async def render(state, navigate):
                 result_area.clear()
                 with result_area:
                     if _job.error == "__CANCELLED__":
-                        ui.label("Composicion cancelada.").style("color:var(--warning)")
+                        ui.label("Composicion cancelada.").classes("text-yellow-400")
                     elif _job.error:
-                        ui.label(f"Error: {_job.error}").style("color:var(--danger)")
+                        ui.label(f"Error: {_job.error}").classes("text-red-400")
                     else:
                         state.last_compose_video = _vid
                         _z_score = sync_state.get("z")
                         ui.label("✓ Video guardado: %s" % os.path.basename(_out_path)).classes(
-                            "font-bold"
-                        ).style("color:var(--success)")
+                            "font-bold text-green-400"
+                        )
                         if isinstance(_job.result, dict):
                             ui.label(
                                 "Codificado con %s · %.0fs"
@@ -551,9 +547,7 @@ def _render_next_btn(state, current_step, navigate):
     flow = _FLOWS.get(state.flow_key, _FLOWS[_DEFAULT_FLOW])
     next_i = flow["next"].get(current_step)
     if next_i is None:
-        ui.label("Completaste todos los pasos de tu flujo!").classes("font-bold").style(
-            "color:var(--success)"
-        )
+        ui.label("Completaste todos los pasos de tu flujo!").classes("font-bold text-green-400")
     else:
         ui.button(
             "Ir al Paso %d — %s →" % (next_i, _STEPS[next_i]),

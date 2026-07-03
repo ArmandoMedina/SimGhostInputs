@@ -35,7 +35,7 @@ Lista las vueltas con duración y longitud, y marca la más rápida (la que se u
 
 ### Desde la UI
 
-`fantasma ui` abre un asistente local. En el **Paso 0** eliges qué salida quieres:
+`fantasma ui` abre un asistente local en **modo oscuro** (siempre activo; el exe nativo usa este modo para garantizar contraste legible). En el **Paso 0** eliges qué salida quieres:
 
 - **📊 Solo análisis**: reporte, CSVs y gráficas.
 - **🎬 Solo overlay**: HUD transparente para editarlo aparte.

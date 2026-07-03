@@ -18,6 +18,11 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/). Versionado
 - **UX NiceGUI post-auditoría v2.0**: breadcrumb de navegación en todos los pasos; links "Guía MoTeC" y "Ejemplo CSV" en Paso 0 con dialogs; slider de escala con valor dinámico en tiempo real; sidebar con checkmark ✅ cuando el paso está completo; guard de ffmpeg en Paso 3 con instrucción de instalación por plataforma; CSS vars para colores de los paneles de Paso 4.
 - **C19 — aviso proactivo de ffmpeg en Paso 0**: al seleccionar el flujo "Video con HUD" o "Solo overlay", la UI muestra inmediatamente un aviso si ffmpeg no está instalado — sin esperar al paso de render.
 
+### Añadido (2026-07-02 — tests de regresión visual)
+- **`test_pw_step0_button_alignment`** y **`test_pw_step0_selected_button_visibility`** en `tests/ui/visual/test_e2e_playwright_wizard.py`: detectan bugs de alineación de botones y contraste de texto antes de que lleguen al exe empaquetado.
+- **`tests/test_main_gui.py`**: test AST que verifica que `freeze_support()` está presente en el entry point de PyInstaller.
+- **`tests/ui/test_step3_render_guard.py`**: test de regresión para el guard de doble-clic en "Generar overlay".
+
 ### Añadido (QA 2026-07-01)
 - **QA con datos reales — 4 combinaciones auto-circuito ejecutadas**: Nordschleife BMW vs Audi (cross-car), Barcelona BMW vs Mercedes, Interlagos GT3 vs Hypercar (classes diferentes — aviso "piloto más rápido" +7.5 s), F3 vs LMP2 (fallo limpio por canal Distance ausente en CSV de ORECA). Edge cases documentados en `docs/casos-de-uso.md` C30–C35.
 - **`docs/casos-de-uso.md` — C30–C35**: seis escenarios nuevos basados en el material real: circuito corto vs largo, cross-car dentro de clase, clases distintas (LMP2 vs GT3, Hypercar vs GT3), flujo headless sin video, dos sesiones del mismo piloto.
@@ -35,6 +40,11 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/). Versionado
 ### Corregido
 - `fantasma/ui/ng_state.py`: `clear_drv()` ahora elimina `drv_name` al cambiar vuelta del piloto — el nombre del archivo quedaba huérfano de la sesión anterior.
 - UI NiceGUI — `F-01`: la tarjeta del flujo por defecto ya no se muestra como "✓ Seleccionado" hasta que el usuario hace clic en ella explícitamente.
+- **UI Paso 0 — alineación de botones**: `.flow-card` ahora usa `display:flex; flex-direction:column` con `margin-top:auto` en `.q-btn` — los botones "Elegir este" quedaban a diferentes alturas según la longitud del contenido de cada tarjeta.
+- **UI Paso 0 — texto invisible en botón seleccionado**: removido `.props("flat")` de los botones de tarjeta; Quasar `flat` overrideaba el `color:white` de `.btn-featured`, haciendo el texto invisible en dark mode.
+- **UI Paso 1 — botón CARGAR parece deshabilitado**: mismo fix que arriba — removido `.props("flat")` de `.btn-primary` en `ng_step1.py`.
+- **Exe PyInstaller — crash al cerrar**: `main_gui.py` ahora incluye `multiprocessing.freeze_support()` dentro del guard `if __name__ == "__main__"` — sin esto, Windows lanzaba `PermissionError [WinError 5]` al cerrar el proceso worker.
+- **Paso 3 — doble clic en "Generar overlay"**: el botón se deshabilita durante el render y se reactiva al terminar — antes era posible lanzar dos procesos de overlay simultáneos causando corrupción del archivo de salida.
 
 ## [1.0.0] - 2026-06-30
 

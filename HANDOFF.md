@@ -40,6 +40,8 @@ De los 4 ítems de QA, 3 completados en laptop de desarrollo (2026-07-01):
 **QA adicional completado (2026-07-02, laptop de desarrollo):**
 - **E2E wizard 5/5 PASS** — `tests/ui/test_e2e_wizard.py` con CSV reales de `Paterial para test` (GO BMW M4 GT3 Nordschleife + jocmaster Race 2026-06-21). Todos los pasos del wizard ejercitados con clics reales.
 - **Playwright smoke visual 2/2 PASS** — layout del Paso 0 contra baseline. (Warning menor: `Image.getdata` deprecada en Pillow 14; no bloquea, deuda técnica.)
+- **Playwright E2E clic-a-clic 3/3 PASS** — `tests/ui/visual/test_e2e_playwright_wizard.py` con CSVs reales de Nordschleife. Paso 0 (selector de flujo), Paso 1 (upload 31 MB y 59 MB con confirmacion visual), Paso 3 (render overlay completo sin timeout). Screenshots en `qa_runs/playwright_e2e/` (local, gitignoreado). Commit: `6ee831f`. QA visual aprobado por PO (marker Mariana seteado 2026-07-02).
+- **Migración ui.upload Paso 1** — `ng_step1.py` y `ng_step4.py` migrados a API NiceGUI 3.x (e.file.name, await e.file.read()). Deuda técnica: `_save_upload` no cierra file handle si write() falla, temp files con delete=False nunca se limpian.
 
 **QA de pacenotes en sesión real** (post-merge, no bloquea) — requiere AMS2 en pista:
 - Tonos suenan en los metros correctos (Nordschleife o similar)

@@ -358,8 +358,8 @@ async def render(state, navigate):
         )
         with ui.element("div").style("display:flex;gap:8px;align-items:center"):
             ui.button("← Volver", on_click=lambda: navigate(0)).classes("btn-ghost").props("flat")
-            load_err = ui.label("").classes("text-xs").style("color:var(--danger)")
-            ui.button(_load_label, on_click=do_load).classes("btn-primary").props("flat")
+            load_err = ui.label("").classes("text-xs text-red-400")
+            ui.button(_load_label, on_click=do_load).classes("btn-primary")
 
 
 def _render_lap_selector(container, lap_state, key):

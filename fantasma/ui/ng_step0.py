@@ -99,7 +99,7 @@ async def render(state, navigate):
                 ui.button(
                     btn_label,
                     on_click=lambda fk=flow_key: select_flow(fk),
-                ).classes(btn_class).props("flat")
+                ).classes(btn_class)
 
     # ── Aviso ffmpeg temprano ─────────────────────────────────────────────────
     if state.flow_chosen and state.flow_key in ("overlay", "compose"):
@@ -107,13 +107,13 @@ async def render(state, navigate):
             ui.label(
                 "⚠️ ffmpeg no detectado — este flujo lo necesita para generar el video. "
                 "Instálalo antes de continuar: winget install Gyan.FFmpeg"
-            ).classes("text-sm mt-2").style("color:var(--warning)")
+            ).classes("text-sm mt-2 text-yellow-400")
 
     # ── Dialogs de ayuda ──────────────────────────────────────────────────────
-    with ui.dialog() as motec_dialog, ui.card().style("max-width:500px; background:var(--card-bg); color:var(--text); border:1px solid var(--border)"):
+    with ui.dialog() as motec_dialog, ui.card().style("max-width:500px"):
         ui.label("Guía MoTeC i2 — Exportar telemetría").classes("font-bold text-lg mb-3")
         ui.html(
-            "<ol style='padding-left:1.5rem;line-height:2;font-size:13px;color:var(--text)'>"
+            "<ol style='padding-left:1.5rem;line-height:2;font-size:13px'>"
             "<li>Abre tu sesión en MoTeC i2.</li>"
             "<li>Ve a <strong>File &gt; Export</strong>.</li>"
             "<li>Elige el formato <strong>CSV</strong>.</li>"
@@ -123,7 +123,7 @@ async def render(state, navigate):
         )
         ui.button("Cerrar", on_click=motec_dialog.close).props("flat").classes("mt-2")
 
-    with ui.dialog() as csv_dialog, ui.card().style("max-width:500px; background:var(--card-bg); color:var(--text); border:1px solid var(--border)"):
+    with ui.dialog() as csv_dialog, ui.card().style("max-width:500px"):
         ui.label("Formato CSV esperado").classes("font-bold text-lg mb-3")
         ui.label("El CSV debe tener estas columnas (los nombres pueden variar):").classes(
             "text-sm mb-2"

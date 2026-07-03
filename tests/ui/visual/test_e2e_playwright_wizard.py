@@ -119,6 +119,25 @@ def _do_step1(page, url: str) -> None:
     page.wait_for_selector("text=Paso 3", timeout=_T_NAV)
 
 
+def _get_computed_style(page, locator, prop: str) -> str:
+    """Retorna getComputedStyle(el)[prop] del primer elemento del locator."""
+    el = locator.first.element_handle()
+    return page.evaluate(f"el => getComputedStyle(el).{prop}", el)
+
+
+def _css_color_to_rgb(css_color: str) -> tuple:
+    """Convierte 'rgb(r, g, b)' o 'rgba(r, g, b, a)' a tupla (r, g, b)."""
+    import re
+
+    nums = re.findall(r"[\d.]+", css_color)
+    return (int(float(nums[0])), int(float(nums[1])), int(float(nums[2])))
+
+
+def _brightness(r: int, g: int, b: int) -> float:
+    """Luminancia perceptiva [0-255]. Bright colors > 128."""
+    return 0.299 * r + 0.587 * g + 0.114 * b
+
+
 # ---------------------------------------------------------------------------
 # Tests
 # ---------------------------------------------------------------------------
@@ -248,3 +267,93 @@ def test_pw_step3_overlay_render(pw_page, nicegui_url, tmp_path):
             pytest.skip("render timeout — Nordschleife es una vuelta larga")
 
     page.screenshot(path=str(SCREENSHOT_DIR / "step3_overlay_done.png"))
+
+
+def test_pw_step0_button_alignment(pw_page, nicegui_url):
+    """Paso 0: todos los botones 'Elegir este' deben estar a la misma altura.
+
+    Sin flexbox en .flow-card, los botones quedan pegados debajo del contenido
+    de cada tarjeta. Las tarjetas tienen distinto número de ítems, por lo que
+    los botones quedan a distintas alturas Y. El fix agrega 'display:flex;
+    flex-direction:column' a .flow-card y 'margin-top:auto' al botón para
+    empujarlo al fondo.
+
+    Criterio: max(y) - min(y) < 20 px entre todos los botones visibles.
+    """
+    page = pw_page
+    page.goto(nicegui_url, wait_until="domcontentloaded")
+    page.wait_for_selector("text=SimGhostInputs", timeout=_T_PAGE_LOAD)
+    page.wait_for_selector("text=Elegir este", timeout=_T_NAV)
+
+    btns = page.locator("button:has-text('Elegir este')")
+    count = btns.count()
+    assert count >= 2, f"Se esperaban al menos 2 botones 'Elegir este', se encontraron {count}"
+
+    ys = []
+    for i in range(count):
+        box = btns.nth(i).bounding_box()
+        assert box is not None, f"Botón {i} no tiene bounding_box (no visible)"
+        ys.append(box["y"])
+
+    spread = max(ys) - min(ys)
+    page.screenshot(path=str(SCREENSHOT_DIR / "step0_button_alignment.png"))
+    assert spread < 20, (
+        f"Botones 'Elegir este' están a alturas distintas: {ys}. "
+        f"Diferencia máxima: {spread:.1f}px (límite: 20px). "
+        "Fix: agregar 'display:flex;flex-direction:column' a .flow-card y "
+        "'margin-top:auto' al .q-btn dentro de .flow-card."
+    )
+
+
+def test_pw_step0_selected_button_visibility(pw_page, nicegui_url):
+    """Paso 0: el botón '✓ Seleccionado' debe tener texto visible (contraste suficiente).
+
+    Con .props('flat') en Quasar dark mode, el color del texto del botón
+    puede colapsar contra el fondo de la tarjeta o del propio botón, haciendo
+    el texto invisible. El fix es quitar .props('flat') de los botones de tarjeta
+    y agregar !important a btn-featured/btn-primary para ganar specificity.
+
+    Criterio:
+      - El botón es visible (bounding_box no None, opacity > 0.3)
+      - La diferencia de brillo entre texto y fondo es > 50 puntos (escala 0-255)
+    """
+    page = pw_page
+    page.goto(nicegui_url, wait_until="domcontentloaded")
+    page.wait_for_selector("text=SimGhostInputs", timeout=_T_PAGE_LOAD)
+
+    # Hacer clic en la tarjeta "Video con HUD" (la única con featured=True)
+    page.locator(".q-card", has_text="Video con HUD").locator(
+        "button", has_text="Elegir este"
+    ).click()
+    page.wait_for_selector("text=Seleccionado", timeout=10_000)
+
+    btn = page.locator("button:has-text('Seleccionado')").first
+
+    # Verificar visibilidad básica
+    box = btn.bounding_box()
+    assert box is not None, "El botón 'Seleccionado' no es visible en el DOM"
+    assert box["width"] > 0 and box["height"] > 0, "El botón tiene tamaño cero"
+
+    opacity = float(_get_computed_style(page, btn, "opacity"))
+    assert opacity > 0.3, (
+        f"Botón 'Seleccionado' tiene opacity={opacity} (< 0.3, prácticamente invisible)"
+    )
+
+    # Verificar contraste texto vs fondo
+    fg_css = _get_computed_style(page, btn, "color")
+    bg_css = _get_computed_style(page, btn, "backgroundColor")
+
+    fg_r, fg_g, fg_b = _css_color_to_rgb(fg_css)
+    bg_r, bg_g, bg_b = _css_color_to_rgb(bg_css)
+
+    fg_brightness = _brightness(fg_r, fg_g, fg_b)
+    bg_brightness = _brightness(bg_r, bg_g, bg_b)
+    contrast = abs(fg_brightness - bg_brightness)
+
+    page.screenshot(path=str(SCREENSHOT_DIR / "step0_selected_visibility.png"))
+    assert contrast > 50, (
+        f"Contraste insuficiente en botón 'Seleccionado': "
+        f"fg={fg_css} (brillo={fg_brightness:.1f}), bg={bg_css} (brillo={bg_brightness:.1f}), "
+        f"diferencia={contrast:.1f} (mínimo: 50). "
+        "Fix: quitar .props('flat') de botones de tarjeta en ng_step0.py."
+    )

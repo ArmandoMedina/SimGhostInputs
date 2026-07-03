@@ -11,6 +11,7 @@ from .ng_state import AppState
 @ui.page("/")
 async def main_page():
     state = AppState()
+    ui.dark_mode(True)
 
     ui.add_head_html("""<style>
       :root {
@@ -20,6 +21,7 @@ async def main_page():
         --danger: #ef4444; --warning: #f59e0b;
         --warning-bg: #2a1f00; --warning-border: #60450a;
         --info-bg: #0d1f33; --info-border: #1d4f7a; --info: #60a5fa;
+        --text-dim: #9ca3af;
       }
       html, body { background: var(--bg); color: var(--text); font-family: 'Inter', system-ui, -apple-system, sans-serif; font-size: 14px; }
 
@@ -57,7 +59,8 @@ async def main_page():
 
       /* Flow grid */
       .flow-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 16px; margin-bottom: 1.5rem; }
-      .flow-card { background: var(--card-bg); border: 1px solid var(--border); padding: 24px; cursor: pointer; transition: border-color 0.15s; position: relative; border-radius: 0; }
+      .flow-card { background: var(--card-bg); border: 1px solid var(--border); padding: 24px; cursor: pointer; transition: border-color 0.15s; position: relative; border-radius: 0; display: flex; flex-direction: column; }
+      .flow-card .q-btn { margin-top: auto !important; }
       .flow-card:hover { border-color: rgba(79,142,247,0.4); }
       .flow-card.selected { border-color: var(--highlight); }
       .flow-card.featured { background: #0f1420; border-color: rgba(79,142,247,0.35); }
@@ -151,14 +154,14 @@ async def main_page():
       .export-strip { border-top: 1px solid var(--border); padding: 12px 0; display: flex; justify-content: space-between; align-items: center; margin-top: 20px; }
 
       /* Buttons */
-      .btn-primary { background: var(--accent); color: white; border: none; padding: 8px 20px; font-size: 13px; font-weight: 600; cursor: pointer; border-radius: 0; font-family: inherit; transition: background 0.15s; }
+      .btn-primary { background: var(--accent) !important; color: white !important; border: none; padding: 8px 20px; font-size: 13px; font-weight: 600; cursor: pointer; border-radius: 0; font-family: inherit; transition: background 0.15s; }
       .btn-primary:hover { background: var(--highlight); }
       .btn-primary:disabled { opacity: 0.4; cursor: default; }
       .btn-secondary { background: transparent; color: var(--muted); border: 1px solid var(--border); padding: 8px 20px; font-size: 13px; font-weight: 600; cursor: pointer; border-radius: 0; font-family: inherit; transition: color 0.15s, border-color 0.15s; }
       .btn-secondary:hover { color: var(--text); border-color: rgba(255,255,255,0.2); }
       .btn-ghost { background: transparent; color: var(--muted); border: none; padding: 8px 16px; font-size: 13px; cursor: pointer; font-family: inherit; }
       .btn-mini { font-size: 10px; padding: 4px 10px; background: transparent; border: 1px solid var(--border); color: var(--muted); cursor: pointer; font-family: inherit; border-radius: 0; }
-      .btn-featured { background: var(--highlight); color: white; border: none; padding: 8px 20px; font-size: 13px; font-weight: 600; cursor: pointer; border-radius: 0; width: 100%; font-family: inherit; margin-top: 12px; }
+      .btn-featured { background: var(--highlight) !important; color: white !important; border: none; padding: 8px 20px; font-size: 13px; font-weight: 600; cursor: pointer; border-radius: 0; width: 100%; font-family: inherit; margin-top: 12px; }
 
       /* Scanline overlay */
       .scanline { position: fixed; top: 0; left: 0; right: 0; bottom: 0; pointer-events: none; z-index: 9999; background: repeating-linear-gradient(0deg, rgba(0,0,0,0.015) 0px, rgba(0,0,0,0.015) 1px, transparent 1px, transparent 2px); }
@@ -169,6 +172,12 @@ async def main_page():
       .readiness-item { font-size: 11px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
       .readiness-item.ok { color: var(--success); }
       .readiness-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+
+      /* Note text */
+      .sgi-note { font-size: 0.75rem; color: var(--text-dim); opacity: 0.85; }
+
+      /* Lap selector */
+      .lap-selector { margin-top: 6px; width: 100%; }
     </style>""")
 
     content = ui.column().classes("w-full p-4")
