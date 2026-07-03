@@ -12,7 +12,7 @@
 
 **v1.0.0** (2026-06-30) — estable. 142 tests.
 
-**v2.0 en rama `codex/sgi-v2-merge`** — lista para mergear. 193 tests verdes. QA completo (2026-07-02): bugs visuales corregidos, freeze_support, guard doble clic, suite Playwright verde. Ver [CHANGELOG](CHANGELOG.md) §[Unreleased] para el detalle completo.
+**v2.0 en rama `codex/sgi-v2-merge`** — lista para mergear. **212 tests** verdes (2026-07-03). Auditoría integral completada; remediación R1 aplicada. Ver [CHANGELOG](CHANGELOG.md) §[Unreleased] para el detalle completo.
 
 ---
 
@@ -37,19 +37,6 @@ esperar a que compose termine — dos esperas en lugar de una.
 
 **Por qué se difiere:** requiere arquitectura de tareas en background y un canal de notificación.
 **Gatillo:** cuando el usuario reporte que esperar las dos etapas es fricción frecuente.
-
----
-
-### Previsualización del HUD en Paso 4
-
-**Dolor real (2026-06-30):** el usuario lanzó el compose sin cambiar el tamaño del HUD y el overlay
-cubrió la mitad del video. Los sliders de escala y posición se configuran a ciegas.
-
-**Qué se quiere:** frame de referencia dinámico (primer fotograma del video o placeholder) que se actualiza
-al mover los sliders — tamaño y posición del HUD previsualizados antes de renderizar.
-
-**Por qué se difiere:** trabajo de UX más que de motor. No bloqueó v1.0 ni v2.0.
-**Gatillo:** cuando se repita el problema de HUD mal dimensionado, o en el siguiente pass de UX del Paso 4.
 
 ---
 
@@ -109,5 +96,5 @@ Coaching adaptativo en tiempo real. Solo si Pace Notes no cubre el caso de uso.
 - [ ] **Activar branch protection en `master`** al sumar al primer colaborador. Ya documentado en `CONTRIBUTING.md` §6.
 - [x] **Recolección secuencial de workers en `_render_parallel`** — resuelto: collect round-robin en `codex/sgi-v2-merge` (2026-07-03).
 - [x] **Pickle overhead en render paralelo** — resuelto: slice por rango de distancia por chunk, ~1 MB en Nordschleife (antes ~4-5 MB) en `codex/sgi-v2-merge` (2026-07-03).
-- [ ] **`_save_upload` no limpia archivos temporales** (`ng_helpers.py`) — usa `NamedTemporaryFile(delete=False)` sin cleanup; los CSVs subidos se acumulan en el directorio temp del OS hasta que el OS los elimine. Agregar cleanup en `do_load()` o al cerrar la sesión. _Prioridad: Baja._
+- [x] **`_save_upload` no limpia archivos temporales** (`ng_helpers.py`) — resuelto: cleanup en `finally` tras cargar las vueltas + registro `atexit` como red de seguridad, en `codex/sgi-v2-merge` (2026-07-03, remediación de auditoría).
 - [ ] **Inconsistencia de tokens CSS entre pasos** — ng_step2 usa `.style("color:var(--muted)")` mientras ng_step3/4 usan `text-gray-400` Tailwind tras la migración de contraste. Uniformizar ng_step2 al mismo patrón. _Prioridad: Baja._

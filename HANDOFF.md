@@ -12,31 +12,33 @@
 
 ## Estado actual
 
-**Rama:** `codex/sgi-v2-merge` — lista para mergear. No tocar `master` sin autorización del PO.
+**Rama:** `codex/sgi-v2-merge` — lista para mergear tras completar R3.
 
-**Suite:** 201 tests verdes (2026-07-03). CI en verde. `verificar.ps1` sin bloqueos.
+**Suite:** 212 tests verdes (2026-07-03). CI en verde.
 
-**Optimizaciones de render paralelo completadas (commit `73f5ac1`):**
-- Collect round-robin en `_render_parallel` (workers ya no esperan en orden).
-- Pickle compacto: slice por rango de distancia, ~1 MB por worker en Nordschleife.
-- Fallback serial reutiliza el slice del worker fallido.
-- Deuda técnica del ROADMAP cerrada (ambos ítems marcados `[x]`).
+**Auditoría integral pre-v2.0.0 completada.** Informe en `qa_runs/2026-07-03-auditoria-integral/informe.md`.
 
-**Todo el QA pre-merge completado.** Detalles en [CHANGELOG](CHANGELOG.md) §[Unreleased].
+- Remediación R1 aplicada: doble-append importers, exit codes CLI, ffmpeg stderr overlay, asyncio pacenotes, ffmpeg hud_preview, temp leak UI, event loop Paso 3, timers Paso 3/4, host 127.0.0.1.
+- Decisiones asentadas: ADR 0020 (blast-radius viz), enmienda ADR 0018 (spikes sin acreditar + retiro Streamlit autorizado), enmienda ADR 0019 (plan efímero, sesión única escritora, evidencia commiteada).
+- `audit` configurado como required check en el ruleset de `master` (ADR 0019).
 
-## Siguiente acción (requiere autorización del PO)
+## Siguiente acción
+
+**R3 — retiro de código Streamlit** (autorizado por enmienda ADR 0018, antes del tag v2.0.0):
+
+```
+# Ahiram ejecuta el retiro según decision-retiro-streamlit.md:
+# qa_runs/2026-07-03-auditoria-integral/decision-retiro-streamlit.md
+```
+
+Tras R3 y OK del PO:
 
 ```powershell
 gh auth switch --user ArmandoMedina   # verificar con: gh auth status
 git checkout master
 git merge codex/sgi-v2-merge --no-ff
-# luego: skill release-helper → tag v2.0.0 + push + GitHub release
+# luego: skill release-helper -> tag v2.0.0 + push + GitHub release
 ```
-
-## Acción pendiente del PO (no puede hacerlo la IA)
-
-Marcar `audit`, `docs-graph`, `lint` y `pytest` como *required checks* en el ruleset
-de `master` en GitHub — sin eso el job `audit` (ADR 0019) es cosmético.
 
 ## Backlog
 

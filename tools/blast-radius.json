@@ -25,8 +25,9 @@
     "nombre": "viz",
     "desc": "overlay HUD, graficas, reportes, composicion de video, sincronía audio, pacenotes",
     "fuente": ["fantasma/viz/*"],
-    "doc_bloquea": ["docs/hud-reference.md"],
-    "doc_avisa": ["docs/ux-patterns.md"],
+    "doc_bloquea": [],
+    "doc_avisa": ["docs/hud-reference.md", "docs/ux-patterns.md"],
+    "mensaje": "el cambio es visual (color, panel, franja, layout del HUD)? entonces toca docs/hud-reference.md + README (tabla de colores) + docs/ux-patterns.md + ADR nuevo. Si es no-visual (perf, refactor, encoding), ninguno aplica (ADR 0020)",
     "product_avisa": [
       "product/capacidades/OVL-*",
       "product/capacidades/CHT-*",

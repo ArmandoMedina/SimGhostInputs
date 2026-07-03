@@ -129,7 +129,7 @@ que corren en varios momentos, con autoridad creciente.
 | **Auditor del grafo de docs** | Audita `product/`+`engineering/`: **BLOQUEA** frontmatter incompleto, wikilinks rotos, capacidades `vigente` sin criterios; **avisa** sin-test-citado y huérfanos. Modulado por estado. Dueño: Armando | `tools/auditar.ps1` ([ADR 0016](decisions/0016-gate-grafo-documentacion.md)) |
 | **Hook `pre-push`** | Corre el verificador **solo**, justo antes de `git push` (avisa lint/formato/tests; **bloquea** doc-drift §8) | `.githooks/pre-push` |
 | **CI (pipeline)** | Barrera dura en la nube: lint + formato + tests en cada push/PR | `.github/workflows/tests.yml` |
-| **Smoke visual (Playwright)** | Screenshot del Paso 0 contra baseline; truena si el layout se mueve. Tolerancia generosa (detecta secciones corridas, no antialiasing). Dueño: Mariana | `tests/ui/visual/` ([ADR 0012](decisions/0012-playwright-smoke-visual-ui.md)) |
+| **Import-smoke NiceGUI** | Verifica que `ng_app` importa y arranca sin excepción — sustituyó al smoke visual Playwright al migrar la UI a NiceGUI (hallazgo de auditoría `fase3-ci`). Dueño: Mariana | `tests/ui/visual/` ([ADR 0012](decisions/0012-playwright-smoke-visual-ui.md)) |
 | **Decisiones (ADR)** | El porqué de todo, con su camino descartado | `docs/decisions/` + su `README.md` |
 | **Benchmark del linter** | Por qué ruff y no las alternativas (licencias verificadas) | `docs/benchmark-linter.md` |
 | **Reviewer** | Lee el diff y **aconseja** (bugs, calidad); su contenido no bloquea. **Auto-disparado** por hook de sesión cuando hay código sin revisar | `/code-review` + `.claude/hooks/review-stop.ps1` |
@@ -208,9 +208,7 @@ push queda **en rojo**. Es el respaldo **que nadie puede saltar** desde su máqu
    con `--no-verify`) no cubren.
 4. **`pytest`** (Windows, Python 3.10 / 3.11 / 3.12): toda la suite de tests, en la plataforma
    objetivo del proyecto y en las tres versiones soportadas.
-5. **`visual-smoke`** (Ubuntu, Python 3.12): screenshot del Paso 0 de la UI con Playwright
-   (Chromium headless); falla si el layout se movió respecto al baseline ([ADR 0012](decisions/0012-playwright-smoke-visual-ui.md)).
-   Ubuntu es el entorno consistente que actúa como fuente de verdad del baseline.
+5. **`visual-smoke`** (Ubuntu, Python 3.12): import-smoke de NiceGUI — verifica que `ng_app` importa y arranca sin excepción; sustituyó al smoke Playwright al migrar la UI a NiceGUI ([ADR 0012](decisions/0012-playwright-smoke-visual-ui.md)).
 
 > **Regla anti-bypass (ADR 0019):** un job de CI solo es **muro** si está marcado *required
 > check* en el ruleset de master; un rojo no-requerido deja pasar el merge igual. Todo aviso
@@ -392,7 +390,7 @@ ver **qué cubre cada una y qué NO**, porque no todo se puede atar por máquina
 | **Basura de código** | ¿imports/vars sin usar, nombres indefinidos? | `ruff check` (`F`+`I`) | avisa local · **bloquea en CI** |
 | **Formato** | ¿el código está en el estilo canónico? | `ruff format --check` | avisa local · **bloquea en CI** |
 | **Comportamiento del motor** | ¿la lógica determinista sigue dando los números correctos? | `pytest` | avisa local · **bloquea en CI** |
-| **Layout de UI (Paso 0)** | ¿el layout del Paso 0 se movió respecto al baseline? | Playwright smoke visual (`tests/ui/visual/`) | skipea local si browser no instalado · **bloquea en CI** |
+| **Import-smoke UI (NiceGUI)** | ¿`ng_app` importa y arranca sin excepción? | import-smoke NiceGUI (`tests/ui/visual/`) | **bloquea en CI** |
 | **Documentación (CHANGELOG)** | ¿el cambio quedó anotado? | doc-gate CHANGELOG + checklist | **avisa** (ADR/ROADMAP son juicio) |
 | **Doc-drift §8 (doc dueño)** | ¿tocaste un área sin su `doc_bloquea`? (`blast-radius.json`) | doc-gate blast-radius | **BLOQUEA local** · el Escribano lo arregla |
 | **Doc-aviso §8 (product/eng)** | ¿tocaste un área sin actualizar `doc_avisa` o `product_avisa`? | doc-gate blast-radius | **AVISA** · Escribano sincroniza si cambió un criterio funcional |

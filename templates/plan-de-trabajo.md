@@ -5,9 +5,15 @@ estado: en_curso
 
 # Plan — <tarea, en una frase>
 
-> **Para qué es esta plantilla (ADR 0019):** una tarea larga con IA muere a media ejecución (tokens, contexto compactado, subagente caído) — y lo no escrito se pierde (pasó aquí: "me quedé sin tokens" a media migración NiceGUI). El plan vive en el repo **antes** de ejecutar; cada paso commiteable se commitea al terminar. Al retomar: **verifica contra el código real**, no contra el resumen de la sesión anterior (los resúmenes de compactación pueden mentir — caso `storage.user` vs `storage.client`). Al cerrar la tarea completa: el resultado va a CHANGELOG/HANDOFF y este plan **se borra** (es efímero; si dejó una decisión, esa va a un ADR).
+> **Para qué es esta plantilla (ADR 0019, enmienda 2026-07-03):** una tarea larga con IA muere a media ejecución (tokens, contexto compactado, subagente caído) — y lo no escrito se pierde (pasó aquí: "me quedé sin tokens" a media migración NiceGUI). El plan te da un guion para no perder el hilo. Al retomar: **verifica contra el código real**, no contra el resumen de la sesión anterior (los resúmenes de compactación pueden mentir — caso `storage.user` vs `storage.client`).
 >
-> Dónde va: `docs/planes/<fecha>-<slug>.md`.
+> **El plan es EFÍMERO y NO se versiona** (decisión del PO, 2026-07-03; ADR 0019 §Enmienda). Vive en la **sesión / el task-tracker** mientras la tarea corre — **no** se commitea, ni siquiera a `docs/planes/`. Al morir la tarea, lo durable se reparte:
+>
+> - dejó una **decisión** (elegiste un camino sobre otro) → va a un **ADR**;
+> - dejó **estado en vuelo** al morir la sesión (rama, último paso, qué NO tocar) → va al **HANDOFF**;
+> - resultado liberable → **CHANGELOG**.
+>
+> Cuando la tarea cierra, el plan simplemente se descarta: su valor ya migró a ADR/HANDOFF/CHANGELOG.
 
 ## Objetivo
 

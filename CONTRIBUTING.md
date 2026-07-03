@@ -240,7 +240,7 @@ Cada hecho vive en **un** documento. Los demás enlazan, no duplican.
 | Cambio | Documentos a actualizar | Rol especialista que valida |
 | :-- | :-- | :-- |
 | Flag/comando CLI nuevo, o cambio de comportamiento de uno | `README` (uso rápido) · `guia-usuario` · `formato-datos` si cambian las salidas | _solo Reviewer_ |
-| Cambio visual del HUD/overlay (color, panel, franja de datos) | `hud-reference` · `README` (tabla de colores) · `ux-patterns.md` · **ADR nuevo** + `docs/decisions/README.md` | **Mariana** (UX) |
+| Cambio en `fantasma/viz/` (HUD/overlay, gráficas, video, sync). **Si es visual** (color, panel, franja, layout del HUD): `hud-reference` (AVISA) · `README` (tabla de colores) · `ux-patterns.md` (AVISA) · **ADR nuevo** + `docs/decisions/README.md`. **Si es no-visual** (perf, refactor, encoding): ninguno — el gate avisa, no bloquea ([ADR 0020](docs/decisions/0020-blast-radius-viz-hud-reference-avisa.md)) | **Mariana** (UX, solo si es visual) |
 | Cambio de UX/layout en la UI Streamlit (`fantasma/ui/`) | `guia-usuario` (BLOQUEA) · `ux-patterns.md` (AVISA) · `product/capacidades/UI-*` si cambia un criterio funcional (AVISA) | **Mariana** (UX) |
 | Cambio en `core/` (detección de curvas, comparación, `wear`, normalización) | `formato-datos` (algoritmo + JSON + CSV, BLOQUEA) · `tests/` si cambian números/signos · `product/capacidades/CMP-*/COR-*/NRM-*/WER-*` si cambia un criterio (AVISA) · ADR si es una decisión | **Charbel** (telemetría) |
 | Dependencia o extra nuevo | `pyproject.toml` · `README` (tabla de deps + instalación) · §3 de este doc · `setup.ps1` | _solo Reviewer_ |

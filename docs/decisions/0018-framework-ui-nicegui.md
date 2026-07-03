@@ -1,6 +1,6 @@
 # ADR 0018 — Framework de UI v2.0: NiceGUI + nicegui-pack + Inno Setup
 
-- **Estado:** Aceptada
+- **Estado:** Aceptada · enmend. 2026-07-03
 - **Fecha:** 2026-06-30
 - **Enmienda a:** [ADR 0010](0010-framework-ui-streamlit.md)
 
@@ -133,3 +133,49 @@ El ADR 0010 queda parcialmente reemplazado en su sección de consecuencias:
   en la nueva UI en vez de tirarse.
 - El ADR 0012 (Playwright para smoke visual) sigue siendo válido en espíritu; el baseline
   cambia de Streamlit a NiceGUI.
+
+## Enmienda (2026-07-03) — spikes sin acreditar y retiro de Streamlit autorizado
+
+La auditoría integral pre-v2.0.0
+(`qa_runs/2026-07-03-auditoria-integral/informe.md`, decisiones PO-1 y PO-4;
+`fase2-adrs.md` H-1) obliga a asentar dos hechos que el ADR original dejó abiertos.
+
+### (a) Los 4 spikes obligatorios no quedaron acreditados formalmente
+
+Este ADR condicionó "antes de escribir código de producción" a cerrar 4 spikes: bundle
+size real, bug `--onefile` en Windows 11 24H2, latencia PIL per-tick en la preview, y AV
+false positives (VirusTotal). **No hay evidencia en el repo de que esos 4 spikes se
+ejecutaran y documentaran como tales.** La migración se hizo igual: el código de producción
+NiceGUI existe, opera y está cubierto por tests. Esta enmienda **reconoce el hecho
+retrospectivamente** en vez de fingir un acta que no existe.
+
+**Evidencia parcial que sí existe (no sustituye a los spikes, pero acota el riesgo):**
+
+- El CI `build-installer` empaqueta el `.exe` v2 con `nicegui-pack` + Inno Setup y lo sube
+  al Release — es prueba viva de que el empaquetado funciona (cubre indirectamente el eje
+  "bundle" y el modo `--onedir`; **el bundle size numérico sigue sin medirse/comunicarse**).
+- El `.exe` v2 empaquetado corre la UI NiceGUI nativa (pywebview) — la latencia PIL per-tick
+  no se midió formalmente, pero la preview reactiva del HUD está implementada y en uso.
+- **Sin acreditar del todo:** el número de bundle size (el CI de Inno Setup lo esperaba), la
+  prueba del bug `--onefile` en VM 24H2 (se optó por `--onedir`, que lo evade), y el pase por
+  VirusTotal (AV false positives). Quedan como deuda de verificación, no como bloqueadores del
+  release ya en curso: el `.exe` existe y arranca.
+
+### (b) Retiro del código Streamlit — AUTORIZADO Y DECIDIDO (2026-07-03)
+
+La condición de borrado que fijó este ADR —*"Streamlit… no se borra hasta que el nuevo UI
+pase todos los tests"*— **se cumplió**: NiceGUI pasa (flujo feliz cubierto por tests NiceGUI
++ Playwright; CI verde con import-smoke `ng_*`) y es **superconjunto** de Streamlit —cero
+pérdida de features— según el análisis de decisión
+(`qa_runs/2026-07-03-auditoria-integral/decision-retiro-streamlit.md`). El `.exe` v2 no
+empaqueta Streamlit y el CI ya rebaselíneó a NiceGUI, así que el "fallback Streamlit" es
+ilusorio (el rollback real es la CLI).
+
+**Decisión (PO, 2026-07-03):** se **retira el código Streamlit** (`fantasma/ui/app.py` +
+`step0-4.py` + `_helpers.py`, ~1 869 LOC, 19 tests AppTest) **dentro del PR de release
+v2.0.0**, antes del tag. Un major de SemVer es el único punto honesto para quitar una UI, y
+retirarlo ahí mata el drift documental #1 (README/guía anuncian `fantasma ui`/Streamlit,
+contradiciendo este ADR) antes de enviarlo a los usuarios. Es una **enmienda de ejecución**
+a este ADR y al ADR 0010 (migración completa; Streamlit retirado), **no un ADR nuevo**. La
+ejecución de código la lleva Ahiram y el cierre de docs/grafo el Escribano/Armando, con el
+censo y el orden de pasos en `decision-retiro-streamlit.md`.

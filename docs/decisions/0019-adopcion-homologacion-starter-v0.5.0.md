@@ -1,6 +1,6 @@
 # ADR 0019 — Adopción de la homologación con project-starter v0.5.0 (cierra la Fase 4)
 
-- **Estado:** Aceptada
+- **Estado:** Aceptada · enmend. 2026-07-03
 - **Fecha:** 2026-07-01
 - **Relacionada con:** [ADR 0011](0011-cablear-mariana-no-charbel.md), [ADR 0016](0016-gate-grafo-documentacion.md)
 
@@ -34,3 +34,54 @@ Se adoptan de la v0.5.0 del starter, adaptadas a este repo (criterio, no copia):
 - **Se pierde / costo:** un job más de CI (solo PRs, barato); los hooks de sesión suman ~1s al cierre; el matcher raíz-sin-slash es un cambio de semántica del manifiesto (los patrones existentes con `/` no se ven afectados).
 - **Acción manual pendiente del PO:** marcar `audit`, `docs-graph`, `lint` y `pytest` como **required checks** en el ruleset de master — sin eso, el punto 2 es cosmético (la regla anti-bypass lo dice: un rojo no-requerido deja pasar el merge).
 - **Asientos dueños:** Armando (estructura/gates), Mariana (evidencia visual), Mau (reglas de sesión).
+
+## Enmienda (2026-07-03) — método bajo carga: plan efímero, concurrencia y durabilidad de evidencia
+
+La auditoría integral pre-v2.0.0 encontró tres grietas del método que este ADR no cerraba
+(`qa_runs/2026-07-03-auditoria-integral/informe.md`, decisiones PO-5 y PO-6;
+`fase3-adr0019.md` H1/H3/M2; `fase3-hooks.md` CRITICO-01/02). El PO las resuelve así:
+
+### (a) El plan de trabajo es EFÍMERO — vive en la sesión, no se versiona
+
+`templates/plan-de-trabajo.md` mandaba dos cosas opuestas: *"vive en el repo… se commitea"*
+**y** *"se borra (es efímero)"* (`fase3-adr0019.md` M2). La práctica ejecutó ese churn: un
+commit añadía el plan y otro del mismo día lo retiraba.
+
+**Decisión (PO, 2026-07-03):** el plan de trabajo **NO se versiona**. Vive en la sesión / el
+task-tracker mientras la tarea corre. Al morir la tarea:
+
+- si dejó una **decisión** (se eligió un camino sobre otro) → va a un **ADR**;
+- si dejó **estado en vuelo** al morir la sesión → va al **HANDOFF**;
+- el resultado liberable → CHANGELOG.
+
+El plan como archivo no entra al repo (ni siquiera a `docs/planes/`). `templates/plan-de-trabajo.md`
+queda corregido para reflejar esto (deja de mandar "vive en el repo").
+
+### (b) Una sola sesión ESCRITORA a la vez sobre el working tree
+
+El método no contemplaba concurrencia (`fase3-adr0019.md` H3). Hoy dos sesiones operaron el
+mismo working tree: el commit `73f5ac1` de una sesión paralela dejó **ciegos** los Stop hooks
+de la otra —al momento del Stop el working tree estaba limpio, así que review-stop,
+escribano-stop y mariana-stop pasaron sin revisar ese código commiteado
+(`fase3-hooks.md` CRITICO-01/02).
+
+**Decisión (PO, 2026-07-03):** **una sola sesión escritora a la vez** sobre un mismo working
+tree. Si el PO abre una segunda sesión, esta es **solo-lectura**, o trabaja en **otra rama /
+worktree** (`git worktree`). Los hooks de sesión leen `git status` del working tree; dos
+escritoras sobre el mismo árbol producen lost-update del HANDOFF y puntos ciegos en los
+gates. El HANDOFF tiene **dueño único** por rama/árbol.
+
+### (c) La evidencia de QA se commitea con `git add -f qa_runs/<corrida>/` al cerrar cada corrida
+
+El punto 3 de este ADR y `qa_runs/README.md` ya mandaban commitear la evidencia citada, pero
+en la práctica **0 artefactos** llegaron a git (`git ls-files qa_runs/` → solo el README);
+la evidencia vivía solo en la laptop y el "visual PASS" pre-merge quedó **inauditable desde
+la historia** (`fase3-adr0019.md` H1). El hook `mariana-stop` verifica el working tree, no el
+commit, así que un artefacto satisface el gate y luego se pierde.
+
+**Decisión (PO, 2026-07-03):** commitear la evidencia citada con
+`git add -f qa_runs/<corrida>/<archivo>` (solo lo citado, no el bulto) se **eleva a paso
+obligatorio del cierre** de cada corrida de QA/auditoría —no una recomendación—. Un veredicto
+en HANDOFF/CHANGELOG debe **citar** su directorio de corrida y ese directorio debe existir en
+git. Sin artefacto commiteado, el veredicto no vale (mismo principio "sin auto-firmas" del
+ADR 0016, ahora durable).

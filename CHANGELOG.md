@@ -41,8 +41,6 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/). Versionado
 
 ### Corregido
 - `fantasma/ui/ng_step2.py`: `ui.download().classes()` fallaba con `AttributeError` en entorno sin browser real — añadido None-check (`ui.download()` devuelve None sin conexión WebSocket activa).
-
-### Corregido
 - `fantasma/ui/ng_state.py`: `clear_drv()` ahora elimina `drv_name` al cambiar vuelta del piloto — el nombre del archivo quedaba huérfano de la sesión anterior.
 - UI NiceGUI — `F-01`: la tarjeta del flujo por defecto ya no se muestra como "✓ Seleccionado" hasta que el usuario hace clic en ella explícitamente.
 - **UI Paso 0 — alineación de botones**: `.flow-card` ahora usa `display:flex; flex-direction:column` con `margin-top:auto` en `.q-btn` — los botones "Elegir este" quedaban a diferentes alturas según la longitud del contenido de cada tarjeta.
@@ -50,6 +48,26 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/). Versionado
 - **UI Paso 1 — botón CARGAR parece deshabilitado**: mismo fix que arriba — removido `.props("flat")` de `.btn-primary` en `ng_step1.py`.
 - **Exe PyInstaller — crash al cerrar**: `main_gui.py` ahora incluye `multiprocessing.freeze_support()` dentro del guard `if __name__ == "__main__"` — sin esto, Windows lanzaba `PermissionError [WinError 5]` al cerrar el proceso worker.
 - **Paso 3 — doble clic en "Generar overlay"**: el botón se deshabilita durante el render y se reactiva al terminar — antes era posible lanzar dos procesos de overlay simultáneos causando corrupción del archivo de salida.
+- **Importers — doble-append de columnas duplicadas** (`generic_csv.py`, `motec_csv.py`): al invocar `load()` más de una vez en la misma sesión las columnas mapeadas se añadían dos veces al `DataFrame`, corrompiendo silenciosamente las comparaciones posteriores.
+- **CLI — exit codes no propagados**: `fantasma compare`, `overlay` y `pacenotes` ignoraban el código de salida de los subprocesos; una falla interna devolvía exit 0 en lugar del código real.
+- **`overlay.py` — ffmpeg sin diagnóstico de stderr**: los errores de ffmpeg se descartaban (`stderr=DEVNULL`); ahora se captura el stderr y se anexa al mensaje de error visible al usuario.
+- **Pacenotes — asyncio en hilo de voz no seguro**: `asyncio.run()` desde el hilo de voz chocaba con el event loop de NiceGUI; reemplazado por `asyncio.new_event_loop()` en un hilo propio.
+- **`hud_preview.py` — ffmpeg falla sin mensaje útil**: el preview del HUD reventaba sin indicar la causa; ahora muestra el stderr de ffmpeg al usuario.
+- **UI — fuga de archivos temp de uploads** (`ng_helpers._save_upload`): usaba `NamedTemporaryFile(delete=False)` sin cleanup; los CSV subidos se acumulaban en el directorio temp del SO. `do_load()` ahora borra el temporal tras parsear.
+- **UI Paso 3 — event loop congelado durante el render**: `ng_step3` llamaba `time.sleep()` en el hilo de UI de NiceGUI bloqueando el event loop; reemplazado por `await asyncio.sleep()`.
+- **UI — timers de polling no cancelados al navegar**: los timers periódicos de los pasos 3 y 4 seguían corriendo al cambiar de paso, causando actualizaciones huérfanas en el componente abandonado; ahora se cancelan en el `on_cleanup`.
+- **UI Paso 2 — cadena H-01 (QA visual con material real)**: tres bugs encadenados que dejaban las gráficas vacías al correr con datos reales: las llamadas de render bloqueaban el event loop de NiceGUI — migradas a `run.io_bound` con snapshots de `AppState` capturados fuera del thread antes de entrar; `ui.image` recibía `bytes` en lugar de ruta de archivo (elemento zombie que Vue descartaba junto con el batch DOM completo del paso); 11 contenedores `ui.html` sin atributo `slot` cuyos hijos Vue descartaba silenciosamente — migrados a `ui.element("div")`. Evidencia en `qa_runs/mariana-20260703-0740/`.
+
+### Seguridad
+- **UI solo en `127.0.0.1`** (`ng_app.py`): NiceGUI arranca con `host="127.0.0.1"` — el servidor no expone el puerto a la red local (ajuste equivalente aplicado a Streamlit mientras convive con NiceGUI).
+
+### Añadido (2026-07-03 — auditoría integral pre-v2.0)
+- **Auditoría integral pre-v2.0.0** completada: revisión end-to-end de código, tests, docs, gates y método de la rama `codex/sgi-v2-merge`. Informe y evidencia en `qa_runs/2026-07-03-auditoria-integral/`. **212 tests** verdes tras la remediación R1.
+
+### Cambiado (2026-07-03)
+- **Blast-radius de `viz`** — `hud-reference` pasa de `doc_bloquea` a `doc_avisa` ([ADR 0020](docs/decisions/0020-blast-radius-viz-hud-reference-avisa.md)): los cambios no-visuales en `fantasma/viz/` ya no bloquean el push por no tocar `hud-reference.md`; el gate avisa y pregunta si el cambio es visual.
+- **`SimGhostInputs.spec`** — ruta de los recursos de NiceGUI ahora es dinámica (vía `importlib`); elimina la dependencia de la ruta exacta de la versión instalada.
+- **`audit` como required check del ruleset de `master`** (ADR 0019): el job `audit` (blast-radius §8 sobre el rango del PR) queda como barrera dura — un PR con docs desfasadas no puede mergearse.
 
 ## [1.0.0] - 2026-06-30
 
