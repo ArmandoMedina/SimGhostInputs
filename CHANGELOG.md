@@ -4,6 +4,8 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/). Versionado
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-07-03
+
 ### Añadido
 - **Homologación con project-starter v0.5.0** ([ADR 0019](docs/decisions/0019-adopcion-homologacion-starter-v0.5.0.md), cierra la Fase 4 del ADR 0016): job `audit` en CI (`tools/auditar-radius.ps1` — blast-radius §8 sobre el rango del PR; regla anti-bypass: required checks o nada); matcher del manifiesto homologado (raíz-sin-slash, `excluye`, `mensaje`) y área `raiz`; **Mariana exige evidencia verificable en `qa_runs/`** (un veredicto sin artefacto no vale, convención `qa_runs/<rol>-<fecha>/`); hook `no-memorias` (PreToolUse); `/arranca` con reglas duras de sesión; `docs/recursos-del-proyecto.md`; recetario `docs/entorno-windows-powershell51.md` con versión corta en los 5 SKILL.md; `templates/plan-de-trabajo.md`; ciclo de vida explícito del HANDOFF.
 - **CrewChief Pace Notes (MVP)**: nuevo comando `fantasma pacenotes` para generar `metadata.json` + WAVs desde `corners_detected.json` y `corners_compare.csv`. El modo base (`--mode tones`) crea tonos por hito de curva sin dependencias externas adicionales; el extra opcional `[voice]` añade `edge-tts` para frases de voz. Incluye tests unitarios del generador WAV y smoke CLI del pack.

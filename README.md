@@ -1,6 +1,6 @@
 # 👻 SimGhostInputs
 
-[![Estado](https://img.shields.io/badge/estado-v1.0.0%20estable-brightgreen)](CHANGELOG.md)
+[![Estado](https://img.shields.io/badge/estado-v2.0.0%20estable-brightgreen)](CHANGELOG.md)
 [![tests](https://github.com/ArmandoMedina/SimGhostInputs/actions/workflows/tests.yml/badge.svg)](https://github.com/ArmandoMedina/SimGhostInputs/actions/workflows/tests.yml)
 [![Ko-fi](https://img.shields.io/badge/Ko--fi-Buy%20me%20a%20Coffee-FF5E5B?logo=ko-fi&logoColor=white)](https://ko-fi.com/armandomedina2255)
 [![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL--3.0-blue.svg)](LICENSE)
@@ -10,8 +10,8 @@
 ![HUD preview](docs/demo/overlay_hud_preview.gif)
 
 > [!NOTE]
-> **v1.0 — Pipeline AMS2 completo, documentado y probado.** El motor CLI, la interfaz gráfica (`fantasma-ng`) y el flujo de video con HUD (`fantasma compose`) están validados con telemetría y grabaciones reales en AMS2 (4 circuitos, múltiples clases). `setup.ps1` probado en instalación limpia de Windows 11.
-> Alcance declarado de v1.0: AMS2, pipeline offline. Importadores adicionales (iRacing, ACC, rF2) y features avanzadas van en versiones siguientes.
+> **v2.0.0 — Auditoría integral, remediación crítica y retiro de Streamlit.** El motor CLI, la interfaz gráfica nativa (`fantasma-ng`, NiceGUI + pywebview) y el flujo de video con HUD (`fantasma compose`) están validados con telemetría y grabaciones reales en AMS2 (4 circuitos, múltiples clases). `setup.ps1` probado en instalación limpia de Windows 11. 212 tests verdes.
+> La UI Streamlit fue retirada en v2.0.0; la única interfaz es `fantasma-ng`. Importadores adicionales (iRacing, ACC, rF2) y features avanzadas van en versiones siguientes.
 
 **Compara tus inputs contra una vuelta de referencia, por distancia, no por tiempo.**
 

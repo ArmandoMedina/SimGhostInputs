@@ -25,14 +25,7 @@
 
 ## Siguiente accion
 
-**Merge a master + release v2.0.0** (requiere OK del PO):
-
-```powershell
-gh auth switch --user ArmandoMedina   # verificar con: gh auth status
-git checkout master
-git merge codex/sgi-v2-merge --no-ff
-# luego: skill release-helper -> tag v2.0.0 + push + GitHub release
-```
+PR a master abierto, esperar checks y mergear; luego tag v2.0.0 + gh release + rebuild instalador.
 
 ## Backlog
 

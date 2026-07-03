@@ -10,9 +10,9 @@
 
 ## Estado actual
 
-**v1.0.0** (2026-06-30) — estable. 142 tests.
+**v2.0.0** (2026-07-03) — estable. 212 tests. Auditoría integral, remediación crítica y retiro de Streamlit.
 
-**v2.0 en rama `codex/sgi-v2-merge`** — lista para mergear. **212 tests** verdes (2026-07-03). Auditoría integral completada; remediación R1 aplicada. Ver [CHANGELOG](CHANGELOG.md) §[Unreleased] para el detalle completo.
+**v1.0.0** (2026-06-30) — anterior. 142 tests.
 
 ---
 
@@ -80,7 +80,7 @@ Coaching adaptativo en tiempo real. Solo si Pace Notes no cubre el caso de uso.
 
 ### Gaps técnicos
 
-- [ ] **Instrumentar `_run_ffmpeg` (capturar stderr) y reproducir el encode `--format prores` de una vuelta larga** para diagnosticar por qué cuelga. En Nordschleife (~394s) arranca, escribe ~4 GB de frames y se congela; hoy `stderr=DEVNULL` descarta el motivo real. Mitigado con el default `webm`. _Prioridad: Alta (solo afecta a quien pida prores explícito)._
+- [~] **Reproducir el encode `--format prores` de una vuelta larga** para diagnosticar por qué cuelga. En Nordschleife (~394s) arranca, escribe ~4 GB de frames y se congela; el stderr ya se captura desde v2.0.0. Mitigado con el default `webm`. _Prioridad: Alta (solo afecta a quien pida prores explícito)._
 - [ ] **Definir y probar el comportamiento con vueltas muy cortas** (salida de pista, vuelta de 500 m). _Prioridad: Media._
 - [ ] **Probar circuitos cuya vuelta cruza meta más de una vez** (trazado en 8 o chicane en meta) — podrían romper la detección de vueltas. _Prioridad: Media._
 - [~] **Avisar al renderizar si el piloto va más rápido que la referencia** — `compare()` ya emite aviso en `summary["avisos"]`; la UI lo muestra en el Paso 2. Pendiente: invertir colores del HUD en el overlay cuando se detecta inversión. _Prioridad: Baja._
