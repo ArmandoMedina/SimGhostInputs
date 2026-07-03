@@ -14,17 +14,22 @@ pytest.importorskip("nicegui", reason="nicegui no instalado; ejecuta: pip instal
 
 from unittest.mock import MagicMock, patch
 
+from fantasma.ui import ng_state as _ng_state_mod
+
 
 @pytest.fixture
 def mock_state():
-    """AppState con storage simulado en un dict plano (sin servidor NiceGUI)."""
+    """AppState con storage simulado en un dict plano (sin servidor NiceGUI).
+
+    patch.object sobre el modulo ya importado: la resolucion de nombres
+    punteados de mock.patch en Python 3.10 no liga el submodulo al paquete
+    y truena con AttributeError (visto en CI, run 28685571726).
+    """
     m = MagicMock()
     # ng_state.py accede a _ng_app.storage.user como dict; usamos uno real
     m.storage.user = {}
-    with patch("fantasma.ui.ng_state._ng_app", m):
-        from fantasma.ui.ng_state import AppState
-
-        yield AppState()
+    with patch.object(_ng_state_mod, "_ng_app", m):
+        yield _ng_state_mod.AppState()
 
 
 def test_appstate_defaults(mock_state):

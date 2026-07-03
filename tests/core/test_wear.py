@@ -1,7 +1,6 @@
 """Tier 1 — indicadores de desgaste: slip y conteo de asistencias, con y sin canales."""
 
 from conftest import make_lap
-
 from fantasma.core import wear
 from fantasma.core.lap import Lap
 

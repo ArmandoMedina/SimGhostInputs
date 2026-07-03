@@ -1,7 +1,6 @@
 """Tier 1 — normalización por distancia: rejilla, interpolación, separación de vueltas."""
 
 from conftest import make_lap
-
 from fantasma.core.lap import Lap
 from fantasma.core.normalize import fastest_lap, resample, split_laps
 
