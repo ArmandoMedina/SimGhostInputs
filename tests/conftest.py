@@ -11,6 +11,8 @@ Convenciones de dominio horneadas aquí (confirmadas con el producto):
   más tiempo, igual que en pista. Esto es lo que hace válidos los tests de delta.
 """
 
+import sys
+
 import pytest
 
 from fantasma.core.lap import Lap
@@ -18,6 +20,33 @@ from fantasma.core.lap import Lap
 # canales opcionales que make_lap sabe generar (además de time/dist/speed,
 # que siempre están)
 OPTIONAL = ("throttle", "brake", "steering", "gear", "glat", "glong", "rpm", "alt")
+
+
+def _purge_orphan_fantasma_modules():
+    """Purga de sys.modules los submódulos de fantasma con ancestros ausentes.
+
+    El teardown del user-fixture de NiceGUI (nicegui/testing/general.py) hace
+    pop del módulo que registró rutas Y de todos sus padres (fantasma,
+    fantasma.ui), pero deja a los hermanos (ng_step0, fantasma.viz.*) en
+    sys.modules. El siguiente import recrea los paquetes padres sin ligar a
+    esos hijos huérfanos, y mock.patch("fantasma...") en Python 3.10 resuelve
+    con getattr sobre el padre y truena con AttributeError (CI, runs
+    28685571726 y 28687390949). Restaurar el invariante "hijo en sys.modules
+    implica ancestros en sys.modules" fuerza reimports consistentes.
+    """
+    for name in sorted(n for n in list(sys.modules) if n.startswith("fantasma.")):
+        parts = name.split(".")
+        ancestors = (".".join(parts[:i]) for i in range(1, len(parts)))
+        if any(a not in sys.modules for a in ancestors):
+            sys.modules.pop(name, None)
+
+
+@pytest.fixture(autouse=True)
+def _sane_fantasma_modules():
+    """Repara sys.modules antes y después de cada test (ver helper)."""
+    _purge_orphan_fantasma_modules()
+    yield
+    _purge_orphan_fantasma_modules()
 
 
 def _speed_at(d, base, valleys):
