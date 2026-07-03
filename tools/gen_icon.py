@@ -1,4 +1,5 @@
 """Genera docs/icon.ico con un fantasma en la paleta dark del UI."""
+
 import io
 import struct
 
@@ -75,5 +76,5 @@ if __name__ == "__main__":
         f.write(ico_bytes)
 
     frames[256].save("docs/icon_preview.png")
-    print(f"ICO generado: {out}  ({len(ico_bytes)//1024} KB, {len(sizes)} tamanos)")
+    print(f"ICO generado: {out}  ({len(ico_bytes) // 1024} KB, {len(sizes)} tamanos)")
     print("Preview: docs/icon_preview.png")
