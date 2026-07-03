@@ -12,24 +12,12 @@
 
 ## Estado actual
 
-**v2.0.0 LIBERADA (2026-07-03).** Tag y release publicados con el instalador
-`SimGhostInputs-v2.0.0-Setup.exe` (104.7 MB) como asset; bundle onedir 373 MB;
-smoke del exe PASA (HTTP 200 en 127.0.0.1:8765). PR #15 mergeado por squash
-(el ruleset solo permite squash). Suite: 202 tests verdes en local y en los
-7 required checks.
+Nada en vuelo. Última versión liberada: ver [CHANGELOG](CHANGELOG.md).
 
-## Siguiente accion
+## Siguiente acción
 
-Ninguna en vuelo. Pendientes chicos del PO:
-
-- Mirar las capturas de QA visual (`qa_runs/mariana-20260703-0740/`) — checkpoint de Mariana.
-- Re-exportar el ORECA 07 INT desde MoTeC i2 (sin canal Distance; hallazgo de Charbel).
-- Decidir si se pinea la version de ruff en pyproject (el CI corre el ultimo de `>=0.15,<1` y ya divergio del local una vez).
+Ninguna pendiente de sesión. Todo el trabajo futuro vive en el [ROADMAP](ROADMAP.md).
 
 ## Backlog
 
-Ver [ROADMAP](ROADMAP.md) §"Post-v2.0" y §"Transversal". Destacados de la auditoría:
-cobertura de `charts.py`/`report.py`, endurecer hooks de sesión (ventanas de bypass,
-fase3-hooks), lockfile de dependencias, y la feature candidata a v2.1: monitoreo
-remoto del render desde otro dispositivo (requiere diseño de seguridad; hoy la UI
-escucha solo en 127.0.0.1 a propósito).
+Ver [ROADMAP](ROADMAP.md) §"Post-v2.0" y §"Transversal".
