@@ -3,11 +3,13 @@ tipo: modulo
 clave: UI
 dominio: Interfaz de usuario
 producto: Fantasma
-estado: vigente
+estado: obsoleto
 prioridad: Must Have
 ---
 
 # UI - Interfaz Streamlit
+
+> **Obsoleto desde v2.0.** La interfaz Streamlit (`fantasma ui`, extra `[ui]`) fue retirada. La UI activa es [[UI - Interfaz NiceGUI]] (`fantasma-ng`, extra `[ui-ng]`). Historial de la decisión: [ADR 0010](../../docs/decisions/0010-framework-ui-streamlit.md) y [ADR 0018](../../docs/decisions/0018-framework-ui-nicegui.md).
 
 ## Dominio
 - [[Interfaz de usuario]]

@@ -22,7 +22,6 @@ openpyxl. Todo lo pesado vive en **extras opcionales** que **degradan con gracia
 | `charts` | gráficas ghost y mapa de delta | matplotlib |
 | `overlay` | HUD de video | Pillow, matplotlib, numpy |
 | `sync` | auto-sync video/telemetría | scipy, numpy |
-| `ui` | interfaz Streamlit | streamlit, pandas |
 | `ui-ng` | interfaz NiceGUI v2.0 | nicegui, pywebview, pandas |
 | `voice` | coaching de voz (pace notes) | edge-tts |
 
@@ -51,12 +50,11 @@ fantasma/
     report.py      reporte Markdown + CSVs de salida
     pacenotes.py   generador de pack de pace notes CrewChief (tonos + voz)
     hud_preview.py preview reactiva del HUD para la UI NiceGUI
-  ui/          INTERFAZ — NiceGUI v2.0 (principal) + Streamlit (legacy), opcional
+  ui/          INTERFAZ — NiceGUI v2.0, opcional
     ng_app.py      entry point NiceGUI v2.0 (router principal, CSS global)
-    ng_state.py    AppState proxy sobre app.storage.client
+    ng_state.py    AppState proxy sobre app.storage.user
     ng_helpers.py  constantes, CSS vars, helpers compartidos
     ng_step0-4.py  los pasos del wizard NiceGUI
-    app.py         router; step0-4.py los pasos; _helpers.py compartido (Streamlit legacy)
   cli.py       PUNTO DE ENTRADA (consola `fantasma`)
 ```
 
@@ -73,7 +71,6 @@ La UI es una capa opcional sobre el CLI; todo lo que hace la UI se puede hacer e
 | `fantasma compose` | superpone el HUD sobre el video con ffmpeg | viz |
 | `fantasma wear` | medidor de desgaste acumulable de un stint | core |
 | `fantasma-ng` | abre la interfaz NiceGUI v2.0 en ventana de escritorio nativa | ui (`ui-ng`) |
-| `fantasma ui` | abre la interfaz Streamlit en localhost (legacy, sigue disponible) | ui (`ui`) |
 
 ## Flujo de datos (runtime)
 

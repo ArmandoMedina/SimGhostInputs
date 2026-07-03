@@ -40,7 +40,7 @@ nunca telemetría real (principio "motor sin datos").
 | **Tier 1** — `core/` puro | normalize, compare, corners, wear (aritmética: el valor del producto) | `tests/core/` |
 | **Tier 2** — `importers/` | parseo CSV con fixtures diminutos (único dato versionado) | `tests/importers/` |
 | **Tier 3** — helpers puros de `viz/` | `_build_filter`, `_nvenc_available`, aritmética de `sync` — **sin invocar ffmpeg** | `tests/viz/` |
-| **Tier 4** — smoke de UI | `AppTest`: la UI arranca sin excepción | `tests/ui/` |
+| **Tier 4** — smoke de UI | tests estructurales NiceGUI (fixture `user`): la UI arranca y los elementos clave existen | `tests/ui/` |
 | **Visual** — smoke de layout | screenshot del Paso 0 vs baseline (Playwright); dueño: Mariana | `tests/ui/visual/` ([ADR 0012](../docs/decisions/0012-playwright-smoke-visual-ui.md)) |
 
 > El conteo vivo de tests y el estado de cobertura están en [`../HANDOFF.md`](../HANDOFF.md) y
@@ -49,7 +49,7 @@ nunca telemetría real (principio "motor sin datos").
 ## Cómo correr
 
 ```powershell
-pip install -e ".[test,ui,sync]"
+pip install -e ".[test,ui-ng,sync]"
 pytest                       # toda la suite
 ./tools/verificar.ps1        # lint + formato + tests + doc-gate, en modo aviso
 ```

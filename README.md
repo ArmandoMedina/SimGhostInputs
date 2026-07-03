@@ -10,7 +10,7 @@
 ![HUD preview](docs/demo/overlay_hud_preview.gif)
 
 > [!NOTE]
-> **v1.0 — Pipeline AMS2 completo, documentado y probado.** El motor CLI, la interfaz gráfica (`fantasma ui`) y el flujo de video con HUD (`fantasma compose`) están validados con telemetría y grabaciones reales en AMS2 (4 circuitos, múltiples clases). `setup.ps1` probado en instalación limpia de Windows 11.
+> **v1.0 — Pipeline AMS2 completo, documentado y probado.** El motor CLI, la interfaz gráfica (`fantasma-ng`) y el flujo de video con HUD (`fantasma compose`) están validados con telemetría y grabaciones reales en AMS2 (4 circuitos, múltiples clases). `setup.ps1` probado en instalación limpia de Windows 11.
 > Alcance declarado de v1.0: AMS2, pipeline offline. Importadores adicionales (iRacing, ACC, rF2) y features avanzadas van en versiones siguientes.
 
 **Compara tus inputs contra una vuelta de referencia, por distancia, no por tiempo.**
@@ -25,7 +25,7 @@ Por eso el código se publica bajo **AGPL-3.0-or-later**: puedes usar, estudiar,
 
 ## Qué hace
 
-- **Interfaz gráfica local** (`fantasma ui`): 5 pasos en el navegador (localhost, sin hosting). Flujos predefinidos: solo análisis, solo overlay, o video completo con HUD. Tus datos nunca salen de tu máquina.
+- **Interfaz gráfica local** (`fantasma-ng`): 5 pasos en ventana de escritorio nativa (NiceGUI + pywebview), sin hosting. Flujos predefinidos: solo análisis, solo overlay, o video completo con HUD. Tus datos nunca salen de tu máquina. Disponible también como instalador doble-clic (sin necesitar Python).
 - Importa telemetría desde **CSV exportado de MoTeC i2** (y el mismo formato en `.xlsx`), o CSV genérico con mapeo de columnas.
 - Separa las vueltas de un *outing* (por beacons, número de vuelta o reinicio de distancia) y elige la más rápida.
 - Normaliza todo a un formato interno estándar: **distancia de vuelta con metro 0 en meta**, remuestreo configurable (5 m por defecto).
@@ -63,7 +63,7 @@ pip install -e .                          # núcleo (sin dependencias externas)
 pip install -e ".[xlsx]"                  # + leer archivos .xlsx de MoTeC i2
 pip install -e ".[overlay]"               # + fantasma overlay (HUD de video)
 pip install -e ".[charts]"                # + fantasma compare con gráficas
-pip install -e ".[ui]"                    # + fantasma ui (interfaz gráfica local)
+pip install -e ".[ui-ng]"                 # + fantasma-ng (interfaz gráfica NiceGUI, ventana nativa)
 pip install -e ".[sync]"                  # + fantasma compose --auto-sync (detección de offset)
 pip install -e ".[voice]"                 # + fantasma pacenotes --mode voice (edge-tts)
 pip install -e ".[full]"                  # todo lo anterior
@@ -77,7 +77,7 @@ pip install -e ".[test]"                  # + correr la suite de tests (pytest);
 | `openpyxl` | Python opcional | Leer `.xlsx` exportados de MoTeC i2 | `pip install openpyxl` |
 | `matplotlib` | Python opcional | `fantasma overlay` — HUD animado; `fantasma compare` — gráficas ghost | `pip install matplotlib` |
 | `Pillow` | Python opcional | `fantasma overlay` — renderizado de frames auxiliares | `pip install Pillow` |
-| `streamlit` + `pandas` | Python opcional | `fantasma ui` — interfaz gráfica local | `pip install 'fantasma-inputs[ui]'` |
+| `nicegui` + `pywebview` + `pandas` | Python opcional | `fantasma-ng` — interfaz gráfica local (ventana nativa NiceGUI) | `pip install 'fantasma-inputs[ui-ng]'` |
 | `scipy` | Python opcional | `fantasma compose --auto-sync` — detección automática de offset video/telemetría | `pip install 'fantasma-inputs[sync]'` |
 | `edge-tts` | Python opcional | `fantasma pacenotes --mode voice` — frases de voz para CrewChief | `pip install 'fantasma-inputs[voice]'` |
 | `ffmpeg` | Sistema opcional | Codificar `.webm`/`.mov` con canal alfa y `fantasma compose` (auto-detecta NVENC si hay GPU NVIDIA) | `winget install Gyan.FFmpeg` |
@@ -97,13 +97,13 @@ El `setup.ps1` incluido pregunta si instalar VLC y Kdenlive junto con el resto.
 
 ## Uso rápido
 
-La forma más fácil es la interfaz gráfica: `fantasma ui` abre el navegador y te guía por 5 pasos (Inicio → Importar → Comparar / Overlay → Componer). No necesitas recordar ningún flag.
+La forma más fácil es la interfaz gráfica: `fantasma-ng` abre una ventana de escritorio nativa y te guía por 5 pasos (Inicio → Importar → Comparar / Overlay → Componer). No necesitas recordar ningún flag.
 
 Para usar el CLI directamente:
 
 ```
-# interfaz gráfica local (abre el navegador automáticamente)
-fantasma ui
+# interfaz gráfica local (ventana nativa NiceGUI)
+fantasma-ng
 
 # ver las vueltas que contiene un archivo
 fantasma laps "mi_export_motec.csv"
@@ -208,6 +208,6 @@ En el roadmap: lectura directa de `.ld` (sin pasar por i2) e iRacing `.ibt`.
 
 Todas las dependencias Python del proyecto (openpyxl, matplotlib, Pillow, pandas, scipy, numpy) son MIT o BSD — completamente compatibles con AGPL-3.0 sin restricciones adicionales.
 
-**Streamlit** usa Apache 2.0, que es compatible con AGPL-3.0 en esta dirección: código AGPL-3.0 puede usar dependencias Apache 2.0, pero no al revés. Los contribuidores que incorporen código de este proyecto en otro proyecto deben respetar el copyleft de AGPL-3.0.
+**NiceGUI** usa Apache 2.0 y **pywebview** usa BSD-3-Clause — ambas compatibles con AGPL-3.0: código AGPL-3.0 puede usar dependencias Apache 2.0 / BSD, pero no al revés. Los contribuidores que incorporen código de este proyecto en otro proyecto deben respetar el copyleft de AGPL-3.0.
 
 **ffmpeg** se usa como proceso externo vía `subprocess` — nunca se linka contra sus bibliotecas. Al no existir linking no existe obra derivada, por lo que las obligaciones de licencia de ffmpeg (LGPL/GPL según el build del sistema) no se extienden al código de SimGhostInputs. ffmpeg debe instalarse por separado y bajo su propia licencia.

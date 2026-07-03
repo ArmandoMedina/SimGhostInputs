@@ -66,10 +66,10 @@ pip install -e ".[full]"
 fantasma --help
 ```
 
-Para la UI:
+Para la UI NiceGUI:
 
 ```powershell
-fantasma ui
+fantasma-ng
 ```
 
 **Smoke test sin datos privados:** usa cualquier export de MoTeC i2 propio y corre
@@ -82,7 +82,7 @@ fantasma/
   core/         modelo de datos (lap.py), normalización, detección de curvas, comparación
   importers/    lectura de archivos (MoTeC CSV/XLSX, CSV genérico)
   viz/          gráficas, overlay HUD, composición de video, sincronía
-  ui/           interfaz Streamlit — app.py (router), step0-4.py (pasos), _helpers.py (compartido)
+  ui/           interfaz NiceGUI v2.0 — ng_app.py (router), ng_step0-4.py (pasos), ng_state.py (AppState), ng_helpers.py (helpers)
   cli.py        punto de entrada de comandos
 ```
 
@@ -113,7 +113,7 @@ ejecuta hooks de un clon sin que tú lo autorices). Actívalas al clonar:
 
 ```powershell
 # 1. Instala las herramientas de desarrollo (linter + tests)
-pip install -e ".[dev,test,ui,sync]"
+pip install -e ".[dev,test,ui-ng,sync]"
 
 # 2. Enciende el hook que corre las validaciones antes de cada push
 git config core.hooksPath .githooks
@@ -133,7 +133,7 @@ propósito** (`git push --no-verify`), nunca por desconocimiento.
 
 1. **Motor sin datos.** El repo nunca incluye telemetrías, referencias ni setups. Los tests usan datos sintéticos o aportados por quien los corre.
 2. **Comparación por distancia.** El metro de pista es el índice maestro, no el tiempo.
-3. **Sin dependencias en el núcleo.** `fantasma/core` e `importers` son librería estándar pura. Las dependencias viven en extras opcionales (`[overlay]`, `[ui]`, `[sync]`…) y deben degradar con gracia si faltan.
+3. **Sin dependencias en el núcleo.** `fantasma/core` e `importers` son librería estándar pura. Las dependencias viven en extras opcionales (`[overlay]`, `[ui-ng]`, `[sync]`…) y deben degradar con gracia si faltan.
 4. **Determinista.** Mismo archivo de entrada → misma salida, siempre.
 
 ---
@@ -188,7 +188,6 @@ docs: añadir guía de exportación para iRacing
 
 **También bienvenido:**
 
-- Empaquetado como `.exe` con PyInstaller para usuarios sin Python
 - Traducciones de la UI o documentación (inglés primero)
 - Guías de exportación para sims no documentados aún
 - Mejoras de rendimiento con benchmarks que las demuestren
@@ -241,7 +240,7 @@ Cada hecho vive en **un** documento. Los demás enlazan, no duplican.
 | :-- | :-- | :-- |
 | Flag/comando CLI nuevo, o cambio de comportamiento de uno | `README` (uso rápido) · `guia-usuario` · `formato-datos` si cambian las salidas | _solo Reviewer_ |
 | Cambio en `fantasma/viz/` (HUD/overlay, gráficas, video, sync). **Si es visual** (color, panel, franja, layout del HUD): `hud-reference` (AVISA) · `README` (tabla de colores) · `ux-patterns.md` (AVISA) · **ADR nuevo** + `docs/decisions/README.md`. **Si es no-visual** (perf, refactor, encoding): ninguno — el gate avisa, no bloquea ([ADR 0020](docs/decisions/0020-blast-radius-viz-hud-reference-avisa.md)) | **Mariana** (UX, solo si es visual) |
-| Cambio de UX/layout en la UI Streamlit (`fantasma/ui/`) | `guia-usuario` (BLOQUEA) · `ux-patterns.md` (AVISA) · `product/capacidades/UI-*` si cambia un criterio funcional (AVISA) | **Mariana** (UX) |
+| Cambio de UX/layout en la UI NiceGUI (`fantasma/ui/`) | `guia-usuario` (BLOQUEA) · `ux-patterns.md` (AVISA) · `product/capacidades/UI-*` si cambia un criterio funcional (AVISA) | **Mariana** (UX) |
 | Cambio en `core/` (detección de curvas, comparación, `wear`, normalización) | `formato-datos` (algoritmo + JSON + CSV, BLOQUEA) · `tests/` si cambian números/signos · `product/capacidades/CMP-*/COR-*/NRM-*/WER-*` si cambia un criterio (AVISA) · ADR si es una decisión | **Charbel** (telemetría) |
 | Dependencia o extra nuevo | `pyproject.toml` · `README` (tabla de deps + instalación) · §3 de este doc · `setup.ps1` | _solo Reviewer_ |
 | Importador o formato de entrada nuevo o modificado (`fantasma/importers/`) | `README` (tabla de sims, AVISA) · `guia-usuario` (AVISA) · `formato-datos` (canales, AVISA) · §7 (bienvenidas) · `product/capacidades/IMP-*` si cambia un criterio (AVISA) | **Charbel** (telemetría) |

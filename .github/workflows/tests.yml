@@ -79,9 +79,8 @@ jobs:
           cache: pip
 
       - name: Install package with test extras
-        # [ui] mantiene los tests Streamlit existentes. [ui-ng] agrega NiceGUI (UI v2.0).
-        # [sync] aporta numpy/scipy para viz/sync. ffmpeg NO es necesario.
-        run: pip install -e ".[test,ui,ui-ng,sync]"
+        # [ui-ng] agrega NiceGUI (UI v2.0). [sync] aporta numpy/scipy para viz/sync. ffmpeg NO es necesario.
+        run: pip install -e ".[test,ui-ng,sync]"
 
       - name: Run pytest
         run: pytest --ignore=tests/ui/visual

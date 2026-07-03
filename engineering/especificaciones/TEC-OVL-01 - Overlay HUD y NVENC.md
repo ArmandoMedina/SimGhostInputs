@@ -13,7 +13,7 @@ Genera el HUD animado con canal alfa y lo compone sobre el video. La **anatomía
 ## Render del HUD (`overlay.py`)
 - `_HUDFigure`: figura matplotlib reutilizable (~1870×572 px), 3 paneles `sharex` (gas, freno, volante) + franja superior con textos dinámicos (GAP, ΔV, DESLIZ, ABS/TC, GASTO, marcha, distancia, km/h, curva). `update()` modifica solo datos, no recrea la figura. `to_pil()` → PIL RGBA.
 - Ventana: 320 m antes / 200 m después del cursor. ABS/TCS quedan encendidos 8 m tras la última activación.
-- **Render paralelo** (`_render_parallel`): `cpu_count − 1` subprocesos vía `python -m fantasma.viz._overlay_worker`, args serializados a `.pkl` por chunk (evita el crash de `ProcessPoolExecutor` spawn bajo Streamlit). Fallback serial por chunk; cancelación mata workers.
+- **Render paralelo** (`_render_parallel`): `cpu_count − 1` subprocesos vía `python -m fantasma.viz._overlay_worker`, args serializados a `.pkl` por chunk (evita el crash de `ProcessPoolExecutor` en modo `spawn` bajo apps con event loop como NiceGUI). Fallback serial por chunk; cancelación mata workers.
 - Formatos: `webm` (libvpx-vp9, yuva420p) o `prores` (.mov, prores_ks 4444, yuva444p10le).
 
 ## Composición (`compose.py`)

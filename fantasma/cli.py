@@ -19,7 +19,7 @@ def _overlay_progress(n, total, status=None):
 
     Acepta el kwarg ``status`` con que overlay.py lo invoca
     (``progress(enc, n_frames, status="Codificando video… frame N / M")``)
-    y el piloto sin él (para homologar con el callback de la UI en _helpers.py).
+    y el piloto sin él (para homologar con RenderJob.progress_cb de ng_helpers.py).
     """
     pct = 100.0 * n / total if total else 0
     print("  frame %d/%d (%.0f%%)" % (n, total, pct))
@@ -226,24 +226,6 @@ def _concat_videos(paths, output, fmt):
         )
     finally:
         os.unlink(list_file)
-
-
-def cmd_ui(args):
-    import os
-    import shutil
-    import subprocess
-
-    if not shutil.which("streamlit"):
-        print(
-            "error: streamlit no instalado — ejecuta: pip install 'fantasma-inputs[ui]'",
-            file=sys.stderr,
-        )
-        return 1
-    app = os.path.join(os.path.dirname(__file__), "ui", "app.py")
-    subprocess.run(
-        ["streamlit", "run", app, "--server.port", str(args.port), "--server.address", "127.0.0.1"],
-        check=True,
-    )
 
 
 def cmd_compose(args):
@@ -591,12 +573,6 @@ def main(argv=None):
     )
     sp.add_argument("--map", action="append", help="columna=canal para CSV generico")
     sp.set_defaults(func=cmd_wear)
-
-    sp = sub.add_parser(
-        "ui", help="abre la interfaz grafica local en el navegador (requiere streamlit)"
-    )
-    sp.add_argument("--port", type=int, default=8501, help="puerto local (default: 8501)")
-    sp.set_defaults(func=cmd_ui)
 
     sp = sub.add_parser(
         "compose", help="superponer overlay sobre tu grabacion y generar el video final"

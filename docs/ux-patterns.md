@@ -2,7 +2,7 @@
 
 > **Para qué es este documento.** Así como el repo tiene convenciones de **código** (ruff, tests)
 > y de **docs** (§8 de `CONTRIBUTING.md`), este es el estándar de **interfaz**: las heurísticas que
-> la UI (`fantasma ui`, Streamlit) y el HUD deben cumplir, y **el gate que verifica que se cumplan
+> la UI (`fantasma-ng`, NiceGUI) y el HUD deben cumplir, y **el gate que verifica que se cumplan
 > antes de subir cambios** — análogo a "los tests deben pasar". Lo usa el rol **Mariana** (UX) como
 > rúbrica, y se integra con las barreras de [`flujo-de-trabajo.md`](flujo-de-trabajo.md).
 >
@@ -62,7 +62,7 @@ suite, corren en `pytest`/`verificar.ps1` y en `.github/workflows/tests.yml`.
   verdad canónica, ADR 0012), tolerancia generosa: atrapa "el layout se movió", no antialiasing.
   - *Hoy:* solo cubre el **Paso 0**. **Objetivo:** extender a Pasos 1-4 (con estado/datos
     sintéticos cargados por el harness), un baseline por pantalla.
-- **Aserciones estructurales (Streamlit AppTest).** Sin pixeles: que los elementos esperados
+- **Aserciones estructurales (fixture `user` de NiceGUI).** Sin pixeles: que los elementos esperados
   existan (los 3 flujos en el Paso 0, el botón primario de avance, la tabla de vueltas tras cargar,
   el progreso durante el render). Determinista y rápido.
 - **Contraste de texto.** Chequeo automatizable de ratio de contraste de los estilos propios
@@ -72,7 +72,7 @@ suite, corren en `pytest`/`verificar.ps1` y en `.github/workflows/tests.yml`.
 
 "¿Se ve profesional?", "¿el flujo se siente claro?", "¿el HUD es legible sobre ESTE video?" no son
 deterministas. No bloquean por máquina: los dispara el hook de sesión **`mariana-stop`** al tocar
-`fantasma/viz/` o `fantasma/ui/`, que **frena el cierre y obliga a mirar** (abrir `fantasma ui` /
+`fantasma/viz/` o `fantasma/ui/`, que **frena el cierre y obliga a mirar** (abrir `fantasma-ng` /
 revisar el HUD) con esta **checklist**:
 
 - [ ] El cambio respeta las 10 heurísticas de §1 (revisión rápida).
@@ -86,7 +86,7 @@ y el Escribano de docs proponen pero el contenido no bloquea lo irreversible.
 
 ### Capa C — Local, **AVISA** (temprano)
 
-`verificar.ps1` corre el smoke visual y las aserciones AppTest en modo aviso antes del push (skipea
+`verificar.ps1` corre el smoke visual y las aserciones estructurales NiceGUI en modo aviso antes del push (skipea
 limpio si no hay Chromium), como ya hace con lint/formato/tests. El CI es el que bloquea.
 
 > **Regla de oro del gate:** lo que se pueda medir (layout, contraste, presencia de elementos,
@@ -100,11 +100,11 @@ limpio si no hay Chromium), como ya hace con lint/formato/tests. El CI es el que
 | Pieza del gate | Estado | Acción |
 | :-- | :-- | :-- |
 | Smoke visual Paso 0 | ✅ existe (ADR 0012); baseline regenerado en v0.14.0 por cambio F-01 | — |
-| Smoke visual Pasos 1-4 | ⏸️ diferido | AppTest cubre la estructura; Playwright requiere inyectar estado en browser (no trivial). Diferido post-v1.0 |
-| Aserciones AppTest | ✅ Pasos 0-4 cubiertos (`tests/ui/`) — 18 tests en verde (v0.14.0) | — |
+| Smoke visual Pasos 1-4 | ⏸️ diferido | los tests NiceGUI cubren la estructura; Playwright requiere inyectar estado en browser (no trivial). Diferido post-v1.0 |
+| Aserciones estructurales NiceGUI | ✅ Pasos 0-4 cubiertos (`tests/ui/`) — 41 tests NiceGUI (`fixture user`) en verde | — |
 | Contraste WCAG | ⏸️ diferido post-v1.0 | Bajo riesgo: paleta reducida, colores revisados a ojo |
 | Checklist Mariana | ✅ hook formalizado con los 5 puntos de §2-B (v0.14.0) | — |
-| Integración en `verificar.ps1`/CI | ✅ (visual + AppTest vía pytest) | — |
+| Integración en `verificar.ps1`/CI | ✅ (visual + tests NiceGUI vía pytest) | — |
 
 > La decisión de tratar el gate de UX con la dualidad determinismo/juicio se asienta en un ADR
 > (ver `docs/decisions/`). Los hallazgos de UX concretos por pantalla se documentan tras el

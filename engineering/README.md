@@ -13,7 +13,7 @@ Esta capa describe **la implementación**: arquitectura, algoritmos, modelo de d
 
 - **[`arquitectura.md`](arquitectura.md)** — vista general del paquete `fantasma/` (core, importers, viz, ui, cli) y el principio "core sin dependencias". (Esqueleto arc42 / C4.)
 - **[`pruebas.md`](pruebas.md)** — la estrategia de pruebas: qué se automatiza vs qué es QA manual (consolida [ADR 0003](../docs/decisions/0003-testing.md)). Es la verificación viva.
-- **`componentes/`** — sistemas/servicios reales (propios o externos) que sostienen las capacidades: ffmpeg, Streamlit, MoTeC i2, CrewChief-MQTT (futuro).
+- **`componentes/`** — sistemas/servicios reales (propios o externos) que sostienen las capacidades: ffmpeg, NiceGUI, MoTeC i2, CrewChief-MQTT (futuro); Streamlit (obsoleto, referencia histórica).
 - **`especificaciones/`** — la implementación concreta de una capacidad: comparación por distancia, detección de curvas, auto-sync por audio, NVENC.
 - **`modelos-de-datos/`** — las estructuras: el modelo `Lap`, `corners.json`, `delta.csv`, `corners_compare.csv`.
 

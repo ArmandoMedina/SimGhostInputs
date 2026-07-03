@@ -36,9 +36,9 @@ acotada (feature, bugfix, refactor) y entrega código en `fantasma/` con su test
 - **Datos de test sintéticos**: `make_lap` del harness; nunca leer archivos reales de
   `C:\Repositorio personal\Paterial para test (no es un repo)` — son telemetría privada
   que **nunca entra al repo**.
-- **`st.download_button` no es accesible desde `AppTest`** en Streamlit 1.58.0 — solo
-  `at.button`, `at.button_group`, `at.menu_button`. Verificar que los tests usen lo que
-  existe.
+- **Tests de UI**: la UI es NiceGUI v2.0 (`fantasma-ng`, extra `[ui-ng]`). Los tests usan
+  la fixture `user` de `nicegui.testing` — no AppTest. Ver `tests/ui/conftest.py` y los
+  tests existentes en `tests/ui/test_ng_step*.py` como referencia.
 - **Imports**: ordenados por `ruff` (isort); no importar lo que no se usa.
 - **Sin magia**: si una función necesita más de ~40 líneas, es señal de que debe partirse o
   de que la decisión de diseño no está clara — señalarlo al PO en vez de seguir acumulando.

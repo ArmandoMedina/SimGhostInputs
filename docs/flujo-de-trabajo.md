@@ -103,7 +103,7 @@ que corren en varios momentos, con autoridad creciente.
 ### 2.4 Los artefactos del repo (qué es cada cosa)
 
 - **Código** (`fantasma/`): el motor (núcleo `core/`, importadores, visualización `viz/`, UI
-  Streamlit). Es lo que el linter y los tests vigilan.
+  NiceGUI). Es lo que el linter y los tests vigilan.
 - **Tests** (`tests/`): las pruebas automáticas que espejan al paquete.
 - **ADR** (`docs/decisions/NNNN-*.md`): un **registro de decisión**. Guarda **qué se decidió,
   por qué, y el camino que NO se tomó**, para que la próxima sesión (o IA) no repita el error.
@@ -134,7 +134,7 @@ que corren en varios momentos, con autoridad creciente.
 | **Benchmark del linter** | Por qué ruff y no las alternativas (licencias verificadas) | `docs/benchmark-linter.md` |
 | **Reviewer** | Lee el diff y **aconseja** (bugs, calidad); su contenido no bloquea. **Auto-disparado** por hook de sesión cuando hay código sin revisar | `/code-review` + `.claude/hooks/review-stop.ps1` |
 | **Escribano** | Sincroniza los docs dueños (§8) tras un cambio de código. **Auto-disparado** por hook de sesión al detectar doc-drift | `.claude/skills/escribano/` + `.claude/hooks/escribano-stop.ps1` |
-| **Mariana** | Checkpoint de QA visual: al tocar `viz/` (HUD) o `ui/` (Streamlit) frena el cierre y manda revisar la UI a ojo. Vuelve al PO; **no juzga sola** lo visual. **Auto-disparado** por hook de sesión | `.claude/hooks/mariana-stop.ps1` ([ADR 0011](decisions/0011-cablear-mariana-no-charbel.md)) |
+| **Mariana** | Checkpoint de QA visual: al tocar `viz/` (HUD) o `ui/` (NiceGUI) frena el cierre y manda revisar la UI a ojo. Vuelve al PO; **no juzga sola** lo visual. **Auto-disparado** por hook de sesión | `.claude/hooks/mariana-stop.ps1` ([ADR 0011](decisions/0011-cablear-mariana-no-charbel.md)) |
 | **Hooks de sesión (Claude Code)** | Frenan el cierre de la IA y disparan Reviewer/Escribano/Mariana **sin que nadie los invoque** | `.claude/hooks/` + `.claude/settings.json` |
 | **Router de roles (§8 extendida)** | Mapea cada área a su doc dueño **y** su rol validador (Charbel, Mariana, Reviewer…) | `CONTRIBUTING.md` §8 |
 

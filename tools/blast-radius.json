@@ -50,7 +50,7 @@
   },
   {
     "nombre": "ui",
-    "desc": "interfaz NiceGUI v2.0 y legacy Streamlit: ng_app.py, ng_step0-4.py, ng_helpers.py, ng_state.py, app.py, step0-4.py",
+    "desc": "interfaz NiceGUI v2.0: ng_app.py, ng_step0-4.py, ng_helpers.py, ng_state.py",
     "fuente": ["fantasma/ui/*"],
     "doc_bloquea": ["docs/guia-usuario.md"],
     "doc_avisa": ["docs/ux-patterns.md"],

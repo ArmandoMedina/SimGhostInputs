@@ -11,7 +11,7 @@ prioridad: Must Have
 # UI-02 - Avisos del motor visibles en la UI
 
 ## Módulo
-- [[UI - Interfaz Streamlit]]
+- [[UI - Interfaz NiceGUI]]
 
 ## Propósito funcional
 Asegurar que los avisos del motor de análisis (autos distintos, delta sospechoso, ffmpeg ausente) sean visibles en la interfaz, de modo que el usuario no interprete un resultado inválido como válido.
@@ -24,15 +24,13 @@ Sistema (la UI detecta condiciones de aviso y las presenta al usuario en el paso
 - Resultado de la detección de ffmpeg en el sistema (Paso 4).
 
 ## Salidas funcionales
-- Widget `st.warning` visible en el Paso 2 cuando el summary contiene avisos (Streamlit).
-- Widget `st.error` visible en el Paso 4 cuando ffmpeg no está instalado (Streamlit).
-- En NiceGUI (`ng_step2.py`): etiqueta de advertencia (⚠, estilo amarillo) por cada aviso de `summary["avisos"]` al inicio del Paso 2.
-- En NiceGUI (`ng_step4.py`): etiqueta de error con `color:var(--danger)` que menciona "ffmpeg" y su comando de instalación cuando ffmpeg no está en el PATH.
+- Etiqueta de advertencia (⚠, estilo amarillo) en `ng_step2.py` por cada aviso de `summary["avisos"]` al inicio del Paso 2.
+- Etiqueta de error con `color:var(--danger)` en `ng_step4.py` que menciona "ffmpeg" y su comando de instalación cuando ffmpeg no está en el PATH.
 
 ## Reglas de negocio
-- Los avisos de autos distintos y delta sospechoso que llegan en el summary deben materializarse como `st.warning` en el Paso 2 (Streamlit) y como etiqueta de advertencia (⚠) en NiceGUI (`ng_step2.py` recorre `summary.get("avisos")`).
-- Si ffmpeg no está en el PATH al cargar el Paso 4, se muestra un `st.error` (Streamlit) / etiqueta de error NiceGUI con el nombre "ffmpeg" y el comando de instalación para la plataforma del usuario (Windows `winget`, macOS `brew`, Linux `apt`), y el formulario de composición no se renderiza.
-- Si no se detectaron curvas en la vuelta (`rows=[]`), el Paso 2 muestra un `st.info` con la instrucción de re-exportar incluyendo el canal de distancia (Streamlit); en NiceGUI el aviso de canal de distancia ausente se muestra en el Paso 1 (`_NO_DIST_MSG` en `ng_step1.py`) y la tabla del Paso 2 muestra «Sin datos de curvas» si `rows` está vacío.
+- Los avisos de autos distintos y delta sospechoso que llegan en el summary se materializan como etiqueta de advertencia (⚠) en `ng_step2.py` (recorre `summary.get("avisos")`).
+- Si ffmpeg no está en el PATH al cargar el Paso 4, se muestra una etiqueta de error con el nombre "ffmpeg" y el comando de instalación para la plataforma del usuario (Windows `winget`, macOS `brew`, Linux `apt`), y el formulario de composición no se renderiza.
+- El aviso de canal de distancia ausente se muestra en el Paso 1 (`_NO_DIST_MSG` en `ng_step1.py`) y la tabla del Paso 2 muestra «Sin datos de curvas» si `rows` está vacío.
 - En ningún caso la ausencia de ffmpeg, curvas vacías o la presencia de avisos debe producir una excepción no capturada.
 
 ## Criterios de aceptación
@@ -52,12 +50,6 @@ Sistema (la UI detecta condiciones de aviso y las presenta al usuario en el paso
 - Avisos de calidad de auto-sync (visible en el Paso 3, no cubierto por los tests actuales).
 
 ## Verificación
-### Streamlit (legacy)
-- `tests/ui/test_step2_avisos.py` · `test_paso2_muestra_aviso_autos_distintos` — avisos del motor en Paso 2.
-- `tests/ui/test_step2_avisos.py` · `test_paso2_aviso_cuando_no_hay_curvas` — F-10: estado vacío cuando `rows=[]`.
-- `tests/ui/test_step4_ffmpeg.py` · `test_paso4_avisa_si_falta_ffmpeg` — aviso de ffmpeg ausente en Paso 4.
-
-### NiceGUI (v2.0)
 - `tests/ui/test_ng_step2.py` — avisos del motor de `summary["avisos"]` visibles en el Paso 2 NiceGUI.
 - `tests/ui/test_ng_step4.py` — aviso de ffmpeg ausente en el Paso 4 NiceGUI.
 

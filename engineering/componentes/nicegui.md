@@ -14,21 +14,21 @@ UI web v2.0 en ventana de escritorio nativa (pywebview). Es una **capa delgada s
 
 ## Archivos clave
 - `ng_app.py` — entry point NiceGUI v2.0 (router principal + CSS global).
-- `ng_state.py` — `AppState`; estado per-connection en `app.storage.client`.
-- `ng_step0.py`–`ng_step4.py` — los pasos del wizard (5 pasos, portados de Streamlit).
+- `ng_state.py` — `AppState`; estado per-session en `app.storage.user`.
+- `ng_step0.py`–`ng_step4.py` — los pasos del wizard (5 pasos).
 - `ng_helpers.py` — constantes, CSS vars y helpers compartidos.
 
 ## Estado / storage
-- In-memory **per-connection** (`app.storage.client`). Sin persistencia a disco.
-- Diferencia clave con Streamlit: **no hay `st.session_state`** — el estado es un proxy Python (`AppState`) sobre `app.storage.client`.
+- In-memory **per-session** (`app.storage.user`). Sin persistencia a disco.
+- A diferencia de `st.session_state` (Streamlit), el estado es un proxy Python (`AppState`) sobre `app.storage.user` — persiste entre tabs del mismo usuario pero no entre usuarios distintos.
 
 ## Modo de entrega
 - `native=True` — ventana pywebview embebida; el usuario no ve el browser.
 - `native=False` solo en desarrollo / macOS / Linux.
 
 ## Verificación
-- Fixture `user` de `nicegui.testing` (equivalente a `AppTest` de Streamlit).
-- `pytest_plugins = ['nicegui.testing']` en `tests/ui/conftest.py`.
+- Fixture `user` de `nicegui.testing`; se declara con `pytest_plugins = ['nicegui.testing']` en `tests/ui/conftest.py`.
+- Tests: `tests/ui/test_ng_step*.py`, `tests/ui/test_e2e_wizard.py`.
 
 ## Empaquetado
 - `nicegui-pack` → `dist/SimGhostInputs/`.

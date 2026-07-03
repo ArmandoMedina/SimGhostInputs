@@ -17,7 +17,7 @@ Rol de **validación**, no de ideación. Recibe una tarea acotada (correr tests,
 ## Tareas
 
 1. **Correr pytest** — corre la suite completa o el subset que aplique; reporta verde/rojo con el traceback exacto si falla.
-2. **AppTest para la lógica de flujo 0 a 4** — valida el comportamiento de los pasos del pipeline a nivel de lógica Python, sin tocar el DOM de Streamlit. Esta es la capa a prueba de migración (ADR 0010): si la UI migra, estos tests sobreviven.
+2. **Tests de flujo de la UI NiceGUI (pasos 0 a 4)** — valida el comportamiento de los pasos del pipeline a nivel de lógica Python usando la fixture `user` de `nicegui.testing`. Ver `tests/ui/test_ng_step*.py` y `tests/ui/conftest.py`.
 3. **Snapshot de imagen del HUD** — genera o compara el snapshot de imagen del HUD (la salida visible del producto). También a prueba de migración: lo que se verifica es el output, no el front.
 4. **Correr el pipeline real** (`fantasma compare`, `fantasma compose`) sobre telemetría de verdad y reportar errores, anomalías o resultados fuera de rango.
 

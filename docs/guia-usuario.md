@@ -35,7 +35,7 @@ Lista las vueltas con duración y longitud, y marca la más rápida (la que se u
 
 ### Desde la UI
 
-`fantasma ui` abre un asistente local en **modo oscuro** (siempre activo; el exe nativo usa este modo para garantizar contraste legible). La app escucha exclusivamente en `127.0.0.1` — no es accesible desde otras máquinas en la red. En el **Paso 0** eliges qué salida quieres:
+`fantasma-ng` abre un asistente en ventana de escritorio nativa (NiceGUI + pywebview) en **modo oscuro** (siempre activo, garantiza contraste legible). La app escucha exclusivamente en `127.0.0.1` — no es accesible desde otras máquinas en la red. En el **Paso 0** eliges qué salida quieres:
 
 - **📊 Solo análisis**: reporte, CSVs y gráficas.
 - **🎬 Solo overlay**: HUD transparente para editarlo aparte.
@@ -141,7 +141,7 @@ La detección automática extrae la energía del motor del audio del video (band
 
 El preview de Pace Notes no sustituye a CrewChief: mezcla los mismos WAVs dentro del MP4 para escuchar si el plan de sonidos está demasiado cargado o llega a buen tiempo. Requiere `--driver` porque los metros del `metadata.json` se convierten a segundos con la telemetría de la vuelta.
 
-Si usas `fantasma ui`, el Paso 4 incluye un botón «Detectar sincronía automáticamente» que hace lo mismo desde la interfaz gráfica. Una vez completada la composición, el Paso 4 muestra qué encoder se usó realmente (`h264_nvenc` si se detectó GPU NVIDIA, `libx264` si no) y cuánto tardó — útil para diagnosticar si la GPU se está aprovechando.
+Si usas `fantasma-ng`, el Paso 4 incluye un botón «Detectar sincronía automáticamente» que hace lo mismo desde la interfaz gráfica. Una vez completada la composición, el Paso 4 muestra qué encoder se usó realmente (`h264_nvenc` si se detectó GPU NVIDIA, `libx264` si no) y cuánto tardó — útil para diagnosticar si la GPU se está aprovechando.
 
 > **Aviso de «correlación moderada».** Si la sincronía se aceptó pero con una correlación solo
 > moderada (calidad media), verás un aviso de que el video **podría no corresponder a esa vuelta**

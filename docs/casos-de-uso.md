@@ -25,7 +25,7 @@ piloto puede ser "league racer + ACC + sin GPU + UI".
 | **Referencia** | Su propia mejor histórica · Vuelta de un coach/compañero · Solo tiene su outing (comparar dos vueltas del mismo archivo) |
 | **Objetivo de salida** | Solo análisis (reporte) · Solo overlay (.webm) · Video completo (compose) |
 | **Hardware** | GPU NVIDIA (NVENC) · Sin GPU (CPU) · Sin ffmpeg |
-| **Interfaz** | UI Streamlit · CLI (scriptable/batch) |
+| **Interfaz** | UI NiceGUI (`fantasma-ng`) · CLI (scriptable/batch) |
 | **Momento** | Primera vez (onboarding) · Recurrente (otra vuelta / otra sesión) |
 | **Locale** | Export en-US (punto decimal, coma separador) · Export europeo (coma decimal, `;` separador) |
 
@@ -73,7 +73,7 @@ piloto puede ser "league racer + ACC + sin GPU + UI".
 | # | Caso | Veredicto | Notas |
 | :-- | :-- | :-- | :-- |
 | C11 | Reporte por curva, delta, tiempo perdido | ✅ | `compare` + report.md + CSVs + PNGs. Núcleo sólido. |
-| C12 | Avisos de comparación inválida (circuitos/autos distintos) | ⚠️→✅ | **Resuelto en NiceGUI v2.0** — `ng_step2.py` muestra cada aviso de `summary["avisos"]` al inicio del Paso 2 (etiqueta ⚠ amarilla por aviso). La UI Streamlit legacy aún no los muestra a nivel global (solo en la columna "Avisos" por curva). |
+| C12 | Avisos de comparación inválida (circuitos/autos distintos) | ✅ | `ng_step2.py` muestra cada aviso de `summary["avisos"]` al inicio del Paso 2 (etiqueta ⚠ amarilla por aviso). |
 | C13 | Nombrar curvas / track pack | ✅ | CLI (`detect` + editar JSON) **y UI**: Paso 1 → "⚙️ Opciones avanzadas" detecta curvas y ofrece un `data_editor` para nombrarlas, o subir un `corners.json`. |
 | C14 | Drill-down interactivo por curva | ❌ (futuro) | Visión capturada en PRODUCT_BRIEF §10, no implementada. Es el siguiente salto de valor de análisis. |
 

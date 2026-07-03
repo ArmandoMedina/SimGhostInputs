@@ -11,13 +11,13 @@ prioridad: Should Have
 # UI-03 - Drill-down por curva
 
 ## Módulo
-- [[UI - Interfaz Streamlit]]
+- [[UI - Interfaz NiceGUI]]
 
 ## Propósito funcional
 Permitir que el piloto pase de la tabla de tiempo perdido a una instrucción concreta por curva, sin estudiar MoTeC ni revisar manualmente todas las gráficas.
 
 ## Actor principal
-Usuario que revisa el Paso 2 de `fantasma ui` tras comparar una vuelta contra una referencia.
+Usuario que revisa el Paso 2 de `fantasma-ng` tras comparar una vuelta contra una referencia.
 
 ## Entradas funcionales
 - `rows` de `compare()`, ordenadas por `time_lost`.
@@ -57,13 +57,8 @@ Usuario que revisa el Paso 2 de `fantasma ui` tras comparar una vuelta contra un
 - Decidir automáticamente si el piloto debe cambiar la trazada completa; el panel solo explica señales medibles.
 
 ## Verificación
-### Streamlit (legacy)
-- `tests/ui/test_step2_avisos.py` · `test_paso2_muestra_drilldown_de_mayor_perdida`.
-- `tests/core/test_coaching.py`.
-
-### NiceGUI (v2.0)
 - `tests/ui/test_ng_step2.py` — drill-down por curva NiceGUI: selección por mayor pérdida y omisión de canales ausentes.
-- `tests/core/test_coaching.py` — la lógica de `corner_coaching(row, trace)` es compartida por ambas UIs.
+- `tests/core/test_coaching.py` — lógica de `corner_coaching(row, trace)`.
 
 ## Relacionado con
 - [[Interfaz de usuario]]

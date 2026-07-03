@@ -64,6 +64,9 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/). Versionado
 ### Añadido (2026-07-03 — auditoría integral pre-v2.0)
 - **Auditoría integral pre-v2.0.0** completada: revisión end-to-end de código, tests, docs, gates y método de la rama `codex/sgi-v2-merge`. Informe y evidencia en `qa_runs/2026-07-03-auditoria-integral/`. **212 tests** verdes tras la remediación R1.
 
+### Eliminado (2026-07-03)
+- **UI Streamlit retirada** (`fantasma/ui/{app,step0-4,_helpers}.py` + 6 tests AppTest): la interfaz Streamlit se retira por completo. El subcomando `fantasma ui` y el extra `[ui]` (incluyendo su presencia en `[full]` y en el CI) han sido eliminados. La única UI es NiceGUI (`fantasma-ng`, extra `[ui-ng]`), que es superconjunto funcional de la Streamlit en todos los flujos del wizard. Decisión registrada en la enmienda 2026-07-03 del [ADR 0018](docs/decisions/0018-framework-ui-nicegui.md); censo de archivos en `qa_runs/2026-07-03-auditoria-integral/decision-retiro-streamlit.md`.
+
 ### Cambiado (2026-07-03)
 - **Blast-radius de `viz`** — `hud-reference` pasa de `doc_bloquea` a `doc_avisa` ([ADR 0020](docs/decisions/0020-blast-radius-viz-hud-reference-avisa.md)): los cambios no-visuales en `fantasma/viz/` ya no bloquean el push por no tocar `hud-reference.md`; el gate avisa y pregunta si el cambio es visual.
 - **`SimGhostInputs.spec`** — ruta de los recursos de NiceGUI ahora es dinámica (vía `importlib`); elimina la dependencia de la ruta exacta de la versión instalada.

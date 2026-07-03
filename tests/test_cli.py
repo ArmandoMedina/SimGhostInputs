@@ -14,7 +14,6 @@ que el except BaseException mataba ffmpeg y re-lanzaba -> webm vacio + exit 1.
 """
 
 import io
-import shutil
 import sys
 from types import SimpleNamespace
 
@@ -42,8 +41,8 @@ def test_overlay_progress_total_cero_no_crashea():
 
 
 def test_overlay_progress_firma_compatible_con_ui():
-    """Homologa la firma con el callback de la UI (_helpers.py:222):
-    def _cb(n, total, status=None) — mismos tres parametros."""
+    """Homologa la firma con el callback de la UI (RenderJob.progress_cb en ng_helpers.py):
+    def progress_cb(self, n, total, status=None) — mismos tres parametros (sin self)."""
     import inspect
 
     sig = inspect.signature(_overlay_progress)
@@ -115,13 +114,6 @@ def test_compare_avisa_driver_sin_distancia(monkeypatch, tmp_path):
         cmd_compare(args)
 
 
-def test_main_propaga_exit_code_cuando_subcomando_falla(monkeypatch):
-    """main() debe retornar no-cero cuando un subcomando devuelve error (C1)."""
-    monkeypatch.setattr(shutil, "which", lambda x: None)
-    code = main(["ui"])
-    assert code != 0, "main() debe propagar el exit-code no-cero de cmd_ui"
-
-
 def test_pacenotes_cli_genera_pack(tmp_path):
     corners = tmp_path / "corners.json"
     compare = tmp_path / "corners_compare.csv"
@@ -163,3 +155,25 @@ def test_pacenotes_cli_genera_pack(tmp_path):
     cmd_pacenotes(args)
     assert (out / "metadata.json").exists()
     assert len(list(out.glob("*.wav"))) == 3
+
+
+def test_main_propaga_exit_code_del_subcomando(monkeypatch):
+    """main() retorna el valor que devuelve el subcomando: cli.py return args.func(args) or 0.
+
+    Monkeypatch de cmd_laps para que devuelva 1; main(["laps", "x.csv"]) debe retornar 1.
+    """
+    monkeypatch.setattr("fantasma.cli.cmd_laps", lambda args: 1)
+    assert main(["laps", "cualquier.csv"]) == 1
+
+
+def test_main_retorna_1_cuando_subcomando_lanza_excepcion(monkeypatch):
+    """main() atrapa Exception y retorna 1: cli.py except Exception → return 1.
+
+    Monkeypatch de cmd_laps para que lance RuntimeError; main no debe reraise y debe retornar 1.
+    """
+
+    def _cmd_boom(args):
+        raise RuntimeError("error simulado")
+
+    monkeypatch.setattr("fantasma.cli.cmd_laps", _cmd_boom)
+    assert main(["laps", "cualquier.csv"]) == 1

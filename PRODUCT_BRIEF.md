@@ -129,7 +129,7 @@ Ambos productos comparten el mismo motor de importación, normalización y compa
 | Overlay HUD animado | VP9/ProRes con canal alfa, render paralelo |
 | Composición de video | ffmpeg con NVENC automático si hay GPU NVIDIA |
 | Auto-sincronización | Detección de offset por correlación audio/telemetría |
-| Interfaz gráfica local | Streamlit en localhost, sin hosting, datos siempre locales |
+| Interfaz gráfica local | NiceGUI + pywebview, ventana de escritorio nativa, sin hosting, datos siempre locales; disponible como instalador doble-clic (Windows) |
 | Nuevos importadores | iRacing `.ibt`, `.ld` directo, SimHub CSV, otros formatos |
 | Historial entre sesiones | Comparación de tendencias entre tandas (diferido a post-v1.0) |
 
