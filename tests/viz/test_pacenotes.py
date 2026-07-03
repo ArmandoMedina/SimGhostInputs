@@ -218,3 +218,30 @@ def test_build_tone_pack_empty_rows_no_crash(tmp_path):
     assert result["entries"] == 0
     # El directorio de salida y metadata.json deben existir igual
     assert (tmp_path / "metadata.json").exists()
+
+
+# ── _run_async_in_thread: seguridad de event-loop ─────────────────────────────
+
+
+def test_run_async_in_thread_safe_inside_running_loop():
+    """_run_async_in_thread no lanza RuntimeError si hay un loop activo (p.ej. NiceGUI).
+
+    asyncio.run() dentro de un loop activo lanzaria:
+        RuntimeError: This event loop is already running
+    El helper debe ejecutar la corutina en un thread separado y completarla sin error.
+    """
+    import asyncio
+
+    from fantasma.viz.pacenotes import _run_async_in_thread
+
+    result: list = []
+
+    async def my_coro():
+        result.append(42)
+
+    async def outer():
+        # Aqui hay un loop activo; asyncio.run() crashearia.
+        _run_async_in_thread(my_coro())
+
+    asyncio.run(outer())
+    assert result == [42]

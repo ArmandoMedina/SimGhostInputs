@@ -5,6 +5,7 @@ activo en los últimos `hold` m hasta el cursor. Es lo que da el comportamiento 
 luz instantánea con retención corta en vez del viejo conteo por ventana.
 """
 
+import io
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -48,14 +49,55 @@ def test_flag_recent_grid_clamps_index_past_end():
     assert overlay._flag_recent_grid(g, 50, 8) is True
 
 
+# ── _run_ffmpeg: captura de stderr ───────────────────────────────────────────
+
+
+def test_run_ffmpeg_raises_runtime_error_with_stderr_tail():
+    """_run_ffmpeg: returncode != 0 → RuntimeError con tail de stderr de ffmpeg."""
+    fake_proc = MagicMock()
+    fake_proc.returncode = 1
+    fake_proc.stdout = iter([])
+
+    # Pre-populamos el "stderr" como bytes (modo w+b) como si ffmpeg lo hubiera escrito.
+    # El código hará seek(0) antes de leer, por lo que el contenido es visible.
+    fake_err = io.BytesIO(b"Error: codec libvpx-vp9 not found\nInvalid encoder.\n")
+
+    with patch("fantasma.viz.overlay.tempfile.TemporaryFile", return_value=fake_err):
+        with patch("subprocess.Popen", return_value=fake_proc):
+            with pytest.raises(RuntimeError, match="libvpx-vp9"):
+                overlay._run_ffmpeg(["ffmpeg", "-y", "dummy.webm"], 100, None)
+
+
+def test_run_ffmpeg_non_utf8_stderr_does_not_raise_unicode_error():
+    """_run_ffmpeg: bytes no-UTF8 en stderr son reemplazados, no lanzan UnicodeDecodeError."""
+    fake_proc = MagicMock()
+    fake_proc.returncode = 1
+    fake_proc.stdout = iter([])
+
+    # b"\xf3" no es UTF-8 válido; errors="replace" lo convierte a U+FFFD (u"�")
+    fake_err = io.BytesIO(b"c\xf3dec error")
+
+    with patch("fantasma.viz.overlay.tempfile.TemporaryFile", return_value=fake_err):
+        with patch("subprocess.Popen", return_value=fake_proc):
+            with pytest.raises(RuntimeError) as exc_info:
+                overlay._run_ffmpeg(["ffmpeg", "-y", "dummy.webm"], 100, None)
+
+    msg = str(exc_info.value)
+    assert "c" in msg and "dec error" in msg, "El texto alrededor del byte inválido debe aparecer"
+    assert "�" in msg, "El byte inválido debe sustituirse por el carácter de reemplazo U+FFFD"
+
+
 # ── render paralelo: collect round-robin ─────────────────────────────────────
 
 
 def test_render_parallel_collect_round_robin(tmp_path):
-    """Workers que terminan en orden inverso al de lanzamiento son recolectados todos.
+    """Workers que terminan en orden inverso son recolectados por orden de finalización.
 
-    Tres chunks; el worker 2 termina primero, luego el 1, luego el 0.
-    Verifica que done alcanza n_frames y que ningún worker se bloquea esperando al 0.
+    Tres chunks de tamaños distintos: worker 2 (5 frames) termina primero,
+    luego worker 1 (10 frames), luego worker 0 (15 frames, el más lento).
+    La aserción discriminante: collected_done[0] == 5, es decir los frames del
+    worker rápido se cuentan antes de que worker 0 haya terminado.
+    Un código secuencial que bloquee en worker 0 daría collected_done[0] == 15.
     """
     rounds = [0]
 
@@ -69,9 +111,9 @@ def test_render_parallel_collect_round_robin(tmp_path):
         m.poll = poll
         return m
 
-    # worker 0 → chunk (0,10), finish_round=4 (el más lento)
-    # worker 1 → chunk (10,20), finish_round=2
-    # worker 2 → chunk (20,30), finish_round=0 (inmediato)
+    # worker 0 → chunk (0,15),  15 frames, finish_round=4 (el más lento)
+    # worker 1 → chunk (15,25), 10 frames, finish_round=2
+    # worker 2 → chunk (25,30),  5 frames, finish_round=0 (inmediato)
     procs_queue = [make_proc(4), make_proc(2), make_proc(0)]
     proc_iter = iter(procs_queue)
 
@@ -115,7 +157,7 @@ def test_render_parallel_collect_round_robin(tmp_path):
     )
 
     n_frames = 30
-    chunks = [(0, 10), (10, 20), (20, 30)]
+    chunks = [(0, 15), (15, 25), (25, 30)]
 
     with patch("subprocess.Popen", side_effect=lambda *a, **k: next(proc_iter)):
         with patch("tempfile.NamedTemporaryFile", return_value=fake_file):
@@ -128,4 +170,10 @@ def test_render_parallel_collect_round_robin(tmp_path):
                         overlay._render_parallel(chunks, base, n_frames, fake_progress)
 
     assert collected_done, "progress nunca fue llamado"
+    # Aserción discriminante: el worker rápido (25-30, 5 frames) se recolecta
+    # en la primera pasada del poll, antes de que worker 0 termine.
+    # Código secuencial daría collected_done[0] == 15 (worker 0 primero).
+    assert collected_done[0] == 5, (
+        "round-robin debe reportar al worker rapido (5 frames) antes que al lento"
+    )
     assert collected_done[-1] == n_frames

@@ -93,13 +93,6 @@ def _interp_lap(lap, ds):
 # ── métricas por ventana ──────────────────────────────────────────────────────
 
 
-def _count_events(d_orig, flag_orig, lo, hi):
-    """Flancos de subida (0→1) de flag_orig en el tramo [lo, hi]."""
-    mask = (d_orig >= lo) & (d_orig <= hi)
-    f = (flag_orig[mask] > 0.5).astype(np.int8)
-    return int(np.sum(np.diff(f) > 0)) if len(f) >= 2 else 0
-
-
 def _flag_recent_grid(grid, i, hold):
     """True si el flag (rejilla 1 m) estuvo activo en los últimos `hold` m hasta
     el cursor. Da una luz instantánea con retención corta, no un conteo de ventana."""
@@ -624,7 +617,8 @@ def _run_ffmpeg(cmd, n_frames, progress):
     """Corre ffmpeg y alimenta el callback de progreso leyendo stdout en tiempo real."""
     cmd_p = [cmd[0], "-progress", "pipe:1", "-nostats"] + cmd[1:]
     pat = re.compile(r"^frame=(\d+)")
-    proc = subprocess.Popen(cmd_p, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
+    err_f = tempfile.TemporaryFile(mode="w+b")
+    proc = subprocess.Popen(cmd_p, stdout=subprocess.PIPE, stderr=err_f, text=True)
     try:
         for line in proc.stdout:
             if progress and n_frames > 0:
@@ -637,11 +631,18 @@ def _run_ffmpeg(cmd, n_frames, progress):
     except BaseException:
         proc.kill()
         proc.wait()
+        err_f.close()
         raise
     else:
         proc.wait()
     if proc.returncode != 0:
-        raise subprocess.CalledProcessError(proc.returncode, cmd)
+        err_f.seek(0)
+        tail = b"".join(err_f.readlines()[-15:]).decode("utf-8", errors="replace").strip()
+        err_f.close()
+        raise RuntimeError(
+            "ffmpeg falló (código %d). Últimas líneas:\n%s" % (proc.returncode, tail)
+        )
+    err_f.close()
 
 
 def render_overlay(

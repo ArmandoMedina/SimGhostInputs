@@ -8,6 +8,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import threading
 import wave
 from pathlib import Path
 
@@ -190,11 +191,35 @@ def plan_tone_events(
     return {"events": [_plan_public(e) for e in events], "corners": corners_plan}
 
 
+def _run_async_in_thread(coro):
+    """Ejecuta una corutina en un thread con su propio event-loop.
+
+    Seguro si hay un loop activo (p.ej. NiceGUI/uvicorn), donde
+    asyncio.run() lanzaria RuntimeError: This event loop is already running.
+    """
+    import asyncio
+
+    exc: list = []
+
+    def _target():
+        loop = asyncio.new_event_loop()
+        try:
+            loop.run_until_complete(coro)
+        except Exception as e:  # noqa: BLE001
+            exc.append(e)
+        finally:
+            loop.close()
+
+    t = threading.Thread(target=_target, daemon=True)
+    t.start()
+    t.join()
+    if exc:
+        raise exc[0]
+
+
 def build_voice_pack(rows, corners, outdir, top=5, lang="es-MX", track_name=None) -> dict:
     if importlib.util.find_spec("edge_tts") is None:
         raise RuntimeError("edge-tts no instalado: ejecuta pip install 'fantasma-inputs[voice]'")
-
-    import asyncio
 
     import edge_tts
 
@@ -224,7 +249,7 @@ def build_voice_pack(rows, corners, outdir, top=5, lang="es-MX", track_name=None
         with tempfile.TemporaryDirectory() as tmp:
             mp3 = os.path.join(tmp, "note.mp3")
             wav = out / filename
-            asyncio.run(edge_tts.Communicate(text, voice=voice).save(mp3))
+            _run_async_in_thread(edge_tts.Communicate(text, voice=voice).save(mp3))
             try:
                 subprocess.run(
                     [

@@ -1,6 +1,7 @@
 """Preview de un frame del HUD para el Paso 4 de la UI NiceGUI."""
 
 import os
+import shutil
 import subprocess
 import tempfile
 
@@ -10,17 +11,32 @@ def compose_preview_frame(overlay_path: str, position: str, scale: float):
 
     Devuelve un PIL Image (RGB) listo para serializar a base64.
     """
+    ffmpeg = shutil.which("ffmpeg")
+    if not ffmpeg:
+        raise RuntimeError(
+            "ffmpeg no encontrado en PATH. Instálalo con:\n"
+            "  winget install Gyan.FFmpeg\n"
+            "y reinicia la terminal."
+        )
+
     from PIL import Image
 
     # Extraer frame 0 del overlay con ffmpeg
     tmp_fd, tmp_path = tempfile.mkstemp(suffix=".png")
     os.close(tmp_fd)
     try:
-        subprocess.run(
-            ["ffmpeg", "-y", "-i", overlay_path, "-vframes", "1", "-q:v", "2", tmp_path],
-            capture_output=True,
-            check=True,
-        )
+        try:
+            subprocess.run(
+                [ffmpeg, "-y", "-i", overlay_path, "-vframes", "1", "-q:v", "2", tmp_path],
+                capture_output=True,
+                check=True,
+            )
+        except subprocess.CalledProcessError as e:
+            stderr_txt = e.stderr.decode(errors="replace") if e.stderr else ""
+            raise RuntimeError(
+                "ffmpeg falló al extraer el frame (código %d):\n%s"
+                % (e.returncode, stderr_txt.strip())
+            ) from e
         hud = Image.open(tmp_path).convert("RGBA")
     finally:
         try:
