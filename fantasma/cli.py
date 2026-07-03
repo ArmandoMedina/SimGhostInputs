@@ -240,7 +240,10 @@ def cmd_ui(args):
         )
         return 1
     app = os.path.join(os.path.dirname(__file__), "ui", "app.py")
-    subprocess.run(["streamlit", "run", app, "--server.port", str(args.port)], check=True)
+    subprocess.run(
+        ["streamlit", "run", app, "--server.port", str(args.port), "--server.address", "127.0.0.1"],
+        check=True,
+    )
 
 
 def cmd_compose(args):
@@ -677,11 +680,10 @@ def main(argv=None):
 
     args = p.parse_args(argv)
     try:
-        args.func(args)
+        return args.func(args) or 0
     except Exception as e:
         print("error: %s" % e, file=sys.stderr)
         return 1
-    return 0
 
 
 if __name__ == "__main__":

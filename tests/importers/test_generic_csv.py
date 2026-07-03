@@ -43,3 +43,23 @@ def test_bad_values_default_to_zero(tmp_path):
     lap = generic_csv.load(path)
     assert lap.col("dist")[1] == 0.0
     assert lap.col("speed")[1] == 0.0
+
+
+def test_empty_csv_raises_valueerror(tmp_path):
+    """Archivo CSV vacio levanta ValueError con mensaje util (H-03)."""
+    path = _write(tmp_path, "", "empty.csv")
+    with pytest.raises(ValueError, match="vacio"):
+        generic_csv.load(path)
+
+
+def test_duplicate_columns_to_same_canonical_no_double_append(tmp_path):
+    """'speed' y 'Speed_kmh' ambas mapean a 'speed': primera gana, sin double-append (H-01)."""
+    path = _write(
+        tmp_path,
+        "time,dist,speed,Speed_kmh\n0.0,0,100,99\n0.1,5,101,100\n",
+    )
+    lap = generic_csv.load(path)
+    # serie alineada: len(speed) == len(time)
+    assert len(lap.col("speed")) == len(lap.col("time")) == 2
+    # gana la primera columna que mapeó a speed (valor 100, no 99)
+    assert lap.col("speed")[0] == 100.0

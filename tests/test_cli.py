@@ -14,12 +14,13 @@ que el except BaseException mataba ffmpeg y re-lanzaba -> webm vacio + exit 1.
 """
 
 import io
+import shutil
 import sys
 from types import SimpleNamespace
 
 import pytest
 
-from fantasma.cli import _force_utf8_console, _overlay_progress, cmd_compare, cmd_pacenotes
+from fantasma.cli import _force_utf8_console, _overlay_progress, cmd_compare, cmd_pacenotes, main
 from fantasma.core.lap import Lap
 
 
@@ -112,6 +113,13 @@ def test_compare_avisa_driver_sin_distancia(monkeypatch, tmp_path):
     )
     with pytest.raises(ValueError, match="piloto no tiene canal de distancia"):
         cmd_compare(args)
+
+
+def test_main_propaga_exit_code_cuando_subcomando_falla(monkeypatch):
+    """main() debe retornar no-cero cuando un subcomando devuelve error (C1)."""
+    monkeypatch.setattr(shutil, "which", lambda x: None)
+    code = main(["ui"])
+    assert code != 0, "main() debe propagar el exit-code no-cero de cmd_ui"
 
 
 def test_pacenotes_cli_genera_pack(tmp_path):

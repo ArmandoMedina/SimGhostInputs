@@ -61,8 +61,12 @@ def load(path, column_map=None):
     lap = Lap(meta={"source_file": path, "beacons": []})
     with open(path, newline="", encoding="utf-8-sig", errors="replace") as f:
         reader = csv.reader(f, delimiter=detect_delimiter(path))
-        header = next(reader)
+        try:
+            header = next(reader)
+        except StopIteration:
+            raise ValueError("El archivo CSV esta vacio o no contiene encabezados: %s" % path)
         cols = []
+        seen_canonical: set = set()
         for i, name in enumerate(header):
             key = name.strip()
             canon = None
@@ -70,8 +74,9 @@ def load(path, column_map=None):
                 canon = column_map[key]
             elif key.lower().replace(" ", "") in GUESS:
                 canon = GUESS[key.lower().replace(" ", "")]
-            if canon:
+            if canon and canon not in seen_canonical:
                 cols.append((i, canon))
+                seen_canonical.add(canon)
                 lap.channels.setdefault(canon, [])
         if not any(c == "dist" for _, c in cols) or not any(c == "time" for _, c in cols):
             raise ValueError(
