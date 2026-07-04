@@ -2,7 +2,7 @@
 
 import os
 
-from nicegui import ui
+from nicegui import run, ui
 
 from .ng_helpers import (
     _FLOWS,
@@ -68,15 +68,21 @@ async def render(state, navigate):
     # assigned to ui elements further below before any handler can fire.
     ref_status = None  # noqa: F841  (assigned below)
     ref_lap_col = None  # noqa: F841
+    ref_loading_area = None  # noqa: F841
     drv_status = None  # noqa: F841
     drv_lap_col = None  # noqa: F841
+    drv_loading_area = None  # noqa: F841
     load_err = None  # noqa: F841
 
     # ── Upload handlers ──────────────────────────────────────────────────────
 
     async def handle_ref_upload(path, original_name=None):
+        ref_loading_area.clear()
+        with ref_loading_area:
+            ui.spinner("dots").classes("text-blue-400")
+            ui.label("Leyendo CSV...").classes("text-xs text-gray-400")
         try:
-            laps = _load_laps(path)
+            laps = await run.io_bound(_load_laps, path)
         except Exception as ex:
             ref_status.set_text(f"Error al leer el archivo: {ex}")
             ref_status.classes(remove="upload-status text-green-400 text-yellow-400")
@@ -84,6 +90,7 @@ async def render(state, navigate):
             return
         finally:
             _cleanup_upload(path)
+            ref_loading_area.clear()
         if _missing_distance(laps):
             ref_status.set_text(_NO_DIST_MSG)
             ref_status.classes(remove="upload-status text-green-400 text-yellow-400")
@@ -99,6 +106,7 @@ async def render(state, navigate):
         ref_state["laps"] = laps
         ref_state["path"] = path  # ruta del temp ya borrado — solo informativa, no releer
         ref_state["name"] = original_name or os.path.basename(path)
+        ref_status.set_text("Calculando vuelta rapida...")
         best_i = _best_lap_index(laps)
         ref_state["sel_i"] = best_i
         ref_status.set_text(
@@ -112,8 +120,12 @@ async def render(state, navigate):
             _render_lap_selector(ref_lap_col, ref_state, "ref")
 
     async def handle_drv_upload(path, original_name=None):
+        drv_loading_area.clear()
+        with drv_loading_area:
+            ui.spinner("dots").classes("text-blue-400")
+            ui.label("Leyendo CSV...").classes("text-xs text-gray-400")
         try:
-            laps = _load_laps(path)
+            laps = await run.io_bound(_load_laps, path)
         except Exception as ex:
             drv_status.set_text(f"Error al leer el archivo: {ex}")
             drv_status.classes(remove="upload-status text-green-400 text-yellow-400")
@@ -121,6 +133,7 @@ async def render(state, navigate):
             return
         finally:
             _cleanup_upload(path)
+            drv_loading_area.clear()
         if _missing_distance(laps):
             drv_status.set_text(_NO_DIST_MSG)
             drv_status.classes(remove="upload-status text-green-400 text-yellow-400")
@@ -136,6 +149,7 @@ async def render(state, navigate):
         drv_state["laps"] = laps
         drv_state["path"] = path  # ruta del temp ya borrado — solo informativa, no releer
         drv_state["name"] = original_name or os.path.basename(path)
+        drv_status.set_text("Calculando vuelta rapida...")
         best_i = _best_lap_index(laps)
         drv_state["sel_i"] = best_i
         drv_status.set_text(
@@ -222,6 +236,8 @@ async def render(state, navigate):
                     auto_upload=True,
                 ).props('accept=".csv,.xlsx" flat').classes("w-full")
 
+            ref_loading_area = ui.column().classes("w-full")
+
             ref_status = (
                 ui.label(
                     "⬆ Sube el archivo de referencia para continuar."
@@ -266,6 +282,8 @@ async def render(state, navigate):
                     on_upload=on_drv_upload,
                     auto_upload=True,
                 ).props('accept=".csv,.xlsx" flat').classes("w-full")
+
+            drv_loading_area = ui.column().classes("w-full")
 
             drv_status = (
                 ui.label(

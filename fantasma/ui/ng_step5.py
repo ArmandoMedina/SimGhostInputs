@@ -51,12 +51,19 @@ async def render(state, navigate):
 
     vol_slider.on("update:model-value", _on_vol)
 
+    _lang_state = {"value": "es-MX"}
+
     lang_container = ui.column().classes("w-full")
     with lang_container:
         ui.label("Idioma").classes("text-sm font-bold text-white mb-1 mt-3")
-        lang_select = ui.select(["es-MX", "es-ES", "en-US"], value="es-MX", label="Idioma").classes(
-            "w-48"
-        )
+        lang_select = ui.select(
+            ["es-MX", "es-ES", "en-US"], value=_lang_state["value"], label="Idioma"
+        ).classes("w-48")
+
+    lang_select.on(
+        "update:model-value",
+        lambda e: _lang_state.update({"value": e.value or "es-MX"}),
+    )
 
     lang_container.set_visibility(False)
 
@@ -103,7 +110,7 @@ async def render(state, navigate):
         _mode = mode_radio.value
         _top = int(top_number.value or 5)
         _vol = float(vol_state["value"])
-        _lang = lang_select.value if _mode in ("voice", "both") else "es-MX"
+        _lang = _lang_state["value"] if _mode in ("voice", "both") else "es-MX"
         _rows = state.rows
         _corners = state.corners
         _track = track or None
@@ -268,7 +275,20 @@ async def render(state, navigate):
             ui.label("Listo: %s" % result_path).classes("font-bold text-green-400")
         ui.notify("Video con sonido guardado: %s" % os.path.basename(result_path), type="positive")
 
-    ui.button(
-        "Aplicar sonido",
-        on_click=_apply_mux,
-    ).classes("btn-primary text-base px-6 py-2 mt-2").props("flat")
+    apply_btn = (
+        ui.button(
+            "Aplicar sonido",
+            on_click=_apply_mux,
+        )
+        .classes("btn-primary text-base px-6 py-2 mt-2")
+        .props("flat")
+    )
+
+    def _update_apply_enabled():
+        if state.drv_lap is not None and mux_video_input.value:
+            apply_btn.enable()
+        else:
+            apply_btn.disable()
+
+    mux_video_input.on("update:model-value", lambda _: _update_apply_enabled())
+    _update_apply_enabled()

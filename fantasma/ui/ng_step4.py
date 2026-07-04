@@ -636,10 +636,24 @@ async def render(state, navigate):
         navigate._cancel_render = _cancel_on_nav
 
     if not (job_holder["job"] and not job_holder["job"].done):
-        ui.button(
-            "Componer video",
-            on_click=_start_compose,
-        ).classes("btn-primary text-base px-6 py-2").props("flat")
+        compose_btn = (
+            ui.button(
+                "Componer video",
+                on_click=_start_compose,
+            )
+            .classes("btn-primary text-base px-6 py-2")
+            .props("flat")
+        )
+
+        def _update_compose_enabled():
+            if video_input.value and overlay_input.value:
+                compose_btn.enable()
+            else:
+                compose_btn.disable()
+
+        video_input.on("update:model-value", lambda _: _update_compose_enabled())
+        overlay_input.on("update:model-value", lambda _: _update_compose_enabled())
+        _update_compose_enabled()
 
     # Auto-arranque si viene encadenado desde el Paso 3
     if state.pending_autocompose:

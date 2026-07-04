@@ -323,8 +323,8 @@ async def render(state, navigate):
                             for p in overview:
                                 ui.image(p).classes("rounded w-full")
                     else:
-                        ui.label("No hay gráfica de delta disponible.").classes("text-xs").style(
-                            "color:var(--muted)"
+                        ui.label("No hay gráfica de delta disponible.").classes(
+                            "text-xs text-gray-400"
                         )
 
                     gg = _charts_of("gg_diagram")
@@ -352,9 +352,7 @@ async def render(state, navigate):
                 with ui.element("div").classes("panel-body"):
                     ui.label(
                         "Genera tonos de guia para CrewChief con las perdidas detectadas."
-                    ).classes("text-xs").style(
-                        "color:var(--muted);margin-bottom:12px;display:block"
-                    )
+                    ).classes("text-xs text-gray-400").style("margin-bottom:12px;display:block")
                     ui.button(
                         "🔔 Generar Pace Notes",
                         on_click=go_to_pacenotes,
