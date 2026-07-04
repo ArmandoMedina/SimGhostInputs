@@ -518,6 +518,9 @@ async def render(state, navigate):
                     type="warning",
                 )
                 return
+            if not pn_dir_input.value:
+                ui.notify("Indica la carpeta del pack de Pace Notes", type="warning")
+                return
             _pn_kwargs = {
                 "pace_notes_dir": pn_dir_input.value,
                 "pace_notes_volume": 1.0,

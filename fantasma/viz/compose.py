@@ -339,40 +339,40 @@ def compose_video(
             output,
         ]
 
-    if progress:
-        cmd_p = [cmd[0], "-progress", "pipe:1", "-nostats"] + cmd[1:]
-        pat = re.compile(r"^frame=(\d+)")
-        # stderr a un archivo temporal para poder reportar el motivo real del
-        # fallo (antes iba a DEVNULL y solo quedaba un exit code críptico).
-        err_f = tempfile.TemporaryFile(mode="w+")
-        proc = subprocess.Popen(cmd_p, stdout=subprocess.PIPE, stderr=err_f, text=True)
-        try:
-            for line in proc.stdout:
-                m = pat.match(line.strip())
-                if m and n_frames > 0:
-                    f = int(m.group(1))
-                    progress(f, n_frames)
-        except BaseException:
-            proc.kill()
-            proc.wait()
+    try:
+        if progress:
+            cmd_p = [cmd[0], "-progress", "pipe:1", "-nostats"] + cmd[1:]
+            pat = re.compile(r"^frame=(\d+)")
+            # stderr a un archivo temporal para poder reportar el motivo real del
+            # fallo (antes iba a DEVNULL y solo quedaba un exit code críptico).
+            err_f = tempfile.TemporaryFile(mode="w+")
+            proc = subprocess.Popen(cmd_p, stdout=subprocess.PIPE, stderr=err_f, text=True)
+            try:
+                for line in proc.stdout:
+                    m = pat.match(line.strip())
+                    if m and n_frames > 0:
+                        f = int(m.group(1))
+                        progress(f, n_frames)
+            except BaseException:
+                proc.kill()
+                proc.wait()
+                err_f.close()
+                raise
+            else:
+                proc.wait()
+            if proc.returncode != 0:
+                err_f.seek(0)
+                tail = "".join(err_f.readlines()[-15:]).strip()
+                err_f.close()
+                raise RuntimeError(
+                    "ffmpeg falló (código %d). Últimas líneas:\n%s" % (proc.returncode, tail)
+                )
             err_f.close()
-            raise
         else:
-            proc.wait()
-        if proc.returncode != 0:
-            err_f.seek(0)
-            tail = "".join(err_f.readlines()[-15:]).strip()
-            err_f.close()
-            raise RuntimeError(
-                "ffmpeg falló (código %d). Últimas líneas:\n%s" % (proc.returncode, tail)
-            )
-        err_f.close()
-    else:
-        subprocess.run(cmd, check=True)
-
-    if _pn_tmpdir is not None:
-        _pn_tmpdir.cleanup()
-        _pn_tmpdir = None
+            subprocess.run(cmd, check=True)
+    finally:
+        if _pn_tmpdir is not None:
+            _pn_tmpdir.cleanup()
 
     _enc_name = "h264_nvenc" if use_nvenc else "libx264"
     return {"path": output, "encoder": _enc_name, "duration_s": round(time.time() - _t0, 1)}

@@ -139,6 +139,7 @@ class _StateForCompose:
         self.last_pacenotes = None
         self.auto_compose = False
         self.pending_autocompose = False
+        self.compose_offset = 0.0
 
 
 class _NoOpTimer:
@@ -211,3 +212,49 @@ async def test_step3_renders_with_ref_lap_and_detect_corners_mocked(user, monkey
     await user.should_see("Paso 3")
     await user.should_not_see("Primero carga")
     await user.should_see("Generar overlay")
+
+
+# ---------------------------------------------------------------------------
+# Regresion BUG 1 -- poll() async: el encadenado auto-compose navega al Paso 4
+# ---------------------------------------------------------------------------
+
+
+def test_step3_autocompose_poll_navigates_to_step4():
+    """poll() debe ser async def y usar await navigate() -- guard de BUG1.
+
+    Si poll() fuera def (sync), llamar navigate(4) sin await devolveria un
+    coroutine que se descartaria silenciosamente; state.nav_step no cambiaria
+    a 4 y el encadenado auto-compose fallaria en silencio.
+
+    El test detecta dos escenarios de regresion via analisis AST:
+    - poll revertido a def (sync): no hay AsyncFunctionDef 'poll' -> falla.
+    - await eliminado en navigate(4): no hay nodo Await sobre navigate -> falla.
+    """
+    tree = ast.parse(_NG_STEP3.read_text(encoding="utf-8"))
+
+    # poll debe ser async def (no def sync)
+    poll_async = [
+        node
+        for node in ast.walk(tree)
+        if isinstance(node, ast.AsyncFunctionDef) and node.name == "poll"
+    ]
+    assert poll_async, (
+        "poll no es async def en ng_step3.py. "
+        "Si fuera def sync, navigate(4) retornaria un coroutine que se "
+        "descartaria silenciosamente y state.nav_step no llegaria a 4."
+    )
+
+    # dentro de poll debe haber 'await navigate(...)'
+    poll_fn = poll_async[0]
+    await_navigate = [
+        node
+        for node in ast.walk(poll_fn)
+        if isinstance(node, ast.Await)
+        and isinstance(node.value, ast.Call)
+        and isinstance(node.value.func, ast.Name)
+        and node.value.func.id == "navigate"
+    ]
+    assert await_navigate, (
+        "poll no contiene 'await navigate(...)' en ng_step3.py. "
+        "Sin await, el coroutine de navigate se descarta silenciosamente."
+    )

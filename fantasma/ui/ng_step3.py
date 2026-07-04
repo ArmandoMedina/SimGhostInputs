@@ -190,7 +190,7 @@ async def render(state, navigate):
                 ui.button("Detener render", on_click=cancel).classes("btn-secondary").props("flat")
             )
 
-        def poll():
+        async def poll():
             _job = job_holder["job"]
             if _job is None:
                 return
@@ -222,7 +222,7 @@ async def render(state, navigate):
                         _next = _FLOWS.get(state.flow_key, _FLOWS[_DEFAULT_FLOW])["next"].get(3)
                         if state.auto_compose and _next == 4:
                             state.pending_autocompose = True
-                            navigate(4)
+                            await navigate(4)
                         else:
                             _render_next_btn(state, 3, navigate)
                 return

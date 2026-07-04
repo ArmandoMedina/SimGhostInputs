@@ -285,10 +285,11 @@ async def render(state, navigate):
     )
 
     def _update_apply_enabled():
-        if state.drv_lap is not None and mux_video_input.value:
+        if state.drv_lap is not None and mux_video_input.value and mux_pn_input.value:
             apply_btn.enable()
         else:
             apply_btn.disable()
 
     mux_video_input.on("update:model-value", lambda _: _update_apply_enabled())
+    mux_pn_input.on("update:model-value", lambda _: _update_apply_enabled())
     _update_apply_enabled()
