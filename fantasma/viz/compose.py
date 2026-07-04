@@ -195,6 +195,9 @@ def compose_video(
     lap_duration=None,
     progress=None,
     cue_audio=None,
+    pace_notes_dir=None,
+    pace_notes_volume=1.0,
+    lap=None,
 ):
     """Superpone overlay con canal alfa sobre el video de grabación.
 
@@ -207,18 +210,25 @@ def compose_video(
     via setpts y el output tiene la duración completa del video.
 
     Args:
-        video:        Ruta al video de grabación (mp4, mov, mkv…).
-        overlay:      Ruta al overlay con canal alfa (.webm VP9 o .mov ProRes).
-        output:       Ruta del archivo de salida.
-        position:     Posición del HUD en pantalla.
-        offset:       Segundos desde el inicio del video hasta la vuelta.
-        scale:        Factor de escala del HUD (1.0 = tamaño original).
-        lap_duration: Duración de la vuelta en segundos. Si se provee, el
-                      output se recorta a exactamente esa duración.
-        progress:     Callback progress(n_frames, total_frames) para UI.
+        video:             Ruta al video de grabación (mp4, mov, mkv…).
+        overlay:           Ruta al overlay con canal alfa (.webm VP9 o .mov ProRes).
+        output:            Ruta del archivo de salida.
+        position:          Posición del HUD en pantalla.
+        offset:            Segundos desde el inicio del video hasta la vuelta.
+        scale:             Factor de escala del HUD (1.0 = tamaño original).
+        lap_duration:      Duración de la vuelta en segundos. Si se provee, el
+                           output se recorta a exactamente esa duración.
+        progress:          Callback progress(n_frames, total_frames) para UI.
+        cue_audio:         WAV externo para mezclar en el audio (pasa directo).
+        pace_notes_dir:    Carpeta del pack de Pace Notes. Si se provee junto
+                           con `lap` y no hay `cue_audio` explícito, renderiza
+                           el track y lo mezcla en el encode.
+        pace_notes_volume: Volumen de los Pace Notes (default 1.0).
+        lap:               Vuelta del piloto requerida para sincronizar los
+                           Pace Notes por distancia.
 
     Returns:
-        Ruta del archivo de salida.
+        Dict con keys ``path``, ``encoder`` y ``duration_s``.
     """
     ffmpeg = shutil.which("ffmpeg")
     if not ffmpeg:
@@ -237,6 +247,17 @@ def compose_video(
     out_dir = os.path.dirname(output)
     if out_dir:
         os.makedirs(out_dir, exist_ok=True)
+
+    # Pace notes: si se provee pace_notes_dir + lap y no hay cue_audio explícito,
+    # renderizamos el track en un tmpdir local. La variable _pn_tmpdir mantiene la
+    # referencia viva durante todo el encode (el directorio se borra al salir).
+    _pn_tmpdir = None
+    if pace_notes_dir and lap is not None and cue_audio is None:
+        from .pacenotes import render_pace_notes_track as _render_pn
+
+        _pn_tmpdir = tempfile.TemporaryDirectory()
+        cue_audio = os.path.join(_pn_tmpdir.name, "pace_notes_preview.wav")
+        _render_pn(pace_notes_dir, lap, cue_audio, volume=pace_notes_volume)
 
     use_nvenc = _nvenc_available(ffmpeg)
     if use_nvenc:
@@ -338,6 +359,10 @@ def compose_video(
         err_f.close()
     else:
         subprocess.run(cmd, check=True)
+
+    if _pn_tmpdir is not None:
+        _pn_tmpdir.cleanup()
+        _pn_tmpdir = None
 
     _enc_name = "h264_nvenc" if use_nvenc else "libx264"
     return {"path": output, "encoder": _enc_name, "duration_s": round(time.time() - _t0, 1)}

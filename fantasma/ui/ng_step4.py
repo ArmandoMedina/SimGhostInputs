@@ -374,6 +374,46 @@ async def render(state, navigate):
 
     ui.button("Explorar...", on_click=pick_out_folder).classes("btn-secondary mb-4").props("flat")
 
+    # ── Pace Notes en el video compuesto (opcional) ───────────────────────────
+    ui.separator().classes("my-4")
+    ui.label("⑤ Pace Notes en el video compuesto (opcional)").classes(
+        "text-sm font-bold text-white mb-2"
+    )
+    ui.label(
+        "Mezcla los sonidos del pack de Pace Notes directamente en el audio del video final. "
+        "Requiere haber generado el pack en el Paso 5 o indicar su carpeta aqui."
+    ).classes("text-xs mb-2 text-gray-400")
+
+    pn_check = ui.checkbox("Incluir pace notes en el video")
+    pn_section = ui.column().classes("w-full mt-2")
+
+    with pn_section:
+        with ui.row().classes("w-full gap-2 items-end mb-2"):
+            pn_dir_input = ui.input(
+                label="Carpeta del pack de Pace Notes",
+                value=state.last_pacenotes or "",
+                placeholder=r"C:\Users\...\CrewChiefV4\pace_notes\ams2\MiCircuito",
+            ).classes("flex-1")
+
+            def pick_pn_folder():
+                from .ng_helpers import _pick_folder
+
+                p = _pick_folder(
+                    "Seleccionar carpeta de Pace Notes",
+                    initialdir=pn_dir_input.value or os.path.expanduser("~"),
+                )
+                if p:
+                    pn_dir_input.set_value(p)
+
+            ui.button("Explorar...", on_click=pick_pn_folder).classes("btn-secondary").props("flat")
+
+    pn_section.set_visibility(False)
+
+    def _toggle_pn_section(e):
+        pn_section.set_visibility(e.value)
+
+    pn_check.on("update:model-value", _toggle_pn_section)
+
     # Resumen pre-compose
     summary_area = ui.column().classes("w-full mb-4")
 
@@ -456,6 +496,20 @@ async def render(state, navigate):
         _offset_val = float(offset_input.value or 0.0)
         _scale = scale_slider.value
 
+        _pn_kwargs = {}
+        if pn_check.value:
+            if _drv_lap is None:
+                ui.notify(
+                    "Falta la vuelta del piloto para sincronizar las pace notes",
+                    type="warning",
+                )
+                return
+            _pn_kwargs = {
+                "pace_notes_dir": pn_dir_input.value,
+                "pace_notes_volume": 1.0,
+                "lap": _drv_lap,
+            }
+
         job = start_bg_render(
             _cv,
             progress_kw="progress",
@@ -466,6 +520,7 @@ async def render(state, navigate):
             offset=_offset_val,
             scale=_scale,
             lap_duration=_lap_dur,
+            **_pn_kwargs,
         )
         job_holder["job"] = job
 

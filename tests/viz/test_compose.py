@@ -5,6 +5,8 @@ Tests de regresión de bugs ya corregidos:
 - `_nvenc_available` como contrato del fallback CPU (el falso positivo de NVENC).
 """
 
+import os
+
 from fantasma.viz import compose
 
 # --- _build_filter ---------------------------------------------------------
@@ -115,3 +117,131 @@ def test_compose_video_returns_dict_with_path_encoder_duration(monkeypatch, tmp_
     assert result["path"] == fake_out
     assert result["encoder"] == "libx264"
     assert isinstance(result["duration_s"], float)
+
+
+# --- compose_video wiring: pace_notes_dir ----------------------------------
+
+
+class _FakeProcOk:
+    returncode = 0
+
+
+def test_compose_video_wires_pace_notes_dir_to_render_and_ffmpeg(monkeypatch, tmp_path):
+    """compose_video con pace_notes_dir invoca render_pace_notes_track y pasa
+    el WAV resultante al comando ffmpeg como input -i.
+
+    Ni ffmpeg ni render_pace_notes_track se ejecutan de verdad: se mockean
+    para verificar el wiring sin I/O real.
+    """
+    import fantasma.viz.pacenotes as _pn_mod
+    from tests.conftest import make_lap
+
+    lap = make_lap()
+    pn_dir = str(tmp_path / "pndir")
+    os.makedirs(pn_dir, exist_ok=True)
+    fake_out = str(tmp_path / "out.mp4")
+
+    pn_calls = []
+
+    def fake_render_pn(pn_d, lap_arg, out_path, volume=1.0):
+        pn_calls.append({"dir": pn_d, "lap": lap_arg, "path": out_path, "volume": volume})
+        # crea el archivo para que cue_audio sea un path real (no requerido por ffmpeg mockeado)
+        open(out_path, "wb").close()
+
+    monkeypatch.setattr(_pn_mod, "render_pace_notes_track", fake_render_pn)
+
+    ffmpeg_cmds = []
+
+    def fake_run(cmd, **kwargs):
+        ffmpeg_cmds.append(list(cmd))
+        return _FakeProcOk()
+
+    monkeypatch.setattr(
+        compose.shutil, "which", lambda n: "/usr/bin/ffmpeg" if n == "ffmpeg" else None
+    )
+    monkeypatch.setattr(compose, "_nvenc_available", lambda *a: False)
+    monkeypatch.setattr(compose, "_has_audio", lambda *a: False)
+    monkeypatch.setattr(compose.subprocess, "run", fake_run)
+
+    result = compose.compose_video(
+        video="fake_video.mp4",
+        overlay="fake_overlay.webm",
+        output=fake_out,
+        pace_notes_dir=pn_dir,
+        pace_notes_volume=0.75,
+        lap=lap,
+    )
+
+    # render_pace_notes_track debe haberse llamado exactamente una vez
+    assert len(pn_calls) == 1, "render_pace_notes_track debe llamarse una vez"
+    assert pn_calls[0]["dir"] == pn_dir
+    assert pn_calls[0]["lap"] is lap
+    assert pn_calls[0]["volume"] == 0.75
+
+    # el WAV generado debe aparecer como input en el comando ffmpeg
+    assert ffmpeg_cmds, "ffmpeg debe haber sido invocado"
+    cmd = ffmpeg_cmds[0]
+    assert pn_calls[0]["path"] in cmd, "el WAV de pace notes debe ser un input -i de ffmpeg"
+
+    # el resultado sigue siendo el dict de contrato
+    assert isinstance(result, dict)
+    assert result["path"] == fake_out
+    assert result["encoder"] == "libx264"
+
+
+def test_compose_video_no_pace_notes_when_no_dir(monkeypatch, tmp_path):
+    """Sin pace_notes_dir, render_pace_notes_track NO se llama."""
+    import fantasma.viz.pacenotes as _pn_mod
+    from tests.conftest import make_lap
+
+    lap = make_lap()
+    fake_out = str(tmp_path / "out.mp4")
+    pn_calls = []
+
+    monkeypatch.setattr(_pn_mod, "render_pace_notes_track", lambda *a, **k: pn_calls.append(1))
+    monkeypatch.setattr(
+        compose.shutil, "which", lambda n: "/usr/bin/ffmpeg" if n == "ffmpeg" else None
+    )
+    monkeypatch.setattr(compose, "_nvenc_available", lambda *a: False)
+    monkeypatch.setattr(compose.subprocess, "run", lambda *a, **k: _FakeProcOk())
+
+    compose.compose_video(
+        video="fake_video.mp4",
+        overlay="fake_overlay.webm",
+        output=fake_out,
+        lap=lap,
+        # pace_notes_dir omitido
+    )
+
+    assert pn_calls == [], "sin pace_notes_dir no debe llamarse render_pace_notes_track"
+
+
+def test_compose_video_explicit_cue_audio_skips_pace_notes(monkeypatch, tmp_path):
+    """Si ya se pasó cue_audio explícito, pace_notes_dir se ignora (no doble mezcla)."""
+    import fantasma.viz.pacenotes as _pn_mod
+    from tests.conftest import make_lap
+
+    lap = make_lap()
+    fake_out = str(tmp_path / "out.mp4")
+    explicit_cue = str(tmp_path / "explicit.wav")
+    open(explicit_cue, "wb").close()
+    pn_calls = []
+
+    monkeypatch.setattr(_pn_mod, "render_pace_notes_track", lambda *a, **k: pn_calls.append(1))
+    monkeypatch.setattr(
+        compose.shutil, "which", lambda n: "/usr/bin/ffmpeg" if n == "ffmpeg" else None
+    )
+    monkeypatch.setattr(compose, "_nvenc_available", lambda *a: False)
+    monkeypatch.setattr(compose, "_has_audio", lambda *a: False)
+    monkeypatch.setattr(compose.subprocess, "run", lambda *a, **k: _FakeProcOk())
+
+    compose.compose_video(
+        video="fake_video.mp4",
+        overlay="fake_overlay.webm",
+        output=fake_out,
+        cue_audio=explicit_cue,
+        pace_notes_dir=str(tmp_path / "pndir"),
+        lap=lap,
+    )
+
+    assert pn_calls == [], "cue_audio explicito debe tener prioridad sobre pace_notes_dir"

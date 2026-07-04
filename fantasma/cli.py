@@ -5,7 +5,6 @@ import csv
 import json
 import os
 import sys
-import tempfile
 
 from . import importers
 from .core.compare import compare
@@ -318,37 +317,18 @@ def cmd_compose(args):
         )
         return 1
 
-    if args.pace_notes_dir:
-        from .viz.pacenotes import render_pace_notes_track
-
-        with tempfile.TemporaryDirectory() as tmp:
-            cue_audio = os.path.join(tmp, "pace_notes_preview.wav")
-            render_pace_notes_track(
-                args.pace_notes_dir,
-                lap,
-                cue_audio,
-                volume=args.pace_notes_volume,
-            )
-            out = compose_video(
-                args.video,
-                args.overlay,
-                output,
-                position=args.position,
-                offset=offset,
-                scale=args.scale,
-                lap_duration=lap_duration,
-                cue_audio=cue_audio,
-            )
-    else:
-        out = compose_video(
-            args.video,
-            args.overlay,
-            output,
-            position=args.position,
-            offset=offset,
-            scale=args.scale,
-            lap_duration=lap_duration,
-        )
+    out = compose_video(
+        args.video,
+        args.overlay,
+        output,
+        position=args.position,
+        offset=offset,
+        scale=args.scale,
+        lap_duration=lap_duration,
+        pace_notes_dir=args.pace_notes_dir,
+        pace_notes_volume=args.pace_notes_volume,
+        lap=lap,
+    )
     print("-> %s  [%s, %.0fs]" % (out["path"], out["encoder"], out["duration_s"]))
 
 
