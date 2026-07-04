@@ -157,3 +157,118 @@ async def render(state, navigate):
         "Generar Pace Notes",
         on_click=_generate,
     ).classes("btn-primary text-base px-6 py-2").props("flat")
+
+    # ── Aplicar sonido de pace notes a un video existente ─────────────────────
+    ui.separator().classes("my-6")
+    ui.label("Aplicar sonido a un video existente").classes("text-sm font-bold text-white mb-1")
+    ui.label(
+        "Si ya tienes el video compuesto y solo quieres añadir el audio de pace notes, "
+        "usa esta opcion. El stream de video se copia sin re-encodear — es mucho mas rapido. "
+        "Requiere la vuelta del piloto cargada (Paso 1) para sincronizar los cues."
+    ).classes("text-xs mb-3 text-gray-400")
+
+    with ui.row().classes("w-full gap-2 items-end mb-2"):
+        mux_video_input = ui.input(
+            label="Video existente (mp4, webm, mov...)",
+            placeholder=r"C:\Videos\2_composed.mp4",
+        ).classes("flex-1")
+
+        def pick_mux_video():
+            from .ng_helpers import _pick_file
+
+            p = _pick_file(
+                "Seleccionar video",
+                [("Video", "*.mp4 *.webm *.mov"), ("Todos", "*.*")],
+            )
+            if p:
+                mux_video_input.set_value(p)
+
+        ui.button("Explorar...", on_click=pick_mux_video).classes("btn-secondary").props("flat")
+
+    with ui.row().classes("w-full gap-2 items-end mb-2"):
+        mux_pn_input = ui.input(
+            label="Carpeta del pack de Pace Notes",
+            value=state.last_pacenotes or "",
+            placeholder=r"C:\Users\...\CrewChiefV4\pace_notes\ams2\MiCircuito",
+        ).classes("flex-1")
+
+        def pick_mux_pn():
+            from .ng_helpers import _pick_folder
+
+            p = _pick_folder(
+                "Seleccionar carpeta de Pace Notes",
+                initialdir=mux_pn_input.value or os.path.expanduser("~"),
+            )
+            if p:
+                mux_pn_input.set_value(p)
+
+        ui.button("Explorar...", on_click=pick_mux_pn).classes("btn-secondary").props("flat")
+
+    with ui.row().classes("w-full gap-2 items-end mb-2"):
+        mux_out_input = ui.input(
+            label="Ruta de salida (vacio = junto al video con sufijo _pacenotes)",
+            placeholder=r"C:\Videos\2_composed_pacenotes.mp4",
+        ).classes("flex-1")
+
+    ui.label("Volumen de pace notes").classes("text-sm font-bold text-white mb-1 mt-2")
+    mux_vol_state = {"value": 1.0}
+    mux_vol_label = ui.label("1.00").classes("text-xs text-gray-400")
+    mux_vol_slider = ui.slider(min=0.1, max=1.0, step=0.05, value=1.0).classes("w-64")
+
+    def _on_mux_vol(e):
+        mux_vol_state["value"] = e.value or 1.0
+        mux_vol_label.set_text("%.2f" % (e.value or 1.0))
+
+    mux_vol_slider.on("update:model-value", _on_mux_vol)
+
+    mux_result_area = ui.column().classes("w-full")
+
+    async def _apply_mux():
+        _drv_lap = state.drv_lap
+        if _drv_lap is None:
+            ui.notify(
+                "Carga primero la vuelta del piloto (Paso 1) para sincronizar",
+                type="warning",
+            )
+            return
+        _video = mux_video_input.value or ""
+        if not _video:
+            ui.notify("Elige el video al que aplicar el sonido", type="warning")
+            return
+        _pn_dir = mux_pn_input.value or ""
+        if not _pn_dir:
+            ui.notify("Indica la carpeta del pack de pace notes", type="warning")
+            return
+        _out = mux_out_input.value or ""
+        if not _out:
+            _base, _ext = os.path.splitext(_video)
+            _out = _base + "_pacenotes" + (_ext or ".mp4")
+        _vol = float(mux_vol_state["value"])
+
+        mux_result_area.clear()
+        with mux_result_area:
+            ui.spinner()
+            ui.label("Aplicando sonido...").classes("text-sm text-gray-400")
+
+        def _do_mux():
+            from fantasma.viz.compose import mux_pace_notes_into_video
+
+            return mux_pace_notes_into_video(_video, _pn_dir, _drv_lap, _out, volume=_vol)
+
+        try:
+            result_path = await run.io_bound(_do_mux)
+        except Exception as e:
+            mux_result_area.clear()
+            with mux_result_area:
+                ui.notify(str(e), type="negative")
+            return
+
+        mux_result_area.clear()
+        with mux_result_area:
+            ui.label("Listo: %s" % result_path).classes("font-bold text-green-400")
+        ui.notify("Video con sonido guardado: %s" % os.path.basename(result_path), type="positive")
+
+    ui.button(
+        "Aplicar sonido",
+        on_click=_apply_mux,
+    ).classes("btn-primary text-base px-6 py-2 mt-2").props("flat")

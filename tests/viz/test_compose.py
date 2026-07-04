@@ -245,3 +245,67 @@ def test_compose_video_explicit_cue_audio_skips_pace_notes(monkeypatch, tmp_path
     )
 
     assert pn_calls == [], "cue_audio explicito debe tener prioridad sobre pace_notes_dir"
+
+
+# --- mux_pace_notes_into_video wiring -----------------------------------------
+
+
+def test_mux_pace_notes_into_video_wiring(monkeypatch, tmp_path):
+    """mux_pace_notes_into_video llama a render_pace_notes_track con el lap y volume
+    correctos, y pasa el WAV generado a ffmpeg con -c:v copy (sin re-encodear video).
+
+    Ni ffmpeg ni render_pace_notes_track se ejecutan de verdad.
+    """
+    import fantasma.viz.pacenotes as _pn_mod
+    from fantasma.viz.compose import mux_pace_notes_into_video
+    from tests.conftest import make_lap
+
+    lap = make_lap()
+    pn_dir = str(tmp_path / "pndir")
+    os.makedirs(pn_dir, exist_ok=True)
+    fake_out = str(tmp_path / "out_pacenotes.mp4")
+
+    pn_calls = []
+
+    def fake_render_pn(pn_d, lap_arg, out_path, volume=1.0):
+        pn_calls.append({"dir": pn_d, "lap": lap_arg, "path": out_path, "volume": volume})
+        # crea el archivo WAV falso para que la ruta sea un path valido en el comando
+        open(out_path, "wb").close()
+
+    monkeypatch.setattr(_pn_mod, "render_pace_notes_track", fake_render_pn)
+
+    ffmpeg_cmds = []
+
+    def fake_run(cmd, **kwargs):
+        ffmpeg_cmds.append(list(cmd))
+        return _FakeProcOk()
+
+    monkeypatch.setattr(
+        compose.shutil, "which", lambda n: "/usr/bin/ffmpeg" if n == "ffmpeg" else None
+    )
+    monkeypatch.setattr(compose.subprocess, "run", fake_run)
+
+    result = mux_pace_notes_into_video(
+        video="fake_video.mp4",
+        pace_notes_dir=pn_dir,
+        lap=lap,
+        output=fake_out,
+        volume=0.5,
+    )
+
+    # (a) render_pace_notes_track llamado una vez con el lap y volume correctos
+    assert len(pn_calls) == 1, "render_pace_notes_track debe llamarse exactamente una vez"
+    assert pn_calls[0]["lap"] is lap, "debe recibir el lap correcto"
+    assert pn_calls[0]["volume"] == 0.5, "debe recibir el volume correcto"
+    assert pn_calls[0]["dir"] == pn_dir, "debe recibir el pace_notes_dir correcto"
+
+    # (b) ffmpeg invocado con -c:v copy y el WAV como input -i
+    assert ffmpeg_cmds, "ffmpeg debe haberse invocado"
+    cmd = ffmpeg_cmds[0]
+    assert "-c:v" in cmd, "el comando ffmpeg debe incluir -c:v"
+    cvc_idx = cmd.index("-c:v")
+    assert cmd[cvc_idx + 1] == "copy", "-c:v debe ir seguido de copy (sin re-encodear)"
+    assert pn_calls[0]["path"] in cmd, "el WAV de pace notes debe aparecer como input en ffmpeg"
+
+    # la funcion devuelve la ruta de salida
+    assert result == fake_out
