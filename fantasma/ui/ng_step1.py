@@ -74,6 +74,24 @@ async def render(state, navigate):
     drv_loading_area = None  # noqa: F841
     load_err = None  # noqa: F841
 
+    # I1: indicadores de listo — el elemento se actualiza tras cada upload
+    indicators_state: dict = {"el": None}
+
+    def _update_indicators():
+        el = indicators_state["el"]
+        if el is None:
+            return
+        r_cls = "ok" if ref_state["laps"] else ""
+        d_cls = "ok" if drv_state["laps"] else ""
+        el.set_content(
+            f'<div class="readiness-indicators">'
+            f'<span class="readiness-item {r_cls}">'
+            f'<span class="readiness-dot"></span>Referencia</span>'
+            f'<span class="readiness-item {d_cls}">'
+            f'<span class="readiness-dot"></span>Tu vuelta</span>'
+            f"</div>"
+        )
+
     # ── Upload handlers ──────────────────────────────────────────────────────
 
     async def handle_ref_upload(path, original_name=None):
@@ -115,6 +133,7 @@ async def render(state, navigate):
         )
         ref_status.classes(remove="text-red-400 text-yellow-400")
         ref_status.classes("upload-status")
+        _update_indicators()
         ref_lap_col.clear()
         if len(laps) > 1:
             _render_lap_selector(ref_lap_col, ref_state, "ref")
@@ -158,6 +177,7 @@ async def render(state, navigate):
         )
         drv_status.classes(remove="text-red-400 text-yellow-400")
         drv_status.classes("upload-status")
+        _update_indicators()
         drv_lap_col.clear()
         if len(laps) > 1:
             _render_lap_selector(drv_lap_col, drv_state, "drv")
@@ -227,14 +247,12 @@ async def render(state, navigate):
             )
 
             with ui.element("div").classes("upload-zone"):
-                ui.html('<span class="upload-icon">📂</span>')
-                ui.html('<div class="upload-label">Haz clic para seleccionar tu archivo</div>')
-                ui.html('<div class="upload-hint">.csv · .xlsx · máx. 50 MB</div>')
                 ui.upload(
                     label="Seleccionar CSV",
                     on_upload=on_ref_upload,
                     auto_upload=True,
                 ).props('accept=".csv,.xlsx" flat').classes("w-full")
+                ui.html('<div class="upload-hint">.csv · .xlsx · máx. 50 MB</div>')
 
             ref_loading_area = ui.column().classes("w-full")
 
@@ -274,14 +292,12 @@ async def render(state, navigate):
             )
 
             with ui.element("div").classes("upload-zone"):
-                ui.html('<span class="upload-icon">📂</span>')
-                ui.html('<div class="upload-label">Haz clic para seleccionar tu archivo</div>')
-                ui.html('<div class="upload-hint">.csv · .xlsx · máx. 50 MB</div>')
                 ui.upload(
                     label="Seleccionar CSV",
                     on_upload=on_drv_upload,
                     auto_upload=True,
                 ).props('accept=".csv,.xlsx" flat').classes("w-full")
+                ui.html('<div class="upload-hint">.csv · .xlsx · máx. 50 MB</div>')
 
             drv_loading_area = ui.column().classes("w-full")
 
@@ -365,17 +381,17 @@ async def render(state, navigate):
         col_map_input.on("update:model-value", lambda e: col_map_state.update({"text": e.value}))
 
     # ── Bottom actions ────────────────────────────────────────────────────────
-    ref_ok = ref_state["laps"] is not None and len(ref_state["laps"]) > 0
-    drv_ok = drv_state["laps"] is not None and len(drv_state["laps"]) > 0
-    ref_class = "ok" if ref_ok else ""
-    drv_class = "ok" if drv_ok else ""
+    _ref_ok = ref_state["laps"] is not None and len(ref_state["laps"]) > 0
+    _drv_ok = drv_state["laps"] is not None and len(drv_state["laps"]) > 0
+    _ref_cls = "ok" if _ref_ok else ""
+    _drv_cls = "ok" if _drv_ok else ""
 
     with ui.element("div").classes("bottom-actions"):
-        ui.html(
+        indicators_state["el"] = ui.html(
             f'<div class="readiness-indicators">'
-            f'<span class="readiness-item {ref_class}">'
+            f'<span class="readiness-item {_ref_cls}">'
             f'<span class="readiness-dot"></span>Referencia</span>'
-            f'<span class="readiness-item {drv_class}">'
+            f'<span class="readiness-item {_drv_cls}">'
             f'<span class="readiness-dot"></span>Tu vuelta</span>'
             f"</div>"
         )

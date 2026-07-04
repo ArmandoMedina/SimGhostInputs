@@ -82,7 +82,7 @@ async def test_step3_no_ffmpeg_shows_warning(user, monkeypatch):
 
     await user.open("/")
     user.find("Overlay").click()
-    await user.should_see("ffmpeg no esta instalado")
+    await user.should_see("ffmpeg no está instalado")
 
 
 @pytest.mark.asyncio
@@ -176,7 +176,7 @@ async def test_step3_auto_compose_checkbox_visible_in_compose_flow(user, monkeyp
     user.find("Overlay").click()
     await user.should_see("Paso 3")
     await user.should_not_see("Primero carga")
-    await user.should_see("componer automaticamente")
+    await user.should_see("componer automáticamente")
 
 
 @pytest.mark.asyncio

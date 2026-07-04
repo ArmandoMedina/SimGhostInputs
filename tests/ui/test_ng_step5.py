@@ -74,7 +74,7 @@ async def test_step5_apply_btn_disabled_without_drv_lap(user, monkeypatch):
     await user.open("/")
     user.find("Pace Notes").click()
     # El guard no se activa porque rows y corners estan presentes
-    await user.should_not_see("Primero corre el Analisis")
+    await user.should_not_see("Primero corre el Análisis")
     await user.should_see("Aplicar sonido")
 
     # Con drv_lap=None el boton debe estar deshabilitado

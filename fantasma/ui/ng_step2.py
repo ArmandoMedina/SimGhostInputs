@@ -160,10 +160,22 @@ async def render(state, navigate):
     delta_class = "delta-neg" if delta_s > 0 else "delta-pos"
     delta_str = "%+.3f s" % delta_s
     _lmeta = getattr(ref_lap, "meta", {}) if ref_lap else {}
-    track_name = _lmeta.get("Venue") or _lmeta.get("track") or "—"
-    date_str = getattr(ref_lap, "meta", {}).get("date", "—") if ref_lap else "—"
+    # M4: reemplaza guiones bajos por espacios en el nombre de pista
+    track_name = (_lmeta.get("Venue") or _lmeta.get("track") or "—").replace("_", " ")
+    # M3: oculta la celda de fecha cuando no hay valor
+    date_str = getattr(ref_lap, "meta", {}).get("date", "") if ref_lap else ""
+    _date_cell = (
+        f'<div class="summary-cell">'
+        f'<div class="summary-label-sm">Fecha</div>'
+        f'<div class="summary-value" style="font-size:12px;color:var(--muted)">{date_str}</div>'
+        f'<div class="summary-sub-sm"> </div>'
+        f"</div>"
+        if date_str
+        else ""
+    )
+    _ncols = 5 if date_str else 4
 
-    ui.html(f"""<div class="summary-bar">
+    ui.html(f"""<div class="summary-bar" style="grid-template-columns:repeat({_ncols},1fr)">
   <div class="summary-cell">
     <div class="summary-label-sm">Referencia</div>
     <div class="summary-value ref">{ref_time}</div>
@@ -184,11 +196,7 @@ async def render(state, navigate):
     <div class="summary-value" style="font-size:13px">{track_name}</div>
     <div class="summary-sub-sm"> </div>
   </div>
-  <div class="summary-cell">
-    <div class="summary-label-sm">Fecha</div>
-    <div class="summary-value" style="font-size:12px;color:var(--muted)">{date_str}</div>
-    <div class="summary-sub-sm"> </div>
-  </div>
+  {_date_cell}
 </div>""")
 
     # Generar gráficas si no existen (cómputo matplotlib en thread; UI después)

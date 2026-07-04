@@ -14,7 +14,7 @@ async def render(state, navigate):
     ui.label(
         "Genera el HUD animado sincronizado con tu vuelta. "
         "Es un archivo de video transparente (como un sticker animado) que en el Paso 4 "
-        "se pega encima de tu grabacion. Muestra: barras de gas y freno, delta acumulado, "
+        "se pega encima de tu grabación. Muestra: barras de gas y freno, delta acumulado, "
         "velocidad, marcha, volante y G-lateral."
     ).classes("text-sm mb-4 text-gray-400")
 
@@ -30,8 +30,8 @@ async def render(state, navigate):
             else "`sudo apt install ffmpeg`"
         )
         ui.label(
-            f"ffmpeg no esta instalado y este paso lo necesita. "
-            f"Instalalo y abre una terminal nueva: {_install_cmd}"
+            f"ffmpeg no está instalado y este paso lo necesita. "
+            f"Instálalo y abre una terminal nueva: {_install_cmd}"
         ).classes("mb-4 text-red-400")
         return
 
@@ -66,7 +66,7 @@ async def render(state, navigate):
             "✓ Ya tienes un overlay generado: %s" % os.path.basename(state.last_overlay)
         ).classes("mb-1 text-green-400")
         ui.label(
-            "Si quieres regenerarlo con distintos parametros, usa las opciones de abajo."
+            "Si quieres regenerarlo con distintos parámetros, usa las opciones de abajo."
         ).classes("text-xs mb-2 text-gray-400")
         _render_next_btn(state, 3, navigate)
         ui.separator().classes("my-4")
@@ -98,15 +98,15 @@ async def render(state, navigate):
     # FPS
     ui.label("FPS del overlay").classes("text-sm font-bold text-white mb-1")
     ui.label(
-        "Usa el mismo valor que tiene tu video de grabacion. "
-        "Si no sabes, 30 fps es el estandar mas comun."
+        "Usa el mismo valor que tiene tu video de grabación. "
+        "Si no sabes, 30 fps es el estándar más común."
     ).classes("text-xs mb-2 text-gray-400")
 
     fps_radio = ui.radio({24: "24 fps", 30: "30 fps", 60: "60 fps"}, value=30).props("inline")
 
     # Encadenado overlay a compose (solo en flujo compose)
     if state.flow_key == "compose":
-        auto_cb = ui.checkbox("Al terminar, componer automaticamente", value=state.auto_compose)
+        auto_cb = ui.checkbox("Al terminar, componer automáticamente", value=state.auto_compose)
         auto_cb.on_value_change(lambda e: setattr(state, "auto_compose", e.value))
 
     # Formato (solo relevante en flujo Solo overlay)
@@ -116,7 +116,7 @@ async def render(state, navigate):
             ui.label(
                 "webm — Recomendado. Compatible con DaVinci Resolve, Kdenlive, Premiere."
             ).classes("text-xs text-gray-400")
-            ui.label("prores — Para Final Cut Pro en Mac o maxima calidad sin compresion.").classes(
+            ui.label("prores — Para Final Cut Pro en Mac o máxima calidad sin compresión.").classes(
                 "text-xs text-gray-400"
             )
             ui.label("png — Frames sueltos (una imagen por fotograma). Uso avanzado.").classes(
@@ -130,7 +130,7 @@ async def render(state, navigate):
     ui.html("""<div class="sgi-note" style="margin-bottom:1rem">
       <strong>Tiempo estimado de render:</strong> entre 5 y 30 minutos dependiendo de la duracion
       de la vuelta y el numero de cores de tu PC. El render usa todos los cores disponibles en paralelo.
-      Tu PC seguira disponible mientras renderiza, solo ira mas lenta.
+      Tu PC seguirá disponible mientras renderiza, solo irá más lenta.
     </div>""")
 
     ui.separator().classes("my-4")
@@ -179,7 +179,7 @@ async def render(state, navigate):
 
         render_area.clear()
         with render_area:
-            progress_bar = ui.linear_progress(value=0).classes("w-full")
+            progress_bar = ui.linear_progress(value=0, show_value=False).classes("w-full")
             status_label = ui.label("Iniciando...").classes("text-sm text-gray-400")
 
             def cancel():

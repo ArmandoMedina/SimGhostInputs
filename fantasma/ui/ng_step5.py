@@ -11,12 +11,12 @@ async def render(state, navigate):
     render_breadcrumb(5)
     ui.label("Paso 5 — Pace Notes para CrewChief").classes("step-header")
     ui.label(
-        "Genera tonos o frases de audio sincronizados con las curvas donde mas tiempo pierdes. "
+        "Genera tonos o frases de audio sincronizados con las curvas donde más tiempo pierdes. "
         "El pack resultante se copia al directorio de CrewChief y se activa antes de salir a pista."
     ).classes("text-sm mb-4 text-gray-400")
 
     if state.rows is None or not state.corners:
-        ui.label("Primero corre el Analisis (Paso 2)").classes("text-yellow-400 mb-2")
+        ui.label("Primero corre el Análisis (Paso 2)").classes("text-yellow-400 mb-2")
         ui.button("← Ir al Paso 2", on_click=lambda: navigate(2)).classes("btn-secondary").props(
             "flat"
         )
@@ -33,7 +33,7 @@ async def render(state, navigate):
 
     ui.label("Modo").classes("text-sm font-bold text-white mb-1")
     mode_radio = ui.radio(
-        {"tones": "Tonos (rapido)", "voice": "Voz", "both": "Ambos"},
+        {"tones": "Tonos (rápido)", "voice": "Voz", "both": "Ambos"},
         value="tones",
     ).props("inline")
 
@@ -148,7 +148,7 @@ async def render(state, navigate):
             if res["entries"] == 0:
                 ui.label(
                     "Aviso: no se generaron entradas "
-                    "(revisa si edge-tts y ffmpeg estan instalados para modo voz)."
+                    "(revisa si edge-tts y ffmpeg están instalados para modo voz)."
                 ).classes("text-yellow-400 mb-2")
             else:
                 ui.label("Listo: %d entradas generadas" % res["entries"]).classes(
@@ -156,8 +156,8 @@ async def render(state, navigate):
                 )
             ui.label("Directorio: %s" % res["outdir"]).classes("text-sm text-gray-400 mb-2")
             ui.label(
-                "Se escribio al directorio de CrewChief; "
-                "activalo en CrewChief antes de salir a pista."
+                "Se escribió al directorio de CrewChief; "
+                "actívalo en CrewChief antes de salir a pista."
             ).classes("text-xs text-gray-400")
 
     ui.button(
@@ -170,7 +170,7 @@ async def render(state, navigate):
     ui.label("Aplicar sonido a un video existente").classes("text-sm font-bold text-white mb-1")
     ui.label(
         "Si ya tienes el video compuesto y solo quieres añadir el audio de pace notes, "
-        "usa esta opcion. El stream de video se copia sin re-encodear — es mucho mas rapido. "
+        "usa esta opción. El stream de video se copia sin re-encodear — es mucho más rápido. "
         "Requiere la vuelta del piloto cargada (Paso 1) para sincronizar los cues."
     ).classes("text-xs mb-3 text-gray-400")
 

@@ -41,8 +41,8 @@ async def render(state, navigate):
         pass
     ui.label("Paso 4 — Componer video final").classes("step-header")
     ui.label(
-        "Junta el overlay del Paso 3 con tu video de grabacion. "
-        "El resultado es un clip MP4 recortado exactamente a la duracion de tu vuelta, "
+        "Junta el overlay del Paso 3 con tu video de grabación. "
+        "El resultado es un clip MP4 recortado exactamente a la duración de tu vuelta, "
         "con el HUD ya integrado y listo para subir."
     ).classes("text-sm mb-4 text-gray-400")
 
@@ -59,8 +59,8 @@ async def render(state, navigate):
             else "`sudo apt install ffmpeg`"
         )
         ui.label(
-            f"ffmpeg no esta instalado y este paso lo necesita. "
-            f"Instalalo y abre una terminal nueva: {_install_cmd}"
+            f"ffmpeg no está instalado y este paso lo necesita. "
+            f"Instálalo y abre una terminal nueva: {_install_cmd}"
         ).classes("mb-4 text-red-400")
         return
 
@@ -68,8 +68,8 @@ async def render(state, navigate):
         ui.html(
             '<div style="flex:1;background:var(--warning-bg);border:1px solid var(--warning-border);border-radius:6px;padding:0.8rem">'
             '<strong style="color:#facc15">El video DEBE tener audio del motor activado.</strong><br>'
-            '<span style="color:#d1b47a;font-size:0.8rem">La sincronia automatica analiza el sonido del motor para encontrar '
-            "el segundo exacto en que cruzaste la meta. Sin audio tendras que calcular el offset manualmente.</span>"
+            '<span style="color:#d1b47a;font-size:0.8rem">La sincronía automática analiza el sonido del motor para encontrar '
+            "el segundo exacto en que cruzaste la meta. Sin audio tendrás que calcular el offset manualmente.</span>"
             "</div>"
         )
         ui.html(
@@ -87,7 +87,7 @@ async def render(state, navigate):
 
     with ui.row().classes("w-full gap-2 items-end mb-2"):
         video_input = ui.input(
-            label="Tu video de grabacion",
+            label="Tu video de grabación",
             value=state.last_compose_video or "",
             placeholder=r"C:\Videos\mi_sesion.mp4",
         ).classes("flex-1")
@@ -127,13 +127,13 @@ async def render(state, navigate):
 
     # ── Sincronia ─────────────────────────────────────────────────────────────
     ui.separator().classes("my-4")
-    ui.label("② Sincronia: en que segundo del video empieza tu vuelta?").classes(
+    ui.label("② Sincronía: en qué segundo del video empieza tu vuelta?").classes(
         "text-sm font-bold text-white mb-1"
     )
     ui.label(
         "SimGhostInputs escucha el sonido del motor en tu video y lo compara con los RPM de la "
-        "telemetria para encontrar automaticamente el segundo exacto en que cruzaste la meta. "
-        "Precision ~0.5 s · tarda ~30 segundos · necesitas scipy instalado."
+        "telemetría para encontrar automáticamente el segundo exacto en que cruzaste la meta. "
+        "Precisión ~0.5 s · tarda ~30 segundos · necesitas scipy instalado."
     ).classes("text-xs mb-2 text-gray-400")
 
     drv_for_sync = state.drv_lap
@@ -222,8 +222,8 @@ async def render(state, navigate):
         with sync_result_area:
             if not cs or cs[0]["z"] < MIN_Z:
                 ui.label(
-                    "Correlacion insuficiente: el video no parece corresponder a tu vuelta. "
-                    "Usa la sincronia manual de abajo."
+                    "Correlación insuficiente: el video no parece corresponder a tu vuelta. "
+                    "Usa la sincronía manual de abajo."
                 ).classes("text-sm text-yellow-400")
                 sync_state["error"] = True
             elif res["ambiguous"]:
@@ -259,7 +259,7 @@ async def render(state, navigate):
                 offset_input.set_value(_off)
                 ui.label(
                     "Offset detectado: %.3f s desde el inicio del video hasta el cruce de meta. "
-                    "Calidad de sincronia: %s." % (_off, _ql)
+                    "Calidad de sincronía: %s." % (_off, _ql)
                 ).classes("text-sm text-green-400")
                 # Zona gris
                 try:
@@ -277,7 +277,7 @@ async def render(state, navigate):
     ).props("color=primary").classes("mb-2")
 
     with ui.expansion(
-        "Sincronizar manualmente (si la deteccion automatica fallo)", icon="tune"
+        "Sincronizar manualmente (si la detección automática falló)", icon="tune"
     ).classes("w-full mb-4"):
         ui.markdown(
             "**Como encontrar el offset manualmente:**\n"
@@ -289,14 +289,14 @@ async def render(state, navigate):
 
     # ── Parametros del HUD + PREVIEW REACTIVA ────────────────────────────────
     ui.separator().classes("my-4")
-    ui.label("③ Parametros del HUD").classes("text-sm font-bold text-white mb-2")
+    ui.label("③ Parámetros del HUD").classes("text-sm font-bold text-white mb-2")
 
     with ui.row().classes("gap-8 items-start w-full"):
         with ui.column().classes("gap-3").style("min-width:200px"):
             pos_select = ui.select(
                 list(_POS_LABELS.keys()),
                 value="Abajo derecha",
-                label="Posicion del HUD",
+                label="Posición del HUD",
             ).classes("w-48")
 
             scale_slider = ui.slider(min=0.25, max=1.5, step=0.05, value=1.0).classes("w-48")
@@ -395,7 +395,7 @@ async def render(state, navigate):
     )
     ui.label(
         "Mezcla los sonidos del pack de Pace Notes directamente en el audio del video final. "
-        "Requiere haber generado el pack en el Paso 5 o indicar su carpeta aqui."
+        "Requiere haber generado el pack en el Paso 5 o indicar su carpeta aquí."
     ).classes("text-xs mb-2 text-gray-400")
 
     pn_check = ui.checkbox("Incluir pace notes en el video")
@@ -463,7 +463,7 @@ async def render(state, navigate):
                 f"· Overlay: {os.path.basename(_ov)}<br>"
                 f"· {_clip_line}<br>"
                 f"· HUD: {pos_select.value} · escala {scale_slider.value * 100:.0f}%<br>"
-                "· Codec: NVENC (GPU NVIDIA) si esta disponible, libx264 (CPU) si no."
+                "· Codec: NVENC (GPU NVIDIA) si está disponible, libx264 (CPU) si no."
                 "</div>"
             )
 
@@ -603,7 +603,7 @@ async def render(state, navigate):
                             ).classes("text-sm opacity-60")
                         if _z_score is not None:
                             ui.label(
-                                "Calidad de sincronia: %s · offset %.2f s"
+                                "Calidad de sincronía: %s · offset %.2f s"
                                 % (_sync_quality_label(_z_score), _offset_val)
                             ).classes("text-blue-300 text-sm")
                         _render_next_btn(state, 4, navigate)
