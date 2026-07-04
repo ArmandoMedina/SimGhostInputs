@@ -26,17 +26,10 @@ Requiere AMS2 en pista — no bloqueó el merge.
 - [ ] WAV validado con ffprobe
 - [ ] Tonos suenan en los metros correctos auditivamente (Nordschleife o similar)
 
-### Pipeline desatendido: overlay → compose en secuencia + notificación
+### ~~Pipeline desatendido: overlay → compose en secuencia + notificación~~ — entregado en `feat/pacenotes-ui`
 
-**Dolor real (2026-06-30):** el usuario lanza el overlay, se va a hacer otra cosa y al volver tiene que
-esperar a que compose termine — dos esperas en lugar de una.
-
-**Qué se quiere:**
-- Un modo "encadenar": al terminar el overlay, lanzar compose automáticamente con los parámetros ya configurados.
-- Notificación al terminar (push al móvil, o al menos un sonido/pop-up de escritorio).
-
-**Por qué se difiere:** requiere arquitectura de tareas en background y un canal de notificación.
-**Gatillo:** cuando el usuario reporte que esperar las dos etapas es fricción frecuente.
+- [x] Checkbox «Al terminar, componer automáticamente» en el Paso 3 (flujo compose); encadena overlay→compose sin intervención.
+- [x] Notificación de escritorio al terminar (Web Notifications API con degradación a `ui.notify`).
 
 ---
 

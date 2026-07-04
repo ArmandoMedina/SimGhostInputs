@@ -29,7 +29,7 @@ Usuario (piloto o ingeniero de datos) que abre la app con `fantasma-ng` (NiceGUI
 
 ## Reglas de negocio
 - `main_page` (`ng_app.py`) sirve la página `/` y `navigate(step)` limpia y re-renderiza el contenido; el estado por sesión vive en `AppState` (`ng_state.py`), un proxy sobre `app.storage.user`.
-- La barra lateral agrupa la navegación en «Principal» (Inicio, Importar, Análisis) y «Salidas» (Overlay, Video); `_step_done(state, i)` marca el progreso usando `flow_chosen`, `ref_lap`, `summary`, `last_overlay` y `last_compose_video`.
+- La barra lateral agrupa la navegación en «Principal» (Inicio, Importar, Análisis) y «Salidas» (Overlay, Video, Pace Notes); `_step_done(state, i)` marca el progreso usando `flow_chosen`, `ref_lap`, `summary`, `last_overlay`, `last_compose_video` y `last_pacenotes`.
 - Todo lo que hace la UI es equivalente a lo que ofrece el CLI.
 
 ## Criterios de aceptación
@@ -50,6 +50,7 @@ Usuario (piloto o ingeniero de datos) que abre la app con `fantasma-ng` (NiceGUI
 - [[IMP-GEN-01 - Importar CSV genérico con mapeo]]
 - [[NRM-03 - Remuestrear por distancia]]
 - [[CMP-01 - Comparar dos vueltas por distancia]]
+- [[UI-04 - Generar pace notes desde la UI]]
 
 ## Fuera de alcance
 - Front de escritorio custom: **implementado como NiceGUI v2.0** ([ADR 0018](../../docs/decisions/0018-framework-ui-nicegui.md), enmienda al [ADR 0010](../../docs/decisions/0010-framework-ui-streamlit.md)), empaquetado nativo con `native=True`.

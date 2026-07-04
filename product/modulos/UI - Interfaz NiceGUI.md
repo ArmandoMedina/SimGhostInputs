@@ -19,8 +19,9 @@ Interfaz de usuario principal desde v2.0. App de escritorio NiceGUI (native=True
 - Paso 0: selector de flujo («Solo análisis», «Solo overlay», «Video con HUD»).
 - Paso 1: importar laps (telemetría referencia y piloto).
 - Paso 2: análisis con avisos del motor y drill-down por curva.
-- Paso 3: generación del overlay HUD.
-- Paso 4: composición del video final (con aviso temprano si falta ffmpeg).
+- Paso 3: generación del overlay HUD; checkbox «Al terminar, componer automáticamente» (flujo compose).
+- Paso 4: composición del video final (con aviso temprano si falta ffmpeg); opción de mezclar pace notes en el audio; pipeline autónomo (auto-compose desde Paso 3).
+- Paso 5: generación del pack de pace notes para CrewChief y mux standalone a video existente.
 
 **No cubre:**
 - El CLI como punto de entrada alternativo (siempre disponible y equivalente).
@@ -31,8 +32,8 @@ La UI NiceGUI es una capa opcional sobre el mismo pipeline que usa el CLI; todo 
 
 ## Fuente
 - `fantasma/ui/ng_app.py`
-- `fantasma/ui/ng_step0.py` … `ng_step4.py`
-- `fantasma/ui/ng_state.py`
+- `fantasma/ui/ng_step0.py` … `ng_step5.py`
+- `fantasma/ui/ng_state.py` — `AppState` incluye: `last_overlay`, `last_compose_video`, `last_pacenotes`, `auto_compose`, `pending_autocompose`
 - `fantasma/ui/ng_helpers.py`
 
 ## ADR relacionado
@@ -46,6 +47,7 @@ La UI NiceGUI es una capa opcional sobre el mismo pipeline que usa el CLI; todo 
 - [[UI-01 - Flujo guiado en pasos]]
 - [[UI-02 - Avisos del motor visibles en la UI]]
 - [[UI-03 - Drill-down por curva]]
+- [[UI-04 - Generar pace notes desde la UI]]
 
 ## Dependencias funcionales
 - [[IMP-MTC - Importador MoTeC]]
@@ -59,6 +61,7 @@ La UI NiceGUI es una capa opcional sobre el mismo pipeline que usa el CLI; todo 
 - [[OVL - Render del overlay]]
 - [[CMPO - Composición de video]]
 - [[SYN - Auto-sync por audio]]
+- [[PAC - Pace Notes CrewChief]]
 
 ## Relacionado con
 - [[Interfaz de usuario]]

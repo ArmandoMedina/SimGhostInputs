@@ -134,6 +134,22 @@ La UI principal de v2.0 migró de Streamlit a **NiceGUI** ([ADR 0018](decisions/
 
 Historial de decisiones de UX que alteraron el layout o el flujo de la UI — para que el baseline visual tenga contexto al regenerarse.
 
+### feat/pacenotes-ui (Unreleased)
+
+**Loading states en carga de CSV (Paso 1) — patrón «spinner + label en columna reservada»:**
+- Antes de llamar `run.io_bound(_load_laps)`, se muestra un spinner con `ui.spinner("dots")` y una etiqueta «Leyendo CSV...» en un `ui.column` reservado (`ref_loading_area` / `drv_loading_area`).
+- Tras el `await`, la columna se limpia (`.clear()`) en el bloque `finally`, independientemente de éxito o error.
+- Mientras se calcula la vuelta más rápida (lógica post-lectura), el estado muestra «Calculando vuelta rápida...» antes de escribir el resultado final.
+- Heurística cubierta: **Visibilidad del estado del sistema** (§1.1).
+- Patrón reusable: `area = ui.column()` como placeholder, `.clear()` antes de rellenar, `ui.spinner()` + `ui.label(texto)` con clases Tailwind.
+
+**Botones deshabilitados por contexto (Paso 4 y Paso 5) — patrón «habilitar reactivo»:**
+- El botón «Componer video» (Paso 4) inicia como deshabilitado y solo se activa cuando `video_input.value` y `overlay_input.value` son no vacíos.
+- El botón «Aplicar sonido» (Paso 5) inicia deshabilitado y solo se activa cuando están rellenos el video, la carpeta del pack y `state.drv_lap is not None`.
+- Los `on("update:model-value", ...)` en los campos disparan `_update_X_enabled()` que llama `.enable()` / `.disable()` en el botón.
+- Heurística cubierta: **Prevención de errores** (§1.3).
+- Patrón reusable: definir `btn = ui.button(...)`, luego `_update_enabled()` que evalúa condiciones y llama `.enable()/.disable()`, enlazar los campos de entrada con `on("update:model-value", ...)`.
+
 ### Unreleased
 
 **ng_app.py — modo oscuro activado globalmente (bugfix de contraste):**
