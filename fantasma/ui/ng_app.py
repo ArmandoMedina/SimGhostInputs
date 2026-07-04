@@ -4,7 +4,7 @@ import os
 
 from nicegui import ui
 
-from . import ng_step0, ng_step1, ng_step2, ng_step3, ng_step4
+from . import ng_step0, ng_step1, ng_step2, ng_step3, ng_step4, ng_step5
 from .ng_state import AppState
 
 
@@ -183,7 +183,7 @@ async def main_page():
     content = ui.column().classes("w-full p-4")
     nav_buttons = []
 
-    _all_step_labels = ["Inicio", "Importar", "Análisis", "Overlay", "Video"]
+    _all_step_labels = ["Inicio", "Importar", "Análisis", "Overlay", "Video", "Pace Notes"]
 
     async def navigate(step: int):
         _cancel = getattr(navigate, "_cancel_render", None)
@@ -217,6 +217,8 @@ async def main_page():
                 await ng_step3.render(state, navigate)
             elif step == 4:
                 await ng_step4.render(state, navigate)
+            elif step == 5:
+                await ng_step5.render(state, navigate)
 
     with ui.left_drawer(fixed=True).classes("sgi-sidebar").style("width:240px"):
         # Brand block
@@ -248,8 +250,8 @@ async def main_page():
 
             ui.html('<div class="nav-section-label" style="margin-top:8px">Salidas</div>')
 
-            # Steps 3-4: Salidas section
-            salidas_steps = [(3, "Overlay"), (4, "Video")]
+            # Steps 3-5: Salidas section
+            salidas_steps = [(3, "Overlay"), (4, "Video"), (5, "Pace Notes")]
             for step_idx, step_label in salidas_steps:
                 _is_current = state.nav_step == step_idx
                 _done = _step_done(state, step_idx)
@@ -280,6 +282,7 @@ def _step_done(state, i):
         state.summary is not None,
         state.last_overlay is not None,
         state.last_compose_video is not None,
+        state.last_pacenotes is not None,
     ]
     return checks[i] if i < len(checks) else False
 

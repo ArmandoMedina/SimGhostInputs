@@ -1,3 +1,20 @@
+def test_crewchief_pacenotes_dir():
+    """crewchief_pacenotes_dir devuelve la ruta estandar de CrewChief para AMS2."""
+    import os
+
+    from fantasma.viz.pacenotes import crewchief_pacenotes_dir
+
+    result = crewchief_pacenotes_dir("Interlagos")
+    # Debe terminar en .../CrewChiefV4/pace_notes/ams2/Interlagos
+    parts = result.replace("\\", "/").split("/")
+    assert parts[-1] == "Interlagos"
+    assert parts[-2] == "ams2"
+    assert parts[-3] == "pace_notes"
+    assert parts[-4] == "CrewChiefV4"
+    # Debe estar bajo el directorio home del usuario
+    assert result.startswith(os.path.expanduser("~"))
+
+
 def test_generate_tone_returns_wav_bytes():
     """generate_tone devuelve bytes WAV validos."""
     from fantasma.viz.pacenotes import generate_tone

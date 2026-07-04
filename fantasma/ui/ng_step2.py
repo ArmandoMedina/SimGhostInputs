@@ -159,7 +159,8 @@ async def render(state, navigate):
     delta_s = summary["total_delta"]
     delta_class = "delta-neg" if delta_s > 0 else "delta-pos"
     delta_str = "%+.3f s" % delta_s
-    track_name = getattr(ref_lap, "meta", {}).get("track", "—") if ref_lap else "—"
+    _lmeta = getattr(ref_lap, "meta", {}) if ref_lap else {}
+    track_name = _lmeta.get("Venue") or _lmeta.get("track") or "—"
     date_str = getattr(ref_lap, "meta", {}).get("date", "—") if ref_lap else "—"
 
     ui.html(f"""<div class="summary-bar">
@@ -342,7 +343,7 @@ async def render(state, navigate):
 
             # Panel Pace Notes
             def go_to_pacenotes():
-                navigate(3)
+                navigate(5)
 
             with ui.element("div").classes("panel"):
                 ui.html(

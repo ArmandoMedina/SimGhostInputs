@@ -37,6 +37,7 @@ class _SimpleState:
         self.corners = None
         self.corners_editable = False
         self.last_overlay = None
+        self.last_pacenotes = None
 
 
 class _NoOpTimer:

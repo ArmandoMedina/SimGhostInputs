@@ -183,6 +183,14 @@ class AppState:
         self._set("last_overlay", v)
 
     @property
+    def last_pacenotes(self):
+        return self._get("last_pacenotes")
+
+    @last_pacenotes.setter
+    def last_pacenotes(self, v):
+        self._set("last_pacenotes", v)
+
+    @property
     def last_compose_video(self):
         return self._get("last_compose_video")
 

@@ -403,14 +403,9 @@ def _resolve_pacenotes_outdir(corners_data, output_dir_arg):
         track = input("Nombre exacto de pista en CrewChief/AMS2: ").strip()
     if not track:
         raise ValueError("se requiere nombre de pista o --output-dir")
-    outdir = os.path.join(
-        os.path.expanduser("~"),
-        "Documents",
-        "CrewChiefV4",
-        "pace_notes",
-        "ams2",
-        track,
-    )
+    from fantasma.viz.pacenotes import crewchief_pacenotes_dir
+
+    outdir = crewchief_pacenotes_dir(track)
     return track, outdir
 
 
