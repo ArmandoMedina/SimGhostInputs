@@ -206,6 +206,24 @@ class AppState:
     def compose_offset(self, v):
         self._set("compose_offset", v)
 
+    # ── preferencias de flujo ─────────────────────────────────────────────────
+
+    @property
+    def auto_compose(self):
+        return self._get("auto_compose", False)
+
+    @auto_compose.setter
+    def auto_compose(self, v):
+        self._set("auto_compose", v)
+
+    @property
+    def pending_autocompose(self):
+        return self._get("pending_autocompose", False)
+
+    @pending_autocompose.setter
+    def pending_autocompose(self, v):
+        self._set("pending_autocompose", v)
+
     # ── helpers de limpieza ───────────────────────────────────────────────────
 
     def clear_analysis(self):

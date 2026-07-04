@@ -25,6 +25,20 @@ from .ng_helpers import (
 
 async def render(state, navigate):
     render_breadcrumb(4)
+    # Pide permiso de notificacion al entrar — fire-and-forget para no bloquear el render
+    try:
+        import asyncio as _asyncio
+
+        _loop = _asyncio.get_event_loop()
+        if _loop.is_running():
+            _loop.create_task(
+                ui.run_javascript(
+                    "if ('Notification' in window && Notification.permission === 'default') "
+                    "Notification.requestPermission()"
+                )
+            )
+    except Exception:
+        pass
     ui.label("Paso 4 — Componer video final").classes("step-header")
     ui.label(
         "Junta el overlay del Paso 3 con tu video de grabacion. "
@@ -559,9 +573,26 @@ async def render(state, navigate):
                     else:
                         state.last_compose_video = _vid
                         _z_score = sync_state.get("z")
-                        ui.label("✓ Video guardado: %s" % os.path.basename(_out_path)).classes(
+                        _out_name = os.path.basename(_out_path)
+                        ui.label("✓ Video guardado: %s" % _out_name).classes(
                             "font-bold text-green-400"
                         )
+                        ui.notify("Video listo: %s" % _out_name, type="positive", timeout=0)
+                        try:
+                            import asyncio as _asyncio
+
+                            _js_body = _out_name.replace("'", "\\'")
+                            _loop = _asyncio.get_event_loop()
+                            if _loop.is_running():
+                                _loop.create_task(
+                                    ui.run_javascript(
+                                        "try{if(Notification&&Notification.permission==='granted')"
+                                        " new Notification('SimGhostInputs',"
+                                        "{body:'Video listo: %s'})}catch(_){}" % _js_body
+                                    )
+                                )
+                        except Exception:
+                            pass
                         if isinstance(_job.result, dict):
                             ui.label(
                                 "Codificado con %s · %.0fs"
@@ -609,6 +640,16 @@ async def render(state, navigate):
             "Componer video",
             on_click=_start_compose,
         ).classes("btn-primary text-base px-6 py-2").props("flat")
+
+    # Auto-arranque si viene encadenado desde el Paso 3
+    if state.pending_autocompose:
+        state.pending_autocompose = False
+        _vid_auto = video_input.value
+        _ov_auto = overlay_input.value
+        if _vid_auto and _ov_auto:
+            _start_compose()
+        else:
+            ui.notify("Completa el video de grabacion para componer", type="warning")
 
 
 def _render_next_btn(state, current_step, navigate):

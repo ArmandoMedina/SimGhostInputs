@@ -120,3 +120,34 @@ def test_appstate_clear_drv_removes_drv_name(mock_state):
     mock_state.clear_drv()
     assert mock_state.drv_name is None, "drv_name debe quedar None tras clear_drv()"
     assert mock_state.drv_lap is None
+
+
+def test_auto_compose_default_false(mock_state):
+    """auto_compose es False por defecto."""
+    assert mock_state.auto_compose is False
+
+
+def test_auto_compose_setter_persists(mock_state):
+    """Asignar auto_compose=True y leerlo devuelve True."""
+    mock_state.auto_compose = True
+    assert mock_state.auto_compose is True
+
+
+def test_pending_autocompose_default_false(mock_state):
+    """pending_autocompose es False por defecto."""
+    assert mock_state.pending_autocompose is False
+
+
+def test_pending_autocompose_set_and_clear(mock_state):
+    """pending_autocompose se puede activar y desactivar."""
+    mock_state.pending_autocompose = True
+    assert mock_state.pending_autocompose is True
+    mock_state.pending_autocompose = False
+    assert mock_state.pending_autocompose is False
+
+
+def test_auto_compose_survives_clear_drv(mock_state):
+    """auto_compose NO se borra con clear_drv — es preferencia de usuario."""
+    mock_state.auto_compose = True
+    mock_state.clear_drv()
+    assert mock_state.auto_compose is True

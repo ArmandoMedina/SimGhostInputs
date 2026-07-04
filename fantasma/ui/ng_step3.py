@@ -104,6 +104,11 @@ async def render(state, navigate):
 
     fps_radio = ui.radio({24: "24 fps", 30: "30 fps", 60: "60 fps"}, value=30).props("inline")
 
+    # Encadenado overlay a compose (solo en flujo compose)
+    if state.flow_key == "compose":
+        auto_cb = ui.checkbox("Al terminar, componer automaticamente", value=state.auto_compose)
+        auto_cb.on_value_change(lambda e: setattr(state, "auto_compose", e.value))
+
     # Formato (solo relevante en flujo Solo overlay)
     fmt_state = {"value": "webm"}
     if state.flow_key == "overlay":
@@ -214,7 +219,12 @@ async def render(state, navigate):
                         ui.label("✓ Overlay generado: %s" % os.path.basename(_job.result)).classes(
                             "font-bold text-green-400"
                         )
-                        _render_next_btn(state, 3, navigate)
+                        _next = _FLOWS.get(state.flow_key, _FLOWS[_DEFAULT_FLOW])["next"].get(3)
+                        if state.auto_compose and _next == 4:
+                            state.pending_autocompose = True
+                            navigate(4)
+                        else:
+                            _render_next_btn(state, 3, navigate)
                 return
             pct = _job.n / _job.total if _job.total > 0 else 0
             progress_bar.set_value(pct)

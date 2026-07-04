@@ -122,9 +122,60 @@ class _StateWithRef:
         self.last_pacenotes = None
 
 
+class _StateForCompose:
+    """Estado minimo con flow_key='compose' para el checkbox de auto-compose."""
+
+    def __init__(self, ref_lap):
+        self.nav_step = 0
+        self.flow_key = "compose"
+        self.flow_chosen = True
+        self.ref_lap = ref_lap
+        self.drv_lap = None
+        self.summary = None
+        self.last_compose_video = None
+        self.corners = None
+        self.corners_editable = False
+        self.last_overlay = None
+        self.last_pacenotes = None
+        self.auto_compose = False
+        self.pending_autocompose = False
+
+
 class _NoOpTimer:
     def cancel(self):
         pass
+
+
+@pytest.mark.asyncio
+async def test_step3_auto_compose_checkbox_visible_in_compose_flow(user, monkeypatch, lap_factory):
+    """El checkbox 'componer automaticamente' aparece cuando flow_key=='compose'.
+
+    Con flow_key='overlay' ese checkbox NO se renderiza (no aplica al flujo
+    solo-overlay). La clase _StateForCompose siembra flow_key='compose'.
+    """
+    from nicegui import ui as _ui
+
+    import fantasma.ui.ng_app as _ng_mod
+
+    monkeypatch.setattr("shutil.which", lambda name: "/fake/ffmpeg")
+
+    _fake_corners_mod = types.ModuleType("fantasma.core.corners")
+    _fake_corners_mod.detect_corners = lambda lap: ([], {})
+    _fake_corners_mod.extract_milestones = lambda lap, evs: []
+    monkeypatch.setitem(sys.modules, "fantasma.core.corners", _fake_corners_mod)
+
+    monkeypatch.setattr(_ui, "timer", lambda *a, **kw: _NoOpTimer())
+
+    ref = lap_factory()
+    monkeypatch.setattr(_ng_mod, "AppState", lambda: _StateForCompose(ref))
+
+    from fantasma.ui.ng_app import main_page  # noqa: F401
+
+    await user.open("/")
+    user.find("Overlay").click()
+    await user.should_see("Paso 3")
+    await user.should_not_see("Primero carga")
+    await user.should_see("componer automaticamente")
 
 
 @pytest.mark.asyncio
