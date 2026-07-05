@@ -191,7 +191,7 @@ async def main_page():
       .lap-selector { margin-top: 6px; width: 100%; }
     </style>""")
 
-    content = ui.column().classes("w-full p-4")
+    content = ui.column().classes("w-full p-4").style("max-width:1100px;margin:0 auto")
     nav_buttons = []
 
     _all_step_labels = ["Inicio", "Importar", "Análisis", "Overlay", "Video", "Pace Notes"]
