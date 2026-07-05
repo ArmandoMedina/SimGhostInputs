@@ -1,12 +1,14 @@
 ; SimGhostInputs — Inno Setup 6
-; Genera: dist\SimGhostInputs-v2.0-Setup.exe
+; Genera: dist\SimGhostInputs-v<version>-Setup.exe
 ; Requiere: bundle en dist\SimGhostInputs\ (generado por nicegui-pack --onedir)
 ;
-; NOTA: SetupIconFile esta comentado porque docs\icon.ico aun no existe.
-; Para agregar el icono: pon el .ico en docs\icon.ico y descomenta la linea.
+; La version se pasa por linea de comandos: ISCC /DMyAppVersion=X.Y.Z installer.iss
+; Si no se pasa, queda "0.0.0" como centinela (ver build_installer.py).
 
 #define MyAppName "SimGhostInputs"
-#define MyAppVersion "2.0.0"
+#ifndef MyAppVersion
+#define MyAppVersion "0.0.0"
+#endif
 #define MyAppPublisher "Armando Medina"
 #define MyAppURL "https://github.com/ArmandoMedina/SimGhostInputs"
 #define MyAppExeName "SimGhostInputs.exe"
@@ -28,7 +30,7 @@ DefaultGroupName={#MyAppName}
 AllowNoIcons=yes
 OutputDir=dist
 OutputBaseFilename=SimGhostInputs-v{#MyAppVersion}-Setup
-; SetupIconFile=docs\icon.ico  <- descomentar cuando exista docs\icon.ico
+SetupIconFile=docs\icon.ico
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern

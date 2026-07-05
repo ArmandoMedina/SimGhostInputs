@@ -12,33 +12,28 @@
 
 ## Estado actual
 
-**En vuelo: rama `feat/flujo-solo-pacenotes`** (sobre `master` en `v2.1.1`). Añade un **flujo de
-entrada "Solo Pace Notes"** (4ª tarjeta en el Paso 0) que rutea Importar(1)→Análisis(2)→Pace
-Notes(5) saltándose overlay/compose — resuelve la fricción reportada por el PO (un video con overlay
-ya hecho que solo quiere pace notes era arrastrado a generar overlay). Trae:
+**En vuelo: rama `feat/ci-release-installer`** (sobre `master` en v2.2.0). Automatiza que **cortar un
+release genere y adjunte el instalador Windows** — antes no lo hacía (el job `build-installer` de
+`tests.yml` nunca corría: el workflow solo se dispara en push/PR a master, no en tags; y el instalador
+de v2.0.0 se armó a mano). Trae:
 
-- **Código** (`fantasma/ui/`): entrada `pacenotes` en `_FLOWS` (`ng_helpers.py`); 4ª tarjeta
-  (`ng_step0.py`); grid del Paso 0 a 4 columnas (`ng_app.py`); guard del Paso 5 reestructurado para
-  que el **panel② ("aplicar sonido a video existente") sea visible siempre** (antes lo ocultaba el
-  guard); tooltips en ambos paneles + caption puente ①→②; fix del estado visual disabled del botón
-  "Aplicar sonido" (selector CSS `.disabled` de Quasar).
-- **Tests**: `tests/ui/test_ng_flows.py` (nuevo, ruteo), + extensiones a `test_ng_step0.py` y
-  `test_ng_step5.py`. Suite **verde (227)**; visuales **7/7** (baseline `step0.png` regenerado a 4 tarjetas).
-- **Decisión**: [ADR 0021](docs/decisions/0021-flujo-solo-pacenotes.md) (por qué 4º flujo, alternativas
-  descartadas: CSV único / mini-import / paso huérfano). Restricción de producto: las pace notes exigen
-  **2 vueltas** (priorizan por tiempo perdido, `compare()`) — no se generan de una sola vuelta ni del video.
-- **Docs §8** sincronizadas (Escribano): `guia-usuario.md`, `ux-patterns.md`, `casos-de-uso.md` (C36),
-  `product/capacidades/UI-01` y `UI-04`. **CHANGELOG** con entrada `[Unreleased]`.
-- **QA visual** (Mariana): **aprobado**; evidencia en `qa_runs/mariana-20260705-pacenotes/`.
+- **CI**: nuevo `.github/workflows/release.yml` (trigger `release: published` → `windows-latest` →
+  `choco install innosetup` → `build_installer.py --inno` → sube `Setup.exe` + zip portable como
+  assets con `gh release upload`, permiso `contents: write`). Job muerto `build-installer` eliminado de
+  `tests.yml`. Decisión: [ADR 0022](docs/decisions/0022-ci-release-installer.md).
+- **Tooling**: `installer.iss` con versión parametrizable (`/DMyAppVersion`, antes hardcodeada "2.0.0")
+  + icono habilitado; `build_installer.py` lee la versión de **pyproject** (SSOT; la metadata del
+  editable install quedaba stale) y detecta ISCC (incluida la ruta per-user).
+- **Validado local end-to-end**: se compiló `SimGhostInputs-v2.2.0-Setup.exe` (104.7 MB) con Inno
+  Setup y se **adjuntó al release v2.2.0** (+ zip portable) — el CI aplica desde el **próximo** release.
+- **Docs**: ADR 0022 + índice, CHANGELOG `[Unreleased]`, `docs/flujo-de-trabajo.md` (doc dueño de
+  `barreras`) sincronizado (Escribano).
 
 ## Siguiente acción
 
-1. **Publicación autorizada por el PO** (commit/push/PR/versión): push de `feat/flujo-solo-pacenotes`,
-   PR + merge a `master`, y cortar **v2.2.0** con `release-helper` (recordar
-   `gh auth switch --user ArmandoMedina`, devolver a `Armandomedina9705` al terminar).
-2. **Recorrido e2e 0→1→2→5 VERIFICADO** en sesión con CSVs reales (Nordschleife BMW vs Audi):
-   evidencia en `qa_runs/mariana-20260705-pacenotes/recorrido-e2e.md` + capturas `e2e_*`. El botón
-   "Ir al Paso 5" y el flujo completo funcionan; panel② con "Aplicar sonido" atenuado correcto.
+**Cerrar la rama** (autorizado por el PO): verificar → commit → PR → merge a `master`. No amerita
+release nuevo (la automatización aplica al siguiente). Considerar encadenar la **#2** (fuente única de
+versión para el badge del footer) que quedó pendiente.
 
 ## Backlog
 
