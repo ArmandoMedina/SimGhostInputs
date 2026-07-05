@@ -4,6 +4,8 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/). Versionado
 
 ## [Unreleased]
 
+## [2.1.0] - 2026-07-05
+
 ### Añadido
 - **Paso 5 — Pace Notes en la UI** (`fantasma/ui/ng_step5.py`): nuevo paso del wizard que genera el pack de pace notes para CrewChief (tonos, voz o ambos) desde `state.rows` y `state.corners`. Incluye selector de modo/top-N/volumen/idioma y directorio de destino pre-rellenado vía `crewchief_pacenotes_dir()`. Se activa desde el botón «Generar Pace Notes» del Paso 2; el paso aparece en el sidebar «Salidas» junto a Overlay y Video.
 - **Mux standalone de pace notes en video existente** (`ng_step5.py`, `viz/compose.py::mux_pace_notes_into_video`): panel en el Paso 5 para mezclar el audio del pack de pace notes en un video ya compuesto usando ffmpeg `-c:v copy` (sin re-encodear). Requiere la vuelta del piloto cargada para sincronizar los cues por distancia.
