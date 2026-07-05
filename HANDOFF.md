@@ -12,28 +12,22 @@
 
 ## Estado actual
 
-**En vuelo: rama `feat/ci-release-installer`** (sobre `master` en v2.2.0). Automatiza que **cortar un
-release genere y adjunte el instalador Windows** — antes no lo hacía (el job `build-installer` de
-`tests.yml` nunca corría: el workflow solo se dispara en push/PR a master, no en tags; y el instalador
-de v2.0.0 se armó a mano). Trae:
+**En vuelo: rama `fix/version-fuente-unica`** (sobre `master` en v2.2.0). Cierra la **#2**: unifica la
+fuente de verdad de la versión (el badge del footer quedaba en «v2.1» tras cada release por ser un
+literal manual). Ahora: **`__version__` literal en `fantasma/__init__.py` = SSOT**; `pyproject.toml`
+lo deriva con `dynamic = {attr = "fantasma.__version__"}`; el badge (`ng_app.py`) y
+`build_installer.py._get_version()` lo leen de ahí. Se descartó `importlib.metadata` (stale en editable,
+no fiable en el exe congelado). Decisión: [ADR 0023](docs/decisions/0023-fuente-unica-de-version.md).
+**Consecuencia de proceso: bumpear la versión = editar `fantasma/__init__.py`, no `pyproject.toml`.**
+Validado: `attr`/`meta`/`_get_version` todos 2.2.0; badge → «v2.2»; 229 tests verde, ruff limpio.
+Docs §8: ADR 0023 + índice, CHANGELOG, `docs/guia-usuario.md` (doc dueño de `ui`).
 
-- **CI**: nuevo `.github/workflows/release.yml` (trigger `release: published` → `windows-latest` →
-  `choco install innosetup` → `build_installer.py --inno` → sube `Setup.exe` + zip portable como
-  assets con `gh release upload`, permiso `contents: write`). Job muerto `build-installer` eliminado de
-  `tests.yml`. Decisión: [ADR 0022](docs/decisions/0022-ci-release-installer.md).
-- **Tooling**: `installer.iss` con versión parametrizable (`/DMyAppVersion`, antes hardcodeada "2.0.0")
-  + icono habilitado; `build_installer.py` lee la versión de **pyproject** (SSOT; la metadata del
-  editable install quedaba stale) y detecta ISCC (incluida la ruta per-user).
-- **Validado local end-to-end**: se compiló `SimGhostInputs-v2.2.0-Setup.exe` (104.7 MB) con Inno
-  Setup y se **adjuntó al release v2.2.0** (+ zip portable) — el CI aplica desde el **próximo** release.
-- **Docs**: ADR 0022 + índice, CHANGELOG `[Unreleased]`, `docs/flujo-de-trabajo.md` (doc dueño de
-  `barreras`) sincronizado (Escribano).
+**Contexto previo (ya mergeado hoy):** flujo "Solo Pace Notes" (#21 + release #22, v2.2.0 con
+Setup.exe + zip portable adjuntos) y automatización release→installer en CI (#23, [ADR 0022](docs/decisions/0022-ci-release-installer.md)).
 
 ## Siguiente acción
 
-**Cerrar la rama** (autorizado por el PO): verificar → commit → PR → merge a `master`. No amerita
-release nuevo (la automatización aplica al siguiente). Considerar encadenar la **#2** (fuente única de
-versión para el badge del footer) que quedó pendiente.
+**Cerrar la rama** (autorizado): verificar → commit → PR → merge a `master`. No amerita release nuevo.
 
 ## Backlog
 
