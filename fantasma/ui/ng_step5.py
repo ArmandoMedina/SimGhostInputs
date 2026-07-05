@@ -305,9 +305,7 @@ async def render(state, navigate):
 
                         mux_result_area.clear()
                         with mux_result_area:
-                            ui.label("Listo: %s" % result_path).classes(
-                                "font-bold text-green-400"
-                            )
+                            ui.label("Listo: %s" % result_path).classes("font-bold text-green-400")
                         ui.notify(
                             "Video con sonido guardado: %s" % os.path.basename(result_path),
                             type="positive",
