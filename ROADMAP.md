@@ -10,7 +10,9 @@
 
 ## Estado actual
 
-**v2.1.0** (2026-07-05) — estable. 226 tests. Pace Notes en la UI, pipeline autónomo overlay→compose, mux standalone y remediación de UI/UX (2 rondas de QA visual).
+**v2.1.1** (2026-07-05) — estable. 226 tests. Patch: corrige el badge de versión del footer (mostraba «v2.0»).
+
+**v2.1.0** (2026-07-05) — Pace Notes en la UI, pipeline autónomo overlay→compose, mux standalone y remediación de UI/UX (2 rondas de QA visual).
 
 **v2.0.0** (2026-07-03) — anterior. 212 tests. Auditoría integral, remediación crítica y retiro de Streamlit.
 
