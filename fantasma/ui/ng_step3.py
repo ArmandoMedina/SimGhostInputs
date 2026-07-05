@@ -151,7 +151,7 @@ async def render(state, navigate):
     job_holder = {"job": None, "timer": None}
     _gen_btn_ref = {"btn": None}
 
-    async def _start_render():
+    def _start_render():
         # Guard: ignorar clicks mientras hay un render en curso
         if job_holder["job"] is not None and not job_holder["job"].done:
             return
@@ -174,37 +174,13 @@ async def render(state, navigate):
                 _gen_btn_ref["btn"].enable()
             return
 
-        # Detección de corners bajo demanda (el Paso 2 pudo no dejarlos listos): con
-        # feedback visible en vez de bloquear el render del panel más arriba.
-        corners = corners_holder["list"]
-        if not corners:
-            render_area.clear()
-            with render_area:
-                with ui.row().classes("items-center gap-2"):
-                    ui.spinner(size="sm")
-                    ui.label("Analizando el trazado...").classes("text-sm text-gray-400")
-            try:
-
-                def _detect():
-                    from fantasma.core.corners import detect_corners, extract_milestones
-
-                    _evs, _ = detect_corners(ref_lap)
-                    return extract_milestones(ref_lap, _evs)
-
-                corners = await run.io_bound(_detect)
-            except Exception:
-                corners = []
-            corners_holder["list"] = corners
-            state.corners = corners
-            render_area.clear()
-
         os.makedirs(out_dir, exist_ok=True)
         job = start_bg_render(
             _ro,
             progress_kw="progress",
             ref=ref_lap,
             drv=drv_lap,
-            corners=corners or [],
+            corners=corners_holder["list"] or [],
             outdir=out_dir,
             fps=_fps,
             fmt=_fmt,
@@ -289,6 +265,24 @@ async def render(state, navigate):
             .classes("btn-primary text-base px-6 py-2 mt-2")
             .props("flat")
         )
+
+    # Detección de corners al final: el panel ya está pintado (no hay pantalla en blanco),
+    # y este await solo demora el cierre del render. Cuando se pulse "Generar overlay" los
+    # milestones ya están listos en el holder; si el click llega antes, degrada a [] sin
+    # romper. El Paso 2 pudo dejarlos listos (corners_editable), en cuyo caso no se detecta.
+    if not corners_holder["list"]:
+        try:
+
+            def _detect():
+                from fantasma.core.corners import detect_corners, extract_milestones
+
+                _evs, _ = detect_corners(ref_lap)
+                return extract_milestones(ref_lap, _evs)
+
+            corners_holder["list"] = await run.io_bound(_detect)
+            state.corners = corners_holder["list"]
+        except Exception:
+            corners_holder["list"] = []
 
 
 def _render_next_btn(state, current_step, navigate):
