@@ -75,6 +75,16 @@ Coaching adaptativo en tiempo real. Solo si Pace Notes no cubre el caso de uso.
 
 ---
 
+### Acelerar el render del overlay (candidata v3.0 — gated por benchmark)
+
+El loop de generación de frames del HUD es el único punto claramente CPU-bound (la UI anuncia "5 a 30 min" por overlay; ya se usa multiprocessing en todos los cores). Idea: bajar **solo ese loop** a un hot-path compilado (Rust vía PyO3 / C) o a GPU/shaders (moderngl), dejando Python como orquestador de todo lo demás (telemetría, ffmpeg, UI). **No se arranca sin datos** que lo justifiquen.
+
+- [ ] **Perfilar un render real y separar el tiempo del loop de frames vs. el resto** (I/O, encode ffmpeg, sync) — benchmark reproducible con números, sobre una vuelta larga (p. ej. Nordschleife ~394s). _Este es el gate: sin evidencia de que el dibujado de frames domina el tiempo, no se avanza._
+- [ ] **Si el loop domina:** evaluar hot-path compilado (PyO3/C) o GPU (moderngl) **solo para el dibujado de frames**, manteniendo la misma salida y el resto en Python.
+- [ ] **Decidir con números:** proceder solo si el beneficio proyectado es significativo (p. ej. ≥N× en render) frente al costo de mantener una extensión nativa o una dependencia de GPU. _Prioridad: a definir tras el benchmark._
+
+---
+
 ## 🔧 Transversal
 
 ### Gaps técnicos
