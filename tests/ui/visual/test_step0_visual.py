@@ -138,4 +138,5 @@ def test_step0_ui_elements(nicegui_url, pw_page):
     assert pw_page.locator("text=Solo análisis").is_visible()
     assert pw_page.locator("text=Solo overlay").is_visible()
     assert pw_page.locator("text=Video con HUD").is_visible()
+    assert pw_page.locator("text=Solo Pace Notes").is_visible()
     assert pw_page.locator("text=Empezar").is_visible()

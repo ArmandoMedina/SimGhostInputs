@@ -134,6 +134,26 @@ La UI principal de v2.0 migró de Streamlit a **NiceGUI** ([ADR 0018](decisions/
 
 Historial de decisiones de UX que alteraron el layout o el flujo de la UI — para que el baseline visual tenga contexto al regenerarse.
 
+### feat/flujo-solo-pacenotes (Unreleased)
+
+**Nuevo flujo "Solo Pace Notes" — 4ª tarjeta en el Paso 0:**
+- El Paso 0 pasa de un grid de 3 a 4 columnas; la tarjeta 🔔 "Solo Pace Notes" enruta al usuario por Importar (1) → Análisis (2) → Pace Notes (5), saltando overlay (3) y compose (4).
+- El sidebar muestra los pasos 3 y 4 como "· paso opcional fuera del flujo elegido" cuando se elige este flujo.
+- Heurística cubierta: **Visibilidad del estado del sistema** (§1.1) — el usuario ve exactamente qué pasos componen su flujo sin necesidad de consultar la guía.
+- Patrón reusable: flujo = subconjunto ordenado de pasos; el sidebar los refleja con la misma lógica `_step_done` ajustando qué pasos son "en-flujo" vs opcionales.
+
+**Fix del guard del Paso 5 — panel ② siempre visible:**
+- Antes: el guard ocultaba todo el Paso 5 si `state.rows` o `state.corners` eran None.
+- Ahora: el aviso "falta el análisis" vive solo dentro del panel ① (generar pack nuevo); el panel ② ("Aplicar sonido a un video existente") es visible siempre.
+- Mensaje reescrito: distingue "para generar un pack nuevo, corre el Análisis (Paso 2)" vs "si ya tienes pack+video, usa el panel ②".
+- Heurística cubierta: **Prevención de errores** (§1.3) — se elimina el bloqueo excesivo que impedía usar panel ② cuando el usuario ya tenía un pack generado en una sesión anterior o en otra herramienta.
+
+**Tooltips en todos los controles del Paso 5 + caption puente:**
+- Todos los controles de los paneles ① y ② del Paso 5 incluyen `ui.tooltip(...)` que explican su función, el rango válido o el prerrequisito necesario.
+- Caption puente entre paneles: «Primero genera el pack en ①; luego aplícalo a tu video en ②».
+- Heurística cubierta: **Ayuda y documentación** (§1.9) — la guía contextual elimina la necesidad de consultar documentación externa para entender el flujo del Paso 5.
+- Patrón reusable: `ui.tooltip("Texto explicativo")` adjunto a cada `ui.input`, `ui.select`, `ui.slider` y `ui.button`; `ui.caption("...")` para mensajes de flujo entre secciones de la misma pantalla.
+
 ### feat/pacenotes-ui (Unreleased)
 
 **Loading states en carga de CSV (Paso 1) — patrón «spinner + label en columna reservada»:**

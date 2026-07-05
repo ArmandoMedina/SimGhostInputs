@@ -12,35 +12,41 @@
 
 ## Estado actual
 
-**En vuelo: rama `feat/pacenotes-ui`** (~18 commits sobre `master`). Código completo, **verde
-(226 tests, `verificar.ps1` OK)**, revisado (Reviewer), docs §8 sincronizadas (Escribano), y con
-**aceptación visual del PO** (2ª ronda Mariana/Opus). Trae, sobre lo ya descrito en el CHANGELOG:
+**En vuelo: rama `feat/flujo-solo-pacenotes`** (sobre `master` en `v2.1.1`). Añade un **flujo de
+entrada "Solo Pace Notes"** (4ª tarjeta en el Paso 0) que rutea Importar(1)→Análisis(2)→Pace
+Notes(5) saltándose overlay/compose — resuelve la fricción reportada por el PO (un video con overlay
+ya hecho que solo quiere pace notes era arrastrado a generar overlay). Trae:
 
-- **Features** A1 (Paso 5 Pace Notes), A2 (sonido en video: preview al componer + mux standalone
-  `-c:v copy`), B (pipeline autónomo overlay→compose + notificación).
-- **Remediación de QA visual** (2 rondas Mariana/Opus): uploader, indicadores, acentos, jerarquía
-  de botones (I3 vía CSS `!important`, sin `.props("flat")`), y **rediseño de layout centrado con
-  ancho máximo + 2 columnas en Pasos 4 y 5**.
-- **Fixes de correctness** destapados al verificar de verdad (varios estaban en falso-verde):
-  contraste del botón "Seleccionado"; **el Paso 3 ya no bloquea el panel con la detección de
-  curvas** (se detecta al final del render, con "Analizando el trazado…" y botón deshabilitado
-  hasta tener las curvas); guard de doble-clic en "Aplicar sonido" del Paso 5.
+- **Código** (`fantasma/ui/`): entrada `pacenotes` en `_FLOWS` (`ng_helpers.py`); 4ª tarjeta
+  (`ng_step0.py`); grid del Paso 0 a 4 columnas (`ng_app.py`); guard del Paso 5 reestructurado para
+  que el **panel② ("aplicar sonido a video existente") sea visible siempre** (antes lo ocultaba el
+  guard); tooltips en ambos paneles + caption puente ①→②; fix del estado visual disabled del botón
+  "Aplicar sonido" (selector CSS `.disabled` de Quasar).
+- **Tests**: `tests/ui/test_ng_flows.py` (nuevo, ruteo), + extensiones a `test_ng_step0.py` y
+  `test_ng_step5.py`. Suite **verde (227)**; visuales **7/7** (baseline `step0.png` regenerado a 4 tarjetas).
+- **Decisión**: [ADR 0021](docs/decisions/0021-flujo-solo-pacenotes.md) (por qué 4º flujo, alternativas
+  descartadas: CSV único / mini-import / paso huérfano). Restricción de producto: las pace notes exigen
+  **2 vueltas** (priorizan por tiempo perdido, `compare()`) — no se generan de una sola vuelta ni del video.
+- **Docs §8** sincronizadas (Escribano): `guia-usuario.md`, `ux-patterns.md`, `casos-de-uso.md` (C36),
+  `product/capacidades/UI-01` y `UI-04`. **CHANGELOG** con entrada `[Unreleased]`.
+- **QA visual** (Mariana): **aprobado**; evidencia en `qa_runs/mariana-20260705-pacenotes/`.
 
 ## Siguiente acción
 
-1. **Push de la rama** — autorizado por el PO en sesión (2026-07-05). Si ya está pusheada al leer
-   esto, abrir PR hacia `master` cuando el PO lo pida.
-2. Nada más pendiente de esta tanda: la aceptación visual está dada y la evidencia citada vive en
-   `qa_runs/mariana-20260705-r2/` (commiteada).
-
-**Deuda/pulido abierto (en ROADMAP, no bloquea):**
-- Labels truncados en los inputs del Paso 4 (cosmético, prioridad baja) — decisión del PO de
-  pushear ya y dejarlo al backlog.
-- El job de render del Paso 3 vive en variable local, no en `state`: navegar fuera durante un
-  render no lo cancela (riesgo de render concurrente al mismo outdir). Pre-existente, prioridad
-  media. Fix propuesto: `state.active_overlay_job` + cancelar en `_cancel_on_nav`.
+1. **Publicación autorizada por el PO** (commit/push/PR/versión): push de `feat/flujo-solo-pacenotes`,
+   PR + merge a `master`, y cortar **v2.2.0** con `release-helper` (recordar
+   `gh auth switch --user ArmandoMedina`, devolver a `Armandomedina9705` al terminar).
+2. **Recorrido e2e 0→1→2→5 VERIFICADO** en sesión con CSVs reales (Nordschleife BMW vs Audi):
+   evidencia en `qa_runs/mariana-20260705-pacenotes/recorrido-e2e.md` + capturas `e2e_*`. El botón
+   "Ir al Paso 5" y el flujo completo funcionan; panel② con "Aplicar sonido" atenuado correcto.
 
 ## Backlog
 
-Ver [ROADMAP](ROADMAP.md) §"Post-v2.0", §"Transversal" y la candidata **v3.0** (acelerar el render
-del overlay, *gated por benchmark*).
+Deuda y pulido viven en [ROADMAP](ROADMAP.md), no bloquean:
+- **Paso 1 — subida concurrente:** subir los dos CSV casi simultáneos puede perder el segundo
+  `on_upload` mientras el primero (MoTeC grande) procesa. Secuencial funciona. Borde raro,
+  prioridad baja (detectado en el e2e del recorrido pacenotes).
+- Labels truncados en los inputs del Paso 4 (`ng_step4.py`) — cosmético, prioridad baja.
+- Job de render del Paso 3 en variable local, no en `state` (`ng_step3.py`) — riesgo de render
+  concurrente al mismo `outdir`; fix propuesto `state.active_overlay_job`. Prioridad media.
+- Candidata **v3.0**: acelerar el render del overlay (*gated por benchmark*).

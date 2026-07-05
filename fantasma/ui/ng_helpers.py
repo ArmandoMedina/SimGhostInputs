@@ -79,6 +79,20 @@ _FLOWS = {
         "steps": [0, 1, 3, 4],
         "next": {1: 3, 3: 4, 4: None},
     },
+    "pacenotes": {
+        "desc": "Genera cues de audio para CrewChief a partir del análisis de curvas.",
+        "requires": [
+            "📄 CSV de la vuelta de referencia",
+            "📄 CSV de tus vueltas",
+            "🎬 Tu video (opcional, para muxear el audio al final)",
+        ],
+        "deliverables": [
+            "🔔 Pack de pace notes (WAVs sincronizados)",
+            "🎥 Video con audio de pace notes muxeado (opcional)",
+        ],
+        "steps": [0, 1, 2, 5],
+        "next": {1: 2, 2: 5, 5: None},
+    },
 }
 _DEFAULT_FLOW = "compose"
 _STEPS = ["Inicio", "Importar", "Comparar", "Overlay", "Componer", "Pace Notes"]

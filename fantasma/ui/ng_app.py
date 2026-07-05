@@ -64,7 +64,7 @@ async def main_page():
       .step-header { font-size: 1.2rem; font-weight: 700; letter-spacing: -0.02em; color: var(--text); margin-bottom: 0.25rem; }
 
       /* Flow grid */
-      .flow-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 16px; margin-bottom: 1.5rem; }
+      .flow-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 16px; margin-bottom: 1.5rem; }
       .flow-card { background: var(--card-bg); border: 1px solid var(--border); padding: 24px; cursor: pointer; transition: border-color 0.15s; position: relative; border-radius: 0; display: flex; flex-direction: column; }
       .flow-card .q-btn { margin-top: auto !important; }
       .flow-card:hover { border-color: rgba(79,142,247,0.4); }
@@ -166,7 +166,7 @@ async def main_page():
       /* Buttons */
       .btn-primary { background: var(--accent) !important; color: white !important; border: none; padding: 8px 20px; font-size: 13px; font-weight: 600; cursor: pointer; border-radius: 0; font-family: inherit; transition: background 0.15s; }
       .btn-primary:hover { background: var(--highlight); }
-      .btn-primary:disabled { opacity: 0.4; cursor: default; }
+      .btn-primary.disabled, .btn-primary:disabled { opacity: 0.4 !important; cursor: default; }
       /* I3: !important supera la especificidad de Quasar en botones secundarios */
       .btn-secondary { background: transparent !important; color: var(--muted) !important; border: 1px solid var(--border) !important; padding: 8px 20px; font-size: 13px; font-weight: 600; cursor: pointer; border-radius: 0; font-family: inherit; transition: color 0.15s, border-color 0.15s; }
       .btn-secondary:hover { color: var(--text) !important; border-color: rgba(255,255,255,0.2) !important; }
