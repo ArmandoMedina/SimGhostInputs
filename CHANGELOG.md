@@ -15,6 +15,7 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/). Versionado
 ### Cambiado
 - **`SimGhostInputs.spec` fuera del versionado** (`.gitignore`): `nicegui-pack` lo regenera en cada build con la ruta absoluta local de nicegui, deshaciendo cualquier fix versionado — es artefacto de build, no fuente. La receta canónica de empaquetado es `tools/build_installer.py`.
 - **Deuda del ADR 0018 medida**: bundle onedir real de v2.0.0 = 373 MB; exe 30.7 MB; instalador 104.7 MB. Smoke del exe empaquetado: arranca y responde HTTP 200 en `127.0.0.1:8765`.
+- **Layout 2 columnas en Pasos 4 y 5** (`ng_step4.py`, `ng_step5.py`): Paso 4 separa controles de entradas (izquierda) de la vista previa del HUD (derecha); Paso 5 separa «Generación» (izquierda) de «Aplicar sonido» (derecha). Contenido de la página centrado con ancho máximo de 1 100 px.
 
 ### Corregido
 - **Botón «Generar Pace Notes» del Paso 2 navegaba al Overlay (Paso 3) en vez del Paso 5**: `navigate(3)` corregido a `navigate(5)` en `ng_step2.py`.
@@ -22,6 +23,9 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/). Versionado
 - **Campo Venue del circuito no se leía correctamente** (`ng_step2.py`): el nombre de pista usaba solo `meta.get("track")`; ahora prefiere `meta.get("Venue")` (clave real del metadato AMS2) con fallback a `"track"`.
 - **Inconsistencia de tokens de color** (`ng_step2.py`): textos mutados migrados de `.style("color:var(--muted)")` a clase Tailwind `text-gray-400`, coherente con el patrón del resto de pasos (ADR 0018).
 - **`tools/installer.iss` compilaba solo en CI-teoría**: primer build real del instalador destapó rutas relativas resueltas contra `tools\` (faltaba `SourceDir=..`) y un custom message inexistente (`{cm:DesktopFolder}` → `{cm:CreateDesktopIcon}`). Con esto se generó y publicó `SimGhostInputs-v2.0.0-Setup.exe` (104.7 MB) como asset del release.
+- **Remediación visual QA** (`ng_app.py`, `ng_step0..5.py`): especificidad CSS de botones de sidebar en dark mode (prefijo `.sgi-sidebar` supera el color primario de Quasar); chrome del q-uploader ocultado en zonas custom del Paso 1; jerarquía `btn-featured` vs `btn-secondary` con `!important`; acentos corregidos en textos de todos los pasos; nombre de pista con guiones bajos reemplazados por espacios; celda de fecha en resumen del Paso 2 oculta cuando está vacía.
+- **Detección de curvas diferida en Paso 3** (`ng_step3.py`): el render del panel ya no bloquea mientras se detectan las curvas; se muestra «Analizando el trazado...» con spinner y se deshabilita «Generar overlay» hasta completar la detección (o fallar silenciosamente con lista vacía).
+- **Guard de doble-clic en «Aplicar sonido» del Paso 5** (`ng_step5.py`): semáforo `_mux_state["running"]` evita lanzar dos procesos ffmpeg concurrentes al mismo archivo de salida.
 
 ## [2.0.0] - 2026-07-03
 

@@ -150,6 +150,24 @@ Historial de decisiones de UX que alteraron el layout o el flujo de la UI — pa
 - Heurística cubierta: **Prevención de errores** (§1.3).
 - Patrón reusable: definir `btn = ui.button(...)`, luego `_update_enabled()` que evalúa condiciones y llama `.enable()/.disable()`, enlazar los campos de entrada con `on("update:model-value", ...)`.
 
+**Detección de curvas diferida con botón deshabilitado (Paso 3) — patrón «disable-mientras-resuelve»:**
+- Al entrar al Paso 3, si `state.corners` no está disponible el panel se renderiza inmediatamente (sin bloquear) y el botón «Generar overlay» se deshabilita mientras corre `await run.io_bound(_detect)`.
+- Durante la espera aparece un spinner con «Analizando el trazado...» en `render_area`; al completar (o fallar, con lista vacía) se elimina el hint y el botón se reactiva.
+- Heurística cubierta: **Visibilidad del estado del sistema** (§1.1) y **Prevención de errores** (§1.3): impide arrancar un render sin milestones si el usuario pulsa antes de que termine la detección.
+- Patrón reusable: `btn.disable()` → mostrar spinner en área reservada → `await run.io_bound(fn)` → eliminar hint → `btn.enable()`. Diferente del patrón de polling (§4.1): aquí el botón que dispara la acción es el mismo que se bloquea, no un job en background con timer.
+
+**Guard de running state en mux standalone (Paso 5) — patrón «no dos a la vez»:**
+- `_mux_state = {"running": False}` actúa como semáforo: al entrar a `_apply_mux()` se comprueba; si ya está corriendo, la función retorna inmediatamente ignorando el doble-clic.
+- Al terminar (éxito o error, en bloque `finally`), se pone `running = False` y se reactiva `apply_btn`.
+- Heurística cubierta: **Prevención de errores** (§1.3): evita dos procesos ffmpeg escribiendo al mismo archivo de salida concurrentemente.
+- Patrón reusable: `state = {"running": False}`, guard al inicio, `btn.disable()` mientras corre, `state["running"] = False; btn.enable()` en `finally`.
+
+**Layout en 2 columnas para Pasos 4 y 5 (baseline visual v0.14.x):**
+- Paso 4: columna izquierda con paneles de entradas ①–④; columna derecha con parámetros del HUD y vista previa ⑤ (sticky).
+- Paso 5: columna izquierda con «① Generación de Pace Notes»; columna derecha con «② Aplicar sonido a video existente».
+- Contenido de la página centrado con ancho máximo de 1 100 px (`max-width:1100px;margin:0 auto`).
+- Referencia: cualquier regeneración de baseline Playwright para Pasos 4 y 5 debe partir de este layout de 2 columnas.
+
 ### Unreleased
 
 **ng_app.py — modo oscuro activado globalmente (bugfix de contraste):**

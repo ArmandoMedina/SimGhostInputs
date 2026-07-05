@@ -92,7 +92,7 @@ Si usas `fantasma-ng`, el botón **«🔔 Generar Pace Notes»** al pie del aná
 3. El **directorio de salida** se pre-rellena automáticamente con la ruta de CrewChief detectada para el circuito. Si no se detecta, escribe el nombre exacto que CrewChief/AMS2 espera o usa «Explorar…» para navegar.
 4. Pulsa **«Generar Pace Notes»**: un spinner indica el progreso; al terminar verás cuántas entradas se generaron y el sidebar marca el Paso 5 como completado (✅).
 
-**Aplicar sonido a un video existente** (panel inferior del Paso 5): si ya tienes el video compuesto y solo quieres añadirle el audio del pack, este panel lo hace sin re-encodear el video (ffmpeg `-c:v copy`). Requiere la vuelta del piloto cargada (Paso 1) para sincronizar los cues; el botón «Aplicar sonido» se habilita cuando están el video, la carpeta del pack y la vuelta del piloto.
+**Aplicar sonido a un video existente** (segundo panel del Paso 5, a la derecha): si ya tienes el video compuesto y solo quieres añadirle el audio del pack, este panel lo hace sin re-encodear el video (ffmpeg `-c:v copy`). Requiere la vuelta del piloto cargada (Paso 1) para sincronizar los cues; el botón «Aplicar sonido» se habilita cuando están el video, la carpeta del pack y la vuelta del piloto.
 
 Activa las Pace Notes dentro de CrewChief antes de salir a pista.
 
