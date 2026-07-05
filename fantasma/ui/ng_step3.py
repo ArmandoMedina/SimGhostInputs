@@ -44,21 +44,10 @@ async def render(state, navigate):
 
     ref_lap = state.ref_lap
     drv_lap = state.drv_lap
-    corners = state.corners if state.corners_editable else None
-
-    if not corners:
-        try:
-
-            def _detect():
-                from fantasma.core.corners import detect_corners, extract_milestones
-
-                _evs, _ = detect_corners(ref_lap)
-                return extract_milestones(ref_lap, _evs)
-
-            corners = await run.io_bound(_detect)
-            state.corners = corners
-        except Exception:
-            corners = []
+    # Corners: si el Paso 2 los dejó editables, se reutilizan; si no, se detectan bajo
+    # demanda al pulsar "Generar overlay" (con spinner), en vez de bloquear aquí el
+    # render del panel con una pantalla en blanco mientras corre la detección.
+    corners_holder = {"list": state.corners if state.corners_editable else None}
 
     # Notificacion: ya hay overlay generado
     if state.last_overlay:
@@ -162,7 +151,7 @@ async def render(state, navigate):
     job_holder = {"job": None, "timer": None}
     _gen_btn_ref = {"btn": None}
 
-    def _start_render():
+    async def _start_render():
         # Guard: ignorar clicks mientras hay un render en curso
         if job_holder["job"] is not None and not job_holder["job"].done:
             return
@@ -181,7 +170,33 @@ async def render(state, navigate):
                 ui.label(
                     'Faltan dependencias. Ejecuta: pip install "fantasma-inputs[overlay]"'
                 ).classes("text-red-400")
+            if _gen_btn_ref["btn"] is not None:
+                _gen_btn_ref["btn"].enable()
             return
+
+        # Detección de corners bajo demanda (el Paso 2 pudo no dejarlos listos): con
+        # feedback visible en vez de bloquear el render del panel más arriba.
+        corners = corners_holder["list"]
+        if not corners:
+            render_area.clear()
+            with render_area:
+                with ui.row().classes("items-center gap-2"):
+                    ui.spinner(size="sm")
+                    ui.label("Analizando el trazado...").classes("text-sm text-gray-400")
+            try:
+
+                def _detect():
+                    from fantasma.core.corners import detect_corners, extract_milestones
+
+                    _evs, _ = detect_corners(ref_lap)
+                    return extract_milestones(ref_lap, _evs)
+
+                corners = await run.io_bound(_detect)
+            except Exception:
+                corners = []
+            corners_holder["list"] = corners
+            state.corners = corners
+            render_area.clear()
 
         os.makedirs(out_dir, exist_ok=True)
         job = start_bg_render(
