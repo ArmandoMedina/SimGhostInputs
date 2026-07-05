@@ -12,41 +12,35 @@
 
 ## Estado actual
 
-**En vuelo: rama `feat/pacenotes-ui`** (7 commits sobre `master`, NO pusheada). Código completo y
-verde (suite pytest exit 0), docs §8 sincronizados (`auditar.ps1` verde). Trae:
+**En vuelo: rama `feat/pacenotes-ui`** (~18 commits sobre `master`). Código completo, **verde
+(226 tests, `verificar.ps1` OK)**, revisado (Reviewer), docs §8 sincronizadas (Escribano), y con
+**aceptación visual del PO** (2ª ronda Mariana/Opus). Trae, sobre lo ya descrito en el CHANGELOG:
 
-- **A1** — Paso 5 "Pace Notes" en la UI (genera el pack para CrewChief: tonos/voz/ambos) + helper
-  `crewchief_pacenotes_dir`; arreglado el botón stub del Paso 2 (iba al Overlay) y el bug `Venue`.
-- **A2** — `compose_video` acepta `pace_notes_dir/volume/lap` (mezcla en el video, expuesto en Paso 4);
-  helper `mux_pace_notes_into_video` (`-c:v copy`, sin recomponer) + panel "Aplicar sonido a video
-  existente" en Paso 5. Cubre 3 estados: nada / solo overlay / video ya terminado.
-- **B** — pipeline autónomo: checkbox opt-in en Paso 3, encadena overlay→compose, notificación de
-  escritorio al terminar. Estado `auto_compose`/`pending_autocompose`.
-- **C** — loading states (carga CSV + "Calculando vuelta rápida…"), botones deshabilitados por
-  contexto, consistencia de tokens de color, fix del selector de idioma.
-- **Fix del Reviewer** — corregido BUG1 crítico (auto-compose era no-op: `poll` sync llamaba
-  `navigate(4)` async sin await) + 4 hallazgos menores. Test AST que blinda BUG1.
+- **Features** A1 (Paso 5 Pace Notes), A2 (sonido en video: preview al componer + mux standalone
+  `-c:v copy`), B (pipeline autónomo overlay→compose + notificación).
+- **Remediación de QA visual** (2 rondas Mariana/Opus): uploader, indicadores, acentos, jerarquía
+  de botones (I3 vía CSS `!important`, sin `.props("flat")`), y **rediseño de layout centrado con
+  ancho máximo + 2 columnas en Pasos 4 y 5**.
+- **Fixes de correctness** destapados al verificar de verdad (varios estaban en falso-verde):
+  contraste del botón "Seleccionado"; **el Paso 3 ya no bloquea el panel con la detección de
+  curvas** (se detecta al final del render, con "Analizando el trazado…" y botón deshabilitado
+  hasta tener las curvas); guard de doble-clic en "Aplicar sonido" del Paso 5.
 
 ## Siguiente acción
 
-1. **QA visual (fase D, tarea pendiente):** correr la UI de verdad (`fantasma-ng`) con material real
-   (`docs/recursos-del-proyecto.md`) + el video `C:\Users\amedina\Downloads\0207\frames\2_composed.mp4`,
-   capturas por pantalla/estado, análisis con Mariana/Opus (cuestionar UI/UX, no solo "¿se ve bien?").
-   Evidencia OBLIGATORIA en `qa_runs/` (ADR 0019). **Difería a infra estable** (decisión del PO;
-   los subagentes cayeron 4 veces por conexión/límite de sesión durante esta sesión).
-2. **Push** — pendiente de OK del PO. Antes: `verificar.ps1` verde (doc-gate §8 ya cubierto) y la
-   evidencia de Mariana. El push es la única acción hacia afuera; la autoriza el PO.
+1. **Push de la rama** — autorizado por el PO en sesión (2026-07-05). Si ya está pusheada al leer
+   esto, abrir PR hacia `master` cuando el PO lo pida.
+2. Nada más pendiente de esta tanda: la aceptación visual está dada y la evidencia citada vive en
+   `qa_runs/mariana-20260705-r2/` (commiteada).
 
-**Hallazgos de UX abiertos** (a juzgar en la fase D, ya anotados en el tracker):
-- Selector de idioma del Paso 5: al re-mostrarse reinicia valor si se cambió antes de togglear modo
-  (parcialmente mitigado en C con `_lang_state`; validar).
-- Panel de mux del Paso 5 depende de `state.drv_lap`; evaluar mini-uploader de CSV si el usuario
-  entra sin vuelta cargada.
-- Guard del Paso 5 redirige al Paso 2 vs mostrar UI griseada con banner — decisión de producto.
-
-**Posibles ADR (señalados por el Escribano, PO decide si asentar):** `-c:v copy` vs recomponer en el
-mux; Web Notifications + degradación vs push a móvil.
+**Deuda/pulido abierto (en ROADMAP, no bloquea):**
+- Labels truncados en los inputs del Paso 4 (cosmético, prioridad baja) — decisión del PO de
+  pushear ya y dejarlo al backlog.
+- El job de render del Paso 3 vive en variable local, no en `state`: navegar fuera durante un
+  render no lo cancela (riesgo de render concurrente al mismo outdir). Pre-existente, prioridad
+  media. Fix propuesto: `state.active_overlay_job` + cancelar en `_cancel_on_nav`.
 
 ## Backlog
 
-Ver [ROADMAP](ROADMAP.md) §"Post-v2.0" y §"Transversal".
+Ver [ROADMAP](ROADMAP.md) §"Post-v2.0", §"Transversal" y la candidata **v3.0** (acelerar el render
+del overlay, *gated por benchmark*).
