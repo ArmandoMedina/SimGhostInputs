@@ -1,5 +1,7 @@
 # Guía de usuario
 
+> Documenta **SimGhostInputs v2.1** (badge de versión visible en el pie del sidebar de la UI).
+
 Flujo completo: de una tanda en el simulador a un debrief con video.
 
 ## 1. Captura tu telemetría
