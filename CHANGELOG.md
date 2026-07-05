@@ -9,6 +9,7 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/). Versionado
 
 ### Cambiado
 - **Versión del instalador parametrizada** (`tools/build_installer.py`, `tools/installer.iss`): `build_installer.py` lee la versión del paquete con `importlib.metadata` y la pasa a ISCC vía `/DMyAppVersion=`; `installer.iss` usa `{#MyAppVersion}` en vez del literal `"2.0.0"` hardcodeado. Se habilita el icono (`docs/icon.ico`) en el instalador.
+- **Versión unificada en `fantasma/__init__.py` (SSOT)** ([ADR 0023](docs/decisions/0023-fuente-unica-de-version.md)): `__version__` pasa a ser la fuente única de verdad. `pyproject.toml` la deriva con `dynamic = ["version"]` + `attr:`; el badge del footer de la UI (`ng_app.py`) y `tools/build_installer.py` la importan desde ahí en lugar de usar un literal manual o `importlib.metadata`. Elimina la raíz de los tres bugs consecutivos de badge desactualizado (v2.0→v2.1.0, v2.1→v2.1.1, v2.1→v2.2.0). Para bumpear: editar `fantasma/__init__.py`, no `pyproject.toml`.
 
 ## [2.2.0] - 2026-07-05
 

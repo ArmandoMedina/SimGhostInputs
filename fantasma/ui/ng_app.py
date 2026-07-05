@@ -4,8 +4,11 @@ import os
 
 from nicegui import ui
 
+from .. import __version__
 from . import ng_step0, ng_step1, ng_step2, ng_step3, ng_step4, ng_step5
 from .ng_state import AppState
+
+_badge_ver = "v" + ".".join(__version__.split(".")[:2])
 
 
 @ui.page("/")
@@ -278,8 +281,8 @@ async def main_page():
                 )
                 nav_buttons.append(btn)
 
-        ui.html("""<div class="sidebar-footer">
-            <div class="version-badge"><span>v2.1</span> · AMS2 · MoTeC</div>
+        ui.html(f"""<div class="sidebar-footer">
+            <div class="version-badge"><span>{_badge_ver}</span> · AMS2 · MoTeC</div>
         </div>""")
 
     await navigate(state.nav_step)

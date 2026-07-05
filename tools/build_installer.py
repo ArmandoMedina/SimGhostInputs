@@ -78,18 +78,19 @@ def main():
 def _get_version() -> str:
     """Devuelve la version del proyecto.
 
-    Lee pyproject.toml PRIMERO (es el SSOT de version): la metadata de un
-    editable install (`pip install -e .`) queda congelada en la version del
-    momento de instalar y puede estar stale. Cae a importlib.metadata solo si
-    no hay pyproject a mano (p. ej. ejecutado fuera del repo).
+    Lee fantasma/__init__.py (SSOT de version): el atributo __version__ es un
+    literal que setuptools lee por AST en build time. Cae a importlib.metadata
+    solo si el archivo no esta a mano (p. ej. ejecutado fuera del repo).
     """
-    pyproject = os.path.join(
-        os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "pyproject.toml"
+    init_py = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+        "fantasma",
+        "__init__.py",
     )
-    if os.path.exists(pyproject):
-        with open(pyproject, encoding="utf-8") as f:
+    if os.path.exists(init_py):
+        with open(init_py, encoding="utf-8") as f:
             for line in f:
-                m = re.match(r'^\s*version\s*=\s*"([^"]+)"', line)
+                m = re.match(r'^__version__\s*=\s*["\']([^"\']+)["\']', line)
                 if m:
                     return m.group(1)
     try:

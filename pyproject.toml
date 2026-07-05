@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "fantasma-inputs"
-version = "2.2.0"
+dynamic = ["version"]
 description = "Compara tus inputs de simracing contra una vuelta de referencia, por distancia."
 readme = "README.md"
 license = "AGPL-3.0-or-later"
@@ -37,6 +37,9 @@ fantasma-ng = "fantasma.ui.ng_app:run"
 
 [tool.setuptools.packages.find]
 include = ["fantasma*"]
+
+[tool.setuptools.dynamic]
+version = {attr = "fantasma.__version__"}
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

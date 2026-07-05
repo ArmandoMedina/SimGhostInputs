@@ -1,6 +1,6 @@
 # Guía de usuario
 
-> Documenta **SimGhostInputs v2.1** (badge de versión visible en el pie del sidebar de la UI).
+> Documenta **SimGhostInputs** — la versión instalada aparece en el badge del pie del sidebar (ver §3 «Desde la UI»).
 
 Flujo completo: de una tanda en el simulador a un debrief con video.
 
@@ -46,7 +46,7 @@ Lista las vueltas con duración y longitud, y marca la más rápida (la que se u
 
 La pantalla inicial muestra los tres insumos del flujo: **referencia**, **piloto** y **salida**. El flujo por defecto aparece pre-seleccionado con un aviso neutro; pulsa «Empezar» para confirmar o elige otro con «Elegir este». Si no tienes una referencia externa, puedes cargar el mismo CSV como referencia y piloto y elegir dos vueltas distintas en el Paso 1 para compararte contra ti mismo.
 
-El **sidebar izquierdo** muestra el progreso: ✅ paso completado, ▶️ paso actual, ○ paso pendiente en tu flujo, · paso opcional fuera del flujo elegido. El botón **🔄 Nueva sesión** al pie del sidebar borra todo el estado y vuelve al Paso 0 sin recargar la pestaña del navegador — útil para analizar otra tanda sin cerrar la app.
+El **sidebar izquierdo** muestra el progreso: ✅ paso completado, ▶️ paso actual, ○ paso pendiente en tu flujo, · paso opcional fuera del flujo elegido. El botón **🔄 Nueva sesión** al pie del sidebar borra todo el estado y vuelve al Paso 0 sin recargar la pestaña del navegador — útil para analizar otra tanda sin cerrar la app. En la esquina inferior izquierda hay un **badge de versión** (p. ej. «v2.2 · AMS2 · MoTeC») que muestra la versión instalada; cítalo al [reportar un bug](../CONTRIBUTING.md) (CONTRIBUTING §1 lo pide).
 
 El **Paso 1** muestra dos paneles de carga, uno para la vuelta de referencia y otro para la tuya. En cada panel aparece una zona de carga integrada en el browser: haz clic en ella para abrir el selector de archivos del sistema operativo, o arrastra el `.csv` (o `.xlsx`) directamente sobre la zona. La app detecta las vueltas del archivo automáticamente; si hay más de una, aparece un desplegable para elegir cuál usar (por defecto se pre-selecciona la más rápida). Una vez subidos ambos archivos, pulsa el botón de avance para continuar.
 
