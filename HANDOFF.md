@@ -33,14 +33,19 @@ ya hecho que solo quiere pace notes era arrastrado a generar overlay). Trae:
 
 ## Siguiente acción
 
-1. **Verificación final + commit** de la rama (en curso al escribir esto). Si ya está commiteada al leer
-   esto: **push y PR hacia `master` esperan OK del PO** (recordar `gh auth switch --user ArmandoMedina`).
-2. **QA a mano pendiente del PO** (Mariana no pudo automatizar el e2e 0→1→2→5): confirmar clic a clic
-   el botón "Ir al Paso 5" desde el Paso 2 en el flujo pacenotes, y el recorrido completo con CSVs reales.
+1. **Publicación autorizada por el PO** (commit/push/PR/versión): push de `feat/flujo-solo-pacenotes`,
+   PR + merge a `master`, y cortar **v2.2.0** con `release-helper` (recordar
+   `gh auth switch --user ArmandoMedina`, devolver a `Armandomedina9705` al terminar).
+2. **Recorrido e2e 0→1→2→5 VERIFICADO** en sesión con CSVs reales (Nordschleife BMW vs Audi):
+   evidencia en `qa_runs/mariana-20260705-pacenotes/recorrido-e2e.md` + capturas `e2e_*`. El botón
+   "Ir al Paso 5" y el flujo completo funcionan; panel② con "Aplicar sonido" atenuado correcto.
 
 ## Backlog
 
 Deuda y pulido viven en [ROADMAP](ROADMAP.md), no bloquean:
+- **Paso 1 — subida concurrente:** subir los dos CSV casi simultáneos puede perder el segundo
+  `on_upload` mientras el primero (MoTeC grande) procesa. Secuencial funciona. Borde raro,
+  prioridad baja (detectado en el e2e del recorrido pacenotes).
 - Labels truncados en los inputs del Paso 4 (`ng_step4.py`) — cosmético, prioridad baja.
 - Job de render del Paso 3 en variable local, no en `state` (`ng_step3.py`) — riesgo de render
   concurrente al mismo `outdir`; fix propuesto `state.active_overlay_job`. Prioridad media.
