@@ -1,4 +1,4 @@
-"""NiceGUI entry point para SimGhostInputs v2.0."""
+"""NiceGUI entry point para SimGhostInputs v2.1."""
 
 import os
 
@@ -279,7 +279,7 @@ async def main_page():
                 nav_buttons.append(btn)
 
         ui.html("""<div class="sidebar-footer">
-            <div class="version-badge"><span>v2.0</span> · AMS2 · MoTeC</div>
+            <div class="version-badge"><span>v2.1</span> · AMS2 · MoTeC</div>
         </div>""")
 
     await navigate(state.nav_step)
