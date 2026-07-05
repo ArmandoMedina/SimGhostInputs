@@ -2,11 +2,14 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/). Versionado [SemVer](https://semver.org/lang/es/).
 
-## [Unreleased]
+## [2.2.0] - 2026-07-05
 
 ### Añadido
 - **Flujo "Solo Pace Notes"** ([ADR 0021](docs/decisions/0021-flujo-solo-pacenotes.md)): nueva tarjeta en el Paso 0 que enruta directamente Importar(1)→Análisis(2)→Pace Notes(5), saltando overlay y compose. Para el caso de uso "tengo un video con overlay hecho y solo quiero pace notes". Aditivo: los flujos `analisis`, `overlay` y `compose` no se modifican.
-- **Corrección del guard del Paso 5 y guía contextual**: el panel "Aplicar sonido a video existente" ya no se oculta al acceder al Paso 5 desde el nuevo flujo; se añaden tooltips que explican por qué se necesitan dos vueltas (la derivación de pace notes requiere `time_lost` de `compare()`).
+- **Guía del Paso 5**: tooltips en los controles de ambos paneles y caption puente ①→②; el panel "Aplicar sonido a video existente" ya no se oculta al acceder al Paso 5 (el guard aplica solo al panel de generación). Los textos explican por qué se necesitan dos vueltas (la derivación de pace notes requiere `time_lost` de `compare()`).
+
+### Corregido
+- **El botón «Aplicar sonido» del Paso 5 no reflejaba su estado deshabilitado** (`ng_app.py`): el selector CSS apuntaba a `:disabled` pero Quasar aplica la clase `.disabled`; ahora se atenúa (opacity 0.4) cuando faltan el video o la carpeta del pack. Además, el `finally` del mux re-evalúa el estado real en vez de re-habilitar incondicionalmente.
 
 ## [2.1.1] - 2026-07-05
 
