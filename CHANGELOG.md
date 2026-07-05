@@ -4,6 +4,11 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/). Versionado
 
 ## [Unreleased]
 
+## [2.1.1] - 2026-07-05
+
+### Corregido
+- **El badge de versión del footer mostraba «v2.0» tras el release 2.1.0** (`ng_app.py`): el literal del `version-badge` estaba desacoplado de `pyproject`; corregido a «v2.1». La deuda de unificar la versión del footer con una única fuente queda anotada en el ROADMAP.
+
 ## [2.1.0] - 2026-07-05
 
 ### Añadido
