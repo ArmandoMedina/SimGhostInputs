@@ -8,6 +8,7 @@ Uso:
 
 import argparse
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -74,9 +75,40 @@ def main():
         _compile_inno()
 
 
+def _get_version() -> str:
+    """Devuelve la version del proyecto.
+
+    Lee pyproject.toml PRIMERO (es el SSOT de version): la metadata de un
+    editable install (`pip install -e .`) queda congelada en la version del
+    momento de instalar y puede estar stale. Cae a importlib.metadata solo si
+    no hay pyproject a mano (p. ej. ejecutado fuera del repo).
+    """
+    pyproject = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "pyproject.toml"
+    )
+    if os.path.exists(pyproject):
+        with open(pyproject, encoding="utf-8") as f:
+            for line in f:
+                m = re.match(r'^\s*version\s*=\s*"([^"]+)"', line)
+                if m:
+                    return m.group(1)
+    try:
+        from importlib.metadata import version as pkg_version
+
+        return pkg_version("fantasma-inputs")
+    except Exception:
+        return "0.0.0"
+
+
 def _compile_inno():
-    iscc = shutil.which("iscc") or r"C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
-    if not os.path.exists(iscc):
+    _candidates = [
+        shutil.which("iscc"),
+        shutil.which("ISCC"),
+        os.path.join(os.environ.get("LOCALAPPDATA", ""), "Programs", "Inno Setup 6", "ISCC.exe"),
+        r"C:\Program Files (x86)\Inno Setup 6\ISCC.exe",
+    ]
+    iscc = next((c for c in _candidates if c and os.path.exists(c)), None)
+    if iscc is None:
         print("AVISO: ISCC.exe no encontrado. Instala Inno Setup 6 para compilar el instalador.")
         print("Descarga: https://jrsoftware.org/isdl.php")
         return
@@ -84,9 +116,12 @@ def _compile_inno():
     if not os.path.exists(script):
         print(f"ERROR: {script} no existe.")
         sys.exit(1)
-    result = subprocess.run([iscc, script])
+    ver = _get_version()
+    print(f"Version detectada: {ver}")
+    result = subprocess.run([iscc, f"/DMyAppVersion={ver}", script])
     if result.returncode == 0:
-        print("Instalador generado en dist/")
+        installer = os.path.join("dist", f"SimGhostInputs-v{ver}-Setup.exe")
+        print(f"Instalador generado: {installer}")
     else:
         print("ERROR: ISCC fallo.")
         sys.exit(1)

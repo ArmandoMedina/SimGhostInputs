@@ -2,6 +2,14 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/). Versionado [SemVer](https://semver.org/lang/es/).
 
+## [Unreleased]
+
+### Añadido
+- **CI de release: generación y publicación automática del instalador Windows** ([ADR 0022](docs/decisions/0022-ci-release-installer.md)): nuevo workflow `.github/workflows/release.yml` disparado por `on: release: types: [published]` que instala deps + Inno Setup (`choco install innosetup`), ejecuta `build_installer.py --inno` y sube `SimGhostInputs-vX.Y.Z-Setup.exe` (y un zip portable) como assets permanentes del release con `gh release upload --clobber`. El job `build-installer` de `tests.yml` (mal cableado, nunca corría) se elimina.
+
+### Cambiado
+- **Versión del instalador parametrizada** (`tools/build_installer.py`, `tools/installer.iss`): `build_installer.py` lee la versión del paquete con `importlib.metadata` y la pasa a ISCC vía `/DMyAppVersion=`; `installer.iss` usa `{#MyAppVersion}` en vez del literal `"2.0.0"` hardcodeado. Se habilita el icono (`docs/icon.ico`) en el instalador.
+
 ## [2.2.0] - 2026-07-05
 
 ### Añadido

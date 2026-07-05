@@ -31,3 +31,4 @@ bifurcación equivocada.
 | [0019](0019-adopcion-homologacion-starter-v0.5.0.md) | Adopción de la homologación con project-starter v0.5.0: audit en CI, evidencia de QA, no-memorias, recursos (cierra la Fase 4 del 0016) | Aceptada · enmend. 2026-07-03 | 2026-07-01 |
 | [0020](0020-blast-radius-viz-hud-reference-avisa.md) | Blast-radius de `viz`: `hud-reference` AVISA (no BLOQUEA); el gate pregunta si el cambio es visual | Aceptada | 2026-07-03 |
 | [0021](0021-flujo-solo-pacenotes.md) | Flujo "Solo Pace Notes": ruta directa Importar→Análisis→Pace Notes (Paso 0 nuevo flujo) | Aceptada | 2026-07-05 |
+| [0022](0022-ci-release-installer.md) | CI que genera y adjunta el instalador Windows en cada release (versión parametrizada, job muerto eliminado) | Aceptada | 2026-07-05 |

@@ -90,9 +90,10 @@ que corren en varios momentos, con autoridad creciente.
   y se registra en `.claude/settings.json`. Es lo que hace que el auto-cableado **no dependa de
   que alguien se acuerde** de invocar el rol.
 - **CI / Integración Continua / GitHub Actions / "pipeline" / "workflow"**: una **máquina en la
-  nube de GitHub** que corre comprobaciones **solas en cada push y PR**. Si una falla, el push
-  queda **en rojo**. Es **la barrera que nadie puede saltar** desde su computadora. Vive en
-  `.github/workflows/tests.yml`.
+  nube de GitHub** que corre comprobaciones **solas**. Si una falla, el push queda **en rojo**.
+  Es **la barrera que nadie puede saltar** desde su computadora. Los workflows viven en
+  `.github/workflows/`: `tests.yml` (gate de calidad en push/PR) y `release.yml` (genera y adjunta
+  el instalador Windows al publicar un release, [ADR 0022](decisions/0022-ci-release-installer.md)).
 - **Verificador (`tools/verificar.ps1`)**: nuestro script de PowerShell que corre **las cuatro
   barreras locales de un jalón** (lint, formato, tests, doc-gate) en modo aviso.
 - **Modo aviso vs bloquea**: *avisar* = imprime el hallazgo y deja seguir; *bloquear* = detiene
@@ -128,7 +129,8 @@ que corren en varios momentos, con autoridad creciente.
 | **Doc-gate (blast-radius §8)** | **BLOQUEA** los `doc_bloquea` faltantes por área; **AVISA** los `doc_avisa` y `product_avisa` faltantes. Reglas en `tools/blast-radius.json` (fuente única — agrega un área ahí y listo) | `tools/verificar.ps1` + `tools/blast-radius.json` |
 | **Auditor del grafo de docs** | Audita `product/`+`engineering/`: **BLOQUEA** frontmatter incompleto, wikilinks rotos, capacidades `vigente` sin criterios; **avisa** sin-test-citado y huérfanos. Modulado por estado. Dueño: Armando | `tools/auditar.ps1` ([ADR 0016](decisions/0016-gate-grafo-documentacion.md)) |
 | **Hook `pre-push`** | Corre el verificador **solo**, justo antes de `git push` (avisa lint/formato/tests; **bloquea** doc-drift §8) | `.githooks/pre-push` |
-| **CI (pipeline)** | Barrera dura en la nube: lint + formato + tests en cada push/PR | `.github/workflows/tests.yml` |
+| **CI (push/PR)** | Barrera dura en la nube: lint + formato + tests en cada push/PR | `.github/workflows/tests.yml` |
+| **CI (release)** | Genera y adjunta el instalador Windows (`Setup.exe` + zip portable) como assets permanentes del release de GitHub | `.github/workflows/release.yml` ([ADR 0022](decisions/0022-ci-release-installer.md)) |
 | **Import-smoke NiceGUI** | Verifica que `ng_app` importa y arranca sin excepción — sustituyó al smoke visual Playwright al migrar la UI a NiceGUI (hallazgo de auditoría `fase3-ci`). Dueño: Mariana | `tests/ui/visual/` ([ADR 0012](decisions/0012-playwright-smoke-visual-ui.md)) |
 | **Decisiones (ADR)** | El porqué de todo, con su camino descartado | `docs/decisions/` + su `README.md` |
 | **Benchmark del linter** | Por qué ruff y no las alternativas (licencias verificadas) | `docs/benchmark-linter.md` |
@@ -380,6 +382,10 @@ agente, el push también.
 Muchos commits se acumulan; al cerrar un hito, la skill **`release-helper`** corta una **versión**
 (un tag SemVer `vX.Y.Z` + release en GitHub + CHANGELOG). Es otro ritmo, no cada cambio.
 
+Al publicar el release, el workflow **`release.yml`** genera y adjunta automáticamente el instalador
+Windows (`SimGhostInputs-vX.Y.Z-Setup.exe`) y un zip portable como **assets permanentes** del
+release de GitHub, sin intervención manual. Ver [ADR 0022](decisions/0022-ci-release-installer.md).
+
 ### Las tres dimensiones, y dónde acaba la máquina
 
 El repo cuida la consistencia con **barreras deterministas**, cada una con su herramienta. Importa
@@ -496,7 +502,8 @@ git push --no-verify
 ```
 C:\Repositorio personal\SimGhostInputs\   <- raíz del repo
 ├─ .githooks/pre-push                      <- el git hook (avisa lint/formato/tests; BLOQUEA doc-drift §8)
-├─ .github/workflows/tests.yml             <- el CI (barrera en la nube: lint + pytest)
+├─ .github/workflows/tests.yml             <- CI push/PR (barrera en la nube: lint + formato + tests)
+├─ .github/workflows/release.yml           <- CI release (genera y adjunta el instalador al release de GitHub; ADR 0022)
 ├─ .claude/                                <- roles y auto-cableado en sesión (viaja con el repo)
 │  ├─ settings.json                        <- registra los hooks de sesión (Stop)
 │  ├─ hooks/                               <- review-stop, escribano-stop, mariana-stop (frenan el cierre, disparan el rol)
