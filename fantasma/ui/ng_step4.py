@@ -83,7 +83,7 @@ async def render(state, navigate):
     # ── Distribución 2 columnas: controles izq | HUD preview der ─────────────
     with ui.row().classes("gap-4 w-full items-start"):
         _left = ui.column().classes("min-w-0").style("flex:2")
-        _right = ui.element("div").style("min-width:300px;max-width:440px")
+        _right = ui.element("div").style("min-width:300px;max-width:440px;flex-shrink:0")
 
     with _left:
         # ── Panel: Archivos de entrada ────────────────────────────────────────

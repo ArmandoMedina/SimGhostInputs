@@ -252,7 +252,13 @@ async def render(state, navigate):
 
                 mux_result_area = ui.column().classes("w-full")
 
+                _mux_state = {"running": False}
+
                 async def _apply_mux():
+                    # Guard de doble-click: ignora clicks mientras hay un mux en curso
+                    # (evita dos procesos ffmpeg escribiendo al mismo archivo de salida).
+                    if _mux_state["running"]:
+                        return
                     _drv_lap = state.drv_lap
                     if _drv_lap is None:
                         ui.notify(
@@ -274,6 +280,8 @@ async def render(state, navigate):
                         _out = _base + "_pacenotes" + (_ext or ".mp4")
                     _vol = float(mux_vol_state["value"])
 
+                    _mux_state["running"] = True
+                    apply_btn.disable()
                     mux_result_area.clear()
                     with mux_result_area:
                         ui.spinner()
@@ -287,20 +295,26 @@ async def render(state, navigate):
                         )
 
                     try:
-                        result_path = await run.io_bound(_do_mux)
-                    except Exception as e:
+                        try:
+                            result_path = await run.io_bound(_do_mux)
+                        except Exception as e:
+                            mux_result_area.clear()
+                            with mux_result_area:
+                                ui.notify(str(e), type="negative")
+                            return
+
                         mux_result_area.clear()
                         with mux_result_area:
-                            ui.notify(str(e), type="negative")
-                        return
-
-                    mux_result_area.clear()
-                    with mux_result_area:
-                        ui.label("Listo: %s" % result_path).classes("font-bold text-green-400")
-                    ui.notify(
-                        "Video con sonido guardado: %s" % os.path.basename(result_path),
-                        type="positive",
-                    )
+                            ui.label("Listo: %s" % result_path).classes(
+                                "font-bold text-green-400"
+                            )
+                        ui.notify(
+                            "Video con sonido guardado: %s" % os.path.basename(result_path),
+                            type="positive",
+                        )
+                    finally:
+                        _mux_state["running"] = False
+                        apply_btn.enable()
 
                 apply_btn = (
                     ui.button(

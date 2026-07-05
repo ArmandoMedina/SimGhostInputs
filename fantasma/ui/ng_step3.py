@@ -267,10 +267,20 @@ async def render(state, navigate):
         )
 
     # Detección de corners al final: el panel ya está pintado (no hay pantalla en blanco),
-    # y este await solo demora el cierre del render. Cuando se pulse "Generar overlay" los
-    # milestones ya están listos en el holder; si el click llega antes, degrada a [] sin
-    # romper. El Paso 2 pudo dejarlos listos (corners_editable), en cuyo caso no se detecta.
-    if not corners_holder["list"]:
+    # y este await solo demora el cierre del render. Mientras corre, se DESHABILITA
+    # "Generar overlay" (con hint "Analizando el trazado...") para no arrancar un overlay
+    # sin milestones si el usuario pulsa antes de que termine; se rehabilita al terminar.
+    # El Paso 2 pudo dejarlos listos (corners_editable, incluso lista vacía), en cuyo caso
+    # no se detecta.
+    if corners_holder["list"] is None:
+        _detect_hint = None
+        if _gen_btn_ref["btn"] is not None:
+            _gen_btn_ref["btn"].disable()
+            with render_area:
+                _detect_hint = ui.row().classes("items-center gap-2 mt-2")
+                with _detect_hint:
+                    ui.spinner(size="sm")
+                    ui.label("Analizando el trazado...").classes("text-xs text-gray-400")
         try:
 
             def _detect():
@@ -280,9 +290,13 @@ async def render(state, navigate):
                 return extract_milestones(ref_lap, _evs)
 
             corners_holder["list"] = await run.io_bound(_detect)
-            state.corners = corners_holder["list"]
         except Exception:
             corners_holder["list"] = []
+        state.corners = corners_holder["list"]
+        if _detect_hint is not None:
+            _detect_hint.delete()
+        if _gen_btn_ref["btn"] is not None:
+            _gen_btn_ref["btn"].enable()
 
 
 def _render_next_btn(state, current_step, navigate):
