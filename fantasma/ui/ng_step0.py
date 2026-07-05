@@ -99,7 +99,7 @@ async def render(state, navigate):
                 ui.button(
                     btn_label,
                     on_click=lambda fk=flow_key: select_flow(fk),
-                ).classes(btn_class)
+                ).classes(btn_class).props("flat")
 
     # ── Aviso ffmpeg temprano ─────────────────────────────────────────────────
     if state.flow_chosen and state.flow_key in ("overlay", "compose"):

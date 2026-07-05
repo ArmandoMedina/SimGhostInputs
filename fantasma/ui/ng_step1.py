@@ -74,23 +74,24 @@ async def render(state, navigate):
     drv_loading_area = None  # noqa: F841
     load_err = None  # noqa: F841
 
-    # I1: indicadores de listo — el elemento se actualiza tras cada upload
-    indicators_state: dict = {"el": None}
+    # I1: indicadores de listo — se re-renderizan en un container para evitar
+    # que set_content de ui.html no propague el cambio de clase en ciertos contextos.
+    indicators_state: dict = {"container": None}
 
     def _update_indicators():
-        el = indicators_state["el"]
-        if el is None:
+        container = indicators_state["container"]
+        if container is None:
             return
         r_cls = "ok" if ref_state["laps"] else ""
         d_cls = "ok" if drv_state["laps"] else ""
-        el.set_content(
-            f'<div class="readiness-indicators">'
-            f'<span class="readiness-item {r_cls}">'
-            f'<span class="readiness-dot"></span>Referencia</span>'
-            f'<span class="readiness-item {d_cls}">'
-            f'<span class="readiness-dot"></span>Tu vuelta</span>'
-            f"</div>"
-        )
+        container.clear()
+        with container:
+            ui.html(
+                f'<span class="readiness-item {r_cls}">'
+                f'<span class="readiness-dot"></span>Referencia</span>'
+                f'<span class="readiness-item {d_cls}">'
+                f'<span class="readiness-dot"></span>Tu vuelta</span>'
+            )
 
     # ── Upload handlers ──────────────────────────────────────────────────────
 
@@ -387,14 +388,14 @@ async def render(state, navigate):
     _drv_cls = "ok" if _drv_ok else ""
 
     with ui.element("div").classes("bottom-actions"):
-        indicators_state["el"] = ui.html(
-            f'<div class="readiness-indicators">'
-            f'<span class="readiness-item {_ref_cls}">'
-            f'<span class="readiness-dot"></span>Referencia</span>'
-            f'<span class="readiness-item {_drv_cls}">'
-            f'<span class="readiness-dot"></span>Tu vuelta</span>'
-            f"</div>"
-        )
+        with ui.element("div").classes("readiness-indicators") as _ind_container:
+            ui.html(
+                f'<span class="readiness-item {_ref_cls}">'
+                f'<span class="readiness-dot"></span>Referencia</span>'
+                f'<span class="readiness-item {_drv_cls}">'
+                f'<span class="readiness-dot"></span>Tu vuelta</span>'
+            )
+        indicators_state["container"] = _ind_container
         with ui.element("div").style("display:flex;gap:8px;align-items:center"):
             ui.button("← Volver", on_click=lambda: navigate(0)).classes("btn-ghost").props("flat")
             load_err = ui.label("").classes("text-xs text-red-400")

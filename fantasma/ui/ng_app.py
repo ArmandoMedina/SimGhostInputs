@@ -45,12 +45,15 @@ async def main_page():
 
       /* nav-btn: resets Quasar button styles to look like nav-item */
       .nav-btn { background: transparent !important; border: none !important; border-left: 2px solid transparent !important; color: var(--muted) !important; padding: 7px 16px !important; text-align: left !important; font-size: 12px !important; width: 100% !important; cursor: pointer !important; border-radius: 0 !important; box-shadow: none !important; transition: color 0.15s, background 0.15s !important; }
-      /* M5: fuerza el color del texto Quasar en ítems no activos a gris apagado */
-      .nav-btn .q-btn__content { justify-content: flex-start !important; color: var(--muted) !important; }
+      /* M5: especificidad alta — prefijo .sgi-sidebar supera el color primario de Quasar en dark mode */
+      .sgi-sidebar .nav-btn .q-btn__content,
+      .sgi-sidebar .nav-btn .q-btn__content span { justify-content: flex-start !important; color: var(--muted) !important; }
       .nav-btn:hover { color: var(--text) !important; background: rgba(255,255,255,0.03) !important; }
-      .nav-btn:hover .q-btn__content { color: var(--text) !important; }
+      .sgi-sidebar .nav-btn:hover .q-btn__content,
+      .sgi-sidebar .nav-btn:hover .q-btn__content span { color: var(--text) !important; }
       .nav-btn-active { color: var(--highlight) !important; border-left-color: var(--highlight) !important; background: rgba(79,142,247,0.08) !important; }
-      .nav-btn-active .q-btn__content { color: var(--highlight) !important; }
+      .sgi-sidebar .nav-btn-active .q-btn__content,
+      .sgi-sidebar .nav-btn-active .q-btn__content span { color: var(--highlight) !important; }
 
       /* Sidebar footer */
       .sidebar-footer { margin-top: auto; padding: 12px 16px; border-top: 1px solid var(--border); }
@@ -109,8 +112,9 @@ async def main_page():
       .upload-icon { font-size: 24px; margin-bottom: 8px; display: block; }
       .upload-label { font-size: 12px; color: var(--muted); }
       .upload-hint { font-size: 10px; color: var(--text-dim); margin-top: 4px; }
-      /* C1: oculta el chrome del q-uploader dentro de las zonas custom */
+      /* C1: oculta el chrome nativo del q-uploader dentro de las zonas custom */
       .upload-zone .q-uploader { background: transparent !important; box-shadow: none !important; border: none !important; width: 100% !important; }
+      .upload-zone .q-uploader__header { display: none !important; }
       .upload-zone .q-uploader__subtitle { display: none !important; }
       .upload-status { background: rgba(34,197,94,0.06); border: 1px solid rgba(34,197,94,0.2); padding: 10px 14px; margin-bottom: 10px; }
       .upload-filename { font-size: 12px; font-weight: 600; font-family: monospace; color: var(--success); margin-bottom: 2px; }

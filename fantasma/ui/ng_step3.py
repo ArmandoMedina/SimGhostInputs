@@ -60,82 +60,101 @@ async def render(state, navigate):
         except Exception:
             corners = []
 
-    # Si ya hay overlay generado
+    # Notificacion: ya hay overlay generado
     if state.last_overlay:
-        ui.label(
-            "✓ Ya tienes un overlay generado: %s" % os.path.basename(state.last_overlay)
-        ).classes("mb-1 text-green-400")
-        ui.label(
-            "Si quieres regenerarlo con distintos parámetros, usa las opciones de abajo."
-        ).classes("text-xs mb-2 text-gray-400")
-        _render_next_btn(state, 3, navigate)
-        ui.separator().classes("my-4")
+        with ui.element("div").classes("panel mb-4"):
+            ui.html(
+                '<div class="panel-header"><span class="panel-title">Overlay existente</span></div>'
+            )
+            with ui.element("div").classes("panel-body"):
+                ui.label(
+                    "✓ Ya tienes un overlay generado: %s" % os.path.basename(state.last_overlay)
+                ).classes("mb-1 text-green-400")
+                ui.label(
+                    "Si quieres regenerarlo con distintos parámetros, usa las opciones de abajo."
+                ).classes("text-xs mb-2 text-gray-400")
+                _render_next_btn(state, 3, navigate)
 
-    # Carpeta de salida
-    _def_out = os.path.join(os.path.expanduser("~"), "fantasma_salida")
-    out_dir_input = (
-        ui.input(
-            label="Carpeta donde guardar el overlay",
-            value=_def_out,
-            placeholder=_def_out,
+    # ── Panel: Configuración del render ───────────────────────────────────────
+    with ui.element("div").classes("panel mb-4"):
+        ui.html(
+            '<div class="panel-header">'
+            '<span class="panel-title">Configuración del render</span>'
+            "</div>"
         )
-        .classes("w-full mb-2")
-        .style("max-width:600px")
-        .props('input-style="color: white" label-color="grey-4"')
-    )
+        with ui.element("div").classes("panel-body"):
+            # Carpeta de salida
+            _def_out = os.path.join(os.path.expanduser("~"), "fantasma_salida")
+            out_dir_input = (
+                ui.input(
+                    label="Carpeta donde guardar el overlay",
+                    value=_def_out,
+                    placeholder=_def_out,
+                )
+                .classes("w-full mb-2")
+                .props('input-style="color: white" label-color="grey-4"')
+            )
 
-    def pick_outdir():
-        from .ng_helpers import _pick_folder
+            def pick_outdir():
+                from .ng_helpers import _pick_folder
 
-        picked = _pick_folder(
-            "Elegir carpeta de salida", initialdir=out_dir_input.value or _def_out
-        )
-        if picked:
-            out_dir_input.set_value(picked)
+                picked = _pick_folder(
+                    "Elegir carpeta de salida", initialdir=out_dir_input.value or _def_out
+                )
+                if picked:
+                    out_dir_input.set_value(picked)
 
-    ui.button("Explorar...", on_click=pick_outdir).classes("btn-secondary mb-4").props("flat")
+            ui.button("Explorar...", on_click=pick_outdir).classes("btn-secondary mb-3").props(
+                "flat"
+            )
 
-    # FPS
-    ui.label("FPS del overlay").classes("text-sm font-bold text-white mb-1")
-    ui.label(
-        "Usa el mismo valor que tiene tu video de grabación. "
-        "Si no sabes, 30 fps es el estándar más común."
-    ).classes("text-xs mb-2 text-gray-400")
+            ui.separator().classes("my-2")
 
-    fps_radio = ui.radio({24: "24 fps", 30: "30 fps", 60: "60 fps"}, value=30).props("inline")
-
-    # Encadenado overlay a compose (solo en flujo compose)
-    if state.flow_key == "compose":
-        auto_cb = ui.checkbox("Al terminar, componer automáticamente", value=state.auto_compose)
-        auto_cb.on_value_change(lambda e: setattr(state, "auto_compose", e.value))
-
-    # Formato (solo relevante en flujo Solo overlay)
-    fmt_state = {"value": "webm"}
-    if state.flow_key == "overlay":
-        with ui.expansion("Formato de salida", icon="settings").classes("w-full mb-2"):
+            # FPS
+            ui.label("FPS del overlay").classes("text-sm font-bold text-white mb-1 mt-2")
             ui.label(
-                "webm — Recomendado. Compatible con DaVinci Resolve, Kdenlive, Premiere."
-            ).classes("text-xs text-gray-400")
-            ui.label("prores — Para Final Cut Pro en Mac o máxima calidad sin compresión.").classes(
-                "text-xs text-gray-400"
-            )
-            ui.label("png — Frames sueltos (una imagen por fotograma). Uso avanzado.").classes(
-                "text-xs text-gray-400"
-            )
-            fmt_sel = ui.select(["webm", "prores", "png"], value="webm", label="Formato").classes(
-                "w-48"
-            )
-            fmt_sel.on("update:model-value", lambda e: fmt_state.update({"value": e.value}))
+                "Usa el mismo valor que tiene tu video de grabación. "
+                "Si no sabes, 30 fps es el estándar más común."
+            ).classes("text-xs mb-2 text-gray-400")
 
-    ui.html("""<div class="sgi-note" style="margin-bottom:1rem">
-      <strong>Tiempo estimado de render:</strong> entre 5 y 30 minutos dependiendo de la duracion
-      de la vuelta y el numero de cores de tu PC. El render usa todos los cores disponibles en paralelo.
-      Tu PC seguirá disponible mientras renderiza, solo irá más lenta.
-    </div>""")
+            fps_radio = ui.radio({24: "24 fps", 30: "30 fps", 60: "60 fps"}, value=30).props(
+                "inline"
+            )
 
-    ui.separator().classes("my-4")
+            # Encadenado overlay a compose (solo en flujo compose)
+            if state.flow_key == "compose":
+                auto_cb = ui.checkbox(
+                    "Al terminar, componer automáticamente", value=state.auto_compose
+                )
+                auto_cb.on_value_change(lambda e: setattr(state, "auto_compose", e.value))
 
-    # Area de resultado/progreso
+            # Formato (solo relevante en flujo Solo overlay)
+            fmt_state = {"value": "webm"}
+            if state.flow_key == "overlay":
+                with ui.expansion("Formato de salida", icon="settings").classes("w-full mt-2"):
+                    ui.label(
+                        "webm — Recomendado. Compatible con DaVinci Resolve, Kdenlive, Premiere."
+                    ).classes("text-xs text-gray-400")
+                    ui.label(
+                        "prores — Para Final Cut Pro en Mac o máxima calidad sin compresión."
+                    ).classes("text-xs text-gray-400")
+                    ui.label(
+                        "png — Frames sueltos (una imagen por fotograma). Uso avanzado."
+                    ).classes("text-xs text-gray-400")
+                    fmt_sel = ui.select(
+                        ["webm", "prores", "png"], value="webm", label="Formato"
+                    ).classes("w-48")
+                    fmt_sel.on("update:model-value", lambda e: fmt_state.update({"value": e.value}))
+
+            ui.separator().classes("my-3")
+
+            ui.html("""<div class="sgi-note">
+              <strong>Tiempo estimado de render:</strong> entre 5 y 30 minutos dependiendo de la
+              duración de la vuelta y el número de cores de tu PC. El render usa todos los cores
+              disponibles en paralelo. Tu PC seguirá disponible mientras renderiza, solo irá más lenta.
+            </div>""")
+
+    # ── Área de progreso y resultado ──────────────────────────────────────────
     result_area = ui.column().classes("w-full")
     render_area = ui.column().classes("w-full")
 
@@ -252,7 +271,7 @@ async def render(state, navigate):
                 "Generar overlay",
                 on_click=_start_render,
             )
-            .classes("btn-primary text-base px-6 py-2")
+            .classes("btn-primary text-base px-6 py-2 mt-2")
             .props("flat")
         )
 
