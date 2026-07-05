@@ -179,10 +179,20 @@ def _has_audio(ffprobe, video_path):
         return False
 
 
-def _audio_mix_filter(video_has_audio):
+def _audio_mix_filter(video_has_audio, vid_stream="0:a", cue_stream="2:a"):
+    """Genera el filtro amix para mezclar audio del video con un WAV de cues.
+
+    Args:
+        video_has_audio: True si el video de entrada tiene pista de audio.
+        vid_stream:      Especificador del stream de audio del video (default ``0:a``).
+        cue_stream:      Especificador del stream de audio del WAV de cues (default ``2:a``).
+    """
     if video_has_audio:
-        return "[0:a][2:a]amix=inputs=2:duration=first:dropout_transition=0[aout]"
-    return "[2:a]anull[aout]"
+        return "[%s][%s]amix=inputs=2:duration=first:dropout_transition=0[aout]" % (
+            vid_stream,
+            cue_stream,
+        )
+    return "[%s]anull[aout]" % cue_stream
 
 
 def compose_video(
@@ -195,6 +205,9 @@ def compose_video(
     lap_duration=None,
     progress=None,
     cue_audio=None,
+    pace_notes_dir=None,
+    pace_notes_volume=1.0,
+    lap=None,
 ):
     """Superpone overlay con canal alfa sobre el video de grabación.
 
@@ -207,18 +220,25 @@ def compose_video(
     via setpts y el output tiene la duración completa del video.
 
     Args:
-        video:        Ruta al video de grabación (mp4, mov, mkv…).
-        overlay:      Ruta al overlay con canal alfa (.webm VP9 o .mov ProRes).
-        output:       Ruta del archivo de salida.
-        position:     Posición del HUD en pantalla.
-        offset:       Segundos desde el inicio del video hasta la vuelta.
-        scale:        Factor de escala del HUD (1.0 = tamaño original).
-        lap_duration: Duración de la vuelta en segundos. Si se provee, el
-                      output se recorta a exactamente esa duración.
-        progress:     Callback progress(n_frames, total_frames) para UI.
+        video:             Ruta al video de grabación (mp4, mov, mkv…).
+        overlay:           Ruta al overlay con canal alfa (.webm VP9 o .mov ProRes).
+        output:            Ruta del archivo de salida.
+        position:          Posición del HUD en pantalla.
+        offset:            Segundos desde el inicio del video hasta la vuelta.
+        scale:             Factor de escala del HUD (1.0 = tamaño original).
+        lap_duration:      Duración de la vuelta en segundos. Si se provee, el
+                           output se recorta a exactamente esa duración.
+        progress:          Callback progress(n_frames, total_frames) para UI.
+        cue_audio:         WAV externo para mezclar en el audio (pasa directo).
+        pace_notes_dir:    Carpeta del pack de Pace Notes. Si se provee junto
+                           con `lap` y no hay `cue_audio` explícito, renderiza
+                           el track y lo mezcla en el encode.
+        pace_notes_volume: Volumen de los Pace Notes (default 1.0).
+        lap:               Vuelta del piloto requerida para sincronizar los
+                           Pace Notes por distancia.
 
     Returns:
-        Ruta del archivo de salida.
+        Dict con keys ``path``, ``encoder`` y ``duration_s``.
     """
     ffmpeg = shutil.which("ffmpeg")
     if not ffmpeg:
@@ -237,6 +257,17 @@ def compose_video(
     out_dir = os.path.dirname(output)
     if out_dir:
         os.makedirs(out_dir, exist_ok=True)
+
+    # Pace notes: si se provee pace_notes_dir + lap y no hay cue_audio explícito,
+    # renderizamos el track en un tmpdir local. La variable _pn_tmpdir mantiene la
+    # referencia viva durante todo el encode (el directorio se borra al salir).
+    _pn_tmpdir = None
+    if pace_notes_dir and lap is not None and cue_audio is None:
+        from .pacenotes import render_pace_notes_track as _render_pn
+
+        _pn_tmpdir = tempfile.TemporaryDirectory()
+        cue_audio = os.path.join(_pn_tmpdir.name, "pace_notes_preview.wav")
+        _render_pn(pace_notes_dir, lap, cue_audio, volume=pace_notes_volume)
 
     use_nvenc = _nvenc_available(ffmpeg)
     if use_nvenc:
@@ -308,36 +339,136 @@ def compose_video(
             output,
         ]
 
-    if progress:
-        cmd_p = [cmd[0], "-progress", "pipe:1", "-nostats"] + cmd[1:]
-        pat = re.compile(r"^frame=(\d+)")
-        # stderr a un archivo temporal para poder reportar el motivo real del
-        # fallo (antes iba a DEVNULL y solo quedaba un exit code críptico).
-        err_f = tempfile.TemporaryFile(mode="w+")
-        proc = subprocess.Popen(cmd_p, stdout=subprocess.PIPE, stderr=err_f, text=True)
-        try:
-            for line in proc.stdout:
-                m = pat.match(line.strip())
-                if m and n_frames > 0:
-                    f = int(m.group(1))
-                    progress(f, n_frames)
-        except BaseException:
-            proc.kill()
-            proc.wait()
+    try:
+        if progress:
+            cmd_p = [cmd[0], "-progress", "pipe:1", "-nostats"] + cmd[1:]
+            pat = re.compile(r"^frame=(\d+)")
+            # stderr a un archivo temporal para poder reportar el motivo real del
+            # fallo (antes iba a DEVNULL y solo quedaba un exit code críptico).
+            err_f = tempfile.TemporaryFile(mode="w+")
+            proc = subprocess.Popen(cmd_p, stdout=subprocess.PIPE, stderr=err_f, text=True)
+            try:
+                for line in proc.stdout:
+                    m = pat.match(line.strip())
+                    if m and n_frames > 0:
+                        f = int(m.group(1))
+                        progress(f, n_frames)
+            except BaseException:
+                proc.kill()
+                proc.wait()
+                err_f.close()
+                raise
+            else:
+                proc.wait()
+            if proc.returncode != 0:
+                err_f.seek(0)
+                tail = "".join(err_f.readlines()[-15:]).strip()
+                err_f.close()
+                raise RuntimeError(
+                    "ffmpeg falló (código %d). Últimas líneas:\n%s" % (proc.returncode, tail)
+                )
             err_f.close()
-            raise
         else:
-            proc.wait()
-        if proc.returncode != 0:
-            err_f.seek(0)
-            tail = "".join(err_f.readlines()[-15:]).strip()
-            err_f.close()
-            raise RuntimeError(
-                "ffmpeg falló (código %d). Últimas líneas:\n%s" % (proc.returncode, tail)
-            )
-        err_f.close()
-    else:
-        subprocess.run(cmd, check=True)
+            subprocess.run(cmd, check=True)
+    finally:
+        if _pn_tmpdir is not None:
+            _pn_tmpdir.cleanup()
 
     _enc_name = "h264_nvenc" if use_nvenc else "libx264"
     return {"path": output, "encoder": _enc_name, "duration_s": round(time.time() - _t0, 1)}
+
+
+def mux_pace_notes_into_video(video, pace_notes_dir, lap, output, volume=1.0):
+    """Aplica el audio de pace notes a un video ya existente sin re-encodear el video.
+
+    Copia el stream de video intacto (``-c:v copy``) y solo mezcla o añade el
+    audio de pace notes generado por ``render_pace_notes_track``. Mucho mas
+    rapido que ``compose_video`` porque no re-encodea el video.
+
+    Args:
+        video:          Ruta al video existente (mp4, mov, mkv...).
+        pace_notes_dir: Carpeta del pack de pace notes con ``metadata.json``.
+        lap:            Vuelta del piloto para sincronizar cues por distancia.
+        output:         Ruta del video de salida.
+        volume:         Volumen de los pace notes (default 1.0).
+
+    Returns:
+        str: Ruta del video de salida (igual a ``output``).
+    """
+    ffmpeg = shutil.which("ffmpeg")
+    if not ffmpeg:
+        import platform as _platform
+
+        _sys = _platform.system()
+        _cmd = (
+            "winget install Gyan.FFmpeg"
+            if _sys == "Windows"
+            else "brew install ffmpeg"
+            if _sys == "Darwin"
+            else "sudo apt install ffmpeg"
+        )
+        raise RuntimeError("ffmpeg no encontrado en PATH — instálalo con: %s" % _cmd)
+
+    out_dir = os.path.dirname(output)
+    if out_dir:
+        os.makedirs(out_dir, exist_ok=True)
+
+    from .pacenotes import render_pace_notes_track as _render_pn
+
+    with tempfile.TemporaryDirectory() as tmp:
+        wav_path = os.path.join(tmp, "pace_notes_mux.wav")
+        _render_pn(pace_notes_dir, lap, wav_path, volume=volume)
+
+        ffprobe = _ffprobe_path(ffmpeg)
+        video_has_audio = _has_audio(ffprobe, video)
+
+        if video_has_audio:
+            # Mezcla audio del video original con el WAV de pace notes.
+            # Inputs: 0 = video, 1 = WAV. Reusa _audio_mix_filter con indices de mux.
+            audio_filter = _audio_mix_filter(True, vid_stream="0:a", cue_stream="1:a")
+            cmd = [
+                ffmpeg,
+                "-y",
+                "-i",
+                video,
+                "-i",
+                wav_path,
+                "-filter_complex",
+                audio_filter,
+                "-map",
+                "0:v",
+                "-map",
+                "[aout]",
+                "-c:v",
+                "copy",
+                "-c:a",
+                "aac",
+                "-b:a",
+                "192k",
+                output,
+            ]
+        else:
+            # El video no tiene audio: añade el WAV como nueva pista de audio.
+            cmd = [
+                ffmpeg,
+                "-y",
+                "-i",
+                video,
+                "-i",
+                wav_path,
+                "-map",
+                "0:v",
+                "-map",
+                "1:a",
+                "-c:v",
+                "copy",
+                "-c:a",
+                "aac",
+                "-b:a",
+                "192k",
+                output,
+            ]
+
+        subprocess.run(cmd, check=True)
+
+    return output

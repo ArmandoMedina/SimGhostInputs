@@ -38,3 +38,31 @@ async def test_step4_renders_without_crash(user):
     user.find("Video").click()
     # "Componer" aparece en el heading ui.label (siempre visible)
     await user.should_see("Componer")
+
+
+@pytest.mark.asyncio
+async def test_step4_compose_btn_disabled_without_inputs(user):
+    """Componer video esta deshabilitado cuando video_input y overlay_input estan vacios."""
+    import shutil
+
+    from nicegui import ui
+
+    from fantasma.ui.ng_app import main_page  # noqa: F401
+
+    if shutil.which("ffmpeg") is None:
+        pytest.skip("ffmpeg no disponible en este entorno")
+
+    await user.open("/")
+    user.find("Video").click()
+    await user.should_see("Componer video")
+
+    # Con entradas vacias el boton debe estar deshabilitado (_props['disable'] = True)
+    found = [
+        e
+        for e in user.client.elements.values()
+        if isinstance(e, ui.button) and e._props.get("label") == "Componer video"
+    ]
+    assert found, "Boton 'Componer video' no encontrado en el DOM"
+    assert found[0]._props.get("disable"), (
+        "Boton 'Componer video' debe estar deshabilitado con video_input y overlay_input vacios"
+    )

@@ -82,7 +82,7 @@ async def test_step3_no_ffmpeg_shows_warning(user, monkeypatch):
 
     await user.open("/")
     user.find("Overlay").click()
-    await user.should_see("ffmpeg no esta instalado")
+    await user.should_see("ffmpeg no está instalado")
 
 
 @pytest.mark.asyncio
@@ -119,11 +119,64 @@ class _StateWithRef:
         self.corners = None
         self.corners_editable = False
         self.last_overlay = None
+        self.last_pacenotes = None
+
+
+class _StateForCompose:
+    """Estado minimo con flow_key='compose' para el checkbox de auto-compose."""
+
+    def __init__(self, ref_lap):
+        self.nav_step = 0
+        self.flow_key = "compose"
+        self.flow_chosen = True
+        self.ref_lap = ref_lap
+        self.drv_lap = None
+        self.summary = None
+        self.last_compose_video = None
+        self.corners = None
+        self.corners_editable = False
+        self.last_overlay = None
+        self.last_pacenotes = None
+        self.auto_compose = False
+        self.pending_autocompose = False
+        self.compose_offset = 0.0
 
 
 class _NoOpTimer:
     def cancel(self):
         pass
+
+
+@pytest.mark.asyncio
+async def test_step3_auto_compose_checkbox_visible_in_compose_flow(user, monkeypatch, lap_factory):
+    """El checkbox 'componer automaticamente' aparece cuando flow_key=='compose'.
+
+    Con flow_key='overlay' ese checkbox NO se renderiza (no aplica al flujo
+    solo-overlay). La clase _StateForCompose siembra flow_key='compose'.
+    """
+    from nicegui import ui as _ui
+
+    import fantasma.ui.ng_app as _ng_mod
+
+    monkeypatch.setattr("shutil.which", lambda name: "/fake/ffmpeg")
+
+    _fake_corners_mod = types.ModuleType("fantasma.core.corners")
+    _fake_corners_mod.detect_corners = lambda lap: ([], {})
+    _fake_corners_mod.extract_milestones = lambda lap, evs: []
+    monkeypatch.setitem(sys.modules, "fantasma.core.corners", _fake_corners_mod)
+
+    monkeypatch.setattr(_ui, "timer", lambda *a, **kw: _NoOpTimer())
+
+    ref = lap_factory()
+    monkeypatch.setattr(_ng_mod, "AppState", lambda: _StateForCompose(ref))
+
+    from fantasma.ui.ng_app import main_page  # noqa: F401
+
+    await user.open("/")
+    user.find("Overlay").click()
+    await user.should_see("Paso 3")
+    await user.should_not_see("Primero carga")
+    await user.should_see("componer automáticamente")
 
 
 @pytest.mark.asyncio
@@ -159,3 +212,49 @@ async def test_step3_renders_with_ref_lap_and_detect_corners_mocked(user, monkey
     await user.should_see("Paso 3")
     await user.should_not_see("Primero carga")
     await user.should_see("Generar overlay")
+
+
+# ---------------------------------------------------------------------------
+# Regresion BUG 1 -- poll() async: el encadenado auto-compose navega al Paso 4
+# ---------------------------------------------------------------------------
+
+
+def test_step3_autocompose_poll_navigates_to_step4():
+    """poll() debe ser async def y usar await navigate() -- guard de BUG1.
+
+    Si poll() fuera def (sync), llamar navigate(4) sin await devolveria un
+    coroutine que se descartaria silenciosamente; state.nav_step no cambiaria
+    a 4 y el encadenado auto-compose fallaria en silencio.
+
+    El test detecta dos escenarios de regresion via analisis AST:
+    - poll revertido a def (sync): no hay AsyncFunctionDef 'poll' -> falla.
+    - await eliminado en navigate(4): no hay nodo Await sobre navigate -> falla.
+    """
+    tree = ast.parse(_NG_STEP3.read_text(encoding="utf-8"))
+
+    # poll debe ser async def (no def sync)
+    poll_async = [
+        node
+        for node in ast.walk(tree)
+        if isinstance(node, ast.AsyncFunctionDef) and node.name == "poll"
+    ]
+    assert poll_async, (
+        "poll no es async def en ng_step3.py. "
+        "Si fuera def sync, navigate(4) retornaria un coroutine que se "
+        "descartaria silenciosamente y state.nav_step no llegaria a 4."
+    )
+
+    # dentro de poll debe haber 'await navigate(...)'
+    poll_fn = poll_async[0]
+    await_navigate = [
+        node
+        for node in ast.walk(poll_fn)
+        if isinstance(node, ast.Await)
+        and isinstance(node.value, ast.Call)
+        and isinstance(node.value.func, ast.Name)
+        and node.value.func.id == "navigate"
+    ]
+    assert await_navigate, (
+        "poll no contiene 'await navigate(...)' en ng_step3.py. "
+        "Sin await, el coroutine de navigate se descarta silenciosamente."
+    )

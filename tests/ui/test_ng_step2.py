@@ -250,6 +250,7 @@ class _StateWithSummary:
         self.charts_paths = None
         self.last_overlay = None
         self.last_compose_video = None
+        self.last_pacenotes = None
 
 
 @pytest.mark.asyncio

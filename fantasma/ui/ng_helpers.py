@@ -81,7 +81,7 @@ _FLOWS = {
     },
 }
 _DEFAULT_FLOW = "compose"
-_STEPS = ["Inicio", "Importar", "Comparar", "Overlay", "Componer"]
+_STEPS = ["Inicio", "Importar", "Comparar", "Overlay", "Componer", "Pace Notes"]
 
 
 # ── formato ───────────────────────────────────────────────────────────────────
@@ -194,7 +194,7 @@ def render_breadcrumb(step: int):
     """Renderiza la barra de breadcrumb con el paso actual resaltado."""
     from nicegui import ui
 
-    _STEP_LABELS = ["Inicio", "Importar", "Análisis", "Overlay", "Video"]
+    _STEP_LABELS = ["Inicio", "Importar", "Análisis", "Overlay", "Video", "Pace Notes"]
     html = (
         '<div style="display:flex;align-items:center;gap:6px;'
         'padding:8px 0 16px;font-size:0.85rem;flex-wrap:wrap">'

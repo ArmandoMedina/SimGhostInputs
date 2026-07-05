@@ -12,6 +12,19 @@ import threading
 import wave
 from pathlib import Path
 
+
+def crewchief_pacenotes_dir(track_name: str) -> str:
+    """Devuelve el directorio estándar de CrewChief para pace notes de AMS2."""
+    return os.path.join(
+        os.path.expanduser("~"),
+        "Documents",
+        "CrewChiefV4",
+        "pace_notes",
+        "ams2",
+        track_name,
+    )
+
+
 DEFAULT_MILESTONES = ["brake", "apex", "gas"]
 DEFAULT_FREQS = {
     "brake_countdown": 880,

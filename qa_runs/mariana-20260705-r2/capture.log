@@ -1,0 +1,34 @@
+[08:31:03] Arrancando NiceGUI headless...
+[08:31:06] Servidor listo.
+[08:31:08] Paso 0 (inicial / vacio)
+[08:31:10]   screenshot -> 01_step0_empty.png
+[08:31:10] Paso 0 (elegir Video con HUD)
+[08:31:11]   screenshot -> 02_step0_compose_selected.png
+[08:31:11] Paso 1 (vacio)
+[08:31:12]   screenshot -> 03_step1_empty.png
+[08:31:12] Paso 1 (subir referencia)
+[08:31:13]   screenshot -> 04_step1_ref_loading.png
+[08:31:17]   screenshot -> 05_step1_ref_loaded.png
+[08:31:17] Paso 1 (subir vuelta piloto)
+[08:31:19]   screenshot -> 06_step1_drv_loading.png
+[08:31:24]   screenshot -> 07_step1_both_loaded.png
+[08:31:24] Paso 1 -> Cargar (avanza a Paso 3 en flujo compose)
+[08:31:26]   screenshot -> 08_step3_overlay_empty.png
+[08:31:26] Paso 3 (iniciar render para capturar progreso, luego cancelar)
+[08:31:29]   screenshot -> 09_step3_render_progress.png
+[08:31:30]   screenshot -> 09b_step3_render_cancelled.png
+[08:31:30] Paso 2 (Analisis via sidebar; corre comparacion real)
+[08:33:18]   screenshot -> 10_step2_analysis_top.png
+[08:33:21]   screenshot -> 10b_step2_analysis_full.png
+[08:33:21] Paso 4 (Componer)
+[08:33:23]   screenshot -> 11_step4_compose_default.png
+[08:33:43]   Paso 4 parcial: Locator.fill: Timeout 20000ms exceeded.
+Call log:
+  - waiting for get_by_label("Tu video de grabacion")
+
+[08:33:43]   screenshot -> 11_step4_partial.png
+[08:33:43] Paso 5 (Pace Notes)
+[08:33:45]   screenshot -> 13_step5_default.png
+[08:33:45]   screenshot -> 14_step5_voice_mode.png
+[08:33:46]   screenshot -> 15_step5_mux_filled.png
+[08:33:46] Captura completa.

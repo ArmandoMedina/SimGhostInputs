@@ -4,7 +4,7 @@ import os
 
 from nicegui import ui
 
-from . import ng_step0, ng_step1, ng_step2, ng_step3, ng_step4
+from . import ng_step0, ng_step1, ng_step2, ng_step3, ng_step4, ng_step5
 from .ng_state import AppState
 
 
@@ -45,9 +45,15 @@ async def main_page():
 
       /* nav-btn: resets Quasar button styles to look like nav-item */
       .nav-btn { background: transparent !important; border: none !important; border-left: 2px solid transparent !important; color: var(--muted) !important; padding: 7px 16px !important; text-align: left !important; font-size: 12px !important; width: 100% !important; cursor: pointer !important; border-radius: 0 !important; box-shadow: none !important; transition: color 0.15s, background 0.15s !important; }
-      .nav-btn .q-btn__content { justify-content: flex-start !important; }
+      /* M5: especificidad alta — prefijo .sgi-sidebar supera el color primario de Quasar en dark mode */
+      .sgi-sidebar .nav-btn .q-btn__content,
+      .sgi-sidebar .nav-btn .q-btn__content span { justify-content: flex-start !important; color: var(--muted) !important; }
       .nav-btn:hover { color: var(--text) !important; background: rgba(255,255,255,0.03) !important; }
+      .sgi-sidebar .nav-btn:hover .q-btn__content,
+      .sgi-sidebar .nav-btn:hover .q-btn__content span { color: var(--text) !important; }
       .nav-btn-active { color: var(--highlight) !important; border-left-color: var(--highlight) !important; background: rgba(79,142,247,0.08) !important; }
+      .sgi-sidebar .nav-btn-active .q-btn__content,
+      .sgi-sidebar .nav-btn-active .q-btn__content span { color: var(--highlight) !important; }
 
       /* Sidebar footer */
       .sidebar-footer { margin-top: auto; padding: 12px 16px; border-top: 1px solid var(--border); }
@@ -105,7 +111,11 @@ async def main_page():
       .upload-zone.loaded { border-style: solid; border-color: var(--success); }
       .upload-icon { font-size: 24px; margin-bottom: 8px; display: block; }
       .upload-label { font-size: 12px; color: var(--muted); }
-      .upload-hint { font-size: 10px; color: var(--border); margin-top: 4px; }
+      .upload-hint { font-size: 10px; color: var(--text-dim); margin-top: 4px; }
+      /* C1: oculta el chrome nativo del q-uploader dentro de las zonas custom */
+      .upload-zone .q-uploader { background: transparent !important; box-shadow: none !important; border: none !important; width: 100% !important; }
+      .upload-zone .q-uploader__header { display: none !important; }
+      .upload-zone .q-uploader__subtitle { display: none !important; }
       .upload-status { background: rgba(34,197,94,0.06); border: 1px solid rgba(34,197,94,0.2); padding: 10px 14px; margin-bottom: 10px; }
       .upload-filename { font-size: 12px; font-weight: 600; font-family: monospace; color: var(--success); margin-bottom: 2px; }
 
@@ -157,8 +167,9 @@ async def main_page():
       .btn-primary { background: var(--accent) !important; color: white !important; border: none; padding: 8px 20px; font-size: 13px; font-weight: 600; cursor: pointer; border-radius: 0; font-family: inherit; transition: background 0.15s; }
       .btn-primary:hover { background: var(--highlight); }
       .btn-primary:disabled { opacity: 0.4; cursor: default; }
-      .btn-secondary { background: transparent; color: var(--muted); border: 1px solid var(--border); padding: 8px 20px; font-size: 13px; font-weight: 600; cursor: pointer; border-radius: 0; font-family: inherit; transition: color 0.15s, border-color 0.15s; }
-      .btn-secondary:hover { color: var(--text); border-color: rgba(255,255,255,0.2); }
+      /* I3: !important supera la especificidad de Quasar en botones secundarios */
+      .btn-secondary { background: transparent !important; color: var(--muted) !important; border: 1px solid var(--border) !important; padding: 8px 20px; font-size: 13px; font-weight: 600; cursor: pointer; border-radius: 0; font-family: inherit; transition: color 0.15s, border-color 0.15s; }
+      .btn-secondary:hover { color: var(--text) !important; border-color: rgba(255,255,255,0.2) !important; }
       .btn-ghost { background: transparent; color: var(--muted); border: none; padding: 8px 16px; font-size: 13px; cursor: pointer; font-family: inherit; }
       .btn-mini { font-size: 10px; padding: 4px 10px; background: transparent; border: 1px solid var(--border); color: var(--muted); cursor: pointer; font-family: inherit; border-radius: 0; }
       .btn-featured { background: var(--highlight) !important; color: white !important; border: none; padding: 8px 20px; font-size: 13px; font-weight: 600; cursor: pointer; border-radius: 0; width: 100%; font-family: inherit; margin-top: 12px; }
@@ -180,10 +191,10 @@ async def main_page():
       .lap-selector { margin-top: 6px; width: 100%; }
     </style>""")
 
-    content = ui.column().classes("w-full p-4")
+    content = ui.column().classes("w-full p-4").style("max-width:1100px;margin:0 auto")
     nav_buttons = []
 
-    _all_step_labels = ["Inicio", "Importar", "Análisis", "Overlay", "Video"]
+    _all_step_labels = ["Inicio", "Importar", "Análisis", "Overlay", "Video", "Pace Notes"]
 
     async def navigate(step: int):
         _cancel = getattr(navigate, "_cancel_render", None)
@@ -217,6 +228,8 @@ async def main_page():
                 await ng_step3.render(state, navigate)
             elif step == 4:
                 await ng_step4.render(state, navigate)
+            elif step == 5:
+                await ng_step5.render(state, navigate)
 
     with ui.left_drawer(fixed=True).classes("sgi-sidebar").style("width:240px"):
         # Brand block
@@ -248,8 +261,8 @@ async def main_page():
 
             ui.html('<div class="nav-section-label" style="margin-top:8px">Salidas</div>')
 
-            # Steps 3-4: Salidas section
-            salidas_steps = [(3, "Overlay"), (4, "Video")]
+            # Steps 3-5: Salidas section
+            salidas_steps = [(3, "Overlay"), (4, "Video"), (5, "Pace Notes")]
             for step_idx, step_label in salidas_steps:
                 _is_current = state.nav_step == step_idx
                 _done = _step_done(state, step_idx)
@@ -280,6 +293,7 @@ def _step_done(state, i):
         state.summary is not None,
         state.last_overlay is not None,
         state.last_compose_video is not None,
+        state.last_pacenotes is not None,
     ]
     return checks[i] if i < len(checks) else False
 

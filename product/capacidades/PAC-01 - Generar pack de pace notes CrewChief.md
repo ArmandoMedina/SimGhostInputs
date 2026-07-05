@@ -17,7 +17,7 @@ prioridad: Should Have
 Dado un `corners.json` y una vuelta de referencia analizada, generar el pack que CrewChief reproduce en pista: `metadata.json` más los WAVs de tonos ubicados en los metros de cada curva. Ofrece dos modos: `tones` (sin dependencias extra) y `voice` (voz TTS, requiere edge-tts).
 
 ## Actor principal
-El CLI (`fantasma pacenotes`), ejecutado después de `fantasma compare`.
+El CLI (`fantasma pacenotes`), ejecutado después de `fantasma compare`, o el Paso 5 de la UI NiceGUI ([[UI-04 - Generar pace notes desde la UI]]).
 
 ## Entradas funcionales
 - `--corners`: `corners.json` generado por `fantasma detect`, con los metros de cada hito.

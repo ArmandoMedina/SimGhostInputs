@@ -2,7 +2,7 @@
 
 import os
 
-from nicegui import ui
+from nicegui import run, ui
 
 from .ng_helpers import (
     _FLOWS,
@@ -68,15 +68,40 @@ async def render(state, navigate):
     # assigned to ui elements further below before any handler can fire.
     ref_status = None  # noqa: F841  (assigned below)
     ref_lap_col = None  # noqa: F841
+    ref_loading_area = None  # noqa: F841
     drv_status = None  # noqa: F841
     drv_lap_col = None  # noqa: F841
+    drv_loading_area = None  # noqa: F841
     load_err = None  # noqa: F841
+
+    # I1: indicadores de listo — se re-renderizan en un container para evitar
+    # que set_content de ui.html no propague el cambio de clase en ciertos contextos.
+    indicators_state: dict = {"container": None}
+
+    def _update_indicators():
+        container = indicators_state["container"]
+        if container is None:
+            return
+        r_cls = "ok" if ref_state["laps"] else ""
+        d_cls = "ok" if drv_state["laps"] else ""
+        container.clear()
+        with container:
+            ui.html(
+                f'<span class="readiness-item {r_cls}">'
+                f'<span class="readiness-dot"></span>Referencia</span>'
+                f'<span class="readiness-item {d_cls}">'
+                f'<span class="readiness-dot"></span>Tu vuelta</span>'
+            )
 
     # ── Upload handlers ──────────────────────────────────────────────────────
 
     async def handle_ref_upload(path, original_name=None):
+        ref_loading_area.clear()
+        with ref_loading_area:
+            ui.spinner("dots").classes("text-blue-400")
+            ui.label("Leyendo CSV...").classes("text-xs text-gray-400")
         try:
-            laps = _load_laps(path)
+            laps = await run.io_bound(_load_laps, path)
         except Exception as ex:
             ref_status.set_text(f"Error al leer el archivo: {ex}")
             ref_status.classes(remove="upload-status text-green-400 text-yellow-400")
@@ -84,6 +109,7 @@ async def render(state, navigate):
             return
         finally:
             _cleanup_upload(path)
+            ref_loading_area.clear()
         if _missing_distance(laps):
             ref_status.set_text(_NO_DIST_MSG)
             ref_status.classes(remove="upload-status text-green-400 text-yellow-400")
@@ -99,6 +125,7 @@ async def render(state, navigate):
         ref_state["laps"] = laps
         ref_state["path"] = path  # ruta del temp ya borrado — solo informativa, no releer
         ref_state["name"] = original_name or os.path.basename(path)
+        ref_status.set_text("Calculando vuelta rapida...")
         best_i = _best_lap_index(laps)
         ref_state["sel_i"] = best_i
         ref_status.set_text(
@@ -107,13 +134,18 @@ async def render(state, navigate):
         )
         ref_status.classes(remove="text-red-400 text-yellow-400")
         ref_status.classes("upload-status")
+        _update_indicators()
         ref_lap_col.clear()
         if len(laps) > 1:
             _render_lap_selector(ref_lap_col, ref_state, "ref")
 
     async def handle_drv_upload(path, original_name=None):
+        drv_loading_area.clear()
+        with drv_loading_area:
+            ui.spinner("dots").classes("text-blue-400")
+            ui.label("Leyendo CSV...").classes("text-xs text-gray-400")
         try:
-            laps = _load_laps(path)
+            laps = await run.io_bound(_load_laps, path)
         except Exception as ex:
             drv_status.set_text(f"Error al leer el archivo: {ex}")
             drv_status.classes(remove="upload-status text-green-400 text-yellow-400")
@@ -121,6 +153,7 @@ async def render(state, navigate):
             return
         finally:
             _cleanup_upload(path)
+            drv_loading_area.clear()
         if _missing_distance(laps):
             drv_status.set_text(_NO_DIST_MSG)
             drv_status.classes(remove="upload-status text-green-400 text-yellow-400")
@@ -136,6 +169,7 @@ async def render(state, navigate):
         drv_state["laps"] = laps
         drv_state["path"] = path  # ruta del temp ya borrado — solo informativa, no releer
         drv_state["name"] = original_name or os.path.basename(path)
+        drv_status.set_text("Calculando vuelta rapida...")
         best_i = _best_lap_index(laps)
         drv_state["sel_i"] = best_i
         drv_status.set_text(
@@ -144,6 +178,7 @@ async def render(state, navigate):
         )
         drv_status.classes(remove="text-red-400 text-yellow-400")
         drv_status.classes("upload-status")
+        _update_indicators()
         drv_lap_col.clear()
         if len(laps) > 1:
             _render_lap_selector(drv_lap_col, drv_state, "drv")
@@ -213,14 +248,14 @@ async def render(state, navigate):
             )
 
             with ui.element("div").classes("upload-zone"):
-                ui.html('<span class="upload-icon">📂</span>')
-                ui.html('<div class="upload-label">Haz clic para seleccionar tu archivo</div>')
-                ui.html('<div class="upload-hint">.csv · .xlsx · máx. 50 MB</div>')
                 ui.upload(
                     label="Seleccionar CSV",
                     on_upload=on_ref_upload,
                     auto_upload=True,
                 ).props('accept=".csv,.xlsx" flat').classes("w-full")
+                ui.html('<div class="upload-hint">.csv · .xlsx · máx. 50 MB</div>')
+
+            ref_loading_area = ui.column().classes("w-full")
 
             ref_status = (
                 ui.label(
@@ -258,14 +293,14 @@ async def render(state, navigate):
             )
 
             with ui.element("div").classes("upload-zone"):
-                ui.html('<span class="upload-icon">📂</span>')
-                ui.html('<div class="upload-label">Haz clic para seleccionar tu archivo</div>')
-                ui.html('<div class="upload-hint">.csv · .xlsx · máx. 50 MB</div>')
                 ui.upload(
                     label="Seleccionar CSV",
                     on_upload=on_drv_upload,
                     auto_upload=True,
                 ).props('accept=".csv,.xlsx" flat').classes("w-full")
+                ui.html('<div class="upload-hint">.csv · .xlsx · máx. 50 MB</div>')
+
+            drv_loading_area = ui.column().classes("w-full")
 
             drv_status = (
                 ui.label(
@@ -347,20 +382,20 @@ async def render(state, navigate):
         col_map_input.on("update:model-value", lambda e: col_map_state.update({"text": e.value}))
 
     # ── Bottom actions ────────────────────────────────────────────────────────
-    ref_ok = ref_state["laps"] is not None and len(ref_state["laps"]) > 0
-    drv_ok = drv_state["laps"] is not None and len(drv_state["laps"]) > 0
-    ref_class = "ok" if ref_ok else ""
-    drv_class = "ok" if drv_ok else ""
+    _ref_ok = ref_state["laps"] is not None and len(ref_state["laps"]) > 0
+    _drv_ok = drv_state["laps"] is not None and len(drv_state["laps"]) > 0
+    _ref_cls = "ok" if _ref_ok else ""
+    _drv_cls = "ok" if _drv_ok else ""
 
     with ui.element("div").classes("bottom-actions"):
-        ui.html(
-            f'<div class="readiness-indicators">'
-            f'<span class="readiness-item {ref_class}">'
-            f'<span class="readiness-dot"></span>Referencia</span>'
-            f'<span class="readiness-item {drv_class}">'
-            f'<span class="readiness-dot"></span>Tu vuelta</span>'
-            f"</div>"
-        )
+        with ui.element("div").classes("readiness-indicators") as _ind_container:
+            ui.html(
+                f'<span class="readiness-item {_ref_cls}">'
+                f'<span class="readiness-dot"></span>Referencia</span>'
+                f'<span class="readiness-item {_drv_cls}">'
+                f'<span class="readiness-dot"></span>Tu vuelta</span>'
+            )
+        indicators_state["container"] = _ind_container
         with ui.element("div").style("display:flex;gap:8px;align-items:center"):
             ui.button("← Volver", on_click=lambda: navigate(0)).classes("btn-ghost").props("flat")
             load_err = ui.label("").classes("text-xs text-red-400")

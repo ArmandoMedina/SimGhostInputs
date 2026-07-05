@@ -17,7 +17,7 @@ prioridad: Must Have
 Superponer el HUD `.webm` sobre el video de cámara usando ffmpeg, con posición, escala y offset de sincronía configurables, usando NVENC si la GPU lo soporta y cayendo al codificador de CPU si no.
 
 ## Actor principal
-Sistema (llamado con `fantasma compose` o desde el Paso 4 de la UI).
+Sistema (llamado con `fantasma compose`, desde el Paso 4 de la UI, o de forma encadenada desde el Paso 3 cuando está activo el auto-compose).
 
 ## Entradas funcionales
 - Ruta al video de cámara.

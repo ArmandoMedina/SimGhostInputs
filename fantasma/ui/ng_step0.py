@@ -95,6 +95,9 @@ async def render(state, navigate):
                 )
 
                 btn_label = "✓ Seleccionado" if is_selected else "Elegir este"
+                # I3: la diferenciación la da la CSS con !important (btn-featured relleno vs
+                # btn-secondary outline); NO usar .props("flat") — deja el featured plano y
+                # rompe el contraste del botón "Seleccionado" (test_e2e_playwright_wizard).
                 btn_class = "btn-featured" if featured else "btn-secondary"
                 ui.button(
                     btn_label,

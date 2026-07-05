@@ -81,7 +81,22 @@ Ahí mismo puedes ajustar `"tolerances"` por curva: `vmin_kmh` y `brake_start_m`
 
 ## 6. Pace Notes para CrewChief
 
-Después de comparar, puedes convertir las curvas donde más pierdes en un pack de audio para CrewChief:
+Después de comparar, puedes convertir las curvas donde más pierdes en un pack de audio para CrewChief.
+
+### Desde la UI — Paso 5
+
+Si usas `fantasma-ng`, el botón **«🔔 Generar Pace Notes»** al pie del análisis del Paso 2 lleva directamente al **Paso 5**. Desde ahí:
+
+1. Elige el **modo**: _Tonos (rápido)_ (sin dependencias extra), _Voz_ (requiere edge-tts) o _Ambos_.
+2. Ajusta **Top N curvas** (cuántas cubrir), **volumen** y — en modo voz — el **idioma**.
+3. El **directorio de salida** se pre-rellena automáticamente con la ruta de CrewChief detectada para el circuito. Si no se detecta, escribe el nombre exacto que CrewChief/AMS2 espera o usa «Explorar…» para navegar.
+4. Pulsa **«Generar Pace Notes»**: un spinner indica el progreso; al terminar verás cuántas entradas se generaron y el sidebar marca el Paso 5 como completado (✅).
+
+**Aplicar sonido a un video existente** (segundo panel del Paso 5, a la derecha): si ya tienes el video compuesto y solo quieres añadirle el audio del pack, este panel lo hace sin re-encodear el video (ffmpeg `-c:v copy`). Requiere la vuelta del piloto cargada (Paso 1) para sincronizar los cues; el botón «Aplicar sonido» se habilita cuando están el video, la carpeta del pack y la vuelta del piloto.
+
+Activa las Pace Notes dentro de CrewChief antes de salir a pista.
+
+### Desde el CLI
 
 ```
 fantasma pacenotes --corners salida/corners_detected.json --compare salida/corners_compare.csv \
@@ -142,6 +157,10 @@ La detección automática extrae la energía del motor del audio del video (band
 El preview de Pace Notes no sustituye a CrewChief: mezcla los mismos WAVs dentro del MP4 para escuchar si el plan de sonidos está demasiado cargado o llega a buen tiempo. Requiere `--driver` porque los metros del `metadata.json` se convierten a segundos con la telemetría de la vuelta.
 
 Si usas `fantasma-ng`, el Paso 4 incluye un botón «Detectar sincronía automáticamente» que hace lo mismo desde la interfaz gráfica. Una vez completada la composición, el Paso 4 muestra qué encoder se usó realmente (`h264_nvenc` si se detectó GPU NVIDIA, `libx264` si no) y cuánto tardó — útil para diagnosticar si la GPU se está aprovechando.
+
+El **Paso 3 (flujo «Video con HUD»)** incluye un checkbox «Al terminar, componer automáticamente»: al activarlo, al finalizar el overlay la app navega al Paso 4 y lanza la composición sin intervención; al terminar el compose recibirás una notificación de escritorio (o un aviso en pantalla si el navegador no lo soporta).
+
+El **Paso 4** incluye una sección opcional **«Pace Notes en el video compuesto»**: activa el checkbox e indica la carpeta del pack generado en el Paso 5; los WAVs se mezclan en el audio del video final durante el compose. Si ya tienes un video compuesto al que solo quieres añadir el sonido del pack, usa el panel «Aplicar sonido a un video existente» del Paso 5 (sin re-encodear).
 
 > **Aviso de «correlación moderada».** Si la sincronía se aceptó pero con una correlación solo
 > moderada (calidad media), verás un aviso de que el video **podría no corresponder a esa vuelta**

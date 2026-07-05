@@ -183,6 +183,14 @@ class AppState:
         self._set("last_overlay", v)
 
     @property
+    def last_pacenotes(self):
+        return self._get("last_pacenotes")
+
+    @last_pacenotes.setter
+    def last_pacenotes(self, v):
+        self._set("last_pacenotes", v)
+
+    @property
     def last_compose_video(self):
         return self._get("last_compose_video")
 
@@ -197,6 +205,24 @@ class AppState:
     @compose_offset.setter
     def compose_offset(self, v):
         self._set("compose_offset", v)
+
+    # ── preferencias de flujo ─────────────────────────────────────────────────
+
+    @property
+    def auto_compose(self):
+        return self._get("auto_compose", False)
+
+    @auto_compose.setter
+    def auto_compose(self, v):
+        self._set("auto_compose", v)
+
+    @property
+    def pending_autocompose(self):
+        return self._get("pending_autocompose", False)
+
+    @pending_autocompose.setter
+    def pending_autocompose(self, v):
+        self._set("pending_autocompose", v)
 
     # ── helpers de limpieza ───────────────────────────────────────────────────
 

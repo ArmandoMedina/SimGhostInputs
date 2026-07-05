@@ -4,12 +4,30 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/). Versionado
 
 ## [Unreleased]
 
-### Corregido
-- **`tools/installer.iss` compilaba solo en CI-teoría**: primer build real del instalador destapó rutas relativas resueltas contra `tools\` (faltaba `SourceDir=..`) y un custom message inexistente (`{cm:DesktopFolder}` → `{cm:CreateDesktopIcon}`). Con esto se generó y publicó `SimGhostInputs-v2.0.0-Setup.exe` (104.7 MB) como asset del release.
+## [2.1.0] - 2026-07-05
+
+### Añadido
+- **Paso 5 — Pace Notes en la UI** (`fantasma/ui/ng_step5.py`): nuevo paso del wizard que genera el pack de pace notes para CrewChief (tonos, voz o ambos) desde `state.rows` y `state.corners`. Incluye selector de modo/top-N/volumen/idioma y directorio de destino pre-rellenado vía `crewchief_pacenotes_dir()`. Se activa desde el botón «Generar Pace Notes» del Paso 2; el paso aparece en el sidebar «Salidas» junto a Overlay y Video.
+- **Mux standalone de pace notes en video existente** (`ng_step5.py`, `viz/compose.py::mux_pace_notes_into_video`): panel en el Paso 5 para mezclar el audio del pack de pace notes en un video ya compuesto usando ffmpeg `-c:v copy` (sin re-encodear). Requiere la vuelta del piloto cargada para sincronizar los cues por distancia.
+- **Pipeline autónomo overlay→compose** (`ng_step3.py`, `ng_step4.py`, `ng_state.py`): checkbox «Al terminar, componer automáticamente» en el Paso 3 (flujo compose). Al terminar el overlay, navega al Paso 4 y lanza la composición sin intervención. Notificación de escritorio (Web Notifications API con degradación a `ui.notify`) al terminar. Nuevo estado `auto_compose` y `pending_autocompose` en `AppState`.
+- **Pace Notes opcionales en el video compuesto** (`ng_step4.py`, `viz/compose.py`): checkbox «Incluir pace notes en el video» en el Paso 4; mezcla los WAVs del pack en el audio del video final durante el compose. `compose_video()` acepta nuevos parámetros opcionales `pace_notes_dir`, `pace_notes_volume` y `lap`.
+- **Loading states en carga de CSV** (`ng_step1.py`): spinner + «Leyendo CSV...» durante la carga del archivo y «Calculando vuelta rápida...» al seleccionar la mejor vuelta; la operación de I/O se mueve a `run.io_bound` para no bloquear el event loop.
+- **Botón «Componer video» deshabilitado hasta completar entradas** (`ng_step4.py`): se deshabilita si faltan el video de grabación o el overlay; se reactiva en tiempo real al rellenar ambos campos.
 
 ### Cambiado
 - **`SimGhostInputs.spec` fuera del versionado** (`.gitignore`): `nicegui-pack` lo regenera en cada build con la ruta absoluta local de nicegui, deshaciendo cualquier fix versionado — es artefacto de build, no fuente. La receta canónica de empaquetado es `tools/build_installer.py`.
 - **Deuda del ADR 0018 medida**: bundle onedir real de v2.0.0 = 373 MB; exe 30.7 MB; instalador 104.7 MB. Smoke del exe empaquetado: arranca y responde HTTP 200 en `127.0.0.1:8765`.
+- **Layout 2 columnas en Pasos 4 y 5** (`ng_step4.py`, `ng_step5.py`): Paso 4 separa controles de entradas (izquierda) de la vista previa del HUD (derecha); Paso 5 separa «Generación» (izquierda) de «Aplicar sonido» (derecha). Contenido de la página centrado con ancho máximo de 1 100 px.
+
+### Corregido
+- **Botón «Generar Pace Notes» del Paso 2 navegaba al Overlay (Paso 3) en vez del Paso 5**: `navigate(3)` corregido a `navigate(5)` en `ng_step2.py`.
+- **Auto-compose no arrancaba si el video/overlay no estaban rellenos al entrar al Paso 4** (BUG1): al navegar al Paso 4 en modo `pending_autocompose`, si los campos no estaban ya rellenos el compose se disparaba sin datos y fallaba silenciosamente; ahora verifica que ambos campos estén presentes antes de arrancar.
+- **Campo Venue del circuito no se leía correctamente** (`ng_step2.py`): el nombre de pista usaba solo `meta.get("track")`; ahora prefiere `meta.get("Venue")` (clave real del metadato AMS2) con fallback a `"track"`.
+- **Inconsistencia de tokens de color** (`ng_step2.py`): textos mutados migrados de `.style("color:var(--muted)")` a clase Tailwind `text-gray-400`, coherente con el patrón del resto de pasos (ADR 0018).
+- **`tools/installer.iss` compilaba solo en CI-teoría**: primer build real del instalador destapó rutas relativas resueltas contra `tools\` (faltaba `SourceDir=..`) y un custom message inexistente (`{cm:DesktopFolder}` → `{cm:CreateDesktopIcon}`). Con esto se generó y publicó `SimGhostInputs-v2.0.0-Setup.exe` (104.7 MB) como asset del release.
+- **Remediación visual QA** (`ng_app.py`, `ng_step0..5.py`): especificidad CSS de botones de sidebar en dark mode (prefijo `.sgi-sidebar` supera el color primario de Quasar); chrome del q-uploader ocultado en zonas custom del Paso 1; jerarquía `btn-featured` vs `btn-secondary` con `!important`; acentos corregidos en textos de todos los pasos; nombre de pista con guiones bajos reemplazados por espacios; celda de fecha en resumen del Paso 2 oculta cuando está vacía.
+- **Detección de curvas diferida en Paso 3** (`ng_step3.py`): el render del panel ya no bloquea mientras se detectan las curvas; se muestra «Analizando el trazado...» con spinner y se deshabilita «Generar overlay» hasta completar la detección (o fallar silenciosamente con lista vacía).
+- **Guard de doble-clic en «Aplicar sonido» del Paso 5** (`ng_step5.py`): semáforo `_mux_state["running"]` evita lanzar dos procesos ffmpeg concurrentes al mismo archivo de salida.
 
 ## [2.0.0] - 2026-07-03
 

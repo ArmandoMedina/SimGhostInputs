@@ -10,7 +10,9 @@
 
 ## Estado actual
 
-**v2.0.0** (2026-07-03) — estable. 212 tests. Auditoría integral, remediación crítica y retiro de Streamlit.
+**v2.1.0** (2026-07-05) — estable. 226 tests. Pace Notes en la UI, pipeline autónomo overlay→compose, mux standalone y remediación de UI/UX (2 rondas de QA visual).
+
+**v2.0.0** (2026-07-03) — anterior. 212 tests. Auditoría integral, remediación crítica y retiro de Streamlit.
 
 **v1.0.0** (2026-06-30) — anterior. 142 tests.
 
@@ -26,17 +28,10 @@ Requiere AMS2 en pista — no bloqueó el merge.
 - [ ] WAV validado con ffprobe
 - [ ] Tonos suenan en los metros correctos auditivamente (Nordschleife o similar)
 
-### Pipeline desatendido: overlay → compose en secuencia + notificación
+### ~~Pipeline desatendido: overlay → compose en secuencia + notificación~~ — entregado en `feat/pacenotes-ui`
 
-**Dolor real (2026-06-30):** el usuario lanza el overlay, se va a hacer otra cosa y al volver tiene que
-esperar a que compose termine — dos esperas en lugar de una.
-
-**Qué se quiere:**
-- Un modo "encadenar": al terminar el overlay, lanzar compose automáticamente con los parámetros ya configurados.
-- Notificación al terminar (push al móvil, o al menos un sonido/pop-up de escritorio).
-
-**Por qué se difiere:** requiere arquitectura de tareas en background y un canal de notificación.
-**Gatillo:** cuando el usuario reporte que esperar las dos etapas es fricción frecuente.
+- [x] Checkbox «Al terminar, componer automáticamente» en el Paso 3 (flujo compose); encadena overlay→compose sin intervención.
+- [x] Notificación de escritorio al terminar (Web Notifications API con degradación a `ui.notify`).
 
 ---
 
@@ -82,6 +77,16 @@ Coaching adaptativo en tiempo real. Solo si Pace Notes no cubre el caso de uso.
 
 ---
 
+### Acelerar el render del overlay (candidata v3.0 — gated por benchmark)
+
+El loop de generación de frames del HUD es el único punto claramente CPU-bound (la UI anuncia "5 a 30 min" por overlay; ya se usa multiprocessing en todos los cores). Idea: bajar **solo ese loop** a un hot-path compilado (Rust vía PyO3 / C) o a GPU/shaders (moderngl), dejando Python como orquestador de todo lo demás (telemetría, ffmpeg, UI). **No se arranca sin datos** que lo justifiquen.
+
+- [ ] **Perfilar un render real y separar el tiempo del loop de frames vs. el resto** (I/O, encode ffmpeg, sync) — benchmark reproducible con números, sobre una vuelta larga (p. ej. Nordschleife ~394s). _Este es el gate: sin evidencia de que el dibujado de frames domina el tiempo, no se avanza._
+- [ ] **Si el loop domina:** evaluar hot-path compilado (PyO3/C) o GPU (moderngl) **solo para el dibujado de frames**, manteniendo la misma salida y el resto en Python.
+- [ ] **Decidir con números:** proceder solo si el beneficio proyectado es significativo (p. ej. ≥N× en render) frente al costo de mantener una extensión nativa o una dependencia de GPU. _Prioridad: a definir tras el benchmark._
+
+---
+
 ## 🔧 Transversal
 
 ### Gaps técnicos
@@ -104,6 +109,8 @@ Coaching adaptativo en tiempo real. Solo si Pace Notes no cubre el caso de uso.
 - [x] **Pickle overhead en render paralelo** — resuelto: slice por rango de distancia por chunk, ~1 MB en Nordschleife (antes ~4-5 MB) en `codex/sgi-v2-merge` (2026-07-03).
 - [x] **`_save_upload` no limpia archivos temporales** (`ng_helpers.py`) — resuelto: cleanup en `finally` tras cargar las vueltas + registro `atexit` como red de seguridad, en `codex/sgi-v2-merge` (2026-07-03, remediación de auditoría).
 - [ ] **Inconsistencia de tokens CSS entre pasos** — ng_step2 usa `.style("color:var(--muted)")` mientras ng_step3/4 usan `text-gray-400` Tailwind tras la migración de contraste. Uniformizar ng_step2 al mismo patrón. _Prioridad: Baja._
+- [ ] **Labels truncados en los inputs del Paso 4** (`ng_step4.py`) — en la columna izquierda del rediseño 2 columnas, los inputs quedan estrechos junto al botón «Explorar…» y cortan su label flotante («Tu video de grabaci…», «Overlay del HUD (ge…», «Carpeta donde guardar el v…»). Ensanchar el input o bajar el botón debajo. Cosmético, destapado en la 2ª ronda de Mariana (`qa_runs/mariana-20260705-r2/11_step4_compose_default.png`). _Prioridad: Baja._
+- [ ] **El job de render del Paso 3 vive en variable local, no en `state`** (`ng_step3.py`) — al navegar fuera durante un render activo se cancela el timer de polling pero el job sigue en background; volver al Paso 3 crea un `job_holder` nuevo y puede arrancar un segundo render concurrente sobre el mismo `outdir` (riesgo de corromper el webm). Fix: guardar el handle en `state.active_overlay_job` y cancelarlo en `_cancel_on_nav`. Pre-existente; destapado por el Reviewer en `feat/pacenotes-ui`. _Prioridad: Media._
 - [ ] **Cobertura de `viz/charts.py` y `viz/report.py`** — 0% pese a ser el output primario del flujo de análisis; deterministas y testeables sin ffmpeg (auditoría 2026-07-03, `qa_runs/2026-07-03-auditoria-integral/fase1-suite.md`). _Prioridad: Alta._
 - [ ] **Pinear la versión de ruff en pyproject** — el CI instala el último de `>=0.15,<1` y ya divergió del local una vez (I001 solo en CI, PR #15). _Prioridad: Media._
 - [ ] **Endurecer los hooks de sesión** — ciegos ante commits durante la sesión, markers seteables sin hacer el trabajo, evidencia de Mariana sin validar relevancia (auditoría, `fase3-hooks.md`). _Prioridad: Media._
