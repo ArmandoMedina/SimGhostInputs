@@ -30,3 +30,4 @@ bifurcación equivocada.
 | [0018](0018-framework-ui-nicegui.md) | Framework de UI v2.0: NiceGUI + nicegui-pack + Inno Setup (enmienda ADR 0010) | Aceptada · enmend. 2026-07-03 | 2026-06-30 |
 | [0019](0019-adopcion-homologacion-starter-v0.5.0.md) | Adopción de la homologación con project-starter v0.5.0: audit en CI, evidencia de QA, no-memorias, recursos (cierra la Fase 4 del 0016) | Aceptada · enmend. 2026-07-03 | 2026-07-01 |
 | [0020](0020-blast-radius-viz-hud-reference-avisa.md) | Blast-radius de `viz`: `hud-reference` AVISA (no BLOQUEA); el gate pregunta si el cambio es visual | Aceptada | 2026-07-03 |
+| [0021](0021-flujo-solo-pacenotes.md) | Flujo "Solo Pace Notes": ruta directa Importar→Análisis→Pace Notes (Paso 0 nuevo flujo) | Aceptada | 2026-07-05 |

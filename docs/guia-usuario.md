@@ -42,6 +42,7 @@ Lista las vueltas con duración y longitud, y marca la más rápida (la que se u
 - **📊 Solo análisis**: reporte, CSVs y gráficas.
 - **🎬 Solo overlay**: HUD transparente para editarlo aparte.
 - **🎥 Video con HUD**: overlay y composición final (flujo por defecto).
+- **🔔 Solo Pace Notes**: importar y analizar, luego generar el pack de audio para CrewChief — salta los pasos de overlay y composición de video. Ruta: Importar (1) → Análisis (2) → Pace Notes (5).
 
 La pantalla inicial muestra los tres insumos del flujo: **referencia**, **piloto** y **salida**. El flujo por defecto aparece pre-seleccionado con un aviso neutro; pulsa «Empezar» para confirmar o elige otro con «Elegir este». Si no tienes una referencia externa, puedes cargar el mismo CSV como referencia y piloto y elegir dos vueltas distintas en el Paso 1 para compararte contra ti mismo.
 
@@ -87,14 +88,22 @@ Después de comparar, puedes convertir las curvas donde más pierdes en un pack 
 
 ### Desde la UI — Paso 5
 
-Si usas `fantasma-ng`, el botón **«🔔 Generar Pace Notes»** al pie del análisis del Paso 2 lleva directamente al **Paso 5**. Desde ahí:
+Se llega al **Paso 5** de dos formas:
+- **Flujo habitual**: el botón **«🔔 Generar Pace Notes»** al pie del análisis del Paso 2.
+- **Flujo "Solo Pace Notes"**: directo desde el Paso 0 eligiendo esa tarjeta; la ruta es Importar (1) → Análisis (2) → Pace Notes (5), saltando overlay y compose.
+
+El Paso 5 tiene **dos paneles independientes**:
+
+**① Generar pack nuevo** (panel izquierdo): requiere haber corrido el Análisis (Paso 2). Si el análisis no está disponible, este panel muestra un aviso con botón de vuelta al Paso 2.
 
 1. Elige el **modo**: _Tonos (rápido)_ (sin dependencias extra), _Voz_ (requiere edge-tts) o _Ambos_.
 2. Ajusta **Top N curvas** (cuántas cubrir), **volumen** y — en modo voz — el **idioma**.
 3. El **directorio de salida** se pre-rellena automáticamente con la ruta de CrewChief detectada para el circuito. Si no se detecta, escribe el nombre exacto que CrewChief/AMS2 espera o usa «Explorar…» para navegar.
 4. Pulsa **«Generar Pace Notes»**: un spinner indica el progreso; al terminar verás cuántas entradas se generaron y el sidebar marca el Paso 5 como completado (✅).
 
-**Aplicar sonido a un video existente** (segundo panel del Paso 5, a la derecha): si ya tienes el video compuesto y solo quieres añadirle el audio del pack, este panel lo hace sin re-encodear el video (ffmpeg `-c:v copy`). Requiere la vuelta del piloto cargada (Paso 1) para sincronizar los cues; el botón «Aplicar sonido» se habilita cuando están el video, la carpeta del pack y la vuelta del piloto.
+**② Aplicar sonido a un video existente** (panel derecho): siempre visible, sin importar si hay análisis disponible. Si ya tienes el video compuesto (por el flujo habitual u otro programa) y quieres añadirle el audio del pack, este panel lo hace sin re-encodear el video (ffmpeg `-c:v copy`). Requiere la vuelta del piloto cargada (Paso 1) para sincronizar los cues; el botón «Aplicar sonido» se habilita cuando están el video, la carpeta del pack y la vuelta del piloto.
+
+> **Restricción de las Pace Notes:** exigen dos vueltas (referencia + piloto) porque priorizan las curvas por tiempo perdido. No se generan de una sola vuelta ni directamente desde un video.
 
 Activa las Pace Notes dentro de CrewChief antes de salir a pista.
 

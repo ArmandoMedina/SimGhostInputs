@@ -4,6 +4,10 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/). Versionado
 
 ## [Unreleased]
 
+### Añadido
+- **Flujo "Solo Pace Notes"** ([ADR 0021](docs/decisions/0021-flujo-solo-pacenotes.md)): nueva tarjeta en el Paso 0 que enruta directamente Importar(1)→Análisis(2)→Pace Notes(5), saltando overlay y compose. Para el caso de uso "tengo un video con overlay hecho y solo quiero pace notes". Aditivo: los flujos `analisis`, `overlay` y `compose` no se modifican.
+- **Corrección del guard del Paso 5 y guía contextual**: el panel "Aplicar sonido a video existente" ya no se oculta al acceder al Paso 5 desde el nuevo flujo; se añaden tooltips que explican por qué se necesitan dos vueltas (la derivación de pace notes requiere `time_lost` de `compare()`).
+
 ## [2.1.1] - 2026-07-05
 
 ### Corregido

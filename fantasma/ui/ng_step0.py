@@ -33,6 +33,14 @@ _FLOWS: dict[str, tuple] = {
         ["overlay.webm", "final_composed.mp4", "Pace notes WAVs"],
         True,
     ),
+    "pacenotes": (
+        "🔔",
+        "Solo Pace Notes",
+        "Ya tienes el video; añade los cues de audio para CrewChief",
+        ["CSV referencia", "CSV piloto", "Tu video (opcional)"],
+        ["Pack de pace notes", "Video con audio muxeado"],
+        False,
+    ),
 }
 
 

@@ -27,6 +27,7 @@ async def test_step0_flow_cards_visible(user):
     await user.should_see("Solo an")
     await user.should_see("Solo overlay")
     await user.should_see("Video con HUD")
+    await user.should_see("Solo Pace Notes")
 
 
 @pytest.mark.asyncio

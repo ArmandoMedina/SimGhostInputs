@@ -39,7 +39,7 @@ Usuario (piloto o ingeniero de datos) que abre la app con `fantasma-ng` (NiceGUI
 - Dado que el usuario pulsa «🔄 Nueva sesión» en el sidebar, cuando se procesa la acción, entonces el AppState se limpia y la app vuelve al paso 0.
 
 ### Interfaz NiceGUI (`fantasma-ng`, v2.0)
-- Dado que el usuario abre la interfaz NiceGUI (`fantasma-ng`), cuando la app carga (`main_page` en `/`), entonces se muestra el selector de flujo (Paso 0) con las tres opciones disponibles («Solo análisis», «Solo overlay», «Video con HUD»).
+- Dado que el usuario abre la interfaz NiceGUI (`fantasma-ng`), cuando la app carga (`main_page` en `/`), entonces se muestra el selector de flujo (Paso 0) con las cuatro opciones disponibles («Solo análisis», «Solo overlay», «Video con HUD», «Solo Pace Notes»).
 - Dado que el usuario está en cualquier paso, cuando usa la barra lateral (secciones «Principal» y «Salidas»), entonces puede navegar entre Inicio, Importar, Análisis, Overlay y Video y `navigate()` re-renderiza el contenido sin recargar la página.
 - Dado que el usuario elige un flujo y pulsa «Empezar → Ir a Importar», cuando se procesa la acción, entonces `state.flow_chosen` pasa a True y la app navega al Paso 1.
 - Dado que el estado de sesión vive en `AppState` (`app.storage.user`, sucesor de `st.session_state`), cuando `_step_done(state, i)` evalúa el progreso, entonces se apoya en `flow_chosen`, `ref_lap`, `summary`, `last_overlay` y `last_compose_video`.
@@ -56,7 +56,7 @@ Usuario (piloto o ingeniero de datos) que abre la app con `fantasma-ng` (NiceGUI
 - Front de escritorio custom: **implementado como NiceGUI v2.0** ([ADR 0018](../../docs/decisions/0018-framework-ui-nicegui.md), enmienda al [ADR 0010](../../docs/decisions/0010-framework-ui-streamlit.md)), empaquetado nativo con `native=True`.
 
 ## Verificación
-- `tests/ui/test_ng_step0.py` · `test_step0_hero_visible`, `test_step0_flow_cards_visible`, `test_step0_question_label`, `test_step0_start_button_visible` — Paso 0 muestra el hero, las tres tarjetas de flujo y el botón «Empezar».
+- `tests/ui/test_ng_step0.py` · `test_step0_hero_visible`, `test_step0_flow_cards_visible`, `test_step0_question_label`, `test_step0_start_button_visible` — Paso 0 muestra el hero, las cuatro tarjetas de flujo y el botón «Empezar».
 - `tests/ui/test_ng_step1.py` — Paso 1 (Importar).
 - Cobertura de navegación entre pasos y `_step_done` en NiceGUI — **pendiente**.
 
