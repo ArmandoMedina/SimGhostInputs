@@ -25,6 +25,23 @@ carrera (sin imaginación mental ni técnicas de visualización).
 Script reproducible: `demo_completo.py`; salida en `salida.txt`. Pack en
 `Downloads\0207\_pack_COMPLETO`.
 
+## Iteración 2 — subtítulos (feedback del PO tras escuchar)
+
+Veredicto del PO sobre la iteración 1: **upshifts perfectamente sincronizados** (el
+mecanismo dist→tiempo queda validado a oído); las frenadas confunden — no sabía qué
+significaba el countdown de 3 tics — y "creo que en algunas curvas faltan" (correcto: 16
+cues descartados por gap global + máx. 3 por curva; el detalle vive en `plan.json`).
+
+Solución al "¿qué significa cada sonido?": **subtítulos**. `subtitulos.py` genera un `.srt`
+desde el metadata del pack (mismo mapeo dist→tiempo del mux) con un rótulo por sonido
+("🔔 3-2-1 FRENA en ~3 s — C13", "⬆ subida a 4a — así cambia el rápido"), agrupando sonidos
+a <1 s en un solo rótulo (138 rótulos / 174 sonidos), y lo incrusta como pista `mov_text`
+**sin re-encodear** (`-c copy`): `_DEMO_COMPLETO_SUBS.mp4` (subtítulos apagables en el
+reproductor; el `.srt` suelto queda junto al video para cualquier player).
+
+**Candidata a motor/UI si al PO le funciona:** generar el `.srt` es un subproducto natural
+de `render_pace_notes_track` (ya conoce distancia, tiempo y descripción de cada entry).
+
 ## Nota de interpretación al escucharlo
 
 Los sonidos marcan a la referencia, no al PO: donde su manejo difiere del rápido (que es
