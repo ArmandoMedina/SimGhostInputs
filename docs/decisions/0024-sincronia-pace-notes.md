@@ -1,12 +1,16 @@
 # ADR 0024 — Sincronía de pace notes: anticipación por tiempo, gap global y sidecar video↔vuelta
 
-- **Estado:** Aceptada · enmendada por [ADR 0025](0025-countdown-ancla-en-la-frenada.md) (2026-07-06)
+- **Estado:** Aceptada · enmendada por [ADR 0025](0025-countdown-ancla-en-la-frenada.md) y [ADR 0026](0026-cues-frenada-universal-countdown-oportunista.md) (2026-07-06)
 - **Fecha:** 2026-07-05
 
 > **Enmienda (ADR 0025):** el countdown ya no es un WAV único de 3 tics en el punto de
 > anticipo. El evento se ancla en la FRENADA y se expande en 2 tics de aviso + el tono de
 > frenada exacto en el punto de frenada de la referencia ("el 3 es el ya"). El cálculo del
 > anticipo por tiempo (punto 3 de este ADR) sigue vigente.
+>
+> **Enmienda (ADR 0026):** el gap global por prioridad (punto 2) ya no puede descartar un
+> tono de frenada — la frenada queda protegida y suena universal. El countdown deja de
+> depender de severidad/prioridad y pasa a tics oportunistas por cabida.
 
 ## Contexto
 

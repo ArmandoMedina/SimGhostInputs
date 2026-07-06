@@ -1,7 +1,12 @@
 # ADR 0025 — El último tono del countdown ES el punto de frenada (enmienda al ADR 0024)
 
-- **Estado:** Aceptada
+- **Estado:** Aceptada · enmendada por [ADR 0026](0026-cues-frenada-universal-countdown-oportunista.md) (2026-07-06)
 - **Fecha:** 2026-07-06
+
+> **Enmienda (ADR 0026):** el countdown deja de ser un evento único anclado; pasa a 2 tics
+> oportunistas (`brake_tic`) que entran solo donde caben contra TODA la timeline, y el tono
+> de frenada queda protegido (ningún gap lo descarta). "El 3 es el ya" sigue vigente: el 3er
+> sonido es la frenada.
 
 ## Contexto
 
