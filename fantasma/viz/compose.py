@@ -446,6 +446,12 @@ def compose_video(
     # encode. Necesita pace_notes_dir + lap. El .ass se referencia por nombre
     # RELATIVO y ffmpeg corre con cwd en su carpeta (esquiva el escape de 'C:'
     # en Windows). _subs_tmpdir reusa el de pace notes si existe.
+    #
+    # Los tiempos del .ass son relativos al inicio de la vuelta (t=0), que es
+    # como queda el clip en modo recorte (lap_duration). En modo legacy (video
+    # completo, sin recorte) el video NO empieza en la meta, asi que el texto
+    # caeria adelantado por `offset` s; hoy solo la UI expone los subtitulos y
+    # siempre pasa lap_duration cuando hay vuelta, asi que ese modo no se alcanza.
     _subs_tmpdir = None
     _subs_file = None
     _run_cwd = None
