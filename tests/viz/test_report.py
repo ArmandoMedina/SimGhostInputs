@@ -69,8 +69,20 @@ def test_render_markdown_meta_agrega_contexto_y_omite_vacios():
 
 def test_render_markdown_incluye_filas_de_desgaste_cuando_estan_en_ambos():
     s = _summary(
-        ref_wear={"slip_index": 1.0, "abs_count": 2, "tcs_count": 1, "tyre_temp_avg": 80.0, "fuel_used": 3.0},
-        drv_wear={"slip_index": 1.5, "abs_count": 5, "tcs_count": 4, "tyre_temp_avg": 88.0, "fuel_used": 3.4},
+        ref_wear={
+            "slip_index": 1.0,
+            "abs_count": 2,
+            "tcs_count": 1,
+            "tyre_temp_avg": 80.0,
+            "fuel_used": 3.0,
+        },
+        drv_wear={
+            "slip_index": 1.5,
+            "abs_count": 5,
+            "tcs_count": 4,
+            "tyre_temp_avg": 88.0,
+            "fuel_used": 3.4,
+        },
     )
     md = render_markdown([], [], s)
     assert "Índice de deslizamiento" in md
