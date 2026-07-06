@@ -319,14 +319,69 @@ def test_plan_legacy_tiene_mismo_esquema():
 
 def test_countdown_anticipa_por_tiempo_con_v():
     """Con v en el milestone, el anticipo es countdown_s segundos a esa velocidad
-    (216 km/h = 60 m/s -> 3.5 s = 210 m), no los 120 m fijos."""
+    (216 km/h = 60 m/s -> 3.5 s = 210 m), no los 120 m fijos. El evento se ancla
+    en la FRENADA (el ultimo tono es el "¡ya!"; PO 2026-07-06) y lleva el
+    anticipo en lead_m para que build_tone_pack expanda los tics."""
     from fantasma.viz.pacenotes import plan_tone_events
 
     rows = [{"id": "C01", "name": "C01", "time_lost": 0.5, "flags": "frenada"}]
     corners = [{"id": "C01", "name": "C01", "milestones": {"brake_start": {"d": 2000, "v": 216}}}]
     plan = plan_tone_events(rows, corners, top=1, countdown_s=3.5)
     assert plan["events"][0]["cue"] == "brake_countdown"
-    assert plan["events"][0]["distance"] == 1790
+    assert plan["events"][0]["distance"] == 2000
+    assert plan["events"][0]["lead_m"] == 210
+
+
+def test_pack_expande_countdown_y_el_tercer_bip_es_el_ya(tmp_path):
+    """El countdown se expande en WAVs independientes mapeados por SU distancia:
+    tics de aviso a lead_m y lead_m/2 antes, y el "¡ya!" = tono de FRENADA
+    exacto en la distancia donde frena la referencia ("nada de 1,2,3, ya: el 3
+    debe ser el ya", PO 2026-07-06)."""
+    import json
+
+    from fantasma.viz.pacenotes import build_tone_pack
+
+    rows = [{"id": "C01", "name": "C01", "time_lost": 0.5, "flags": "frenada"}]
+    corners = [{"id": "C01", "name": "C01", "milestones": {"brake_start": {"d": 2000, "v": 216}}}]
+    build_tone_pack(rows, corners, str(tmp_path), top=1)
+    entries = json.loads((tmp_path / "metadata.json").read_text(encoding="utf-8"))["entries"]
+    cues = sorted(
+        (e["distanceRoundTrack"], e["description"].split(" — ")[1])
+        for e in entries
+        if "frenada" in e["description"]
+    )
+    assert cues == [
+        (1790, "contador de frenada"),
+        (1895, "contador de frenada"),
+        (2000, "punto de frenada"),
+    ]
+    for d, _ in cues:
+        assert (tmp_path / ("%d_0.wav" % d)).exists()
+
+
+def test_pack_omite_tic_encimado_pero_nunca_el_ya(tmp_path):
+    """Un tic de aviso que caeria a <50 m de un cue de otra curva se omite (en
+    encadenadas queda "2-ya" o solo "ya"), pero el "¡ya!" en la frenada nunca
+    se pierde."""
+    import json
+
+    from fantasma.viz.pacenotes import build_tone_pack
+
+    rows = [
+        {"id": "C01", "name": "C01", "time_lost": 0.5, "flags": "frenada"},
+        {"id": "C00", "name": "C00", "time_lost": 0.5, "flags": ""},
+    ]
+    corners = [
+        {"id": "C01", "name": "C01", "milestones": {"brake_start": {"d": 2000, "v": 216}}},
+        # throttle_on de C00 a 30 m del tic 1 de C01 (1790): el tic se omite
+        {"id": "C00", "name": "C00", "milestones": {"throttle_on": {"d": 1760}}},
+    ]
+    build_tone_pack(rows, corners, str(tmp_path), top=0)
+    entries = json.loads((tmp_path / "metadata.json").read_text(encoding="utf-8"))["entries"]
+    dists = {e["distanceRoundTrack"]: e["description"] for e in entries}
+    assert 1790 not in dists
+    assert "contador de frenada" in dists[1895]
+    assert "punto de frenada" in dists[2000]
 
 
 def test_countdown_lead_clamps_y_fallback():

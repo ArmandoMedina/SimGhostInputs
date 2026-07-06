@@ -12,36 +12,33 @@
 
 ## Estado actual
 
-**En vuelo: el "pedo de los sonidos" (pace notes) — diagnosticado; plan de 3 PRs autorizado
-por el PO (5-jul).** El desync que reportó el PO quedó diagnosticado con datos — evidencia y
-veredicto en `qa_runs/charbel-20260705-desync/notas.md`: la hipótesis de descalibración de
-distancia ref(2025) vs piloto(2020) es FALSA (0.1 % de diferencia; cues a ±1 s del paso
-real). El desync percibido viene de: (a) cues clampados a t=0, (b) sin gap mínimo entre
-curvas → sopa de tonos indistinguibles, (c) anticipación fija 120 m en vez de por tiempo,
-(d) brake y countdown ambos a 880 Hz y sin leyenda en la UI, (e) sin sidecar video↔vuelta
-en el panel ② del Paso 5.
+**El plan de 3 PRs del "pedo de los sonidos" está COMPLETO y mergeado (6-jul):**
+- **PR 1** #25 `fix(viz)` `normalize=0` — cues audibles sobre el motor.
+- **PR 2** #26 `feat(viz)` motor + [ADR 0024](docs/decisions/0024-sincronia-pace-notes.md):
+  anticipación por tiempo (3.5 s, clamp [60, 350] m), gap global, descarte de cues d≤0,
+  brake 1000 Hz, `top=0` = todas las curvas, sidecar `<video>.sync.json`. E2e real en
+  `qa_runs/charbel-20260705-pr2-e2e/`.
+- **PR 3** #27 `feat(ui)` — leyenda de tonos, checkbox "todas las curvas", caption
+  "Falta: …", aviso ✓/⚠ de sidecar, breadcrumbs por flujo, y dos fixes sistémicos de
+  NiceGUI (`navigate()` sin await; `e.value` inexistente en `update:model-value` →
+  reglas en `ux-patterns.md`). Evidencia: `qa_runs/mariana-20260705-paso5/`.
+  Nota git: nació encima de la rama del PR 2 (squash) → hubo que
+  `git rebase --onto origin/master` antes de mergear.
 
-**Plan autorizado (efímero, vive en la sesión — esto es el resumen durable) y su avance (6-jul):**
-- **PR 1** `fix(viz)` `normalize=0`: **MERGEADO** (#25, CI 7/7 verde).
-- **PR 2** `feat(viz)` motor (rama `feat/pacenotes-sync`, commits `f559230`+`2f5513c`):
-  descartar cues d≤0 **con fallback a tono de frenada plano**, gap global entre curvas
-  (plan.json reconciliado: selected == WAVs reales), anticipación por tiempo
-  (`countdown_s=3.5` = `DEFAULT_COUNTDOWN_S`, clamp [60, 350] m), `top=0` = todas las curvas
-  (también en CLI), brake a 1000 Hz, sidecar `<video>.sync.json` (valida laptime ± 0.1 s +
-  identidad del CSV vía `sync_sidecar_mismatch`, fuente única; borra sidecars huérfanos;
-  rechaza formatos futuros) + ADR 0024 + tests + e2e real (`_DEMO_FIXED.mp4`: 101 cues,
-  anticipo mediano 3.60 s, evidencia `qa_runs/charbel-20260705-pr2-e2e/`). Reviewer corrido
-  (7 ángulos) y hallazgos atendidos. **Falta: push + PR + merge.**
-- **PR 3** `feat(ui)` (rama `feat/pacenotes-ui-paso5`, encimada en la del PR 2): leyenda de
-  tonos derivada del motor, checkbox "todas las curvas", caption "Falta: …", aviso ✓/⚠ de
-  sidecar, breadcrumbs por flujo (respetan `flow_chosen`), y DOS bugs sistémicos destapados
-  por el Reviewer/captura: `navigate()` sin await (el botón "Generar Pace Notes" del Paso 2
-  NO navegaba — el "no llego a pace notes" del PO) y `e.value` inexistente en handlers
-  `update:model-value` (volumen/offset/selects rotos de origen) — todos corregidos, reglas
-  en `ux-patterns.md`. **Falta: evidencia de Mariana (captura Playwright), commit final,
-  push + PR + merge.**
-- **Fuera de alcance** (ROADMAP): lógica fault-matched, plan de voz (anticipo 200 m fijo +
-  sin gap), limiter/ducking, `_STEPS` vs labels del breadcrumb.
+**Validación del PO (en curso):** sincronía confirmada A OÍDO ("los cambios de marcha se
+escuchan perfectamente sincronizados") sobre la **cinta de estudio**
+`C:\Users\amedina\Downloads\0207\_DEMO_COMPLETO_SUBS.mp4` — su video + 174 sonidos TODOS
+de la referencia (101 cues coaching + 73 upshifts a 1500 Hz) + subtítulos por sonido
+(`.srt` incrustado mov_text, apagable). Scripts reproducibles en
+`qa_runs/charbel-20260706-cinta-estudio/`. **Regla de producto (ROADMAP): los cues salen
+SIEMPRE de la referencia; la vuelta del piloto solo mapea dist→tiempo al video.**
+Veredicto del PO sobre los subtítulos: "están chingones… ya vi los problemas" (plural).
+**Problema 1 (ATENDIDO, [ADR 0025](docs/decisions/0025-countdown-ancla-en-la-frenada.md)):**
+"metro 4463 salen los 3 bips y no hay ni cerca ninguna frenada… el 3 debe ser el ya" —
+el countdown ahora se ancla en la frenada: 2 tics de aviso + el tono de frenada exacto
+donde frena la referencia (verificado en C13: tics 4408/4545, "¡ya!" en 4682). Cinta
+regenerada (`_DEMO_COMPLETO_SUBS.mp4`, 203 sonidos, 161 rótulos) — **pendiente su oído**.
+**El resto de la lista de problemas sigue pendiente de recibir.**
 
 Contexto previo: `master` en **v2.2.0** con tres tandas mergeadas hoy:
 1. **Flujo "Solo Pace Notes"** (#21) + release **v2.2.0** (#22, con `Setup.exe` + zip portable adjuntos).
@@ -51,16 +48,16 @@ Contexto previo: `master` en **v2.2.0** con tres tandas mergeadas hoy:
 > **Pendiente fuera del repo:** la skill global `release-helper` (paso 2) aún dice "bump `pyproject.toml`";
 > con la #24 el bump va a `fantasma/__init__.py`. Actualizarla cuando el PO lo autorice.
 >
-> Cambio local sin commitear (esta limpieza del HANDOFF): `master` exige PR — lo recoge el próximo PR.
+> Cambio local sin commitear (esta actualización del HANDOFF): `master` exige PR — lo recoge el próximo PR.
 
 ## Siguiente acción
 
-1. Captura de Mariana del Paso 5 (`qa_runs/mariana-20260705-paso5/capture.py` — correrla
-   SIN pytest de UI en paralelo: ambos usan el puerto 8765).
-2. Push + PR + merge de `feat/pacenotes-sync` (PR 2) y luego `feat/pacenotes-ui-paso5`
-   (PR 3, rebasar sobre master tras mergear el 2).
-3. El PO escucha `C:\Users\amedina\Downloads\0207\_DEMO_FIXED.mp4` (countdown 3.5 s,
-   frenada 1000 Hz, sin sopa) — su oído es el tilde final del ADR 0024.
+1. **Recibir del PO el resto de los problemas** que vio en la cinta de estudio
+   (`_DEMO_COMPLETO_SUBS.mp4` regenerada con el ADR 0025) y su veredicto de oído sobre el
+   countdown nuevo — probable ajuste de `min_gap_m`/máx por curva ("faltan curvas").
+2. Si la cinta de estudio le funciona: llevar al motor/UI los **upshifts de la
+   referencia** y la **generación del `.srt`** (candidata Alta en ROADMAP; hoy son
+   scripts de qa_runs).
 Si esta sesión murió a medias: verificar contra el código real qué quedó mergeado
 (`git log`, `gh pr list`) y retomar aquí.
 

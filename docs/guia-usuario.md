@@ -98,7 +98,7 @@ El Paso 5 tiene **dos paneles independientes**:
 
 1. Elige el **modo**: _Tonos (rápido)_ (sin dependencias extra), _Voz_ (requiere edge-tts) o _Ambos_.
 2. Ajusta **Top N curvas** (cuántas cubrir), o marca **«Todas las curvas»** para cubrir cada curva detectada — también donde no pierdes tiempo (la frenada suena como marca de ritmo, estilo rally). Ajusta **volumen** y — en modo voz — el **idioma**.
-3. La **leyenda de tonos** (panel plegable) explica qué significa cada bip y su frecuencia. Importante: los tonos marcan los puntos de la vuelta de **referencia** — si un tono no coincide con lo que haces, ese desfase es el consejo, no un error de sincronía. El countdown de frenada suena ~3.5 s antes del punto de frenada de la referencia, a tu velocidad de llegada.
+3. La **leyenda de tonos** (panel plegable) explica qué significa cada bip y su frecuencia. Importante: los tonos marcan los puntos de la vuelta de **referencia** — si un tono no coincide con lo que haces, ese desfase es el consejo, no un error de sincronía. El countdown de frenada son 2 tics de aviso que arrancan ~3.5 s antes (a tu velocidad de llegada) y culminan en el **tono de frenada, exacto donde frena la referencia** — el último tono ES el "¡ya!" ([ADR 0025](decisions/0025-countdown-ancla-en-la-frenada.md)).
 4. El **directorio de salida** se pre-rellena automáticamente con la ruta de CrewChief detectada para el circuito. Si no se detecta, escribe el nombre exacto que CrewChief/AMS2 espera o usa «Explorar…» para navegar.
 5. Pulsa **«Generar Pace Notes»**: un spinner indica el progreso; al terminar verás cuántas entradas se generaron y el sidebar marca el Paso 5 como completado (✅).
 
@@ -119,7 +119,7 @@ fantasma pacenotes --corners salida/corners_detected.json --compare salida/corne
     --top 5 --mode tones --output-dir "%USERPROFILE%\Documents\CrewChiefV4\pace_notes\ams2\nordschleife"
 ```
 
-El modo `tones` no usa red ni TTS: genera WAVs 24 kHz mono con tonos para los hitos elegidos. Por defecto no suena todo siempre: Fantasma escribe `plan.json` y limita cada curva a pocas señales útiles, con separación mínima entre eventos **también entre curvas encadenadas** (sobrevive la señal de mayor prioridad). En curvas prioritarias usa un countdown ~3.5 s antes de la frenada (calculado a la velocidad de llegada, [ADR 0024](decisions/0024-sincronia-pace-notes.md)); las señales que caerían antes de la meta se descartan. Con `--top 0` cubre todas las curvas detectadas (pace notes de ritmo).
+El modo `tones` no usa red ni TTS: genera WAVs 24 kHz mono con tonos para los hitos elegidos. Por defecto no suena todo siempre: Fantasma escribe `plan.json` y limita cada curva a pocas señales útiles, con separación mínima entre eventos **también entre curvas encadenadas** (sobrevive la señal de mayor prioridad). En curvas prioritarias usa un countdown que arranca ~3.5 s antes de la frenada (calculado a la velocidad de llegada, [ADR 0024](decisions/0024-sincronia-pace-notes.md)) y cuyo último tono es el tono de frenada, exacto en el punto de frenada de la referencia ([ADR 0025](decisions/0025-countdown-ancla-en-la-frenada.md)); las señales que caerían antes de la meta se descartan. Con `--top 0` cubre todas las curvas detectadas (pace notes de ritmo).
 
 Si no pasas `--output-dir`, Fantasma intenta usar el campo `track` del JSON de curvas; si no existe, te pregunta el nombre exacto de pista que CrewChief/AMS2 espera. Para voz contextual instala `pip install "fantasma-inputs[voice]"` y usa `--mode voice` o `--mode both`; requiere ffmpeg para convertir el audio a WAV.
 

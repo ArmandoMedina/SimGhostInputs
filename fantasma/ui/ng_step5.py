@@ -82,9 +82,16 @@ async def render(state, navigate):
                                 # (COUNTDOWN_SCALE, DEFAULT_COUNTDOWN_S): si el
                                 # sintetizador cambia, la leyenda no miente.
                                 _ticks = "-".join(str(round(_base * f)) for f in COUNTDOWN_SCALE)
-                                _sound = "3 tics ascendentes (%s Hz), ~%.1f s antes" % (
-                                    _ticks,
-                                    DEFAULT_COUNTDOWN_S,
+                                _sound = (
+                                    "%d tics de aviso (%s Hz) desde ~%.1f s antes; "
+                                    "el tono de frenada (%d Hz) es el «¡ya!»: suena "
+                                    "exacto donde frena la referencia"
+                                    % (
+                                        len(COUNTDOWN_SCALE),
+                                        _ticks,
+                                        DEFAULT_COUNTDOWN_S,
+                                        DEFAULT_FREQS.get("brake", 1000),
+                                    )
                                 )
                             else:
                                 _sound = "tono corto de %d Hz" % _base
