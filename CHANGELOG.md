@@ -4,6 +4,13 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/). Versionado
 
 ## [Unreleased]
 
+### Corregido
+- **Metro 819: no sonaba el tono de frenada** (`fantasma/viz/pacenotes.py`): el `brake` plano (prioridad 80) lo tiraba el gap global cuando un vecino de mayor prioridad (el tono de ápex o un tic de countdown) caía a menos de `min_gap_m` de distancia — la curva se quedaba sin su marca de frenada. Corregido con un tono de frenada **universal y protegido**: ninguna curva con `brake_start` se queda sin su tono, sin importar qué compita por el gap.
+- **Metro 4463: sonaban 3 bips sin ninguna frenada cerca** (bug del countdown empaquetado del [ADR 0025](docs/decisions/0025-countdown-ancla-en-la-frenada.md)): el chequeo de solape comparaba solo las posiciones finales de los cues, no los tics **entre sí**, así que dos countdowns encadenados amontonaban sus tics en una zona sin frenada real. Corregido: cada tic se chequea contra toda la línea de tiempo, tics de otras curvas incluidos.
+
+### Cambiado
+- **Rediseño del modelo de cues de pace notes** (`fantasma/viz/pacenotes.py`, commit `2f426ae`; [ADR 0026](docs/decisions/0026-cues-frenada-universal-countdown-oportunista.md), enmienda a los ADR 0024 y 0025): el tono de inicio de frenada pasa a ser **universal y protegido** (suena en toda curva con `brake_start`, ningún gap lo descarta — protegido vs protegido se quedan ambos); el countdown de 2 tics de aviso pasa a ser **oportunista por cabida** (se coloca donde quepa contra toda la línea de tiempo, ya no hay gate de severidad por `time_lost`/`braking_issue`); y se **retira el tono de ápex** como cue sonoro (el milestone se conserva intacto en los datos, las notas de voz y el matching de curvas). Suite: 248 passed.
+
 ### Cambiado
 - **El último tono del countdown ES el punto de frenada** ([ADR 0025](docs/decisions/0025-countdown-ancla-en-la-frenada.md), enmienda al 0024): el evento `brake_countdown` se ancla en la frenada con su anticipo como `lead_m`, y el pack lo expande en 2 tics de aviso (660/770 Hz, a `lead_m` y `lead_m/2` antes) más el tono de frenada (1000 Hz) exacto donde frena la referencia — "nada de 1,2,3, ya: el 3 debe ser el ya" (feedback del PO con dato: los 3 bips sonaban en el metro 4463 con la frenada real en 4682). Tics que caen antes de la meta o a <50 m de otro cue se omiten; el tono de frenada nunca se pierde. Leyenda del Paso 5 actualizada; 2 tests nuevos. Evidencia: `qa_runs/charbel-20260706-cinta-estudio/` (iteración 3).
 

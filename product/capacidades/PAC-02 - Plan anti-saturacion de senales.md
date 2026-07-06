@@ -29,20 +29,22 @@ Sistema (paso de planning dentro de `build_pack`, antes de escribir los WAVs).
 - Preview de la mezcla de audio por distancia vía `fantasma compose --pace-notes-dir`.
 
 ## Reglas de negocio
-- No se generan más de `max_events_per_corner` (3 por defecto) eventos por curva; los candidatos sobrantes se descartan con razón `max_events_per_corner`.
-- Dos eventos de la misma curva no pueden quedar a menos de `min_gap_m` metros; el segundo se descarta con razón `too_close_in_corner`.
-- La separación mínima aplica también **entre curvas** (curvas encadenadas): en conflicto sobrevive el evento de mayor prioridad y el otro se descarta con razón `too_close_global` ([ADR 0024](../../docs/decisions/0024-sincronia-pace-notes.md)).
-- Los candidatos se seleccionan por prioridad (frenada y ápex por encima de matices de salida) y luego se ordenan por distancia.
-- En frenadas prioritarias, el evento `brake_countdown` se **ancla en la frenada** y lleva su anticipo como `lead_m` **por tiempo**: `countdown_s` segundos a la velocidad de llegada, acotado a [60, 350] m (ADR 0024). Al generar el pack se expande en 2 tics de aviso (a `lead_m` y `lead_m/2` antes) y el **tono de frenada exacto en el punto de frenada de la referencia** — "el 3 es el ya" ([ADR 0025](../../docs/decisions/0025-countdown-ancla-en-la-frenada.md)). Un tic que caiga en `d ≤ 0` o a < `min_gap_m` de otro cue se omite; el tono de frenada nunca se pierde.
+- No se generan más de `max_events_per_corner` (3 por defecto) eventos **no protegidos** por curva; los candidatos sobrantes se descartan con razón `max_events_per_corner`. El tono de frenada (protegido) no cuenta contra este límite: entra siempre.
+- Dos eventos no protegidos de la misma curva no pueden quedar a menos de `min_gap_m` metros; el segundo se descarta con razón `too_close_in_corner`.
+- **Tono de frenada universal y protegido** ([ADR 0026](../../docs/decisions/0026-cues-frenada-universal-countdown-oportunista.md), enmienda al 0024): toda curva con milestone `brake_start` emite su tono de frenada en el metro exacto, marcado `protected`. Ningún gap lo descarta: en el gap global entre curvas encadenadas, protegido contra no-protegido cae el no-protegido; protegido contra protegido se quedan ambos (dos frenadas reales pegadas suenan las dos). Entre eventos no-protegidos sigue rigiendo la prioridad, y el perdedor se descarta con razón `too_close_global`.
+- Los candidatos no protegidos se seleccionan por prioridad (turn-in, inicio de acelerador, gas completo) y luego se ordenan por distancia. El tono de **ápex** ya no es un cue sonoro (ADR 0026): el milestone se conserva en los datos, en las notas de voz y en el matching de curvas.
+- **Countdown oportunista, por cabida y no por severidad** ([ADR 0026](../../docs/decisions/0026-cues-frenada-universal-countdown-oportunista.md), enmienda al 0025): en cada frenada protegida con `lead_m`, se intentan 2 tics de aviso (`brake_tic`, `step` 0 y 1, en `brake_d - lead_m` y `brake_d - lead_m/2`). Cada tic entra solo si está a `≥ min_gap_m` de **todo** sonido ya en la línea de tiempo — frenadas, cues y tics ya insertados, **incluidos los tics de otras curvas** — recorridos en orden de distancia (greedy). `lead_m` sigue calculándose **por tiempo**: `countdown_s` segundos a la velocidad de llegada, acotado a [60, 350] m (ADR 0024); sin `v`, fallback fijo `countdown_m`. En curvas encadenadas o densas los tics pueden no caber y la curva queda solo con su tono de frenada — no hay gate de severidad (`time_lost`/`braking_issue`) que decida si el countdown aplica.
 - Un evento cuyo anticipo caiga antes de la meta (`d ≤ 0`) se descarta con razón `antes_de_la_meta` — nunca se clampa a 0 (un cue en el segundo 0 del video suena aleatorio).
 
 ## Criterios de aceptación
-- Dado dos hitos muy próximos en la misma curva, cuando se genera el plan, entonces la separación mínima entre eventos garantiza que no se superponen (el segundo queda como `skipped` con razón `too_close_in_corner`).
-- Dado una curva con frenada, ápex y aceleración, cuando se planea, entonces se generan como máximo 3 eventos.
-- Dado una frenada prioritaria, cuando se planea, entonces se emite un evento `brake_countdown` anclado en la frenada con `lead_m`, y el pack lo expande en tics de aviso más el tono de frenada exacto en el punto de frenada.
-- Dado dos curvas encadenadas con eventos a menos de `min_gap_m`, cuando se planea, entonces solo suena el de mayor prioridad y el otro queda en `skipped_global` con razón `too_close_global`.
+- Dado dos hitos no protegidos muy próximos en la misma curva, cuando se genera el plan, entonces la separación mínima entre eventos garantiza que no se superponen (el segundo queda como `skipped` con razón `too_close_in_corner`).
+- Dado una curva con frenada, turn-in y aceleración, cuando se planea, entonces se generan como máximo 3 eventos no protegidos (el tono de frenada protegido se suma siempre, sin contar contra el límite).
+- Dado una curva con milestone `brake_start`, cuando se planea, entonces se emite su tono de frenada protegido en el metro exacto, y ningún gap (ni con un vecino de mayor prioridad) lo descarta.
+- Dado dos frenadas protegidas pegadas a menos de `min_gap_m`, cuando se planea, entonces **ambas** suenan.
+- Dado dos curvas encadenadas con un evento protegido y uno no protegido a menos de `min_gap_m`, cuando se planea, entonces sobrevive el protegido y el no protegido queda en `skipped_global` con razón `too_close_global`.
 - Dado un hito de frenada con velocidad `v`, cuando se planea el countdown, entonces el anticipo (`lead_m`) equivale a `countdown_s` segundos a esa velocidad (acotado a [60, 350] m); sin `v`, se usa el fallback fijo `countdown_m`.
-- Dado un countdown cuyo tic de aviso caiga a menos de `min_gap_m` de otro cue (o en `d ≤ 0`), cuando se genera el pack, entonces ese tic se omite pero el tono de frenada del countdown se genera siempre.
+- Dado un tic de countdown (`brake_tic`) que caiga a menos de `min_gap_m` de cualquier sonido ya en la línea de tiempo (tics de otras curvas incluidos) o en `d ≤ 0`, cuando se genera el pack, entonces ese tic se omite pero el tono de frenada nunca se pierde.
+- Dado dos countdowns de curvas encadenadas, cuando se planea, entonces sus tics no se amontonan (cada uno respeta `min_gap_m` contra los tics ya colocados de la otra curva).
 - Dado una curva pegada a la meta cuyo anticipo caiga en `d ≤ 0`, cuando se planea, entonces el evento se descarta con razón `antes_de_la_meta` y ningún evento del plan queda en `d ≤ 0`.
 - Dado `top=0`, cuando se planea, entonces se incluyen todas las curvas detectadas (también donde no se pierde tiempo).
 
@@ -53,8 +55,8 @@ Sistema (paso de planning dentro de `build_pack`, antes de escribir los WAVs).
 - La generación de los WAV y el `metadata.json` en sí (es [[PAC-01 - Generar pack de pace notes CrewChief]]).
 
 ## Verificación
-- Cubierta por `tests/viz/test_pacenotes.py` (`test_plan_tone_events_limits_dense_corner`, `test_plan_gap_global_entre_curvas_gana_prioridad`, `test_countdown_anticipa_por_tiempo_con_v`, `test_plan_descarta_cue_antes_de_la_meta`, `test_top_cero_incluye_curvas_sin_perdida`, `test_pack_expande_countdown_y_el_tercer_bip_es_el_ya`, `test_pack_omite_tic_encimado_pero_nunca_el_ya`).
-- E2E con datos reales: `qa_runs/charbel-20260705-pr2-e2e/` (55 curvas, 101 cues, anticipo mediano 3.60 s).
+- Cubierta por `tests/viz/test_pacenotes.py` (`test_plan_tone_events_limits_dense_corner`, `test_frenada_protegida_sobrevive_vecino_de_mayor_prioridad`, `test_dos_frenadas_pegadas_ambas_suenan`, `test_dos_countdowns_encadenados_no_amontonan_tics`, `test_countdown_antes_de_la_meta_omite_tic_pero_conserva_la_frenada`, `test_countdown_anticipa_por_tiempo_con_v`, `test_countdown_lead_clamps_y_fallback`, `test_top_cero_incluye_curvas_sin_perdida`, `test_brake_y_countdown_frecuencias_distintas`, `test_plan_legacy_tiene_mismo_esquema`). Suite completa: 248 passed.
+- E2E con datos reales: `qa_runs/charbel-20260705-pr2-e2e/` (55 curvas, 101 cues, anticipo mediano 3.60 s) — anterior al rediseño del ADR 0026; pendiente e2e con la cinta regenerada (ver HANDOFF).
 
 ## Relacionado con
 - [[Coaching de voz]]

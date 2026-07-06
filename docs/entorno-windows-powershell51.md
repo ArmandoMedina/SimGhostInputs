@@ -35,6 +35,28 @@ estado: vigente
 | heredoc bash `<<'EOF'` | here-string `@'...'@` (cierre en columna 0) |
 | `2>&1` en exes nativos | no redirijas: envuelve stderr en ErrorRecord y marca `$?` falso con exit 0 |
 
+## Pytest y directorios temporales corruptos (la trampa #3)
+
+- Si `pytest` falla con `PermissionError [WinError 5]` (acceso denegado) al crear/borrar
+  algo dentro de `%TEMP%\pytest-of-<usuario>`: es un directorio corrupto que dejó una
+  corrida anterior (proceso muerto a medias, antivirus, OneDrive bloqueando el handle).
+  No es un bug del cambio que estás probando.
+  - **Con permisos de administrador** — toma posesión y borra:
+    ```powershell
+    takeown /F "$env:TEMP\pytest-of-$env:USERNAME" /R /D Y
+    icacls "$env:TEMP\pytest-of-$env:USERNAME" /grant "$($env:USERNAME):F" /T
+    Remove-Item -Recurse -Force "$env:TEMP\pytest-of-$env:USERNAME"
+    ```
+  - **Sin permisos de administrador** — redirige pytest a un directorio limpio propio en
+    vez de pelear con el corrupto:
+    ```powershell
+    setx PYTEST_DEBUG_TEMPROOT "C:\Users\<usuario>\AppData\Local\Temp\pytest-root"
+    ```
+    (o, para que aplique en la sesión actual sin reabrir la terminal:
+    `[Environment]::SetEnvironmentVariable('PYTEST_DEBUG_TEMPROOT', 'C:\Users\<usuario>\AppData\Local\Temp\pytest-root', 'User')`
+    seguido de `$env:PYTEST_DEBUG_TEMPROOT = 'C:\Users\<usuario>\AppData\Local\Temp\pytest-root'`
+    en la terminal activa).
+
 ## Git y sandbox
 
 - Rutas con espacios (p. ej. `C:\Repositorio personal\...`) siempre entre comillas; para exes con path con espacios usa el call operator `& "C:\ruta con espacios\app.exe"`.

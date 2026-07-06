@@ -134,6 +134,12 @@ La UI principal de v2.0 migró de Streamlit a **NiceGUI** ([ADR 0018](decisions/
 
 Historial de decisiones de UX que alteraron el layout o el flujo de la UI — para que el baseline visual tenga contexto al regenerarse.
 
+### feat/cues-frenada-universal (Unreleased)
+
+**Leyenda de tonos del Paso 5 — el tono de ápex desaparece solo, sin tocar la UI:**
+- La leyenda (patrón ya documentado más abajo en "feat/pacenotes-ui-paso5") se deriva de `PLAN_CUES`/`DEFAULT_FREQS`; al retirarse `apex` de `PLAN_CUES` como cue sonoro ([ADR 0026](decisions/0026-cues-frenada-universal-countdown-oportunista.md)) la leyenda deja de listarlo sin cambiar una línea de `ng_step5.py` — el DRY de esa tabla paga solo.
+- El resto del rediseño (tono de frenada universal y protegido, countdown oportunista por cabida) vive entero en el motor (`fantasma/viz/pacenotes.py`); no hay cambio de layout ni de componentes en el Paso 5. Ver el ADR para el porqué.
+
 ### feat/flujo-solo-pacenotes (Unreleased)
 
 **Nuevo flujo "Solo Pace Notes" — 4ª tarjeta en el Paso 0:**
