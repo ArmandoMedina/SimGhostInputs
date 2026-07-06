@@ -154,7 +154,9 @@ def test_pacenotes_cli_genera_pack(tmp_path):
     )
     cmd_pacenotes(args)
     assert (out / "metadata.json").exists()
-    assert len(list(out.glob("*.wav"))) == 3
+    # countdown anclado en la frenada (ADR 0025): tics en 1680 y 1740, "ya" en 1800,
+    # gas en 1900; el apex (1847) se descarta por quedar a <50 m del ancla del countdown
+    assert len(list(out.glob("*.wav"))) == 4
 
 
 def test_main_propaga_exit_code_del_subcomando(monkeypatch):

@@ -1,2 +1,2 @@
-﻿srt: 138 rotulos (174 sonidos) -> C:\Users\amedina\Downloads\0207\_DEMO_COMPLETO.srt
+srt: 161 rotulos (203 sonidos) -> C:\Users\amedina\Downloads\0207\_DEMO_COMPLETO.srt
 video con subtitulos: C:\Users\amedina\Downloads\0207\_DEMO_COMPLETO_SUBS.mp4

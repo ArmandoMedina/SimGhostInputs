@@ -42,6 +42,30 @@ reproductor; el `.srt` suelto queda junto al video para cualquier player).
 **Candidata a motor/UI si al PO le funciona:** generar el `.srt` es un subproducto natural
 de `render_pace_notes_track` (ya conoce distancia, tiempo y descripción de cada entry).
 
+## Iteración 3 — "el 3 debe ser el ya" (feedback del PO en el metro 4463)
+
+Reporte del PO viendo la cinta: "metro 4463 salen los 3 bips de frenada y no hay ni cerca
+ninguna frenada […] el 3er bip tiene que coincidir siempre con el inicio de la frenada,
+nada de 1,2,3, ya; el 3 debe ser el ya". Diagnóstico con datos: era el countdown de C13
+sonando completo en 4408 (los 3 tics en un solo WAV, 274 m antes) con la frenada real de
+la referencia en **4682** (282 km/h) — diseño viejo correcto según ADR 0024, pero confuso:
+tras el tercer tic venían ~3.5 s de silencio y nada marcaba la frenada.
+
+**Rediseño (rama `feat/countdown-el-3-es-el-ya`):** el evento `brake_countdown` se ancla
+en la FRENADA y lleva `lead_m`; `build_tone_pack` lo expande en WAVs independientes:
+2 tics de aviso (660/770 Hz) a `lead_m` y `lead_m/2` antes, y el "¡ya!" es el **tono de
+frenada (1000 Hz)** exacto donde frena la referencia. Tics que caen a <50 m de otro cue o
+en d≤0 se omiten; el "¡ya!" nunca se pierde.
+
+Cinta regenerada (203 sonidos = 130 coaching + 73 upshifts; el conteo sube porque cada
+countdown ahora son hasta 3 WAVs). Verificado en el metadata: C13 tics en 4408 y 4545,
+"punto de frenada" exacto en **4682**; en C14 los 2 tics se omitieron por encimarse con
+los cues de C13 pero su "¡ya!" está en 4850. Rótulos: 161 (`_DEMO_COMPLETO_SUBS.mp4`
+regenerado).
+
+**Pendiente:** el PO dijo "ya vi los problemas" (plural) — solo ha reportado este; falta
+recibir el resto de la lista.
+
 ## Nota de interpretación al escucharlo
 
 Los sonidos marcan a la referencia, no al PO: donde su manejo difiere del rápido (que es
