@@ -267,17 +267,20 @@ def test_run_async_in_thread_safe_inside_running_loop():
 # ── Plan de cues: sincronia percibida (ADR 0024) ──────────────────────────────
 
 
-def test_plan_descarta_cue_antes_de_la_meta():
-    """Un anticipo que cae en d<=0 se descarta (no se clampa a 0): un cue en el
-    segundo 0 del video suena aleatorio (curvas pegadas a la meta, QA 2026-07-05)."""
+def test_countdown_antes_de_la_meta_cae_a_brake_plano():
+    """Si el anticipo del countdown caeria en d<=0 (curva pegada a la meta), la
+    curva NO se queda muda ni suena en el segundo 0: cae al tono de frenada
+    plano en el punto real de frenada (Reviewer sobre ADR 0024)."""
     from fantasma.viz.pacenotes import plan_tone_events
 
     rows = [{"id": "C01", "name": "C01", "time_lost": 0.5, "flags": "frenada"}]
-    # brake a 100 m sin v -> fallback countdown_m=120 -> el cue caeria en -20 m
+    # brake a 100 m sin v -> fallback countdown_m=120 -> el countdown caeria en -20 m
     corners = [{"id": "C01", "name": "C01", "milestones": {"brake_start": {"d": 100}}}]
     plan = plan_tone_events(rows, corners, top=1)
     assert all(e["distance"] > 0 for e in plan["events"])
-    assert any(s["reason"] == "antes_de_la_meta" for s in plan["corners"][0]["skipped"])
+    brakes = [e for e in plan["events"] if e["cue"] == "brake"]
+    assert brakes and brakes[0]["distance"] == 100
+    assert not any(e["cue"] == "brake_countdown" for e in plan["events"])
 
 
 def test_plan_gap_global_entre_curvas_gana_prioridad():
@@ -299,6 +302,19 @@ def test_plan_gap_global_entre_curvas_gana_prioridad():
     assert any(
         s["reason"] == "too_close_global" and s["distance"] == 1030 for s in plan["skipped_global"]
     )
+    # plan.json reconciliado: el cue descartado globalmente NO queda en el
+    # "selected" de su curva (selected == WAVs generados), sino en su skipped
+    c02 = next(c for c in plan["corners"] if c["id"] == "C02")
+    assert not any(s["distance"] == 1030 for s in c02["selected"])
+    assert any(s["distance"] == 1030 and s["reason"] == "too_close_global" for s in c02["skipped"])
+
+
+def test_plan_legacy_tiene_mismo_esquema():
+    """El plan legacy (smart=False) expone skipped_global vacio: mismo esquema."""
+    from fantasma.viz.pacenotes import _legacy_tone_events
+
+    plan = _legacy_tone_events([], [], 5, ["brake"])
+    assert plan["skipped_global"] == []
 
 
 def test_countdown_anticipa_por_tiempo_con_v():
