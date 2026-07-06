@@ -100,7 +100,7 @@ def _build_corners_table_html(rows):
 
 
 async def render(state, navigate):
-    render_breadcrumb(2, state.flow_key)
+    render_breadcrumb(2, state.flow_key if state.flow_chosen else None)
     ui.label("Paso 2 — Análisis por curva").classes("step-header")
 
     if state.ref_lap is None:
@@ -289,7 +289,8 @@ async def render(state, navigate):
                     corner_sel = ui.select(
                         options=_labels, value=_labels[0], label="Curva a atacar"
                     ).classes("w-full mb-2")
-                    corner_sel.on("update:model-value", lambda e: _show_corner(e.value))
+                    # on_value_change: el evento crudo no trae .value (Reviewer)
+                    corner_sel.on_value_change(lambda e: _show_corner(e.value))
                     _show_corner(_labels[0])
 
                 # Gráficas de curvas
@@ -350,8 +351,10 @@ async def render(state, navigate):
                         ui.image(full[0]).classes("rounded w-full")
 
             # Panel Pace Notes
-            def go_to_pacenotes():
-                navigate(5)
+            async def go_to_pacenotes():
+                # navigate es async: sin await el coroutine muere sin navegar y
+                # el boton no hace NADA (reporte del PO en el exe, QA 2026-07-05).
+                await navigate(5)
 
             with ui.element("div").classes("panel"):
                 ui.html(

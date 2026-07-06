@@ -207,7 +207,18 @@ Historial de decisiones de UX que alteraron el layout o el flujo de la UI — pa
 
 **Aviso de sidecar video↔vuelta (Paso 5, panel ②):**
 - Al elegir video, si existe `<video>.sync.json` (ADR 0024) se coteja contra `state.drv_lap`: ✓ verde si corresponde, ⚠ amarillo con instrucción ("carga esa vuelta en el Paso 1") si no. El error del mux ya no es la primera noticia.
+- El criterio de comparación vive en `compose.sync_sidecar_mismatch` (fuente única): la UI solo formatea, así el aviso y el rechazo real del mux no pueden contradecirse.
 - Heurística cubierta: **Prevención de errores** (§1.3), en su forma fuerte: avisar antes de que el usuario apriete el botón que va a fallar.
+
+**REGLA — valores de eventos en NiceGUI 3.x (bug sistémico corregido en este PR):**
+- Los handlers registrados con `.on("update:model-value", handler)` reciben `GenericEventArguments`, que **NO tiene `.value`** (dataclass con `sender/client/args`): todo handler que leía `e.value` moría con AttributeError silencioso (el volumen del Paso 5, el offset del Paso 4, el selector de curva del Paso 2, el mapeo de columnas del Paso 1, el formato del Paso 3 y la visibilidad del panel de pace notes del Paso 4 estaban rotos de origen).
+- Peor aún: incluso los handlers `lambda _: refresh()` sobre ese evento van **una acción atrás**, porque el evento DOM se despacha ANTES de que NiceGUI asigne `element.value` — el refresh lee el valor anterior (así se comportaba el botón «Aplicar sonido»: habilitado/deshabilitado con un retraso de una edición; lo destapó la captura de Mariana al esperar el aviso del sidecar que "nunca llegaba").
+- **Patrón correcto:** para todo lo que dependa del valor usa `elemento.on_value_change(handler)` (recibe `ValueChangeEventArguments` con `.value` ya asignado al elemento) o binding declarativo (`bind_enabled_from`, `bind_visibility_from`). `.on("update:model-value", ...)` queda solo para eventos que NO leen valores (ni siquiera indirectamente).
+- **Corolario:** `set_value()` programático (botones "Explorar…") no pasa por el DOM — sí dispara `on_value_change`, pero cualquier refresh manual extra tras `set_value` es inofensivo.
+
+**REGLA — `navigate` es async; no lo llames desde un `def` sin await:**
+- `on_click=lambda: navigate(N)` funciona (NiceGUI aguarda el coroutine retornado), pero `def handler(): navigate(N)` **descarta el coroutine y no navega** — así estaba roto el botón "🔔 Generar Pace Notes" del Paso 2 (el reporte "no logré llegar a pace notes" del PO) y "Procesar otra vuelta" del Paso 4.
+- **Patrón correcto:** si el handler hace algo más que navegar, decláralo `async def` y `await navigate(N)`.
 
 ### Unreleased
 

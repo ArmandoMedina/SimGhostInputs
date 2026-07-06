@@ -1,0 +1,24 @@
+[07:49:47] vuelta rapida del CSV piloto: 394.05 s
+[07:49:47] Arrancando NiceGUI headless...
+[07:49:47] Servidor listo.
+[07:49:49] Paso 0: elegir Solo Pace Notes
+[07:49:51]   screenshot -> 01_step0_pacenotes_elegido.png
+[07:49:51] Paso 1: breadcrumb del flujo pacenotes (sin Overlay ni Video)
+[07:49:52]   screenshot -> 02_step1_breadcrumb_4pasos.png
+[07:49:52] Paso 1: subir referencia y piloto
+[07:50:06]   screenshot -> 03_step1_ambas_cargadas.png
+[07:50:06] Avanzar al Paso 2 (analisis)
+[07:51:57]   screenshot -> 04_step2_breadcrumb_flujo.png
+[07:51:57] Paso 5 via 'Generar Pace Notes'
+[07:51:58]   screenshot -> 05_step5_default_breadcrumb.png
+[07:51:58] Leyenda de tonos (expandir)
+[07:52:00]   screenshot -> 06_step5_leyenda_tonos.png
+[07:52:00] Checkbox Todas las curvas (Top N se deshabilita)
+[07:52:00]   screenshot -> 07_step5_todas_las_curvas.png
+[07:52:00] Caption 'Falta: ...' bajo Aplicar sonido (campos vacios)
+[07:52:01]   screenshot -> 08_step5_apply_caption_falta.png
+[07:52:01] Sidecar que NO corresponde -> aviso amarillo
+[07:52:04]   screenshot -> 09_step5_sidecar_mismatch.png
+[07:52:04] Sidecar que SI corresponde -> verificado en verde
+[07:52:06]   screenshot -> 10_step5_sidecar_ok.png
+[07:52:06] Captura completa.

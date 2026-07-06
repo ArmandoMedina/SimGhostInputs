@@ -1,0 +1,4 @@
+﻿vuelta: 394.05 s
+upshifts detectados: 60
+pack: 60 beeps en C:\Users\amedina\Downloads\0207\_pack_UPSHIFT
+demo: C:\Users\amedina\Downloads\0207\_DEMO_UPSHIFT.mp4

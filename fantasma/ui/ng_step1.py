@@ -32,7 +32,7 @@ async def render(state, navigate):
     _load_label = _load_labels.get(_next_step, "Cargar →")
 
     # ── Breadcrumb bar ──────────────────────────────────────────────────────
-    render_breadcrumb(1, state.flow_key)
+    render_breadcrumb(1, state.flow_key if state.flow_chosen else None)
 
     ui.html(
         '<h1 class="page-heading" style="font-size:1rem;margin-bottom:4px">'
@@ -379,7 +379,8 @@ async def render(state, navigate):
             label="Columnas",
             placeholder="Ejemplo:\n  mi_distancia = dist\n  tiempo_s = time",
         ).classes("w-full")
-        col_map_input.on("update:model-value", lambda e: col_map_state.update({"text": e.value}))
+        # on_value_change: el evento crudo no trae .value (Reviewer)
+        col_map_input.on_value_change(lambda e: col_map_state.update({"text": e.value}))
 
     # ── Bottom actions ────────────────────────────────────────────────────────
     _ref_ok = ref_state["laps"] is not None and len(ref_state["laps"]) > 0
@@ -419,4 +420,4 @@ def _render_lap_selector(container, lap_state, key):
                 except ValueError:
                     pass
 
-            sel_label.on("update:model-value", on_change)
+            sel_label.on_value_change(on_change)

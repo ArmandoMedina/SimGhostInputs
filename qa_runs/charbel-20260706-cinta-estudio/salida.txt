@@ -1,0 +1,5 @@
+﻿ref=378.40 s (fuente de TODOS los sonidos)  drv=394.05 s (solo mapeo al video)
+coaching: 101 cues
+upshifts de la referencia: 73
+pack completo: 174 sonidos (101 coaching + 73 upshifts)
+cinta de estudio: C:\Users\amedina\Downloads\0207\_DEMO_COMPLETO.mp4

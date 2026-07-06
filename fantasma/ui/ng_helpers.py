@@ -210,15 +210,15 @@ def render_breadcrumb(step: int, flow_key=None):
     Muestra solo los pasos del flujo activo (flow_key de _FLOWS): en el flujo
     pacenotes el camino es Inicio › Importar › Análisis › Pace Notes — pintar
     los 6 pasos fijos mandaba al usuario hacia Overlay/Video, que no son parte
-    de su ruta (QA 2026-07-05). Sin flow_key (o desconocido) pinta todos.
+    de su ruta (QA 2026-07-05). Sin flow_key (None = flujo aún no elegido),
+    con clave desconocida, o si el paso actual no pertenece al flujo
+    (navegación manual), pinta los 6.
     """
     from nicegui import ui
 
     _STEP_LABELS = ["Inicio", "Importar", "Análisis", "Overlay", "Video", "Pace Notes"]
-    flow = _FLOWS.get(flow_key) if flow_key else None
-    visible = flow["steps"] if flow else list(range(len(_STEP_LABELS)))
-    if step not in visible:
-        visible = list(range(len(_STEP_LABELS)))
+    flow = _FLOWS.get(flow_key)
+    visible = flow["steps"] if flow and step in flow["steps"] else range(len(_STEP_LABELS))
     html = (
         '<div style="display:flex;align-items:center;gap:6px;'
         'padding:8px 0 16px;font-size:0.85rem;flex-wrap:wrap">'

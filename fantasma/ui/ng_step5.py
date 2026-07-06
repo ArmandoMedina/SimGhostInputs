@@ -4,11 +4,11 @@ import os
 
 from nicegui import run, ui
 
-from .ng_helpers import render_breadcrumb
+from .ng_helpers import _fmt_lap, render_breadcrumb
 
 
 async def render(state, navigate):
-    render_breadcrumb(5, state.flow_key)
+    render_breadcrumb(5, state.flow_key if state.flow_chosen else None)
     ui.label("Paso 5 — Pace Notes para CrewChief").classes("step-header")
     ui.label(
         "Genera tonos o frases de audio sincronizados con las curvas donde más tiempo pierdes. "
@@ -59,6 +59,8 @@ async def render(state, navigate):
                     )
 
                     from fantasma.viz.pacenotes import (
+                        COUNTDOWN_SCALE,
+                        DEFAULT_COUNTDOWN_S,
                         DEFAULT_FREQS,
                         MILESTONE_LABELS,
                         PLAN_CUES,
@@ -76,10 +78,13 @@ async def render(state, navigate):
                         for _cue in PLAN_CUES:
                             _base = DEFAULT_FREQS.get(_cue, 0)
                             if _cue == "brake_countdown":
-                                _sound = "3 tics ascendentes (%d-%d-%d Hz), ~3.5 s antes" % (
-                                    round(_base * 0.75),
-                                    round(_base * 0.875),
-                                    _base,
+                                # frecuencias y anticipo derivados del motor
+                                # (COUNTDOWN_SCALE, DEFAULT_COUNTDOWN_S): si el
+                                # sintetizador cambia, la leyenda no miente.
+                                _ticks = "-".join(str(round(_base * f)) for f in COUNTDOWN_SCALE)
+                                _sound = "3 tics ascendentes (%s Hz), ~%.1f s antes" % (
+                                    _ticks,
+                                    DEFAULT_COUNTDOWN_S,
                                 )
                             else:
                                 _sound = "tono corto de %d Hz" % _base
@@ -118,13 +123,10 @@ async def render(state, navigate):
                         .tooltip("Cuántas curvas cubrir, de la que más tiempo pierdes hacia abajo.")
                     )
 
-                    def _on_all_corners(e):
-                        if e.value:
-                            top_number.disable()
-                        else:
-                            top_number.enable()
-
-                    all_corners_chk.on("update:model-value", _on_all_corners)
+                    # Binding declarativo: sin handler manual (e.value no existe
+                    # en GenericEventArguments de NiceGUI 3.14 — Reviewer) y sin
+                    # estado que se desincronice si el checkbox se setea por codigo.
+                    top_number.bind_enabled_from(all_corners_chk, "value", backward=lambda v: not v)
 
                     ui.label("Volumen").classes("text-sm font-bold text-white mb-1 mt-3")
                     vol_state = {"value": 0.8}
@@ -136,10 +138,14 @@ async def render(state, navigate):
                     )
 
                     def _on_vol(e):
+                        # on_value_change (ValueChangeEventArguments SI trae
+                        # .value); el .on("update:model-value") previo recibia
+                        # GenericEventArguments sin .value y moria en silencio,
+                        # dejando el volumen clavado en el default (Reviewer).
                         vol_state["value"] = e.value or 0.8
                         vol_label.set_text("%.2f" % (e.value or 0.8))
 
-                    vol_slider.on("update:model-value", _on_vol)
+                    vol_slider.on_value_change(_on_vol)
 
                     _lang_state = {"value": "es-MX"}
 
@@ -156,9 +162,8 @@ async def render(state, navigate):
                             .tooltip("Idioma de la voz sintetizada (solo modos Voz y Ambos).")
                         )
 
-                    lang_select.on(
-                        "update:model-value",
-                        lambda e: _lang_state.update({"value": e.value or "es-MX"}),
+                    lang_select.on_value_change(
+                        lambda e: _lang_state.update({"value": e.value or "es-MX"})
                     )
 
                     lang_container.set_visibility(False)
@@ -166,7 +171,7 @@ async def render(state, navigate):
                     def _update_lang_visibility():
                         lang_container.set_visibility(mode_radio.value in ("voice", "both"))
 
-                    mode_radio.on("update:model-value", lambda _: _update_lang_visibility())
+                    mode_radio.on_value_change(lambda _: _update_lang_visibility())
 
                     ui.label("Directorio de salida").classes(
                         "text-sm font-bold text-white mb-1 mt-3"
@@ -309,6 +314,8 @@ async def render(state, navigate):
                             [("Video", "*.mp4 *.webm *.mov"), ("Todos", "*.*")],
                         )
                         if p:
+                            # set_value dispara on_value_change: el refresh del
+                            # boton y del sidecar viene por ahi.
                             mux_video_input.set_value(p)
 
                     ui.button("Explorar...", on_click=pick_mux_video).classes(
@@ -319,31 +326,33 @@ async def render(state, navigate):
 
                 def _update_sidecar_label():
                     """Coteja el sidecar .sync.json del video (ADR 0024) contra la
-                    vuelta cargada, para avisar ANTES de apretar el botón."""
+                    vuelta cargada, para avisar ANTES de apretar el botón. El
+                    criterio vive en compose.sync_sidecar_mismatch — la misma
+                    fuente que usa el mux para negarse, así aviso y rechazo no
+                    pueden contradecirse (Reviewer)."""
                     sidecar_label.set_text("")
                     sidecar_label.classes(remove="text-yellow-400 text-green-500")
                     _v = mux_video_input.value or ""
                     _lap = state.drv_lap
                     if not _v or _lap is None:
                         return
-                    from fantasma.viz.compose import read_sync_sidecar
+                    from fantasma.viz.compose import read_sync_sidecar, sync_sidecar_mismatch
 
-                    _sc = read_sync_sidecar(_v)
-                    if not _sc or _sc.get("laptime") is None:
-                        return
-                    _expected = float(_sc["laptime"])
-                    if abs(_expected - _lap.laptime) > 0.1:
-                        _src = os.path.basename(str(_sc.get("csv_path") or "")) or "csv desconocido"
+                    if read_sync_sidecar(_v) is None:
+                        return  # video externo sin sidecar: nada que cotejar
+                    _mm = sync_sidecar_mismatch(_v, _lap, source_name=state.drv_name)
+                    if _mm is not None:
+                        _src = os.path.basename(str(_mm["csv_path"] or "")) or "csv desconocido"
                         sidecar_label.set_text(
-                            "⚠ Este video se compuso con una vuelta de %.2f s (%s); la vuelta "
-                            "cargada dura %.2f s. El mux se negará: carga esa vuelta en el Paso 1."
-                            % (_expected, _src, _lap.laptime)
+                            "⚠ Este video se compuso con una vuelta de %s (%s); la vuelta "
+                            "cargada dura %s. El mux se negará: carga esa vuelta en el Paso 1."
+                            % (_fmt_lap(_mm["expected"]), _src, _fmt_lap(_mm["actual"]))
                         )
                         sidecar_label.classes(add="text-yellow-400")
                     else:
                         sidecar_label.set_text(
-                            "✓ Video verificado: corresponde a la vuelta cargada (%.2f s)."
-                            % _lap.laptime
+                            "✓ Video verificado: corresponde a la vuelta cargada (%s)."
+                            % _fmt_lap(_lap.laptime)
                         )
                         sidecar_label.classes(add="text-green-500")
 
@@ -398,7 +407,7 @@ async def render(state, navigate):
                     mux_vol_state["value"] = e.value or 1.0
                     mux_vol_label.set_text("%.2f" % (e.value or 1.0))
 
-                mux_vol_slider.on("update:model-value", _on_mux_vol)
+                mux_vol_slider.on_value_change(_on_mux_vol)
 
                 mux_result_area = ui.column().classes("w-full")
 
@@ -441,7 +450,12 @@ async def render(state, navigate):
                         from fantasma.viz.compose import mux_pace_notes_into_video
 
                         return mux_pace_notes_into_video(
-                            _video, _pn_dir, _drv_lap, _out, volume=_vol
+                            _video,
+                            _pn_dir,
+                            _drv_lap,
+                            _out,
+                            volume=_vol,
+                            source_name=state.drv_name,
                         )
 
                     try:
@@ -494,8 +508,17 @@ async def render(state, navigate):
                     else:
                         apply_btn.enable()
                         apply_hint.set_text("")
-                    _update_sidecar_label()
 
-                mux_video_input.on("update:model-value", lambda _: _update_apply_enabled())
-                mux_pn_input.on("update:model-value", lambda _: _update_apply_enabled())
+                # on_value_change y NO .on("update:model-value"): el handler DOM
+                # corre ANTES de que NiceGUI asigne element.value, asi que estos
+                # refreshes leian el valor anterior y todo iba "una accion atras"
+                # (el boton gris fantasma del QA del PO). El sidecar (I/O de
+                # disco) solo se relee cuando cambia el VIDEO, con debounce para
+                # no hacer stat por keystroke (rutas de red congelan el loop).
+                mux_video_input.props("debounce=400")
+                mux_video_input.on_value_change(
+                    lambda _: (_update_apply_enabled(), _update_sidecar_label())
+                )
+                mux_pn_input.on_value_change(lambda _: _update_apply_enabled())
                 _update_apply_enabled()
+                _update_sidecar_label()

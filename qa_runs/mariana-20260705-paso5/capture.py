@@ -171,16 +171,26 @@ def main():
             shot(page, "08_step5_apply_caption_falta.png")
 
             # ---- Sidecar mismatch ----
+            # fill() no dispara los key-events que el debounce de Quasar espera
+            # (el modelo quedaba "una accion atras"): teclear de verdad.
+            def type_into(label, text):
+                box = page.get_by_label(label)
+                box.click()
+                box.clear()
+                box.press_sequentially(text, delay=5)
+                page.keyboard.press("Tab")
+
             log("Sidecar que NO corresponde -> aviso amarillo")
-            page.get_by_label("Video existente (mp4, webm, mov...)").fill(str(mismatch_video))
-            page.get_by_label("Carpeta del pack de Pace Notes").fill(str(RUN_DIR))
-            time.sleep(0.8)
+            type_into("Carpeta del pack de Pace Notes", str(RUN_DIR))
+            type_into("Video existente (mp4, webm, mov...)", str(mismatch_video))
+            # espera determinista del texto del aviso, no un sleep
+            page.wait_for_selector("text=El mux se negará", timeout=20000)
             shot(page, "09_step5_sidecar_mismatch.png")
 
             # ---- Sidecar match ----
             log("Sidecar que SI corresponde -> verificado en verde")
-            page.get_by_label("Video existente (mp4, webm, mov...)").fill(str(match_video))
-            time.sleep(0.8)
+            type_into("Video existente (mp4, webm, mov...)", str(match_video))
+            page.wait_for_selector("text=Video verificado", timeout=20000)
             shot(page, "10_step5_sidecar_ok.png")
 
             log("Captura completa.")

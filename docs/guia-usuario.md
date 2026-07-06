@@ -108,7 +108,7 @@ El Paso 5 tiene **dos paneles independientes**:
 
 > **Restricción de las Pace Notes:** exigen dos vueltas (referencia + piloto) porque priorizan las curvas por tiempo perdido. No se generan de una sola vuelta ni directamente desde un video.
 
-La **barra de pasos** (breadcrumb) muestra solo los pasos de tu flujo: en "Solo Pace Notes" verás Inicio › Importar › Análisis › Pace Notes, sin Overlay ni Video.
+La **barra de pasos** (breadcrumb) muestra solo los pasos de tu flujo: en "Solo Pace Notes" verás Inicio › Importar › Análisis › Pace Notes, sin Overlay ni Video. Antes de elegir un flujo en el Paso 0 (o si navegas a un paso fuera de tu flujo), la barra muestra los 6 pasos completos.
 
 Activa las Pace Notes dentro de CrewChief antes de salir a pista.
 
