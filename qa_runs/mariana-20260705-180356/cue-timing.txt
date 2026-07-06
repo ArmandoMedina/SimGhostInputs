@@ -1,0 +1,12 @@
+  C21 — contador de frenada    d=  7047m -> t= 137.2s (2:17.18)  OK
+  C21 — apex                   d=  7233m -> t= 142.5s (2:22.50)  OK
+  C21 — gas completo           d=  7349m -> t= 146.1s (2:26.12)  OK
+  C30 — contador de frenada    d= 11579m -> t= 223.2s (3:43.20)  OK
+  C30 — apex                   d= 11795m -> t= 228.8s (3:48.80)  OK
+  C30 — gas completo           d= 11907m -> t= 232.9s (3:52.88)  OK
+  C37 — contador de frenada    d= 13331m -> t= 261.8s (4:21.77)  OK
+  C37 — apex                   d= 13504m -> t= 265.5s (4:25.50)  OK
+  C37 — gas completo           d= 13617m -> t= 268.3s (4:28.30)  OK
+  C54 — contador de frenada    d= 20009m -> t= 379.0s (6:19.00)  OK
+  C53 — apex                   d= 20044m -> t= 379.5s (6:19.49)  OK
+  C54 — apex                   d= 20237m -> t= 384.2s (6:24.22)  OK

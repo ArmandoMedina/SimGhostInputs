@@ -188,7 +188,15 @@ def _audio_mix_filter(video_has_audio, vid_stream="0:a", cue_stream="2:a"):
         cue_stream:      Especificador del stream de audio del WAV de cues (default ``2:a``).
     """
     if video_has_audio:
-        return "[%s][%s]amix=inputs=2:duration=first:dropout_transition=0[aout]" % (
+        # normalize=0: amix por defecto divide cada entrada entre el nº de inputs
+        # (mezclar 2 = -6 dB a todo), lo que ENTIERRA los cues bajo el audio del
+        # motor. Con normalize=0 se suman sin atenuar y el motor conserva su nivel;
+        # el volumen del cue ya se controla al renderizar el WAV (parámetro volume).
+        # Requiere ffmpeg >= 4.4 (la opción normalize de amix existe desde ahí).
+        # Al sumar sin normalizar puede clipear en picos motor+tono coincidentes;
+        # aceptable por lo breve del tono (WAV ya viene clippeado a [-1,1]). Si
+        # aparece distorsión audible, bajar `volume` del cue o añadir un alimiter.
+        return "[%s][%s]amix=inputs=2:duration=first:dropout_transition=0:normalize=0[aout]" % (
             vid_stream,
             cue_stream,
         )

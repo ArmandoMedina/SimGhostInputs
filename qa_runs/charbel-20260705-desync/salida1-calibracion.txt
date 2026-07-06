@@ -1,0 +1,66 @@
+﻿vueltas ref=3  drv=11
+REF (2025 MoTeC): laptime=378.40 s  dist=[0.0 .. 20592.0]  largo=20592.0 m  muestras=18921
+DRV (2020 race) : laptime=394.05 s  dist=[0.0 .. 20571.0]  largo=20571.0 m  muestras=7882
+
+largo drv/ref = 0.99898  (diferencia -21.0 m)
+curvas detectadas: ref=55  drv=56
+
+   d_ref      d_drv  delta_m | error de tiempo al mapear d_ref sobre drv
+      77         78        1 | cue suena -0.05 s respecto al paso real
+     359        413       54 | cue suena -0.95 s respecto al paso real
+     863        877       14 | cue suena -0.40 s respecto al paso real
+    1006       1064       58 | cue suena -1.35 s respecto al paso real
+    1149       1165       16 | cue suena -0.48 s respecto al paso real
+    1344       1340       -4 | cue suena +0.12 s respecto al paso real
+    1436       1340      -96 | cue suena +2.73 s respecto al paso real
+    2151       2200       49 | cue suena -0.79 s respecto al paso real
+    2265       2225      -40 | cue suena +0.65 s respecto al paso real
+    3362       3412       50 | cue suena -0.71 s respecto al paso real
+    3426       3412      -14 | cue suena +0.20 s respecto al paso real
+    3708       3679      -29 | cue suena +0.90 s respecto al paso real
+    4801       4836       35 | cue suena -0.63 s respecto al paso real
+    4918       4901      -17 | cue suena +0.43 s respecto al paso real
+    5045       5041       -4 | cue suena +0.20 s respecto al paso real
+    5815       5791      -24 | cue suena +0.43 s respecto al paso real
+    6004       6009        5 | cue suena -0.15 s respecto al paso real
+    6291       6289       -2 | cue suena +0.10 s respecto al paso real
+    6557       6572       15 | cue suena -0.30 s respecto al paso real
+    6843       6801      -42 | cue suena +0.85 s respecto al paso real
+    7233       7223      -10 | cue suena +0.45 s respecto al paso real
+    7741       7706      -35 | cue suena +0.95 s respecto al paso real
+    7926       7926        0 | cue suena +0.00 s respecto al paso real
+    8446       8398      -48 | cue suena +0.73 s respecto al paso real
+    8720       8691      -29 | cue suena +0.85 s respecto al paso real
+   10317      10645      328 | cue suena -4.71 s respecto al paso real
+   10644      10645        1 | cue suena -0.02 s respecto al paso real
+   11077      11073       -4 | cue suena +0.07 s respecto al paso real
+   11362      11382       20 | cue suena -0.75 s respecto al paso real
+   11795      11771      -24 | cue suena +1.00 s respecto al paso real
+   12281      12233      -48 | cue suena +0.78 s respecto al paso real
+   12632      12633        1 | cue suena -0.02 s respecto al paso real
+   12751      12766       15 | cue suena -0.40 s respecto al paso real
+   13106      13142       36 | cue suena -0.63 s respecto al paso real
+   13216      13240       24 | cue suena -0.52 s respecto al paso real
+   13332      13332        0 | cue suena +0.00 s respecto al paso real
+   13504      13508        4 | cue suena -0.10 s respecto al paso real
+   13746      13722      -24 | cue suena +0.62 s respecto al paso real
+   13927      13923       -4 | cue suena +0.10 s respecto al paso real
+   14156      14165        9 | cue suena -0.25 s respecto al paso real
+   14436      14436        0 | cue suena +0.00 s respecto al paso real
+   14753      14705      -48 | cue suena +0.83 s respecto al paso real
+   15013      15094       81 | cue suena -1.62 s respecto al paso real
+   15066      15094       28 | cue suena -0.58 s respecto al paso real
+   15228      15203      -25 | cue suena +0.47 s respecto al paso real
+   15552      15604       52 | cue suena -0.85 s respecto al paso real
+   15814      15748      -66 | cue suena +1.00 s respecto al paso real
+   16264      16294       30 | cue suena -0.58 s respecto al paso real
+   16399      16416       17 | cue suena -0.50 s respecto al paso real
+   16660      16657       -3 | cue suena +0.10 s respecto al paso real
+   17040      17013      -27 | cue suena +0.57 s respecto al paso real
+   17238      17179      -59 | cue suena +1.13 s respecto al paso real
+   20044      20048        4 | cue suena -0.06 s respecto al paso real
+   20237      20233       -4 | cue suena +0.12 s respecto al paso real
+   20391      20371      -20 | cue suena +0.80 s respecto al paso real
+
+ajuste lineal d_drv = 0.99969 * d_ref +6.7  (residuo max 324.5 m)
+=> si a difiere de 1.0, la calibracion de distancia NO coincide entre archivos

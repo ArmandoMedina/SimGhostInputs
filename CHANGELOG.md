@@ -4,6 +4,9 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/). Versionado
 
 ## [Unreleased]
 
+### Corregido
+- **Los cues de pace notes quedaban enterrados −6 dB bajo el audio del motor** (`viz/compose.py::_audio_mix_filter`): `amix` sin `normalize=0` divide cada entrada entre el número de inputs, atenuando motor y cues por igual (medido: mezcla a −23.3 dB vs −17.3 dB del original; tono máx. −7.2 dB). Con `normalize=0` las entradas se suman sin atenuar (cue −0.9 dB, motor intacto). Aplica al compose completo y al mux standalone del Paso 5. Requiere ffmpeg ≥ 4.4. Test de regresión `test_audio_mix_filter_no_normalize`; evidencia en `qa_runs/mariana-20260705-180356/` y diagnóstico del desync percibido en `qa_runs/charbel-20260705-desync/notas.md`.
+
 ### Añadido
 - **CI de release: generación y publicación automática del instalador Windows** ([ADR 0022](docs/decisions/0022-ci-release-installer.md)): nuevo workflow `.github/workflows/release.yml` disparado por `on: release: types: [published]` que instala deps + Inno Setup (`choco install innosetup`), ejecuta `build_installer.py --inno` y sube `SimGhostInputs-vX.Y.Z-Setup.exe` (y un zip portable) como assets permanentes del release con `gh release upload --clobber`. El job `build-installer` de `tests.yml` (mal cableado, nunca corría) se elimina.
 
