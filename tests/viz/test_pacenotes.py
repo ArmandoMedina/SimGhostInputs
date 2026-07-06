@@ -115,7 +115,7 @@ def test_plan_tone_events_limits_dense_corner():
     plan = plan_tone_events(rows, corners, top=1, min_gap_m=50, max_events_per_corner=3)
     selected = plan["corners"][0]["selected"]
     assert len(selected) <= 3
-    assert any(e["cue"] == "brake_countdown" for e in selected)
+    assert any(e["cue"] == "brake" for e in selected)
     assert any(s["reason"] == "too_close_in_corner" for s in plan["corners"][0]["skipped"])
 
 
@@ -267,46 +267,95 @@ def test_run_async_in_thread_safe_inside_running_loop():
 # ── Plan de cues: sincronia percibida (ADR 0024) ──────────────────────────────
 
 
-def test_countdown_antes_de_la_meta_cae_a_brake_plano():
-    """Si el anticipo del countdown caeria en d<=0 (curva pegada a la meta), la
-    curva NO se queda muda ni suena en el segundo 0: cae al tono de frenada
-    plano en el punto real de frenada (Reviewer sobre ADR 0024)."""
+def test_countdown_antes_de_la_meta_omite_tic_pero_conserva_la_frenada():
+    """Curva pegada a la meta: un tic de aviso que caeria en d<=0 se omite, pero
+    la frenada (protegida) siempre suena en su punto real y ningun cue cae en el
+    segundo 0 del video (Reviewer sobre ADR 0024)."""
     from fantasma.viz.pacenotes import plan_tone_events
 
     rows = [{"id": "C01", "name": "C01", "time_lost": 0.5, "flags": "frenada"}]
-    # brake a 100 m sin v -> fallback countdown_m=120 -> el countdown caeria en -20 m
+    # brake a 100 m sin v -> fallback countdown_m=120 -> tics en -20 (omitido) y 40
     corners = [{"id": "C01", "name": "C01", "milestones": {"brake_start": {"d": 100}}}]
     plan = plan_tone_events(rows, corners, top=1)
     assert all(e["distance"] > 0 for e in plan["events"])
     brakes = [e for e in plan["events"] if e["cue"] == "brake"]
     assert brakes and brakes[0]["distance"] == 100
-    assert not any(e["cue"] == "brake_countdown" for e in plan["events"])
+    # solo el tic que cabe (40) se coloca; el que caeria antes de la meta se omite
+    tics = [e for e in plan["events"] if e["cue"] == "brake_tic"]
+    assert [e["distance"] for e in tics] == [40]
 
 
-def test_plan_gap_global_entre_curvas_gana_prioridad():
-    """El gap minimo tambien aplica ENTRE curvas: en encadenadas quedaban cues a
-    <1 s de distancia (sopa de tonos). Sobrevive el de mayor prioridad."""
+def test_frenada_protegida_sobrevive_vecino_de_mayor_prioridad():
+    """Regresion 819: el tono de frenada es PROTEGIDO — ningun gap global lo
+    descarta, ni siquiera contra un vecino de MAYOR prioridad a <min_gap. Antes
+    la frenada (80) perdia contra un cue vecino de mas prioridad y la curva se
+    quedaba muda. Ahora cae el no-protegido; la frenada siempre suena (R1)."""
     from fantasma.viz.pacenotes import plan_tone_events
 
     rows = [
-        {"id": "C01", "name": "C01", "time_lost": 0.3, "flags": "vmin"},
-        {"id": "C02", "name": "C02", "time_lost": 0.1, "flags": ""},
+        {"id": "C01", "name": "C01", "time_lost": 0.3, "flags": ""},
+        {"id": "C02", "name": "C02", "time_lost": 0.3, "flags": ""},
     ]
     corners = [
-        {"id": "C01", "name": "C01", "milestones": {"apex": {"d": 1000}}},
-        {"id": "C02", "name": "C02", "milestones": {"brake_start": {"d": 1030}}},
+        {"id": "C01", "name": "C01", "milestones": {"brake_start": {"d": 1000}}},
+        # throttle_on (prioridad 85 > 80) a 20 m de la frenada de C01
+        {"id": "C02", "name": "C02", "milestones": {"throttle_on": {"d": 1020}}},
     ]
     plan = plan_tone_events(rows, corners, top=2, min_gap_m=50)
-    # apex (prioridad 90) sobrevive; la frenada de la curva vecina (80) se descarta
-    assert [e["distance"] for e in plan["events"]] == [1000]
+    brakes = [e for e in plan["events"] if e["cue"] == "brake"]
+    assert [e["distance"] for e in brakes] == [1000]
+    # el vecino de mayor prioridad cae por el gap global, no la frenada
+    assert not any(e["cue"] == "throttle_on" for e in plan["events"])
     assert any(
-        s["reason"] == "too_close_global" and s["distance"] == 1030 for s in plan["skipped_global"]
+        s["cue"] == "throttle_on" and s["reason"] == "too_close_global"
+        for s in plan["skipped_global"]
     )
-    # plan.json reconciliado: el cue descartado globalmente NO queda en el
-    # "selected" de su curva (selected == WAVs generados), sino en su skipped
-    c02 = next(c for c in plan["corners"] if c["id"] == "C02")
-    assert not any(s["distance"] == 1030 for s in c02["selected"])
-    assert any(s["distance"] == 1030 and s["reason"] == "too_close_global" for s in c02["skipped"])
+
+
+def test_dos_frenadas_pegadas_ambas_suenan():
+    """Protegido vs protegido: dos frenadas reales a <min_gap se quedan AMBAS
+    (R1) — el gap global nunca sacrifica un tono de frenada."""
+    from fantasma.viz.pacenotes import plan_tone_events
+
+    rows = [
+        {"id": "A", "name": "A", "time_lost": 0.5, "flags": "frenada"},
+        {"id": "B", "name": "B", "time_lost": 0.5, "flags": "frenada"},
+    ]
+    corners = [
+        {"id": "A", "name": "A", "milestones": {"brake_start": {"d": 1000}}},
+        {"id": "B", "name": "B", "milestones": {"brake_start": {"d": 1030}}},
+    ]
+    plan = plan_tone_events(rows, corners, top=2, min_gap_m=50)
+    brakes = sorted(e["distance"] for e in plan["events"] if e["cue"] == "brake")
+    assert brakes == [1000, 1030]
+
+
+def test_dos_countdowns_encadenados_no_amontonan_tics():
+    """Regresion 4463 (tic-vs-tic): dos frenadas encadenadas no apilan sus tics.
+    Cada tic entra solo si cabe a >=min_gap de TODO sonido ya colocado, incluidos
+    los tics de la OTRA curva; el que no cabe se omite. Ningun tic queda a
+    <min_gap de otro sonido."""
+    from fantasma.viz.pacenotes import plan_tone_events
+
+    rows = [
+        {"id": "A", "name": "A", "time_lost": 0.5, "flags": "frenada"},
+        {"id": "B", "name": "B", "time_lost": 0.5, "flags": "frenada"},
+    ]
+    corners = [
+        {"id": "A", "name": "A", "milestones": {"brake_start": {"d": 1000, "v": 216}}},
+        {"id": "B", "name": "B", "milestones": {"brake_start": {"d": 1040, "v": 216}}},
+    ]
+    plan = plan_tone_events(rows, corners, top=2, min_gap_m=50)
+    events = plan["events"]
+    # las dos frenadas protegidas a 40 m suenan ambas (R1)
+    assert sorted(e["distance"] for e in events if e["cue"] == "brake") == [1000, 1040]
+    tics = [e for e in events if e["cue"] == "brake_tic"]
+    dists = [e["distance"] for e in events]
+    for tic in tics:
+        others = [d for d in dists if d != tic["distance"]]
+        assert all(abs(tic["distance"] - o) >= 50 for o in others)
+    # se omitieron tics: los 4 (2 por curva) no caben sin encimarse
+    assert len(tics) < 4
 
 
 def test_plan_legacy_tiene_mismo_esquema():
@@ -319,17 +368,23 @@ def test_plan_legacy_tiene_mismo_esquema():
 
 def test_countdown_anticipa_por_tiempo_con_v():
     """Con v en el milestone, el anticipo es countdown_s segundos a esa velocidad
-    (216 km/h = 60 m/s -> 3.5 s = 210 m), no los 120 m fijos. El evento se ancla
-    en la FRENADA (el ultimo tono es el "¡ya!"; PO 2026-07-06) y lleva el
-    anticipo en lead_m para que build_tone_pack expanda los tics."""
+    (216 km/h = 60 m/s -> 3.5 s = 210 m), no los 120 m fijos. La frenada se ancla
+    en su punto real (protegida) y lleva el anticipo en lead_m; los tics se
+    colocan a lead_m y lead_m/2 antes."""
     from fantasma.viz.pacenotes import plan_tone_events
 
     rows = [{"id": "C01", "name": "C01", "time_lost": 0.5, "flags": "frenada"}]
     corners = [{"id": "C01", "name": "C01", "milestones": {"brake_start": {"d": 2000, "v": 216}}}]
     plan = plan_tone_events(rows, corners, top=1, countdown_s=3.5)
-    assert plan["events"][0]["cue"] == "brake_countdown"
-    assert plan["events"][0]["distance"] == 2000
-    assert plan["events"][0]["lead_m"] == 210
+    brake = next(e for e in plan["events"] if e["cue"] == "brake")
+    assert brake["distance"] == 2000
+    assert brake["lead_m"] == 210
+    assert brake.get("protected")
+    # 2 tics de aviso antes de la frenada, en brake_d - lead_m y brake_d - lead_m/2
+    tics = sorted(e["distance"] for e in plan["events"] if e["cue"] == "brake_tic")
+    assert tics == [1790, 1895]
+    # el 3er (ultimo) sonido es la frenada; nada de un 4o "ya"
+    assert max(e["distance"] for e in plan["events"]) == 2000
 
 
 def test_pack_expande_countdown_y_el_tercer_bip_es_el_ya(tmp_path):

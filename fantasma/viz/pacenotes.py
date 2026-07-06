@@ -33,7 +33,7 @@ DEFAULT_COUNTDOWN_S = 3.5
 # El "¡ya!" no esta aqui: es el tono de frenada (DEFAULT_FREQS["brake"]) y suena
 # EXACTO en el punto de frenada de la referencia — el PO: "el 3er bip tiene que
 # coincidir con el inicio de la frenada, el 3 debe ser el ya" (QA 2026-07-06).
-# La leyenda de la UI la deriva de aqui; _countdown_parts la consume.
+# La leyenda de la UI la deriva de aqui; _render_cue la consume por `step`.
 COUNTDOWN_SCALE = (0.75, 0.875)
 # Gap minimo global entre cues (metros). Fuente unica: plan_tone_events y la
 # expansion del countdown en build_tone_pack lo comparten.
@@ -63,6 +63,7 @@ MILESTONE_ALIASES = {
 }
 MILESTONE_LABELS = {
     "brake_countdown": "contador de frenada",
+    "brake_tic": "contador de frenada",
     "brake": "punto de frenada",
     "brake_release": "soltar freno",
     "apex": "apex",
@@ -77,7 +78,6 @@ PLAN_CUES = [
     "brake",
     "brake_release",
     "turn_in",
-    "apex",
     "throttle_on",
     "full_throttle",
 ]
@@ -93,32 +93,6 @@ def generate_tone(freq_hz, duration_s, volume=0.8, sample_rate=24000) -> bytes:
         envelope[:fade] = np.linspace(0, 1, fade)
         envelope[-fade:] = np.linspace(1, 0, fade)
     samples = (np.sin(2 * np.pi * freq_hz * t) * envelope * volume * 32767).astype(np.int16)
-    return _make_wav_bytes(samples, sample_rate=sample_rate)
-
-
-def generate_countdown(
-    freqs=(660, 770, 880),
-    tick_duration=0.08,
-    gap_s=0.22,
-    volume=0.8,
-    sample_rate=24000,
-) -> bytes:
-    import numpy as np
-
-    n = int(tick_duration * sample_rate)
-    gap_n = int(gap_s * sample_rate)
-    samples = np.zeros(len(freqs) * n + (len(freqs) - 1) * gap_n, dtype=np.float32)
-    cursor = 0
-    for freq in freqs:
-        t = np.linspace(0, tick_duration, n, endpoint=False)
-        fade = min(int(sample_rate * 0.01), n // 2)
-        envelope = np.ones(n)
-        if fade > 0:
-            envelope[:fade] = np.linspace(0, 1, fade)
-            envelope[-fade:] = np.linspace(1, 0, fade)
-        samples[cursor : cursor + n] += np.sin(2 * np.pi * freq * t) * envelope
-        cursor += n + gap_n
-    samples = (samples * volume * 32767).clip(-32768, 32767).astype(np.int16)
     return _make_wav_bytes(samples, sample_rate=sample_rate)
 
 
@@ -158,26 +132,17 @@ def build_tone_pack(
     )
     variants = {}
 
-    anchors = [int(e["distance"]) for e in plan["events"]]
     for event in plan["events"]:
-        if event["cue"] == "brake_countdown" and event.get("lead_m"):
-            parts = _countdown_parts(event, freqs, duration, volume, anchors)
-        else:
-            parts = [
-                (
-                    int(event["distance"]),
-                    event["cue"],
-                    _generate_cue(event["cue"], freqs, duration, volume),
-                )
-            ]
-        for distance, cue, data in parts:
-            variant = variants.get(distance, 0)
-            variants[distance] = variant + 1
-            filename = "%d_%d.wav" % (distance, variant)
-            path = out / filename
-            path.write_bytes(data)
-            files.append(str(path))
-            entries.append(_metadata_entry(event["corner_name"], cue, distance, filename))
+        distance = int(event["distance"])
+        cue = event["cue"]
+        data = _render_cue(event, freqs, duration, volume)
+        variant = variants.get(distance, 0)
+        variants[distance] = variant + 1
+        filename = "%d_%d.wav" % (distance, variant)
+        path = out / filename
+        path.write_bytes(data)
+        files.append(str(path))
+        entries.append(_metadata_entry(event["corner_name"], cue, distance, filename))
 
     metadata_path = _write_metadata(out, entries, track_name=track_name)
     plan_path = _write_plan(out, plan)
@@ -212,6 +177,10 @@ def plan_tone_events(
                 # suena aleatorio (QA 2026-07-05).
                 skipped.append({**candidate, "reason": "antes_de_la_meta"})
                 continue
+            if candidate.get("protected"):
+                # El tono de frenada nunca cede a un gap (R1): entra siempre.
+                selected.append(candidate)
+                continue
             if len(selected) >= max_events_per_corner:
                 skipped.append({**candidate, "reason": "max_events_per_corner"})
                 continue
@@ -236,14 +205,27 @@ def plan_tone_events(
     events.sort(key=lambda c: c["distance"])
     # Gap minimo GLOBAL: el de arriba solo separa cues DENTRO de una curva; en
     # curvas encadenadas quedaban cues de curvas vecinas a <1 s (sopa de tonos,
-    # QA 2026-07-05). Gana el de mayor prioridad. Nota: al reemplazar al vecino
+    # QA 2026-07-05). Un tono de frenada PROTEGIDO nunca se descarta (R1):
+    # protegido vs no-protegido cae el no-protegido; protegido vs protegido se
+    # quedan ambos (dos frenadas reales pegadas siguen sonando ambas). Entre
+    # no-protegidos gana el de mayor prioridad. Nota: al reemplazar al vecino
     # anterior no hace falta re-verificar hacia atras — el reemplazado ya
     # respetaba el gap con su predecesor y el nuevo esta aun mas adelante.
     kept = []
     skipped_global = []
     for event in events:
         if kept and event["distance"] - kept[-1]["distance"] < min_gap_m:
-            if event["priority"] > kept[-1]["priority"]:
+            prev = kept[-1]
+            ev_prot = event.get("protected")
+            prev_prot = prev.get("protected")
+            if ev_prot and prev_prot:
+                kept.append(event)
+            elif ev_prot and not prev_prot:
+                skipped_global.append({**kept.pop(), "reason": "too_close_global"})
+                kept.append(event)
+            elif prev_prot and not ev_prot:
+                skipped_global.append({**event, "reason": "too_close_global"})
+            elif event["priority"] > prev["priority"]:
                 skipped_global.append({**kept.pop(), "reason": "too_close_global"})
                 kept.append(event)
             else:
@@ -264,8 +246,41 @@ def plan_tone_events(
                 still.append(sel)
         corner_plan["selected"] = still
 
+    # Countdown OPORTUNISTA: por cada frenada protegida con lead_m, 2 tics de
+    # aviso antes de la frenada (en brake_d - lead_m y brake_d - lead_m/2). Cada
+    # tic entra SOLO si cabe a >=min_gap de TODO sonido ya en la linea de tiempo
+    # (frenadas, cues y tics ya insertados, incluidos los de OTRAS curvas). Se
+    # recorren en orden de distancia (greedy) para resolver tic-vs-tic. El 3er
+    # sonido es la frenada; nunca hay un 4o "ya" (R2).
+    timeline = [e["distance"] for e in kept]
+    tic_candidates = []
+    for e in kept:
+        if e.get("protected") and e.get("lead_m"):
+            for step, frac in ((0, 1.0), (1, 0.5)):
+                d = int(round(e["distance"] - e["lead_m"] * frac))
+                tic_candidates.append((d, step, e))
+    tics = []
+    for d, step, e in sorted(tic_candidates, key=lambda x: x[0]):
+        if d <= 0:
+            continue
+        if any(abs(d - t) < min_gap_m for t in timeline):
+            continue
+        timeline.append(d)
+        tics.append(
+            {
+                "corner_id": e["corner_id"],
+                "corner_name": e["corner_name"],
+                "cue": "brake_tic",
+                "distance": d,
+                "priority": 100,
+                "reason": "aviso de frenada",
+                "step": step,
+            }
+        )
+
+    all_events = sorted(kept + tics, key=lambda c: c["distance"])
     return {
-        "events": [_plan_public(e) for e in kept],
+        "events": [_plan_public(e) for e in all_events],
         "corners": corners_plan,
         "skipped_global": [_plan_public(e) for e in skipped_global],
     }
@@ -496,7 +511,6 @@ def _corner_candidates(row, corner, countdown_m, countdown_s=DEFAULT_COUNTDOWN_S
     d_brake = _as_float(row.get("d_brake_m", 0)) if row.get("d_brake_m") not in (None, "") else 0
     d_gas = _as_float(row.get("d_gas100_m", 0)) if row.get("d_gas100_m") not in (None, "") else 0
     braking_issue = "frenada" in flags or d_brake > 15
-    apex_issue = "vmin" in flags or loss >= 0.25
     exit_issue = abs(d_gas) > 20 or (loss >= 0.25 and "vmin" not in flags)
     candidates = []
 
@@ -504,27 +518,15 @@ def _corner_candidates(row, corner, countdown_m, countdown_s=DEFAULT_COUNTDOWN_S
     if brake and brake.get("d") is not None:
         brake_d = _as_float(brake["d"])
         lead_m = _countdown_lead_m(brake, countdown_m, countdown_s)
-        if (loss >= 0.35 or braking_issue) and brake_d - lead_m > 0:
-            # Anclado en la FRENADA, no en el inicio del anticipo: el ultimo
-            # tono del countdown es el "¡ya!" y debe caer exacto donde frena
-            # la referencia (PO, QA 2026-07-06). Los tics de aviso se expanden
-            # en build_tone_pack a lead_m y lead_m/2 antes.
-            candidates.append(
-                _event(
-                    row,
-                    corner,
-                    "brake_countdown",
-                    brake_d,
-                    100,
-                    "anticipa frenada prioritaria",
-                    lead_m=lead_m,
-                )
+        # Tono de frenada UNIVERSAL: toda curva con milestone de frenada suena,
+        # sin importar severidad. Es PROTEGIDO — ningun gap lo descarta (R1). El
+        # countdown (tics de aviso) se coloca aparte y de forma oportunista en
+        # plan_tone_events usando lead_m.
+        candidates.append(
+            _event(
+                row, corner, "brake", brake_d, 80, "marca frenada", lead_m=lead_m, protected=True
             )
-        else:
-            # Incluye el caso de curva pegada a la meta cuyo anticipo caeria en
-            # d<=0: mejor un tono de frenada plano (reproducible) que dejar la
-            # curva muda o un cue en el segundo 0 del video (Reviewer, ADR 0024).
-            candidates.append(_event(row, corner, "brake", brake_d, 80, "marca frenada"))
+        )
 
     release = _milestone(corner, "brake_release")
     if release and release.get("d") is not None and braking_issue:
@@ -536,12 +538,6 @@ def _corner_candidates(row, corner, countdown_m, countdown_s=DEFAULT_COUNTDOWN_S
     if turn and turn.get("d") is not None and loss >= 0.25:
         candidates.append(
             _event(row, corner, "turn_in", _as_float(turn["d"]), 60, "inicio de giro")
-        )
-
-    apex = _milestone(corner, "apex")
-    if apex and apex.get("d") is not None and apex_issue:
-        candidates.append(
-            _event(row, corner, "apex", _as_float(apex["d"]), 90, "corrige V-Min/apex")
         )
 
     throttle = _milestone(corner, "throttle_on")
@@ -559,7 +555,7 @@ def _corner_candidates(row, corner, countdown_m, countdown_s=DEFAULT_COUNTDOWN_S
     return candidates
 
 
-def _event(row, corner, cue, distance, priority, reason, lead_m=None):
+def _event(row, corner, cue, distance, priority, reason, lead_m=None, protected=False):
     event = {
         "corner_id": str(row.get("id") or corner.get("id") or "?"),
         "corner_name": _corner_name(row, corner),
@@ -570,15 +566,24 @@ def _event(row, corner, cue, distance, priority, reason, lead_m=None):
     }
     if lead_m is not None:
         event["lead_m"] = int(round(lead_m))
+    if protected:
+        event["protected"] = True
     return event
 
 
 def _plan_public(event):
-    return {
-        k: event[k]
-        for k in ("corner_id", "corner_name", "cue", "distance", "priority", "reason", "lead_m")
-        if k in event
-    }
+    keys = (
+        "corner_id",
+        "corner_name",
+        "cue",
+        "distance",
+        "priority",
+        "reason",
+        "lead_m",
+        "protected",
+        "step",
+    )
+    return {k: event[k] for k in keys if k in event}
 
 
 def _find_corner(row, corners):
@@ -624,41 +629,21 @@ def _metadata_entry(name, milestone, distance, filename):
     }
 
 
-def _countdown_parts(event, freqs, duration, volume, anchors):
-    """Expande un brake_countdown en tics de aviso + el "¡ya!" en la frenada.
+def _render_cue(event, freqs, duration, volume):
+    """Sintetiza el WAV de un evento del plan segun su cue.
 
-    Antes el countdown era UN WAV de 3 tics seguidos colocado 3.5 s antes:
-    sonaba "1,2,3... (silencio)... frenada" y nada marcaba la frenada real
-    (QA del PO, 2026-07-06). Ahora cada parte es un WAV propio mapeado por SU
-    distancia: tics de aviso a lead_m y lead_m/2 antes, y el "¡ya!" — el tono
-    de frenada (1000 Hz), mas largo — EXACTO en la distancia donde frena la
-    referencia, coincida o no con el ritmo del piloto. Un tic que caeria
-    encima de un cue de otra curva (gap global) o antes de la meta se omite
-    (en encadenadas queda "2-ya" o solo "ya"); el "¡ya!" nunca se pierde.
+    Cada evento del plan ya trae su distancia final (los tics del countdown y
+    el tono de frenada son eventos independientes, colocados en plan_tone_events).
+    El tic asciende en frecuencia por su `step` (COUNTDOWN_SCALE); el tono de
+    frenada suena mas largo y a otra frecuencia para no confundirlo con el tic.
     """
-    brake_d = int(event["distance"])
-    lead = _as_float(event["lead_m"])
-    base = freqs.get("brake_countdown", 880)
-    parts = []
-    for offset_frac, scale in zip((1.0, 0.5), COUNTDOWN_SCALE):
-        d = int(round(brake_d - lead * offset_frac))
-        if d <= 0:
-            continue
-        if any(abs(d - a) < DEFAULT_MIN_GAP_M for a in anchors if a != brake_d):
-            continue
-        parts.append((d, "brake_countdown", generate_tone(base * scale, 0.08, volume=volume)))
-    parts.append(
-        (brake_d, "brake", generate_tone(freqs.get("brake", 1000), duration, volume=volume))
-    )
-    return parts
-
-
-def _generate_cue(cue, freqs, duration, volume):
-    if cue == "brake_countdown":
-        # Solo eventos sin lead_m (packs legados / smart=False) llegan aqui;
-        # los del plan se expanden en _countdown_parts.
+    cue = event["cue"]
+    if cue == "brake_tic":
         base = freqs.get("brake_countdown", 880)
-        return generate_countdown(tuple(base * f for f in COUNTDOWN_SCALE), volume=volume)
+        scale = COUNTDOWN_SCALE[event.get("step", 0)]
+        return generate_tone(base * scale, 0.08, volume=volume)
+    if cue == "brake":
+        return generate_tone(freqs.get("brake", 1000), duration, volume=volume)
     return generate_tone(freqs.get(cue, 440), duration, volume=volume)
 
 
