@@ -5,6 +5,7 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/). Versionado
 ## [Unreleased]
 
 ### Añadido
+- **Paso 5 legible + breadcrumbs por flujo** (`ng_step5.py`, `ng_step4.py`, `ng_helpers.py`): leyenda de tonos plegable derivada del motor (`PLAN_CUES`/`DEFAULT_FREQS`, con la aclaración de que los tonos marcan los puntos de la referencia); checkbox «Todas las curvas» (manda `top=0`); caption bajo «Aplicar sonido» que dice exactamente qué falta cuando está deshabilitado; aviso ✓/⚠ que coteja el sidecar `.sync.json` del video contra la vuelta cargada antes de apretar el botón; el Paso 4 escribe el `sync_info` al componer; y `render_breadcrumb(step, flow_key)` pinta solo los pasos del flujo activo (en "Solo Pace Notes": Inicio › Importar › Análisis › Pace Notes).
 - **ADR 0024 — Sincronía de pace notes** (Aceptada): anticipación del countdown por tiempo (`countdown_s=3.5` a la velocidad de llegada, clamp [60, 350] m; fallback a los 120 m fijos sin `v`), gap mínimo global entre curvas (gana la prioridad), descarte de cues que caen antes de la meta, `brake` a 1000 Hz (distinguible del countdown), `top=0` = todas las curvas (pace notes de ritmo), y **sidecar de sincronía** `<video>.sync.json` que `compose_video` escribe y el mux del Paso 5 valida (error accionable si la vuelta cargada difiere > 0.1 s). Base: diagnóstico con datos reales en `qa_runs/charbel-20260705-desync/` que refuta la hipótesis de descalibración de distancia. 7 tests nuevos en `tests/viz/`.
 
 ### Corregido

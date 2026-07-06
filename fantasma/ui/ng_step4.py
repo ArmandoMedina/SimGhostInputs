@@ -24,7 +24,7 @@ from .ng_helpers import (
 
 
 async def render(state, navigate):
-    render_breadcrumb(4)
+    render_breadcrumb(4, state.flow_key)
     # Pide permiso de notificacion al entrar — fire-and-forget para no bloquear el render
     try:
         import asyncio as _asyncio
@@ -562,6 +562,16 @@ async def render(state, navigate):
                 "lap": _drv_lap,
             }
 
+        # Identidad de la vuelta para el sidecar <output>.sync.json (ADR 0024):
+        # el mux del Paso 5 lo usa para negarse a sincronizar con otra vuelta.
+        _sync_info = None
+        if _drv_lap is not None:
+            _sync_info = {
+                "csv_path": state.drv_path,
+                "lap_name": state.drv_name,
+                "laptime": _drv_lap.laptime,
+            }
+
         job = start_bg_render(
             _cv,
             progress_kw="progress",
@@ -572,6 +582,7 @@ async def render(state, navigate):
             offset=_offset_val,
             scale=_scale,
             lap_duration=_lap_dur,
+            sync_info=_sync_info,
             **_pn_kwargs,
         )
         job_holder["job"] = job

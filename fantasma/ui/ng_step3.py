@@ -9,7 +9,7 @@ from .ng_helpers import _DEFAULT_FLOW, _FLOWS, _STEPS, render_breadcrumb, start_
 
 
 async def render(state, navigate):
-    render_breadcrumb(3)
+    render_breadcrumb(3, state.flow_key)
     ui.label("Paso 3 — Generar overlay HUD").classes("step-header")
     ui.label(
         "Genera el HUD animado sincronizado con tu vuelta. "

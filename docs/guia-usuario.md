@@ -97,13 +97,18 @@ El Paso 5 tiene **dos paneles independientes**:
 **① Generar pack nuevo** (panel izquierdo): requiere haber corrido el Análisis (Paso 2). Si el análisis no está disponible, este panel muestra un aviso con botón de vuelta al Paso 2.
 
 1. Elige el **modo**: _Tonos (rápido)_ (sin dependencias extra), _Voz_ (requiere edge-tts) o _Ambos_.
-2. Ajusta **Top N curvas** (cuántas cubrir), **volumen** y — en modo voz — el **idioma**.
-3. El **directorio de salida** se pre-rellena automáticamente con la ruta de CrewChief detectada para el circuito. Si no se detecta, escribe el nombre exacto que CrewChief/AMS2 espera o usa «Explorar…» para navegar.
-4. Pulsa **«Generar Pace Notes»**: un spinner indica el progreso; al terminar verás cuántas entradas se generaron y el sidebar marca el Paso 5 como completado (✅).
+2. Ajusta **Top N curvas** (cuántas cubrir), o marca **«Todas las curvas»** para cubrir cada curva detectada — también donde no pierdes tiempo (la frenada suena como marca de ritmo, estilo rally). Ajusta **volumen** y — en modo voz — el **idioma**.
+3. La **leyenda de tonos** (panel plegable) explica qué significa cada bip y su frecuencia. Importante: los tonos marcan los puntos de la vuelta de **referencia** — si un tono no coincide con lo que haces, ese desfase es el consejo, no un error de sincronía. El countdown de frenada suena ~3.5 s antes del punto de frenada de la referencia, a tu velocidad de llegada.
+4. El **directorio de salida** se pre-rellena automáticamente con la ruta de CrewChief detectada para el circuito. Si no se detecta, escribe el nombre exacto que CrewChief/AMS2 espera o usa «Explorar…» para navegar.
+5. Pulsa **«Generar Pace Notes»**: un spinner indica el progreso; al terminar verás cuántas entradas se generaron y el sidebar marca el Paso 5 como completado (✅).
 
-**② Aplicar sonido a un video existente** (panel derecho): siempre visible, sin importar si hay análisis disponible. Si ya tienes el video compuesto (por el flujo habitual u otro programa) y quieres añadirle el audio del pack, este panel lo hace sin re-encodear el video (ffmpeg `-c:v copy`). Requiere la vuelta del piloto cargada (Paso 1) para sincronizar los cues; el botón «Aplicar sonido» se habilita cuando están el video, la carpeta del pack y la vuelta del piloto.
+**② Aplicar sonido a un video existente** (panel derecho): siempre visible, sin importar si hay análisis disponible. Si ya tienes el video compuesto (por el flujo habitual u otro programa) y quieres añadirle el audio del pack, este panel lo hace sin re-encodear el video (ffmpeg `-c:v copy`). Requiere la vuelta del piloto cargada (Paso 1) para sincronizar los cues; el botón «Aplicar sonido» se habilita cuando están el video, la carpeta del pack y la vuelta del piloto — y cuando algo falta, un texto bajo el botón dice exactamente qué.
+
+> **Verificación video↔vuelta:** los videos compuestos por el Paso 4 llevan al lado un archivo `*.sync.json` con la identidad de la vuelta ([ADR 0024](decisions/0024-sincronia-pace-notes.md)). Al elegir uno, el panel avisa si la vuelta cargada no corresponde (✓ verde si coincide, ⚠ si no), y el mux se niega a mezclar con la vuelta equivocada — era la causa de cues corridos por segundos. Videos externos sin `.sync.json` se procesan como siempre.
 
 > **Restricción de las Pace Notes:** exigen dos vueltas (referencia + piloto) porque priorizan las curvas por tiempo perdido. No se generan de una sola vuelta ni directamente desde un video.
+
+La **barra de pasos** (breadcrumb) muestra solo los pasos de tu flujo: en "Solo Pace Notes" verás Inicio › Importar › Análisis › Pace Notes, sin Overlay ni Video.
 
 Activa las Pace Notes dentro de CrewChief antes de salir a pista.
 
@@ -114,7 +119,7 @@ fantasma pacenotes --corners salida/corners_detected.json --compare salida/corne
     --top 5 --mode tones --output-dir "%USERPROFILE%\Documents\CrewChiefV4\pace_notes\ams2\nordschleife"
 ```
 
-El modo `tones` no usa red ni TTS: genera WAVs 24 kHz mono con tonos para los hitos elegidos. Por defecto no suena todo siempre: Fantasma escribe `plan.json` y limita cada curva a pocas señales útiles, con separación mínima entre eventos. En curvas prioritarias puede usar un countdown compacto antes de la frenada; en curvas densas omite señales demasiado juntas para no saturarte.
+El modo `tones` no usa red ni TTS: genera WAVs 24 kHz mono con tonos para los hitos elegidos. Por defecto no suena todo siempre: Fantasma escribe `plan.json` y limita cada curva a pocas señales útiles, con separación mínima entre eventos **también entre curvas encadenadas** (sobrevive la señal de mayor prioridad). En curvas prioritarias usa un countdown ~3.5 s antes de la frenada (calculado a la velocidad de llegada, [ADR 0024](decisions/0024-sincronia-pace-notes.md)); las señales que caerían antes de la meta se descartan. Con `--top 0` cubre todas las curvas detectadas (pace notes de ritmo).
 
 Si no pasas `--output-dir`, Fantasma intenta usar el campo `track` del JSON de curvas; si no existe, te pregunta el nombre exacto de pista que CrewChief/AMS2 espera. Para voz contextual instala `pip install "fantasma-inputs[voice]"` y usa `--mode voice` o `--mode both`; requiere ffmpeg para convertir el audio a WAV.
 

@@ -8,7 +8,7 @@ from .ng_helpers import render_breadcrumb
 
 
 async def render(state, navigate):
-    render_breadcrumb(5)
+    render_breadcrumb(5, state.flow_key)
     ui.label("Paso 5 — Pace Notes para CrewChief").classes("step-header")
     ui.label(
         "Genera tonos o frases de audio sincronizados con las curvas donde más tiempo pierdes. "
@@ -58,12 +58,73 @@ async def render(state, navigate):
                         )
                     )
 
+                    from fantasma.viz.pacenotes import (
+                        DEFAULT_FREQS,
+                        MILESTONE_LABELS,
+                        PLAN_CUES,
+                    )
+
+                    with ui.expansion("Leyenda de tonos (qué significa cada bip)").classes(
+                        "w-full mt-3"
+                    ):
+                        ui.label(
+                            "Los tonos marcan los puntos de la vuelta de REFERENCIA — dónde "
+                            "frena o acelera quien va más rápido. Si no coinciden con lo que "
+                            "haces, ese desfase es el consejo, no un error de sincronía."
+                        ).classes("text-xs text-gray-400 mb-2")
+                        _legend_rows = []
+                        for _cue in PLAN_CUES:
+                            _base = DEFAULT_FREQS.get(_cue, 0)
+                            if _cue == "brake_countdown":
+                                _sound = "3 tics ascendentes (%d-%d-%d Hz), ~3.5 s antes" % (
+                                    round(_base * 0.75),
+                                    round(_base * 0.875),
+                                    _base,
+                                )
+                            else:
+                                _sound = "tono corto de %d Hz" % _base
+                            _legend_rows.append(
+                                {"tono": MILESTONE_LABELS.get(_cue, _cue), "sonido": _sound}
+                            )
+                        ui.table(
+                            rows=_legend_rows,
+                            columns=[
+                                {
+                                    "name": "tono",
+                                    "label": "Tono",
+                                    "field": "tono",
+                                    "align": "left",
+                                },
+                                {
+                                    "name": "sonido",
+                                    "label": "Suena como",
+                                    "field": "sonido",
+                                    "align": "left",
+                                },
+                            ],
+                        ).classes("w-full").props("dense flat hide-bottom")
+
                     ui.label("Curvas a cubrir").classes("text-sm font-bold text-white mb-1 mt-3")
+                    all_corners_chk = ui.checkbox(
+                        "Todas las curvas (pace notes de ritmo)", value=False
+                    ).tooltip(
+                        "Genera cues para todas las curvas detectadas, también donde no "
+                        "pierdes tiempo (la frenada suena como marca de ritmo, estilo rally). "
+                        "Ignora el Top N."
+                    )
                     top_number = (
-                        ui.number(value=5, min=1, max=20, label="Top N curvas")
+                        ui.number(value=5, min=1, max=99, label="Top N curvas")
                         .classes("w-32")
                         .tooltip("Cuántas curvas cubrir, de la que más tiempo pierdes hacia abajo.")
                     )
+
+                    def _on_all_corners(e):
+                        if e.value:
+                            top_number.disable()
+                        else:
+                            top_number.enable()
+
+                    all_corners_chk.on("update:model-value", _on_all_corners)
 
                     ui.label("Volumen").classes("text-sm font-bold text-white mb-1 mt-3")
                     vol_state = {"value": 0.8}
@@ -151,7 +212,8 @@ async def render(state, navigate):
                             return
 
                         _mode = mode_radio.value
-                        _top = int(top_number.value or 5)
+                        # top=0 = todas las curvas (ADR 0024)
+                        _top = 0 if all_corners_chk.value else int(top_number.value or 5)
                         _vol = float(vol_state["value"])
                         _lang = _lang_state["value"] if _mode in ("voice", "both") else "es-MX"
                         _rows = state.rows
@@ -252,6 +314,38 @@ async def render(state, navigate):
                     ui.button("Explorar...", on_click=pick_mux_video).classes(
                         "btn-secondary"
                     ).props("flat").tooltip("Abrir selector de archivo de video.")
+
+                sidecar_label = ui.label("").classes("text-xs mb-2")
+
+                def _update_sidecar_label():
+                    """Coteja el sidecar .sync.json del video (ADR 0024) contra la
+                    vuelta cargada, para avisar ANTES de apretar el botón."""
+                    sidecar_label.set_text("")
+                    sidecar_label.classes(remove="text-yellow-400 text-green-500")
+                    _v = mux_video_input.value or ""
+                    _lap = state.drv_lap
+                    if not _v or _lap is None:
+                        return
+                    from fantasma.viz.compose import read_sync_sidecar
+
+                    _sc = read_sync_sidecar(_v)
+                    if not _sc or _sc.get("laptime") is None:
+                        return
+                    _expected = float(_sc["laptime"])
+                    if abs(_expected - _lap.laptime) > 0.1:
+                        _src = os.path.basename(str(_sc.get("csv_path") or "")) or "csv desconocido"
+                        sidecar_label.set_text(
+                            "⚠ Este video se compuso con una vuelta de %.2f s (%s); la vuelta "
+                            "cargada dura %.2f s. El mux se negará: carga esa vuelta en el Paso 1."
+                            % (_expected, _src, _lap.laptime)
+                        )
+                        sidecar_label.classes(add="text-yellow-400")
+                    else:
+                        sidecar_label.set_text(
+                            "✓ Video verificado: corresponde a la vuelta cargada (%.2f s)."
+                            % _lap.laptime
+                        )
+                        sidecar_label.classes(add="text-green-500")
 
                 with ui.row().classes("w-full gap-2 items-end mb-2"):
                     mux_pn_input = (
@@ -382,12 +476,25 @@ async def render(state, navigate):
                         "copia el stream de video sin re-encodear."
                     )
                 )
+                # El botón gris sin explicación fue reporte directo del PO
+                # (QA 2026-07-05): este caption dice QUÉ falta para habilitarlo.
+                apply_hint = ui.label("").classes("text-xs text-yellow-400 mt-1")
 
                 def _update_apply_enabled():
-                    if state.drv_lap is not None and mux_video_input.value and mux_pn_input.value:
-                        apply_btn.enable()
-                    else:
+                    faltan = []
+                    if state.drv_lap is None:
+                        faltan.append("la vuelta del piloto (Paso 1)")
+                    if not mux_video_input.value:
+                        faltan.append("el video")
+                    if not mux_pn_input.value:
+                        faltan.append("la carpeta del pack")
+                    if faltan:
                         apply_btn.disable()
+                        apply_hint.set_text("Falta: " + ", ".join(faltan) + ".")
+                    else:
+                        apply_btn.enable()
+                        apply_hint.set_text("")
+                    _update_sidecar_label()
 
                 mux_video_input.on("update:model-value", lambda _: _update_apply_enabled())
                 mux_pn_input.on("update:model-value", lambda _: _update_apply_enabled())

@@ -100,7 +100,7 @@ def _build_corners_table_html(rows):
 
 
 async def render(state, navigate):
-    render_breadcrumb(2)
+    render_breadcrumb(2, state.flow_key)
     ui.label("Paso 2 — Análisis por curva").classes("step-header")
 
     if state.ref_lap is None:

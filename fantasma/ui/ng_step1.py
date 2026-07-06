@@ -32,7 +32,7 @@ async def render(state, navigate):
     _load_label = _load_labels.get(_next_step, "Cargar →")
 
     # ── Breadcrumb bar ──────────────────────────────────────────────────────
-    render_breadcrumb(1)
+    render_breadcrumb(1, state.flow_key)
 
     ui.html(
         '<h1 class="page-heading" style="font-size:1rem;margin-bottom:4px">'
