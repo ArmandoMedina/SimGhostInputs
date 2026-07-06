@@ -647,7 +647,9 @@ def _countdown_parts(event, freqs, duration, volume, anchors):
         if any(abs(d - a) < DEFAULT_MIN_GAP_M for a in anchors if a != brake_d):
             continue
         parts.append((d, "brake_countdown", generate_tone(base * scale, 0.08, volume=volume)))
-    parts.append((brake_d, "brake", generate_tone(freqs.get("brake", 1000), duration, volume=volume)))
+    parts.append(
+        (brake_d, "brake", generate_tone(freqs.get("brake", 1000), duration, volume=volume))
+    )
     return parts
 
 
