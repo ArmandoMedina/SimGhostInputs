@@ -24,7 +24,7 @@ from .ng_helpers import (
 
 
 async def render(state, navigate):
-    render_breadcrumb(4)
+    render_breadcrumb(4, state.flow_key if state.flow_chosen else None)
     # Pide permiso de notificacion al entrar — fire-and-forget para no bloquear el render
     try:
         import asyncio as _asyncio
@@ -191,6 +191,10 @@ async def render(state, navigate):
                             sync_drv_state["laps"] = laps
                             drv_for_sync_local = _fl(laps)
                             state.drv_lap = drv_for_sync_local
+                            # Identidad para el sidecar de sincronia (ADR 0024):
+                            # sin esto el .sync.json queda con origen desconocido
+                            # y su mensaje de error pierde lo accionable.
+                            state.drv_name = e.file.name
                             ui.notify("Tu telemetría cargada.", type="positive")
 
                     ui.upload(
@@ -392,7 +396,8 @@ async def render(state, navigate):
                 def _toggle_pn_section(e):
                     pn_section.set_visibility(e.value)
 
-                pn_check.on("update:model-value", _toggle_pn_section)
+                # on_value_change: el evento crudo no trae .value (Reviewer)
+                pn_check.on_value_change(_toggle_pn_section)
 
     with _right:
         # ── Panel: Parámetros del HUD + Vista previa ──────────────────────────
@@ -418,9 +423,11 @@ async def render(state, navigate):
                     step=0.1,
                     format="%.1f",
                 ).classes("w-full mb-3")
-                offset_input.on(
-                    "update:model-value",
-                    lambda e: state.__setattr__("compose_offset", float(e.value or 0.0)),
+                # on_value_change: el .on("update:model-value") previo recibia
+                # GenericEventArguments sin .value y moria en silencio, asi que
+                # compose_offset nunca se persistia al teclear (Reviewer).
+                offset_input.on_value_change(
+                    lambda e: state.__setattr__("compose_offset", float(e.value or 0.0))
                 )
 
                 preview_img = (
@@ -454,13 +461,13 @@ async def render(state, navigate):
         except Exception as e:
             preview_status.set_text(f"Vista previa no disponible: {e}")
 
-    pos_select.on("update:model-value", lambda _: update_preview())
-    scale_slider.on(
-        "update:model-value",
-        lambda e: scale_label.set_text("Tamaño: %.2f×" % (e.value or 1.0)),
-    )
-    scale_slider.on("update:model-value", lambda _: update_preview())
-    overlay_input.on("update:model-value", lambda _: update_preview())
+    # on_value_change y NO .on("update:model-value"): el handler DOM corre antes
+    # de que NiceGUI asigne element.value — estos refreshes leian el valor
+    # ANTERIOR y la preview/botones iban una accion atras (Reviewer).
+    pos_select.on_value_change(lambda _: update_preview())
+    scale_slider.on_value_change(lambda e: scale_label.set_text("Tamaño: %.2f×" % (e.value or 1.0)))
+    scale_slider.on_value_change(lambda _: update_preview())
+    overlay_input.on_value_change(lambda _: update_preview())
 
     if state.last_overlay and os.path.exists(state.last_overlay):
         await update_preview()
@@ -504,8 +511,8 @@ async def render(state, navigate):
                 "</div>"
             )
 
-    video_input.on("update:model-value", lambda _: refresh_summary())
-    overlay_input.on("update:model-value", lambda _: refresh_summary())
+    video_input.on_value_change(lambda _: refresh_summary())
+    overlay_input.on_value_change(lambda _: refresh_summary())
     refresh_summary()
 
     # ── Área de resultado/progreso ────────────────────────────────────────────
@@ -562,6 +569,16 @@ async def render(state, navigate):
                 "lap": _drv_lap,
             }
 
+        # Identidad de la vuelta para el sidecar <output>.sync.json (ADR 0024):
+        # el mux del Paso 5 lo usa para negarse a sincronizar con otra vuelta.
+        _sync_info = None
+        if _drv_lap is not None:
+            _sync_info = {
+                "csv_path": state.drv_path,
+                "lap_name": state.drv_name,
+                "laptime": _drv_lap.laptime,
+            }
+
         job = start_bg_render(
             _cv,
             progress_kw="progress",
@@ -572,6 +589,7 @@ async def render(state, navigate):
             offset=_offset_val,
             scale=_scale,
             lap_duration=_lap_dur,
+            sync_info=_sync_info,
             **_pn_kwargs,
         )
         job_holder["job"] = job
@@ -644,9 +662,11 @@ async def render(state, navigate):
                         _render_next_btn(state, 4, navigate)
                         ui.separator().classes("my-4")
 
-                        def _otra_vuelta():
+                        async def _otra_vuelta():
+                            # navigate es async: llamarlo sin await descarta el
+                            # coroutine y el boton limpia pero no navega (Reviewer).
                             state.clear_drv()
-                            navigate(1)
+                            await navigate(1)
 
                         ui.button(
                             "Procesar otra vuelta",
@@ -689,8 +709,8 @@ async def render(state, navigate):
             else:
                 compose_btn.disable()
 
-        video_input.on("update:model-value", lambda _: _update_compose_enabled())
-        overlay_input.on("update:model-value", lambda _: _update_compose_enabled())
+        video_input.on_value_change(lambda _: _update_compose_enabled())
+        overlay_input.on_value_change(lambda _: _update_compose_enabled())
         _update_compose_enabled()
 
     # Auto-arranque si viene encadenado desde el Paso 3

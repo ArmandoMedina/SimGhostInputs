@@ -4,11 +4,11 @@ import os
 
 from nicegui import run, ui
 
-from .ng_helpers import render_breadcrumb
+from .ng_helpers import _fmt_lap, render_breadcrumb
 
 
 async def render(state, navigate):
-    render_breadcrumb(5)
+    render_breadcrumb(5, state.flow_key if state.flow_chosen else None)
     ui.label("Paso 5 — Pace Notes para CrewChief").classes("step-header")
     ui.label(
         "Genera tonos o frases de audio sincronizados con las curvas donde más tiempo pierdes. "
@@ -58,12 +58,75 @@ async def render(state, navigate):
                         )
                     )
 
+                    from fantasma.viz.pacenotes import (
+                        COUNTDOWN_SCALE,
+                        DEFAULT_COUNTDOWN_S,
+                        DEFAULT_FREQS,
+                        MILESTONE_LABELS,
+                        PLAN_CUES,
+                    )
+
+                    with ui.expansion("Leyenda de tonos (qué significa cada bip)").classes(
+                        "w-full mt-3"
+                    ):
+                        ui.label(
+                            "Los tonos marcan los puntos de la vuelta de REFERENCIA — dónde "
+                            "frena o acelera quien va más rápido. Si no coinciden con lo que "
+                            "haces, ese desfase es el consejo, no un error de sincronía."
+                        ).classes("text-xs text-gray-400 mb-2")
+                        _legend_rows = []
+                        for _cue in PLAN_CUES:
+                            _base = DEFAULT_FREQS.get(_cue, 0)
+                            if _cue == "brake_countdown":
+                                # frecuencias y anticipo derivados del motor
+                                # (COUNTDOWN_SCALE, DEFAULT_COUNTDOWN_S): si el
+                                # sintetizador cambia, la leyenda no miente.
+                                _ticks = "-".join(str(round(_base * f)) for f in COUNTDOWN_SCALE)
+                                _sound = "3 tics ascendentes (%s Hz), ~%.1f s antes" % (
+                                    _ticks,
+                                    DEFAULT_COUNTDOWN_S,
+                                )
+                            else:
+                                _sound = "tono corto de %d Hz" % _base
+                            _legend_rows.append(
+                                {"tono": MILESTONE_LABELS.get(_cue, _cue), "sonido": _sound}
+                            )
+                        ui.table(
+                            rows=_legend_rows,
+                            columns=[
+                                {
+                                    "name": "tono",
+                                    "label": "Tono",
+                                    "field": "tono",
+                                    "align": "left",
+                                },
+                                {
+                                    "name": "sonido",
+                                    "label": "Suena como",
+                                    "field": "sonido",
+                                    "align": "left",
+                                },
+                            ],
+                        ).classes("w-full").props("dense flat hide-bottom")
+
                     ui.label("Curvas a cubrir").classes("text-sm font-bold text-white mb-1 mt-3")
+                    all_corners_chk = ui.checkbox(
+                        "Todas las curvas (pace notes de ritmo)", value=False
+                    ).tooltip(
+                        "Genera cues para todas las curvas detectadas, también donde no "
+                        "pierdes tiempo (la frenada suena como marca de ritmo, estilo rally). "
+                        "Ignora el Top N."
+                    )
                     top_number = (
-                        ui.number(value=5, min=1, max=20, label="Top N curvas")
+                        ui.number(value=5, min=1, max=99, label="Top N curvas")
                         .classes("w-32")
                         .tooltip("Cuántas curvas cubrir, de la que más tiempo pierdes hacia abajo.")
                     )
+
+                    # Binding declarativo: sin handler manual (e.value no existe
+                    # en GenericEventArguments de NiceGUI 3.14 — Reviewer) y sin
+                    # estado que se desincronice si el checkbox se setea por codigo.
+                    top_number.bind_enabled_from(all_corners_chk, "value", backward=lambda v: not v)
 
                     ui.label("Volumen").classes("text-sm font-bold text-white mb-1 mt-3")
                     vol_state = {"value": 0.8}
@@ -75,10 +138,14 @@ async def render(state, navigate):
                     )
 
                     def _on_vol(e):
+                        # on_value_change (ValueChangeEventArguments SI trae
+                        # .value); el .on("update:model-value") previo recibia
+                        # GenericEventArguments sin .value y moria en silencio,
+                        # dejando el volumen clavado en el default (Reviewer).
                         vol_state["value"] = e.value or 0.8
                         vol_label.set_text("%.2f" % (e.value or 0.8))
 
-                    vol_slider.on("update:model-value", _on_vol)
+                    vol_slider.on_value_change(_on_vol)
 
                     _lang_state = {"value": "es-MX"}
 
@@ -95,9 +162,8 @@ async def render(state, navigate):
                             .tooltip("Idioma de la voz sintetizada (solo modos Voz y Ambos).")
                         )
 
-                    lang_select.on(
-                        "update:model-value",
-                        lambda e: _lang_state.update({"value": e.value or "es-MX"}),
+                    lang_select.on_value_change(
+                        lambda e: _lang_state.update({"value": e.value or "es-MX"})
                     )
 
                     lang_container.set_visibility(False)
@@ -105,7 +171,7 @@ async def render(state, navigate):
                     def _update_lang_visibility():
                         lang_container.set_visibility(mode_radio.value in ("voice", "both"))
 
-                    mode_radio.on("update:model-value", lambda _: _update_lang_visibility())
+                    mode_radio.on_value_change(lambda _: _update_lang_visibility())
 
                     ui.label("Directorio de salida").classes(
                         "text-sm font-bold text-white mb-1 mt-3"
@@ -151,7 +217,8 @@ async def render(state, navigate):
                             return
 
                         _mode = mode_radio.value
-                        _top = int(top_number.value or 5)
+                        # top=0 = todas las curvas (ADR 0024)
+                        _top = 0 if all_corners_chk.value else int(top_number.value or 5)
                         _vol = float(vol_state["value"])
                         _lang = _lang_state["value"] if _mode in ("voice", "both") else "es-MX"
                         _rows = state.rows
@@ -247,11 +314,47 @@ async def render(state, navigate):
                             [("Video", "*.mp4 *.webm *.mov"), ("Todos", "*.*")],
                         )
                         if p:
+                            # set_value dispara on_value_change: el refresh del
+                            # boton y del sidecar viene por ahi.
                             mux_video_input.set_value(p)
 
                     ui.button("Explorar...", on_click=pick_mux_video).classes(
                         "btn-secondary"
                     ).props("flat").tooltip("Abrir selector de archivo de video.")
+
+                sidecar_label = ui.label("").classes("text-xs mb-2")
+
+                def _update_sidecar_label():
+                    """Coteja el sidecar .sync.json del video (ADR 0024) contra la
+                    vuelta cargada, para avisar ANTES de apretar el botón. El
+                    criterio vive en compose.sync_sidecar_mismatch — la misma
+                    fuente que usa el mux para negarse, así aviso y rechazo no
+                    pueden contradecirse (Reviewer)."""
+                    sidecar_label.set_text("")
+                    sidecar_label.classes(remove="text-yellow-400 text-green-500")
+                    _v = mux_video_input.value or ""
+                    _lap = state.drv_lap
+                    if not _v or _lap is None:
+                        return
+                    from fantasma.viz.compose import read_sync_sidecar, sync_sidecar_mismatch
+
+                    if read_sync_sidecar(_v) is None:
+                        return  # video externo sin sidecar: nada que cotejar
+                    _mm = sync_sidecar_mismatch(_v, _lap, source_name=state.drv_name)
+                    if _mm is not None:
+                        _src = os.path.basename(str(_mm["csv_path"] or "")) or "csv desconocido"
+                        sidecar_label.set_text(
+                            "⚠ Este video se compuso con una vuelta de %s (%s); la vuelta "
+                            "cargada dura %s. El mux se negará: carga esa vuelta en el Paso 1."
+                            % (_fmt_lap(_mm["expected"]), _src, _fmt_lap(_mm["actual"]))
+                        )
+                        sidecar_label.classes(add="text-yellow-400")
+                    else:
+                        sidecar_label.set_text(
+                            "✓ Video verificado: corresponde a la vuelta cargada (%s)."
+                            % _fmt_lap(_lap.laptime)
+                        )
+                        sidecar_label.classes(add="text-green-500")
 
                 with ui.row().classes("w-full gap-2 items-end mb-2"):
                     mux_pn_input = (
@@ -304,7 +407,7 @@ async def render(state, navigate):
                     mux_vol_state["value"] = e.value or 1.0
                     mux_vol_label.set_text("%.2f" % (e.value or 1.0))
 
-                mux_vol_slider.on("update:model-value", _on_mux_vol)
+                mux_vol_slider.on_value_change(_on_mux_vol)
 
                 mux_result_area = ui.column().classes("w-full")
 
@@ -347,7 +450,12 @@ async def render(state, navigate):
                         from fantasma.viz.compose import mux_pace_notes_into_video
 
                         return mux_pace_notes_into_video(
-                            _video, _pn_dir, _drv_lap, _out, volume=_vol
+                            _video,
+                            _pn_dir,
+                            _drv_lap,
+                            _out,
+                            volume=_vol,
+                            source_name=state.drv_name,
                         )
 
                     try:
@@ -382,13 +490,35 @@ async def render(state, navigate):
                         "copia el stream de video sin re-encodear."
                     )
                 )
+                # El botón gris sin explicación fue reporte directo del PO
+                # (QA 2026-07-05): este caption dice QUÉ falta para habilitarlo.
+                apply_hint = ui.label("").classes("text-xs text-yellow-400 mt-1")
 
                 def _update_apply_enabled():
-                    if state.drv_lap is not None and mux_video_input.value and mux_pn_input.value:
-                        apply_btn.enable()
-                    else:
+                    faltan = []
+                    if state.drv_lap is None:
+                        faltan.append("la vuelta del piloto (Paso 1)")
+                    if not mux_video_input.value:
+                        faltan.append("el video")
+                    if not mux_pn_input.value:
+                        faltan.append("la carpeta del pack")
+                    if faltan:
                         apply_btn.disable()
+                        apply_hint.set_text("Falta: " + ", ".join(faltan) + ".")
+                    else:
+                        apply_btn.enable()
+                        apply_hint.set_text("")
 
-                mux_video_input.on("update:model-value", lambda _: _update_apply_enabled())
-                mux_pn_input.on("update:model-value", lambda _: _update_apply_enabled())
+                # on_value_change y NO .on("update:model-value"): el handler DOM
+                # corre ANTES de que NiceGUI asigne element.value, asi que estos
+                # refreshes leian el valor anterior y todo iba "una accion atras"
+                # (el boton gris fantasma del QA del PO). El sidecar (I/O de
+                # disco) solo se relee cuando cambia el VIDEO, con debounce para
+                # no hacer stat por keystroke (rutas de red congelan el loop).
+                mux_video_input.props("debounce=400")
+                mux_video_input.on_value_change(
+                    lambda _: (_update_apply_enabled(), _update_sidecar_label())
+                )
+                mux_pn_input.on_value_change(lambda _: _update_apply_enabled())
                 _update_apply_enabled()
+                _update_sidecar_label()

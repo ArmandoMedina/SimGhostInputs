@@ -204,17 +204,28 @@ def _pick_folder(title="Seleccionar carpeta", initialdir=None):
 # ── UI components ────────────────────────────────────────────────────────────
 
 
-def render_breadcrumb(step: int):
-    """Renderiza la barra de breadcrumb con el paso actual resaltado."""
+def render_breadcrumb(step: int, flow_key=None):
+    """Renderiza la barra de breadcrumb con el paso actual resaltado.
+
+    Muestra solo los pasos del flujo activo (flow_key de _FLOWS): en el flujo
+    pacenotes el camino es Inicio › Importar › Análisis › Pace Notes — pintar
+    los 6 pasos fijos mandaba al usuario hacia Overlay/Video, que no son parte
+    de su ruta (QA 2026-07-05). Sin flow_key (None = flujo aún no elegido),
+    con clave desconocida, o si el paso actual no pertenece al flujo
+    (navegación manual), pinta los 6.
+    """
     from nicegui import ui
 
     _STEP_LABELS = ["Inicio", "Importar", "Análisis", "Overlay", "Video", "Pace Notes"]
+    flow = _FLOWS.get(flow_key)
+    visible = flow["steps"] if flow and step in flow["steps"] else range(len(_STEP_LABELS))
     html = (
         '<div style="display:flex;align-items:center;gap:6px;'
         'padding:8px 0 16px;font-size:0.85rem;flex-wrap:wrap">'
     )
-    for i, lbl in enumerate(_STEP_LABELS):
-        if i > 0:
+    for pos, i in enumerate(visible):
+        lbl = _STEP_LABELS[i]
+        if pos > 0:
             html += '<span style="color:var(--text-dim);opacity:0.6;margin:0 2px">›</span>'
         if i < step:
             html += f'<span style="color:var(--text-dim)">{lbl}</span>'

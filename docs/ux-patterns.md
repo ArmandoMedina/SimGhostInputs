@@ -188,6 +188,38 @@ Historial de decisiones de UX que alteraron el layout o el flujo de la UI — pa
 - Contenido de la página centrado con ancho máximo de 1 100 px (`max-width:1100px;margin:0 auto`).
 - Referencia: cualquier regeneración de baseline Playwright para Pasos 4 y 5 debe partir de este layout de 2 columnas.
 
+### feat/pacenotes-ui-paso5 (Unreleased)
+
+**Breadcrumb por flujo — solo los pasos de tu ruta:**
+- `render_breadcrumb(step, flow_key)` pinta únicamente los pasos de `_FLOWS[flow_key]["steps"]`: en "Solo Pace Notes" se ve Inicio › Importar › Análisis › Pace Notes (antes pintaba los 6 pasos fijos y mandaba al usuario hacia Overlay/Video, reporte del PO en QA 2026-07-05).
+- Fallback seguro: sin `flow_key`, con clave desconocida, o si el paso actual no pertenece al flujo (navegación manual), pinta los 6.
+- Heurística cubierta: **Correspondencia sistema-mundo real** (§1.2) — el mapa que ve el usuario es el camino que va a recorrer.
+- Patrón reusable: los componentes de navegación derivan SIEMPRE de `_FLOWS` (fuente única), nunca de una lista fija propia.
+
+**Leyenda de tonos en el Paso 5 — panel plegable derivado del motor:**
+- `ui.expansion` con una tabla tono→"suena como" generada desde `PLAN_CUES` + `MILESTONE_LABELS` + `DEFAULT_FREQS` (DRY: si el motor cambia una frecuencia, la leyenda se actualiza sola).
+- Incluye la aclaración clave: los tonos marcan los puntos de la vuelta de REFERENCIA; el desfase con lo que haces es el consejo, no un bug ([ADR 0024](decisions/0024-sincronia-pace-notes.md)).
+- Heurística cubierta: **Reconocimiento antes que recuerdo** (§1.6) — 7 tipos de tono eran indistinguibles sin tabla.
+
+**Caption "qué falta" bajo botón deshabilitado (Paso 5) — evolución del patrón «habilitar reactivo»:**
+- El botón gris sin explicación fue reporte directo del PO: `_update_apply_enabled()` ahora además setea un `ui.label` amarillo con la lista exacta de lo que falta ("Falta: la vuelta del piloto (Paso 1), el video.").
+- Heurística cubierta: **Visibilidad del estado del sistema** (§1.1). Patrón reusable: todo botón que se deshabilite por contexto lleva un caption adyacente que se actualiza en el mismo `_update_X_enabled()`.
+
+**Aviso de sidecar video↔vuelta (Paso 5, panel ②):**
+- Al elegir video, si existe `<video>.sync.json` (ADR 0024) se coteja contra `state.drv_lap`: ✓ verde si corresponde, ⚠ amarillo con instrucción ("carga esa vuelta en el Paso 1") si no. El error del mux ya no es la primera noticia.
+- El criterio de comparación vive en `compose.sync_sidecar_mismatch` (fuente única): la UI solo formatea, así el aviso y el rechazo real del mux no pueden contradecirse.
+- Heurística cubierta: **Prevención de errores** (§1.3), en su forma fuerte: avisar antes de que el usuario apriete el botón que va a fallar.
+
+**REGLA — valores de eventos en NiceGUI 3.x (bug sistémico corregido en este PR):**
+- Los handlers registrados con `.on("update:model-value", handler)` reciben `GenericEventArguments`, que **NO tiene `.value`** (dataclass con `sender/client/args`): todo handler que leía `e.value` moría con AttributeError silencioso (el volumen del Paso 5, el offset del Paso 4, el selector de curva del Paso 2, el mapeo de columnas del Paso 1, el formato del Paso 3 y la visibilidad del panel de pace notes del Paso 4 estaban rotos de origen).
+- Peor aún: incluso los handlers `lambda _: refresh()` sobre ese evento van **una acción atrás**, porque el evento DOM se despacha ANTES de que NiceGUI asigne `element.value` — el refresh lee el valor anterior (así se comportaba el botón «Aplicar sonido»: habilitado/deshabilitado con un retraso de una edición; lo destapó la captura de Mariana al esperar el aviso del sidecar que "nunca llegaba").
+- **Patrón correcto:** para todo lo que dependa del valor usa `elemento.on_value_change(handler)` (recibe `ValueChangeEventArguments` con `.value` ya asignado al elemento) o binding declarativo (`bind_enabled_from`, `bind_visibility_from`). `.on("update:model-value", ...)` queda solo para eventos que NO leen valores (ni siquiera indirectamente).
+- **Corolario:** `set_value()` programático (botones "Explorar…") no pasa por el DOM — sí dispara `on_value_change`, pero cualquier refresh manual extra tras `set_value` es inofensivo.
+
+**REGLA — `navigate` es async; no lo llames desde un `def` sin await:**
+- `on_click=lambda: navigate(N)` funciona (NiceGUI aguarda el coroutine retornado), pero `def handler(): navigate(N)` **descarta el coroutine y no navega** — así estaba roto el botón "🔔 Generar Pace Notes" del Paso 2 (el reporte "no logré llegar a pace notes" del PO) y "Procesar otra vuelta" del Paso 4.
+- **Patrón correcto:** si el handler hace algo más que navegar, decláralo `async def` y `await navigate(N)`.
+
 ### Unreleased
 
 **ng_app.py — modo oscuro activado globalmente (bugfix de contraste):**

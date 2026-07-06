@@ -45,7 +45,7 @@ _FLOWS: dict[str, tuple] = {
 
 
 async def render(state, navigate):
-    render_breadcrumb(0)
+    render_breadcrumb(0, state.flow_key if state.flow_chosen else None)
 
     # ── Encabezado de página ──────────────────────────────────────────────────
     ui.html('<h1 class="page-heading">SimGhostInputs</h1>')
