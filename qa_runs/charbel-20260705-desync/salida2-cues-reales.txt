@@ -1,0 +1,84 @@
+﻿drv laptime=394.05  time[0]=0.000  time[-1]=394.050  dist[0]=0.0
+_dist_to_time(drv, 0)=0.00  _dist_to_time(drv, 20571)=394.05
+
+== PACK C:\Users\amedina\Downloads\0207  (51 cues)
+cue                                            d_m  t_video | vs evento real del piloto
+C03 � contador de frenada                      681     15.0 | -
+C03 � apex                                     863     18.8 | apex real a 877m -> cue -0.4 s
+C05 � apex                                    1149     26.2 | apex real a 1165m -> cue -0.5 s
+C05 � gas completo                            1232     28.5 | -
+C12 � contador de frenada                     3453     64.3 | -
+C12 � apex                                    3708     69.5 | apex real a 3679m -> cue +0.9 s
+C12 � gas completo                            3813     72.2 | -
+C13 � contador de frenada                     4562     84.2 | -
+C13 � soltar freno                            4736     86.7 | -
+C13 � apex                                    4801     87.8 | apex real a 4836m -> cue -0.6 s
+C15 � contador de frenada                     4862     89.0 | -
+C15 � apex                                    5045     94.2 | apex real a 5041m -> cue +0.2 s
+C15 � gas completo                            5167     98.6 | -
+C16 � contador de frenada                     5595    106.6 | -
+C17 � contador de frenada                     5794    109.8 | -
+C16 � apex                                    5815    110.2 | apex real a 5791m -> cue +0.4 s
+C16 � gas completo                            5865    111.1 | -
+C17 � apex                                    6004    114.2 | apex real a 6009m -> cue -0.1 s
+C18 � contador de frenada                     6088    116.5 | -
+C17 � gas completo                            6138    117.8 | -
+C18 � apex                                    6291    121.6 | apex real a 6289m -> cue +0.1 s
+C18 � gas completo                            6375    124.2 | -
+C21 � contador de frenada                     7047    137.2 | -
+C21 � apex                                    7233    142.5 | apex real a 7223m -> cue +0.5 s
+C21 � gas completo                            7349    146.1 | -
+C29 � contador de frenada                    11111    211.9 | -
+C29 � apex                                   11362    217.0 | apex real a 11382m -> cue -0.8 s
+C29 � gas completo                           11477    220.9 | -
+C30 � contador de frenada                    11579    223.2 | -
+C30 � apex                                   11795    228.8 | apex real a 11771m -> cue +1.0 s
+C30 � gas completo                           11907    232.9 | -
+C32 � contador de frenada                    12348    241.3 | -
+C32 � soltar freno                           12499    243.8 | -
+C32 � apex                                   12632    246.8 | apex real a 12633m -> cue -0.0 s
+C37 � contador de frenada                    13331    261.8 | -
+C37 � apex                                   13504    265.5 | apex real a 13508m -> cue -0.1 s
+C37 � gas completo                           13617    268.3 | -
+C46 � apex                                   15552    309.0 | apex real a 15604m -> cue -0.9 s
+C47 � apex                                   15814    313.2 | apex real a 15748m -> cue +1.0 s
+C48 � contador de frenada                    16001    316.0 | -
+C48 � soltar freno                           16182    318.8 | -
+C49 � contador de frenada                    16205    319.2 | -
+C48 � apex                                   16264    320.3 | apex real a 16294m -> cue -0.6 s
+C49 � apex                                   16399    323.2 | apex real a 16416m -> cue -0.5 s
+C49 � gas completo                           16486    325.7 | -
+C52 � turn-in                                17160    340.8 | -
+C52 � apex                                   17238    342.3 | apex real a 17179m -> cue +1.1 s
+C52 � gas completo                           17338    344.2 | -
+C54 � contador de frenada                    20009    379.0 | -
+C53 � apex                                   20044    379.5 | apex real a 20048m -> cue -0.1 s
+C54 � apex                                   20237    384.2 | apex real a 20233m -> cue +0.1 s
+
+== PACK C:\Users\amedina\Downloads\0207\_pack_LOGICA2  (16 cues)
+cue                                            d_m  t_video | vs evento real del piloto
+C01 � punto de frenada                           0      0.0 | -
+C03 � contador de frenada                      561     13.1 | -
+C03 � apex                                     863     18.8 | apex real a 877m -> cue -0.4 s
+C05 � apex                                    1149     26.2 | apex real a 1165m -> cue -0.5 s
+C05 � gas completo                            1232     28.5 | -
+C06 � punto de frenada                        1275     29.5 | -
+C06 � apex                                    1344     31.6 | apex real a 1340m -> cue +0.1 s
+C08 � contador de frenada                     1838     41.4 | -
+C08 � soltar freno                            2092     45.1 | -
+C08 � apex                                    2151     46.0 | apex real a 2200m -> cue -0.8 s
+C10 � punto de frenada                        3289     62.1 | -
+C12 � contador de frenada                     3333     62.6 | -
+C10 � apex                                    3362     63.0 | apex real a 3412m -> cue -0.7 s
+C13 � contador de frenada                     4442     82.7 | -
+C13 � soltar freno                            4736     86.7 | -
+C13 � apex                                    4801     87.8 | apex real a 4836m -> cue -0.6 s
+
+== PACK C:\Users\amedina\Downloads\0207\_pack_VOZ_ref  (6 cues)
+cue                                            d_m  t_video | vs evento real del piloto
+C01 � voice                                      0      0.0 | -
+C03 � voice                                    601     13.7 | -
+C06 � voice                                   1075     24.1 | -
+C08 � voice                                   1878     42.0 | -
+C10 � voice                                   3089     59.5 | -
+C13 � voice                                   4482     83.2 | -
