@@ -222,6 +222,10 @@ Historial de decisiones de UX que alteraron el layout o el flujo de la UI — pa
 
 ### Unreleased
 
+**ng_step4.py — subtítulos de cues, sub-opción revelable dentro de Pace Notes:**
+- El checkbox «Añadir subtítulos que nombran cada sonido» vive DENTRO de `pn_section` (la sección que aparece al activar Pace Notes), no como control independiente: los subtítulos salen del mismo pack, así que no tiene sentido ofrecerlos sin Pace Notes activas. Al ocultarse `pn_section`, la sub-opción se oculta con ella.
+- El valor solo se lee cuando `pn_check.value` es cierto (se arma `_pn_kwargs` una sola vez con `burn_cue_subs` incluido). Patrón reusable: una sub-opción que depende de un control padre se anida en su contenedor revelable y se lee solo dentro de la rama que ya validó al padre.
+
 **ng_app.py — modo oscuro activado globalmente (bugfix de contraste):**
 - `ui.dark_mode(True)` en `main_page()` establece el tema oscuro de Quasar como comportamiento por defecto; sin esto pywebview renderizaba en modo claro con problemas de contraste.
 - Colores de texto en `ng_step0–4.py` migrados de `style("color:var(--X)")` a clases Tailwind (ver patrón 4 de §4).

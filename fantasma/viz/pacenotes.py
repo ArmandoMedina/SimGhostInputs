@@ -72,6 +72,19 @@ MILESTONE_LABELS = {
     "full_throttle": "gas completo",
     "turn_in": "turn-in",
 }
+# Color .ass (&HAABBGGRR, alpha 00 = opaco) por etiqueta legible — la misma que
+# MILESTONE_LABELS pone en entry["description"]. Fuente unica del codigo de color
+# de los subtitulos quemados (build_cue_ass) y de su leyenda. Un cue cuya etiqueta
+# no este aqui cae a blanco.
+CUE_SUB_COLORS = {
+    "punto de frenada": "&H002020FF",  # rojo
+    "contador de frenada": "&H0000A5FF",  # naranja
+    "inicio de acelerador": "&H0000FF00",  # verde
+    "gas completo": "&H0000FF88",  # verde claro
+    "soltar freno": "&H0000FFFF",  # amarillo
+    "turn-in": "&H00FFFFFF",  # blanco
+    "apex": "&H000099FF",  # ambar
+}
 PLAN_CUES = [
     "brake_countdown",
     "brake",
@@ -428,6 +441,105 @@ def render_pace_notes_track(pace_notes_dir, lap, output, sample_rate=24000, volu
     Path(output).parent.mkdir(parents=True, exist_ok=True)
     Path(output).write_bytes(_make_wav_bytes(mixed, sample_rate=sample_rate))
     return str(output)
+
+
+def _ass_time(seconds):
+    """Formatea segundos al reloj de un evento .ass (H:MM:SS.cc)."""
+    seconds = max(0.0, seconds)
+    h = int(seconds // 3600)
+    m = int((seconds % 3600) // 60)
+    return "%d:%02d:%05.2f" % (h, m, seconds % 60)
+
+
+def _split_cue_desc(description):
+    """Parte ``"Nombre curva — etiqueta"`` en (nombre, etiqueta).
+
+    ``_metadata_entry`` siempre arma la descripcion con " — " como separador;
+    usamos rsplit por si el nombre de la curva trajera un guion largo propio.
+    """
+    parts = description.rsplit(" — ", 1)
+    if len(parts) == 2:
+        return parts[0].strip(), parts[1].strip()
+    return description.strip(), description.strip()
+
+
+def build_cue_ass(pace_notes_dir, lap, video_w, video_h, hud_margin_v=None):
+    """Genera el contenido de un subtitulo .ass que nombra cada cue del pack.
+
+    Cada entrada del pack se rotula con su etiqueta (color por tipo, ver
+    CUE_SUB_COLORS) y el nombre de la curva, anclado por encima del HUD para
+    que el piloto sepa que significa cada sonido cuando suena. El tiempo de cada
+    rotulo usa el MISMO ``_dist_to_time(lap, dist)`` que el audio de los cues
+    (render_pace_notes_track), asi el texto y el tono caen juntos.
+
+    Args:
+        pace_notes_dir: Carpeta del pack con ``metadata.json``.
+        lap:            Vuelta del piloto (t=0 en la meta) para mapear distancia→tiempo.
+        video_w:        Ancho del video final en px (PlayResX del .ass).
+        video_h:        Alto del video final en px (escala fuentes y margen).
+        hud_margin_v:   Margen inferior en px para despejar el HUD; si es None,
+                        usa 0.34·alto (HUD abajo a escala tipica).
+
+    Returns:
+        str con el contenido .ass, o None si ninguna entrada cae dentro de la
+        vuelta (nada que rotular).
+    """
+    metadata_path = Path(pace_notes_dir) / "metadata.json"
+    metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+    vw, vh = int(video_w), int(video_h)
+    fs_cue = max(28, int(vh * 0.052))
+    fs_name = max(16, int(vh * 0.030))
+    fs_leg = max(14, int(vh * 0.026))
+    mv_cue = hud_margin_v if hud_margin_v is not None else int(vh * 0.34)
+
+    dialogues = []
+    used = []
+    for entry in metadata.get("entries", []):
+        dist = entry.get("distanceRoundTrack")
+        if dist is None:
+            continue
+        t = _dist_to_time(lap, _as_float(dist))
+        if t is None or t < 0 or t > lap.laptime:
+            continue
+        name, label = _split_cue_desc(entry.get("description", ""))
+        color = CUE_SUB_COLORS.get(label, "&H00FFFFFF")
+        if label not in used:
+            used.append(label)
+        text = "{\\c%s}%s  \\N{\\fs%d}%s{\\c&H00FFFFFF}" % (color, label, fs_name, name)
+        dialogues.append(
+            "Dialogue: 0,%s,%s,Cue,,0,0,0,,%s" % (_ass_time(t - 0.15), _ass_time(t + 1.35), text)
+        )
+
+    if not dialogues:
+        return None
+
+    # Leyenda fija arriba-izquierda: solo las etiquetas que de verdad suenan,
+    # en el orden canonico de CUE_SUB_COLORS.
+    legend_items = [(lbl, CUE_SUB_COLORS[lbl]) for lbl in CUE_SUB_COLORS if lbl in used]
+    legend_txt = "\\N".join(
+        "{\\c%s}%s{\\c&H00FFFFFF}" % (color, lbl) for lbl, color in legend_items
+    )
+    legend = "Dialogue: 0,%s,%s,Legend,,0,0,0,,{\\pos(24,24)}LEYENDA DE SONIDOS\\N%s" % (
+        _ass_time(0),
+        _ass_time(lap.laptime),
+        legend_txt,
+    )
+
+    return (
+        "[Script Info]\n"
+        "ScriptType: v4.00+\n"
+        "PlayResX: %d\n"
+        "PlayResY: %d\n"
+        "WrapStyle: 2\n\n"
+        "[V4+ Styles]\n"
+        "Format: Name, Fontname, Fontsize, PrimaryColour, OutlineColour, BackColour, "
+        "Bold, Alignment, MarginL, MarginR, MarginV, BorderStyle, Outline, Shadow\n"
+        "Style: Cue,Arial,%d,&H00FFFFFF,&H00000000,&H90000000,1,2,40,40,%d,1,3,1\n"
+        "Style: Legend,Arial,%d,&H00FFFFFF,&H00000000,&H90000000,0,7,24,24,24,1,2,1\n\n"
+        "[Events]\n"
+        "Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n"
+        "%s\n%s\n"
+    ) % (vw, vh, fs_cue, mv_cue, fs_leg, legend, "\n".join(dialogues))
 
 
 def _top_rows(rows, top):

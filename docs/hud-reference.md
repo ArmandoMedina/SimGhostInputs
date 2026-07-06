@@ -148,6 +148,27 @@ fantasma compose --video grabacion.mp4 --overlay salida/overlay.webm \
 El HUD no cambia visualmente. El comando convierte los metros de `metadata.json` a segundos usando
 la telemetría del piloto (`--driver`) y mezcla los WAVs como una pista de audio de preview.
 
+### Subtítulos de cues
+
+En el Paso 4 (checkbox «Añadir subtítulos que nombran cada sonido», ver
+[guía](guia-usuario.md)) el video de estudio puede llevar quemado un rótulo por
+cada cue, sincronizado con su tono, más una leyenda en una esquina. Es una capa
+de estudio sobre el video final —no forma parte del HUD ni del pack de CrewChief
+([ADR 0027](decisions/0027-subtitulos-de-cues-en-video.md))—. El color del
+rótulo indica el tipo de sonido:
+
+| Sonido (etiqueta) | Color | Qué marca |
+|---|---|---|
+| **punto de frenada** | rojo | Dónde empieza la frenada. |
+| **contador de frenada** | naranja | Los tics de aviso antes de la frenada. |
+| **soltar freno** | amarillo | Dónde se suelta el pedal de freno. |
+| **turn-in** | blanco | Inicio del giro. |
+| **inicio de acelerador** | verde | Dónde vuelve el gas. |
+| **gas completo** | verde claro | Dónde el gas llega al 100 %. |
+| **apex** | ámbar | Vértice de la curva. |
+
+La leyenda en pantalla solo lista las etiquetas que de verdad suenan en esa vuelta.
+
 ---
 
 ## Avisos en el reporte de comparación

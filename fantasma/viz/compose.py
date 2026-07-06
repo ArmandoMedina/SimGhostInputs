@@ -93,6 +93,48 @@ def _total_frames(ffmpeg_path, video_path, lap_duration=None):
     return 0
 
 
+def _probe_resolution(ffmpeg_path, video_path):
+    """Devuelve (ancho, alto) del primer stream de video, o (0, 0) si falla."""
+    ffprobe = _ffprobe_path(ffmpeg_path)
+    if not ffprobe:
+        return (0, 0)
+    try:
+        r = subprocess.run(
+            [
+                ffprobe,
+                "-v",
+                "error",
+                "-select_streams",
+                "v:0",
+                "-show_entries",
+                "stream=width,height",
+                "-of",
+                "csv=p=0:s=x",
+                video_path,
+            ],
+            capture_output=True,
+            text=True,
+        )
+        w, h = r.stdout.strip().split("x")[:2]
+        return (int(w), int(h))
+    except Exception:
+        return (0, 0)
+
+
+def _caption_margin_v(position, video_h, overlay_h, scale):
+    """Margen inferior (px) para que los subtitulos no tapen el HUD.
+
+    Los subtitulos van anclados abajo-centro; si el HUD tambien esta abajo hay
+    que subirlos por encima de su alto (overlay_h·scale). Si el HUD esta arriba,
+    basta un margen chico.
+    """
+    gap = int(video_h * 0.03)
+    if position.startswith("bottom"):
+        hud_h = int(overlay_h * scale) if overlay_h else int(video_h * 0.30)
+        return hud_h + gap
+    return gap
+
+
 def _nvenc_available(ffmpeg_path):
     """Devuelve True si h264_nvenc realmente funciona en este equipo.
 
@@ -133,11 +175,15 @@ def _nvenc_available(ffmpeg_path):
         return False
 
 
-def _build_filter(position, scale, offset=0.0):
+def _build_filter(position, scale, offset=0.0, subs_file=None):
     """Construye el filtro ffmpeg para superponer el overlay.
 
     offset solo se usa en modo legacy (sin recorte). En modo recorte el seek
     ya posicionó el video y el overlay empieza en t=0.
+
+    subs_file: si se provee, quema ese .ass sobre el video ya compuesto. Debe
+    ser un nombre RELATIVO (el proceso ffmpeg corre con cwd en su carpeta) para
+    esquivar el infierno de escapar 'C:' en el filtro ass de Windows.
     """
     px, py = POSITIONS.get(position, POSITIONS["bottom-right"])
     steps = []
@@ -151,7 +197,11 @@ def _build_filter(position, scale, offset=0.0):
         steps.append("[%s]setpts=PTS+%.6f/TB[ov_d]" % (cur, offset))
         cur = "ov_d"
 
-    steps.append("[0:v][%s]overlay=x=%s:y=%s[out]" % (cur, px, py))
+    if subs_file:
+        steps.append("[0:v][%s]overlay=x=%s:y=%s[ovl]" % (cur, px, py))
+        steps.append("[ovl]ass=%s[out]" % subs_file)
+    else:
+        steps.append("[0:v][%s]overlay=x=%s:y=%s[out]" % (cur, px, py))
     return ";".join(steps)
 
 
@@ -322,6 +372,7 @@ def compose_video(
     pace_notes_volume=1.0,
     lap=None,
     sync_info=None,
+    burn_cue_subs=False,
 ):
     """Superpone overlay con canal alfa sobre el video de grabación.
 
@@ -354,6 +405,10 @@ def compose_video(
                            (``csv_path``, ``laptime``…). Si se provee, al
                            terminar se escribe el sidecar ``<output>.sync.json``
                            que el mux del Paso 5 valida (ADR 0024).
+        burn_cue_subs:     Si True (requiere ``pace_notes_dir`` + ``lap``),
+                           quema en el video un rótulo por cada cue nombrando
+                           el sonido (etiqueta + curva) sincronizado con su
+                           tono, más una leyenda de colores (ADR 0027).
 
     Returns:
         Dict con keys ``path``, ``encoder`` y ``duration_s``.
@@ -387,6 +442,29 @@ def compose_video(
         cue_audio = os.path.join(_pn_tmpdir.name, "pace_notes_preview.wav")
         _render_pn(pace_notes_dir, lap, cue_audio, volume=pace_notes_volume)
 
+    # Subtitulos de cues (ADR 0027): rotulo por sonido, quemado en el mismo
+    # encode. Necesita pace_notes_dir + lap. El .ass se referencia por nombre
+    # RELATIVO y ffmpeg corre con cwd en su carpeta (esquiva el escape de 'C:'
+    # en Windows). _subs_tmpdir reusa el de pace notes si existe.
+    _subs_tmpdir = None
+    _subs_file = None
+    _run_cwd = None
+    if burn_cue_subs and pace_notes_dir and lap is not None:
+        from .pacenotes import build_cue_ass
+
+        vw, vh = _probe_resolution(ffmpeg, video)
+        if not vw or not vh:
+            vw, vh = 1920, 1080
+        _, oh = _probe_resolution(ffmpeg, overlay)
+        mv = _caption_margin_v(position, vh, oh, scale)
+        ass_txt = build_cue_ass(pace_notes_dir, lap, vw, vh, hud_margin_v=mv)
+        if ass_txt:
+            _subs_tmpdir = _pn_tmpdir or tempfile.TemporaryDirectory()
+            _subs_file = "cue_subs.ass"
+            with open(os.path.join(_subs_tmpdir.name, _subs_file), "w", encoding="utf-8") as _f:
+                _f.write(ass_txt)
+            _run_cwd = _subs_tmpdir.name
+
     use_nvenc = _nvenc_available(ffmpeg)
     if use_nvenc:
         video_enc = ["-c:v", "h264_nvenc", "-preset", "p4", "-rc", "vbr", "-cq", "18", "-b:v", "0"]
@@ -408,7 +486,7 @@ def compose_video(
     if lap_duration:
         # Modo recorte: seek rápido al offset, output limitado a la vuelta.
         # El overlay empieza en t=0 del clip resultante (no necesita setpts).
-        fc = _build_filter(position, scale, offset=0.0)
+        fc = _build_filter(position, scale, offset=0.0, subs_file=_subs_file)
         cmd = [
             ffmpeg,
             "-y",
@@ -435,7 +513,7 @@ def compose_video(
         ]
     else:
         # Modo legado: overlay demora via setpts, video completo.
-        fc = _build_filter(position, scale, offset)
+        fc = _build_filter(position, scale, offset, subs_file=_subs_file)
         cmd = [
             ffmpeg,
             "-y",
@@ -464,7 +542,9 @@ def compose_video(
             # stderr a un archivo temporal para poder reportar el motivo real del
             # fallo (antes iba a DEVNULL y solo quedaba un exit code críptico).
             err_f = tempfile.TemporaryFile(mode="w+")
-            proc = subprocess.Popen(cmd_p, stdout=subprocess.PIPE, stderr=err_f, text=True)
+            proc = subprocess.Popen(
+                cmd_p, stdout=subprocess.PIPE, stderr=err_f, text=True, cwd=_run_cwd
+            )
             try:
                 for line in proc.stdout:
                     m = pat.match(line.strip())
@@ -487,10 +567,13 @@ def compose_video(
                 )
             err_f.close()
         else:
-            subprocess.run(cmd, check=True)
+            subprocess.run(cmd, check=True, cwd=_run_cwd)
     finally:
         if _pn_tmpdir is not None:
             _pn_tmpdir.cleanup()
+        # Si los subtitulos usaron su propio tmpdir (no el de pace notes), limpiarlo.
+        if _subs_tmpdir is not None and _subs_tmpdir is not _pn_tmpdir:
+            _subs_tmpdir.cleanup()
 
     if sync_info is not None:
         info = dict(sync_info)

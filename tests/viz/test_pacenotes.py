@@ -420,3 +420,68 @@ def test_brake_y_countdown_frecuencias_distintas():
 
     assert DEFAULT_FREQS["brake"] == 1000
     assert DEFAULT_FREQS["brake"] != DEFAULT_FREQS["brake_countdown"]
+
+
+def _write_pack(tmp_path, entries):
+    import json
+
+    (tmp_path / "metadata.json").write_text(
+        json.dumps({"entries": entries}, ensure_ascii=False), encoding="utf-8"
+    )
+    return str(tmp_path)
+
+
+def test_build_cue_ass_rotula_cada_cue(tmp_path, lap_factory):
+    """build_cue_ass emite un Dialogue por cue, con su etiqueta, color y leyenda."""
+    from fantasma.viz.pacenotes import (
+        CUE_SUB_COLORS,
+        _metadata_entry,
+        build_cue_ass,
+    )
+
+    lap = lap_factory(length_m=1500.0)
+    entries = [
+        _metadata_entry("Curva 1", "brake", 400, "400_0.wav"),
+        _metadata_entry("Curva 2", "throttle_on", 1000, "1000_0.wav"),
+    ]
+    pack = _write_pack(tmp_path, entries)
+
+    ass = build_cue_ass(pack, lap, 1024, 1024)
+
+    assert "PlayResX: 1024" in ass and "PlayResY: 1024" in ass
+    # un rotulo por cue: etiqueta + nombre de curva
+    assert "punto de frenada" in ass
+    assert "inicio de acelerador" in ass
+    assert "Curva 1" in ass and "Curva 2" in ass
+    # color por tipo y leyenda solo con las etiquetas que suenan
+    assert CUE_SUB_COLORS["punto de frenada"] in ass
+    assert "LEYENDA DE SONIDOS" in ass
+    # dos cues -> dos lineas Dialogue de estilo Cue (+ la leyenda)
+    assert ass.count("Dialogue: 0,") == 3
+
+
+def test_build_cue_ass_sincroniza_con_el_tono(tmp_path, lap_factory):
+    """El tiempo del rotulo usa _dist_to_time igual que el audio del cue."""
+    from fantasma.viz.pacenotes import _dist_to_time, _metadata_entry, build_cue_ass
+
+    lap = lap_factory(length_m=1500.0)
+    entries = [_metadata_entry("Curva 1", "brake", 400, "400_0.wav")]
+    pack = _write_pack(tmp_path, entries)
+    t = _dist_to_time(lap, 400.0)
+
+    ass = build_cue_ass(pack, lap, 1024, 1024)
+
+    # El Dialogue de la curva arranca ~0.15 s antes del tono (t-0.15).
+    h, m, s = int((t - 0.15) // 3600), int(((t - 0.15) % 3600) // 60), (t - 0.15) % 60
+    esperado = "%d:%02d:%05.2f" % (h, m, s)
+    assert esperado in ass
+
+
+def test_build_cue_ass_sin_entradas_no_rotula(tmp_path, lap_factory):
+    """Un pack sin cues no tiene nada que rotular -> None (no se quema nada)."""
+    from fantasma.viz.pacenotes import build_cue_ass
+
+    lap = lap_factory(length_m=1500.0)
+    pack = _write_pack(tmp_path, [])
+
+    assert build_cue_ass(pack, lap, 1024, 1024) is None

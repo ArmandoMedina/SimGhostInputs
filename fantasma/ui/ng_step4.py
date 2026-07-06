@@ -391,6 +391,15 @@ async def render(state, navigate):
                             "btn-secondary"
                         ).props("flat")
 
+                    subs_check = ui.checkbox("Añadir subtítulos que nombran cada sonido").classes(
+                        "mt-1"
+                    )
+                    ui.label(
+                        "Quema en el video un rótulo por cada cue (con su color y el "
+                        "nombre de la curva) más una leyenda, para saber qué significa "
+                        "cada sonido cuando suena. Útil para estudiar la vuelta."
+                    ).classes("text-xs text-gray-400")
+
                 pn_section.set_visibility(False)
 
                 def _toggle_pn_section(e):
@@ -567,6 +576,7 @@ async def render(state, navigate):
                 "pace_notes_dir": pn_dir_input.value,
                 "pace_notes_volume": 1.0,
                 "lap": _drv_lap,
+                "burn_cue_subs": subs_check.value,
             }
 
         # Identidad de la vuelta para el sidecar <output>.sync.json (ADR 0024):

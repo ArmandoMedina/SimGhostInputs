@@ -178,6 +178,8 @@ El **Paso 3 (flujo «Video con HUD»)** incluye un checkbox «Al terminar, compo
 
 El **Paso 4** incluye una sección opcional **«Pace Notes en el video compuesto»**: activa el checkbox e indica la carpeta del pack generado en el Paso 5; los WAVs se mezclan en el audio del video final durante el compose. Si ya tienes un video compuesto al que solo quieres añadir el sonido del pack, usa el panel «Aplicar sonido a un video existente» del Paso 5 (sin re-encodear).
 
+Dentro de esa misma sección aparece **«Añadir subtítulos que nombran cada sonido»**: al activarlo, el video final lleva quemado un rótulo por cada cue —con su color y el nombre de la curva— sincronizado con el momento en que suena su tono, más una leyenda de colores en una esquina. Sirve para **estudiar la vuelta**: cuando no distingues a oído qué significa cada bip, el texto te lo dice en pantalla ([ADR 0027](decisions/0027-subtitulos-de-cues-en-video.md)). Los colores coinciden con la [tabla de sonidos](hud-reference.md#subtítulos-de-cues). Requiere haber activado las Pace Notes en el video (los subtítulos salen del mismo pack).
+
 > **Aviso de «correlación moderada».** Si la sincronía se aceptó pero con una correlación solo
 > moderada (calidad media), verás un aviso de que el video **podría no corresponder a esa vuelta**
 > — típico cuando se elige por error un video de la **misma pista y el mismo auto pero de otra

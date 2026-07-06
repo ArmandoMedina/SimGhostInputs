@@ -32,6 +32,7 @@ Sistema (llamado con `fantasma compose`, desde el Paso 4 de la UI, o de forma en
 - El offset se aplica como `setpts=PTS+offset/TB`; offset 0.0 omite el setpts.
 - Una posición desconocida cae en `bottom-right` como valor seguro por defecto.
 - `_nvenc_available`: devuelve `True` solo si el probe a ffmpeg retorna exit code 0; cualquier error (exit code != 0 o excepción) devuelve `False` y la composición usa CPU.
+- Con `burn_cue_subs` (requiere pack de Pace Notes + vuelta), quema en el mismo encode un subtítulo por cue nombrando el sonido, sincronizado con su tono ([ADR 0027](../../docs/decisions/0027-subtitulos-de-cues-en-video.md)); sin pack + vuelta el flag no hace nada.
 
 ## Criterios de aceptación
 - Dado un overlay con escala 0.5, cuando se construye el filtro de ffmpeg, entonces incluye `scale=iw*0.500000:ih*0.500000`.

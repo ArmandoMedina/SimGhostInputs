@@ -38,6 +38,15 @@ def test_build_filter_unknown_position_falls_back_to_bottom_right():
     assert "overlay=x=%s:y=%s" % (px, py) in fc
 
 
+def test_build_filter_burns_subs_after_overlay():
+    # con subs_file: el overlay va a un label intermedio y luego se quema el .ass
+    fc = compose._build_filter("bottom-right", scale=1.0, subs_file="cue_subs.ass")
+    assert "[ovl]" in fc
+    assert "ass=cue_subs.ass[out]" in fc
+    # sin subs_file no aparece el filtro ass
+    assert "ass=" not in compose._build_filter("bottom-right", scale=1.0)
+
+
 def test_audio_mix_filter_with_video_audio():
     assert "amix=inputs=2" in compose._audio_mix_filter(video_has_audio=True)
 
@@ -193,6 +202,100 @@ def test_compose_video_wires_pace_notes_dir_to_render_and_ffmpeg(monkeypatch, tm
     assert isinstance(result, dict)
     assert result["path"] == fake_out
     assert result["encoder"] == "libx264"
+
+
+def test_compose_video_burn_cue_subs_wires_ass_filter(monkeypatch, tmp_path):
+    """Con burn_cue_subs, compose_video genera el .ass, lo mete como filtro ass
+    del ffmpeg y corre el proceso con cwd en la carpeta del .ass."""
+    import fantasma.viz.pacenotes as _pn_mod
+    from tests.conftest import make_lap
+
+    lap = make_lap()
+    pn_dir = str(tmp_path / "pndir")
+    os.makedirs(pn_dir, exist_ok=True)
+    fake_out = str(tmp_path / "out.mp4")
+
+    monkeypatch.setattr(
+        _pn_mod, "render_pace_notes_track", lambda *a, **k: open(a[2], "wb").close()
+    )
+    monkeypatch.setattr(_pn_mod, "build_cue_ass", lambda *a, **k: "[Script Info]\nfake")
+    monkeypatch.setattr(compose, "_probe_resolution", lambda *a: (1024, 1024))
+
+    runs = []
+
+    def fake_run(cmd, **kwargs):
+        cwd = kwargs.get("cwd")
+        # el .ass existe DURANTE el encode; el tmpdir se limpia al volver.
+        ass_ok = bool(cwd) and os.path.exists(os.path.join(cwd, "cue_subs.ass"))
+        runs.append({"cmd": list(cmd), "cwd": cwd, "ass_ok": ass_ok})
+        return _FakeProcOk()
+
+    monkeypatch.setattr(
+        compose.shutil, "which", lambda n: "/usr/bin/ffmpeg" if n == "ffmpeg" else None
+    )
+    monkeypatch.setattr(compose, "_nvenc_available", lambda *a: False)
+    monkeypatch.setattr(compose, "_has_audio", lambda *a: False)
+    monkeypatch.setattr(compose.subprocess, "run", fake_run)
+
+    compose.compose_video(
+        video="fake_video.mp4",
+        overlay="fake_overlay.webm",
+        output=fake_out,
+        pace_notes_dir=pn_dir,
+        lap=lap,
+        burn_cue_subs=True,
+    )
+
+    assert runs, "ffmpeg debe haber sido invocado"
+    fc = next(
+        (runs[0]["cmd"][i + 1] for i, a in enumerate(runs[0]["cmd"]) if a == "-filter_complex"), ""
+    )
+    assert "ass=cue_subs.ass" in fc, "el filtro ass debe quemar el .ass por nombre relativo"
+    assert runs[0]["cwd"], "ffmpeg debe correr con cwd en la carpeta del .ass"
+    assert runs[0]["ass_ok"], "el .ass debe existir en cwd durante el encode"
+
+
+def test_compose_video_no_burn_when_build_cue_ass_returns_none(monkeypatch, tmp_path):
+    """Si build_cue_ass devuelve None (nada que rotular), no se quema ningun .ass."""
+    import fantasma.viz.pacenotes as _pn_mod
+    from tests.conftest import make_lap
+
+    lap = make_lap()
+    pn_dir = str(tmp_path / "pndir")
+    os.makedirs(pn_dir, exist_ok=True)
+
+    monkeypatch.setattr(
+        _pn_mod, "render_pace_notes_track", lambda *a, **k: open(a[2], "wb").close()
+    )
+    monkeypatch.setattr(_pn_mod, "build_cue_ass", lambda *a, **k: None)
+    monkeypatch.setattr(compose, "_probe_resolution", lambda *a: (1024, 1024))
+
+    runs = []
+    monkeypatch.setattr(
+        compose.shutil, "which", lambda n: "/usr/bin/ffmpeg" if n == "ffmpeg" else None
+    )
+    monkeypatch.setattr(compose, "_nvenc_available", lambda *a: False)
+    monkeypatch.setattr(compose, "_has_audio", lambda *a: False)
+    monkeypatch.setattr(
+        compose.subprocess,
+        "run",
+        lambda cmd, **k: runs.append({"cmd": list(cmd), "cwd": k.get("cwd")}) or _FakeProcOk(),
+    )
+
+    compose.compose_video(
+        video="v.mp4",
+        overlay="o.webm",
+        output=str(tmp_path / "out.mp4"),
+        pace_notes_dir=pn_dir,
+        lap=lap,
+        burn_cue_subs=True,
+    )
+
+    fc = next(
+        (runs[0]["cmd"][i + 1] for i, a in enumerate(runs[0]["cmd"]) if a == "-filter_complex"), ""
+    )
+    assert "ass=" not in fc
+    assert runs[0]["cwd"] is None
 
 
 def test_compose_video_no_pace_notes_when_no_dir(monkeypatch, tmp_path):
