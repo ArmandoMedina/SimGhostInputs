@@ -234,8 +234,10 @@ def plan_tone_events(
             kept.append(event)
 
     # Reconciliar el plan por curva: un cue descartado globalmente NO puede
-    # seguir en "selected" (plan.json es la auditoria de que suena y que no;
-    # selected debe coincidir con los WAV que build_tone_pack genera).
+    # seguir en "selected" (plan.json es la auditoria de que suena y que no).
+    # Nota: los brake_tic se agregan despues, a plan["events"] pero NO a los
+    # "selected" por-curva; la fuente de verdad de lo que se renderiza es
+    # plan["events"], no la suma de los "selected".
     dropped = {(e["corner_id"], e["cue"], e["distance"]) for e in skipped_global}
     for corner_plan in corners_plan:
         still = []
