@@ -390,6 +390,9 @@ def _resolve_pacenotes_outdir(corners_data, output_dir_arg):
 
 
 def _count_lost_curves(rows, top):
+    if not top:
+        # top=0: todas las curvas detectadas, sin filtro de perdida (ADR 0024)
+        return len(rows)
     losses = []
     for row in rows:
         try:
@@ -613,7 +616,12 @@ def main(argv=None):
     sp.add_argument(
         "--compare", required=True, help="corners_compare.csv generado por fantasma compare"
     )
-    sp.add_argument("--top", type=int, default=5, help="solo las N curvas con mayor perdida")
+    sp.add_argument(
+        "--top",
+        type=int,
+        default=5,
+        help="solo las N curvas con mayor perdida; 0 = todas las curvas detectadas",
+    )
     sp.add_argument("--mode", choices=["tones", "voice", "both"], default="tones")
     sp.add_argument("--lang", default="es-MX", help="idioma/voz para mode voice o both")
     sp.add_argument("--output-dir", help="directorio destino del pack")

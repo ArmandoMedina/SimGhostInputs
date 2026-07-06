@@ -262,3 +262,106 @@ def test_run_async_in_thread_safe_inside_running_loop():
 
     asyncio.run(outer())
     assert result == [42]
+
+
+# ── Plan de cues: sincronia percibida (ADR 0024) ──────────────────────────────
+
+
+def test_countdown_antes_de_la_meta_cae_a_brake_plano():
+    """Si el anticipo del countdown caeria en d<=0 (curva pegada a la meta), la
+    curva NO se queda muda ni suena en el segundo 0: cae al tono de frenada
+    plano en el punto real de frenada (Reviewer sobre ADR 0024)."""
+    from fantasma.viz.pacenotes import plan_tone_events
+
+    rows = [{"id": "C01", "name": "C01", "time_lost": 0.5, "flags": "frenada"}]
+    # brake a 100 m sin v -> fallback countdown_m=120 -> el countdown caeria en -20 m
+    corners = [{"id": "C01", "name": "C01", "milestones": {"brake_start": {"d": 100}}}]
+    plan = plan_tone_events(rows, corners, top=1)
+    assert all(e["distance"] > 0 for e in plan["events"])
+    brakes = [e for e in plan["events"] if e["cue"] == "brake"]
+    assert brakes and brakes[0]["distance"] == 100
+    assert not any(e["cue"] == "brake_countdown" for e in plan["events"])
+
+
+def test_plan_gap_global_entre_curvas_gana_prioridad():
+    """El gap minimo tambien aplica ENTRE curvas: en encadenadas quedaban cues a
+    <1 s de distancia (sopa de tonos). Sobrevive el de mayor prioridad."""
+    from fantasma.viz.pacenotes import plan_tone_events
+
+    rows = [
+        {"id": "C01", "name": "C01", "time_lost": 0.3, "flags": "vmin"},
+        {"id": "C02", "name": "C02", "time_lost": 0.1, "flags": ""},
+    ]
+    corners = [
+        {"id": "C01", "name": "C01", "milestones": {"apex": {"d": 1000}}},
+        {"id": "C02", "name": "C02", "milestones": {"brake_start": {"d": 1030}}},
+    ]
+    plan = plan_tone_events(rows, corners, top=2, min_gap_m=50)
+    # apex (prioridad 90) sobrevive; la frenada de la curva vecina (80) se descarta
+    assert [e["distance"] for e in plan["events"]] == [1000]
+    assert any(
+        s["reason"] == "too_close_global" and s["distance"] == 1030 for s in plan["skipped_global"]
+    )
+    # plan.json reconciliado: el cue descartado globalmente NO queda en el
+    # "selected" de su curva (selected == WAVs generados), sino en su skipped
+    c02 = next(c for c in plan["corners"] if c["id"] == "C02")
+    assert not any(s["distance"] == 1030 for s in c02["selected"])
+    assert any(s["distance"] == 1030 and s["reason"] == "too_close_global" for s in c02["skipped"])
+
+
+def test_plan_legacy_tiene_mismo_esquema():
+    """El plan legacy (smart=False) expone skipped_global vacio: mismo esquema."""
+    from fantasma.viz.pacenotes import _legacy_tone_events
+
+    plan = _legacy_tone_events([], [], 5, ["brake"])
+    assert plan["skipped_global"] == []
+
+
+def test_countdown_anticipa_por_tiempo_con_v():
+    """Con v en el milestone, el anticipo es countdown_s segundos a esa velocidad
+    (216 km/h = 60 m/s -> 3.5 s = 210 m), no los 120 m fijos."""
+    from fantasma.viz.pacenotes import plan_tone_events
+
+    rows = [{"id": "C01", "name": "C01", "time_lost": 0.5, "flags": "frenada"}]
+    corners = [{"id": "C01", "name": "C01", "milestones": {"brake_start": {"d": 2000, "v": 216}}}]
+    plan = plan_tone_events(rows, corners, top=1, countdown_s=3.5)
+    assert plan["events"][0]["cue"] == "brake_countdown"
+    assert plan["events"][0]["distance"] == 1790
+
+
+def test_countdown_lead_clamps_y_fallback():
+    from fantasma.viz.pacenotes import _countdown_lead_m
+
+    # 36 km/h * 3.5 s = 35 m -> clamp al minimo de 60 m
+    assert _countdown_lead_m({"v": 36}, 120, 3.5) == 60
+    # 700 km/h * 3.5 s = 680 m -> clamp al maximo de 350 m
+    assert _countdown_lead_m({"v": 700}, 120, 3.5) == 350
+    # sin v (corners viejos, tests sinteticos) -> fallback al countdown_m fijo
+    assert _countdown_lead_m({"d": 500}, 120, 3.5) == 120
+
+
+def test_top_cero_incluye_curvas_sin_perdida():
+    """top=0 = todas las curvas detectadas (pace notes de ritmo), incluidas
+    aquellas donde no se pierde tiempo; top>0 conserva el filtro por perdida."""
+    from fantasma.viz.pacenotes import plan_tone_events
+
+    rows = [
+        {"id": "C01", "name": "C01", "time_lost": 0.0, "flags": ""},
+        {"id": "C02", "name": "C02", "time_lost": 0.4, "flags": ""},
+    ]
+    corners = [
+        {"id": "C01", "name": "C01", "milestones": {"brake_start": {"d": 500}}},
+        {"id": "C02", "name": "C02", "milestones": {"brake_start": {"d": 3000}}},
+    ]
+    todas = plan_tone_events(rows, corners, top=0)
+    assert {c["id"] for c in todas["corners"]} == {"C01", "C02"}
+    top5 = plan_tone_events(rows, corners, top=5)
+    assert {c["id"] for c in top5["corners"]} == {"C02"}
+
+
+def test_brake_y_countdown_frecuencias_distintas():
+    """brake y brake_countdown eran ambos 880 Hz: indistinguibles al oido."""
+    from fantasma.viz.pacenotes import DEFAULT_FREQS
+
+    assert DEFAULT_FREQS["brake"] == 1000
+    assert DEFAULT_FREQS["brake"] != DEFAULT_FREQS["brake_countdown"]

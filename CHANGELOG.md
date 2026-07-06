@@ -4,6 +4,9 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/). Versionado
 
 ## [Unreleased]
 
+### Añadido
+- **ADR 0024 — Sincronía de pace notes** (Aceptada): anticipación del countdown por tiempo (`countdown_s=3.5` a la velocidad de llegada, clamp [60, 350] m; fallback a los 120 m fijos sin `v`), gap mínimo global entre curvas (gana la prioridad), descarte de cues que caen antes de la meta, `brake` a 1000 Hz (distinguible del countdown), `top=0` = todas las curvas (pace notes de ritmo), y **sidecar de sincronía** `<video>.sync.json` que `compose_video` escribe y el mux del Paso 5 valida (error accionable si la vuelta cargada difiere > 0.1 s). Base: diagnóstico con datos reales en `qa_runs/charbel-20260705-desync/` que refuta la hipótesis de descalibración de distancia. 7 tests nuevos en `tests/viz/`.
+
 ### Corregido
 - **Los cues de pace notes quedaban enterrados −6 dB bajo el audio del motor** (`viz/compose.py::_audio_mix_filter`): `amix` sin `normalize=0` divide cada entrada entre el número de inputs, atenuando motor y cues por igual (medido: mezcla a −23.3 dB vs −17.3 dB del original; tono máx. −7.2 dB). Con `normalize=0` las entradas se suman sin atenuar (cue −0.9 dB, motor intacto). Aplica al compose completo y al mux standalone del Paso 5. Requiere ffmpeg ≥ 4.4. Test de regresión `test_audio_mix_filter_no_normalize`; evidencia en `qa_runs/mariana-20260705-180356/` y diagnóstico del desync percibido en `qa_runs/charbel-20260705-desync/notas.md`.
 

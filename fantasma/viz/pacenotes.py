@@ -26,9 +26,17 @@ def crewchief_pacenotes_dir(track_name: str) -> str:
 
 
 DEFAULT_MILESTONES = ["brake", "apex", "gas"]
+# Anticipo del countdown en segundos (ADR 0024). Fuente unica: la UI (leyenda
+# del Paso 5) y las firmas de este modulo lo leen de aqui — no lo dupliques.
+DEFAULT_COUNTDOWN_S = 3.5
+# Escala de los 3 tics del countdown (fracciones de la frecuencia base).
+# La leyenda de la UI la deriva de aqui; _generate_cue la consume.
+COUNTDOWN_SCALE = (0.75, 0.875, 1.0)
 DEFAULT_FREQS = {
     "brake_countdown": 880,
-    "brake": 880,
+    # brake a 1000 Hz, NO 880: el countdown termina su escala en 880 y con la
+    # misma frecuencia eran indistinguibles al oido (QA 2026-07-05, ADR 0024).
+    "brake": 1000,
     "brake_release": 720,
     "turn_in": 660,
     "apex": 440,
@@ -129,6 +137,7 @@ def build_tone_pack(
     volume=0.8,
     smart=True,
     track_name=None,
+    countdown_s=DEFAULT_COUNTDOWN_S,
 ) -> dict:
     out = Path(outdir)
     out.mkdir(parents=True, exist_ok=True)
@@ -137,7 +146,7 @@ def build_tone_pack(
     entries = []
     files = []
     plan = (
-        plan_tone_events(rows, corners, top=top)
+        plan_tone_events(rows, corners, top=top, countdown_s=countdown_s)
         if smart
         else _legacy_tone_events(rows, corners, top, milestones)
     )
@@ -167,6 +176,7 @@ def plan_tone_events(
     min_gap_m=50,
     max_events_per_corner=3,
     countdown_m=120,
+    countdown_s=DEFAULT_COUNTDOWN_S,
 ) -> dict:
     events = []
     corners_plan = []
@@ -175,10 +185,16 @@ def plan_tone_events(
         corner = _find_corner(row, corners)
         if not corner:
             continue
-        candidates = _corner_candidates(row, corner, countdown_m)
+        candidates = _corner_candidates(row, corner, countdown_m, countdown_s)
         selected = []
         skipped = []
         for candidate in sorted(candidates, key=lambda c: (-c["priority"], c["distance"])):
+            if candidate["distance"] <= 0:
+                # El anticipo cayo antes de la meta (curva pegada al inicio de
+                # vuelta): descartar, no clampear a 0 — un cue en t=0 del video
+                # suena aleatorio (QA 2026-07-05).
+                skipped.append({**candidate, "reason": "antes_de_la_meta"})
+                continue
             if len(selected) >= max_events_per_corner:
                 skipped.append({**candidate, "reason": "max_events_per_corner"})
                 continue
@@ -201,7 +217,41 @@ def plan_tone_events(
         )
 
     events.sort(key=lambda c: c["distance"])
-    return {"events": [_plan_public(e) for e in events], "corners": corners_plan}
+    # Gap minimo GLOBAL: el de arriba solo separa cues DENTRO de una curva; en
+    # curvas encadenadas quedaban cues de curvas vecinas a <1 s (sopa de tonos,
+    # QA 2026-07-05). Gana el de mayor prioridad. Nota: al reemplazar al vecino
+    # anterior no hace falta re-verificar hacia atras — el reemplazado ya
+    # respetaba el gap con su predecesor y el nuevo esta aun mas adelante.
+    kept = []
+    skipped_global = []
+    for event in events:
+        if kept and event["distance"] - kept[-1]["distance"] < min_gap_m:
+            if event["priority"] > kept[-1]["priority"]:
+                skipped_global.append({**kept.pop(), "reason": "too_close_global"})
+                kept.append(event)
+            else:
+                skipped_global.append({**event, "reason": "too_close_global"})
+        else:
+            kept.append(event)
+
+    # Reconciliar el plan por curva: un cue descartado globalmente NO puede
+    # seguir en "selected" (plan.json es la auditoria de que suena y que no;
+    # selected debe coincidir con los WAV que build_tone_pack genera).
+    dropped = {(e["corner_id"], e["cue"], e["distance"]) for e in skipped_global}
+    for corner_plan in corners_plan:
+        still = []
+        for sel in corner_plan["selected"]:
+            if (sel["corner_id"], sel["cue"], sel["distance"]) in dropped:
+                corner_plan["skipped"].append({**sel, "reason": "too_close_global"})
+            else:
+                still.append(sel)
+        corner_plan["selected"] = still
+
+    return {
+        "events": [_plan_public(e) for e in kept],
+        "corners": corners_plan,
+        "skipped_global": [_plan_public(e) for e in skipped_global],
+    }
 
 
 def _run_async_in_thread(coro):
@@ -255,7 +305,18 @@ def build_voice_pack(rows, corners, outdir, top=5, lang="es-MX", track_name=None
         brake = _milestone(corner, "brake") or _milestone(row, "brake")
         if not brake or brake.get("d") is None:
             continue
-        distance = max(0, int(round(_as_float(brake["d"]) - 200)))
+        raw_distance = _as_float(brake["d"]) - 200
+        if raw_distance <= 0:
+            # La nota caeria antes de la meta (curva pegada al inicio): saltarla,
+            # no clampear a 0 — una voz en t=0 del video suena aleatoria. Con
+            # aviso: un descarte silencioso hace creer que edge-tts fallo.
+            print(
+                "aviso: nota de voz de %s descartada (caeria antes de la meta)"
+                % _corner_name(row, corner),
+                file=sys.stderr,
+            )
+            continue
+        distance = int(round(raw_distance))
         name = _corner_name(row, corner)
         filename = "%d_0.wav" % distance
         text = _voice_text(row, name)
@@ -353,6 +414,11 @@ def render_pace_notes_track(pace_notes_dir, lap, output, sample_rate=24000, volu
 
 
 def _top_rows(rows, top):
+    if not top:
+        # top=0 (o None): TODAS las curvas detectadas, tambien donde no se
+        # pierde tiempo — el cue de frenada actua como pace note de ritmo,
+        # estilo rally (pedido del PO, ADR 0024).
+        return list(rows)
     losses = [r for r in rows if _as_float(r.get("time_lost", 0)) > 0]
     losses.sort(key=lambda r: _as_float(r.get("time_lost", 0)), reverse=True)
     return losses[:top]
@@ -383,10 +449,31 @@ def _legacy_tone_events(rows, corners, top, milestones):
                 "skipped": [],
             }
         )
-    return {"events": [_plan_public(e) for e in events], "corners": corners_plan}
+    # skipped_global vacio para que el esquema del plan sea el mismo que el smart
+    return {
+        "events": [_plan_public(e) for e in events],
+        "corners": corners_plan,
+        "skipped_global": [],
+    }
 
 
-def _corner_candidates(row, corner, countdown_m):
+def _countdown_lead_m(brake, countdown_m, countdown_s, min_lead_m=60, max_lead_m=350):
+    """Distancia de anticipo del countdown de frenada.
+
+    Por tiempo: countdown_s segundos a la velocidad de llegada a la frenada
+    (v del milestone, km/h), acotada a [min_lead_m, max_lead_m]. Los 120 m
+    fijos daban ~2 s a velocidad GT3 — insuficiente para reaccionar (el PO
+    pidio 3-4 s; ADR 0024). Fallback al countdown_m fijo si el milestone no
+    trae v (corners JSON viejos, tests sinteticos).
+    """
+    v = brake.get("v")
+    if not v:
+        return countdown_m
+    lead = _as_float(v) / 3.6 * countdown_s
+    return max(min_lead_m, min(max_lead_m, lead))
+
+
+def _corner_candidates(row, corner, countdown_m, countdown_s=DEFAULT_COUNTDOWN_S):
     loss = _as_float(row.get("time_lost", 0))
     flags = str(row.get("flags", ""))
     d_brake = _as_float(row.get("d_brake_m", 0)) if row.get("d_brake_m") not in (None, "") else 0
@@ -399,18 +486,22 @@ def _corner_candidates(row, corner, countdown_m):
     brake = _milestone(corner, "brake")
     if brake and brake.get("d") is not None:
         brake_d = _as_float(brake["d"])
-        if loss >= 0.35 or braking_issue:
+        countdown_d = brake_d - _countdown_lead_m(brake, countdown_m, countdown_s)
+        if (loss >= 0.35 or braking_issue) and countdown_d > 0:
             candidates.append(
                 _event(
                     row,
                     corner,
                     "brake_countdown",
-                    max(0, brake_d - countdown_m),
+                    countdown_d,
                     100,
                     "anticipa frenada prioritaria",
                 )
             )
         else:
+            # Incluye el caso de curva pegada a la meta cuyo anticipo caeria en
+            # d<=0: mejor un tono de frenada plano (reproducible) que dejar la
+            # curva muda o un cue en el segundo 0 del video (Reviewer, ADR 0024).
             candidates.append(_event(row, corner, "brake", brake_d, 80, "marca frenada"))
 
     release = _milestone(corner, "brake_release")
@@ -511,7 +602,7 @@ def _metadata_entry(name, milestone, distance, filename):
 def _generate_cue(cue, freqs, duration, volume):
     if cue == "brake_countdown":
         base = freqs.get("brake_countdown", 880)
-        return generate_countdown((base * 0.75, base * 0.875, base), volume=volume)
+        return generate_countdown(tuple(base * f for f in COUNTDOWN_SCALE), volume=volume)
     return generate_tone(freqs.get(cue, 440), duration, volume=volume)
 
 

@@ -1,5 +1,6 @@
 """Compositor: superpone el overlay (canal alfa) sobre el video de grabación con ffmpeg."""
 
+import json
 import os
 import re
 import shutil
@@ -179,6 +180,110 @@ def _has_audio(ffprobe, video_path):
         return False
 
 
+SYNC_SIDECAR_SUFFIX = ".sync.json"
+
+
+def sync_sidecar_path(video_path):
+    """Ruta del sidecar de sincronía de un video compuesto."""
+    return video_path + SYNC_SIDECAR_SUFFIX
+
+
+def write_sync_sidecar(video_path, info):
+    """Escribe junto al video un JSON con la identidad de la vuelta que lo originó.
+
+    Sin este vínculo el mux de pace notes es una lotería: el panel ② del Paso 5
+    sincroniza con la vuelta que esté cargada en memoria, y dos vueltas de
+    laptime parecido (394.05 vs 394.07) tienen splits distintos — deriva de
+    segundos (ADR 0024). Campos esperados en info: ``csv_path``, ``laptime``,
+    ``offset``, ``lap_duration`` (los ausentes simplemente no se validan).
+    """
+    path = sync_sidecar_path(video_path)
+    payload = {"format": "sgi-sync-v1"}
+    payload.update(info)
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(payload, f, indent=2, ensure_ascii=False)
+    return path
+
+
+def read_sync_sidecar(video_path):
+    """Lee el sidecar de sincronía del video, o None si no existe o es ilegible.
+
+    Un ``format`` desconocido también devuelve None: un lector v1 no debe
+    validar contra campos cuya semántica pudo cambiar en una versión futura.
+    """
+    path = sync_sidecar_path(video_path)
+    if not os.path.exists(path):
+        return None
+    try:
+        with open(path, encoding="utf-8") as f:
+            data = json.load(f)
+    except (OSError, ValueError):
+        return None
+    if not isinstance(data, dict) or data.get("format") != "sgi-sync-v1":
+        return None
+    return data
+
+
+def sync_sidecar_mismatch(video_path, lap, source_name=None, tolerance_s=0.1):
+    """Compara el sidecar del video contra la vuelta cargada.
+
+    Fuente única del criterio "¿es la vuelta correcta?": la usan el mux (para
+    negarse) y la UI del Paso 5 (para avisar antes de apretar el botón) — si
+    divergieran, el aviso y el rechazo se contradirían.
+
+    Dos llaves: el laptime (± tolerance_s) y, si ambos lados la traen, la
+    identidad del archivo de origen (dos vueltas distintas pueden durar casi
+    igual; el laptime solo es un proxy). source_name es el nombre del CSV de
+    la vuelta cargada (opcional).
+
+    Returns:
+        None si no hay sidecar o la vuelta corresponde; si no, un dict con
+        ``expected`` (laptime del sidecar), ``actual`` (laptime de la vuelta),
+        ``csv_path`` (origen registrado en el sidecar, puede ser None) y
+        ``reason`` ("laptime" o "origen").
+    """
+    sidecar = read_sync_sidecar(video_path)
+    if not sidecar or sidecar.get("laptime") is None:
+        return None
+    expected = float(sidecar["laptime"])
+    info = {
+        "expected": expected,
+        "actual": lap.laptime,
+        "csv_path": sidecar.get("csv_path"),
+        "sidecar_path": sync_sidecar_path(video_path),
+    }
+    if abs(expected - lap.laptime) > tolerance_s:
+        return {**info, "reason": "laptime"}
+    recorded = sidecar.get("csv_path") or sidecar.get("lap_name")
+    if source_name and recorded:
+        if os.path.basename(str(recorded)) != os.path.basename(str(source_name)):
+            return {**info, "reason": "origen"}
+    return None
+
+
+def check_sync_sidecar(video_path, lap, source_name=None, tolerance_s=0.1):
+    """Valida que la vuelta cargada corresponda al video, si hay sidecar.
+
+    Lanza RuntimeError con mensaje accionable si el sidecar delata otra vuelta
+    (ver sync_sidecar_mismatch). Sin sidecar (video externo) no valida nada —
+    comportamiento previo intacto.
+    """
+    mismatch = sync_sidecar_mismatch(video_path, lap, source_name, tolerance_s)
+    if mismatch is None:
+        return
+    raise RuntimeError(
+        "Este video se compuso con una vuelta de %.2f s (%s), pero la vuelta "
+        "cargada dura %.2f s: los cues quedarían desincronizados. Carga esa "
+        "vuelta en el Paso 1, o borra el archivo %s para forzar el mux."
+        % (
+            mismatch["expected"],
+            mismatch["csv_path"] or "csv de origen desconocido",
+            mismatch["actual"],
+            mismatch["sidecar_path"],
+        )
+    )
+
+
 def _audio_mix_filter(video_has_audio, vid_stream="0:a", cue_stream="2:a"):
     """Genera el filtro amix para mezclar audio del video con un WAV de cues.
 
@@ -216,6 +321,7 @@ def compose_video(
     pace_notes_dir=None,
     pace_notes_volume=1.0,
     lap=None,
+    sync_info=None,
 ):
     """Superpone overlay con canal alfa sobre el video de grabación.
 
@@ -244,6 +350,10 @@ def compose_video(
         pace_notes_volume: Volumen de los Pace Notes (default 1.0).
         lap:               Vuelta del piloto requerida para sincronizar los
                            Pace Notes por distancia.
+        sync_info:         Dict con la identidad de la vuelta del video
+                           (``csv_path``, ``laptime``…). Si se provee, al
+                           terminar se escribe el sidecar ``<output>.sync.json``
+                           que el mux del Paso 5 valida (ADR 0024).
 
     Returns:
         Dict con keys ``path``, ``encoder`` y ``duration_s``.
@@ -382,11 +492,25 @@ def compose_video(
         if _pn_tmpdir is not None:
             _pn_tmpdir.cleanup()
 
+    if sync_info is not None:
+        info = dict(sync_info)
+        info.setdefault("offset", offset)
+        info.setdefault("lap_duration", lap_duration)
+        write_sync_sidecar(output, info)
+    else:
+        # Sin identidad de vuelta, un sidecar de una corrida ANTERIOR al mismo
+        # output quedaria huerfano y validaria el video nuevo contra la vuelta
+        # vieja — falsa luz verde (Reviewer). Se elimina.
+        try:
+            os.remove(sync_sidecar_path(output))
+        except OSError:
+            pass
+
     _enc_name = "h264_nvenc" if use_nvenc else "libx264"
     return {"path": output, "encoder": _enc_name, "duration_s": round(time.time() - _t0, 1)}
 
 
-def mux_pace_notes_into_video(video, pace_notes_dir, lap, output, volume=1.0):
+def mux_pace_notes_into_video(video, pace_notes_dir, lap, output, volume=1.0, source_name=None):
     """Aplica el audio de pace notes a un video ya existente sin re-encodear el video.
 
     Copia el stream de video intacto (``-c:v copy``) y solo mezcla o añade el
@@ -399,10 +523,18 @@ def mux_pace_notes_into_video(video, pace_notes_dir, lap, output, volume=1.0):
         lap:            Vuelta del piloto para sincronizar cues por distancia.
         output:         Ruta del video de salida.
         volume:         Volumen de los pace notes (default 1.0).
+        source_name:    Nombre del CSV de la vuelta cargada (opcional; refuerza
+                        la validación del sidecar comparando el origen).
 
     Returns:
         str: Ruta del video de salida (igual a ``output``).
+
+    Raises:
+        RuntimeError: si el video tiene sidecar de sincronía (ADR 0024) y la
+            vuelta cargada no corresponde (laptime u origen distintos).
     """
+    check_sync_sidecar(video, lap, source_name=source_name)
+
     ffmpeg = shutil.which("ffmpeg")
     if not ffmpeg:
         import platform as _platform
@@ -477,6 +609,17 @@ def mux_pace_notes_into_video(video, pace_notes_dir, lap, output, volume=1.0):
                 output,
             ]
 
-        subprocess.run(cmd, check=True)
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        if result.returncode != 0:
+            tail = "\n".join((result.stderr or "").splitlines()[-10:])
+            hint = ""
+            if "normalize" in tail.lower():
+                # La opcion normalize de amix existe desde ffmpeg 4.4; en
+                # versiones previas el filtro truena con un error criptico.
+                hint = " Pista: la mezcla usa amix normalize=0, que requiere ffmpeg 4.4 o mayor."
+            raise RuntimeError(
+                "ffmpeg falló al mezclar el audio (código %d).%s Últimas líneas:\n%s"
+                % (result.returncode, hint, tail)
+            )
 
     return output

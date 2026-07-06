@@ -315,3 +315,143 @@ def test_mux_pace_notes_into_video_wiring(monkeypatch, tmp_path):
 
     # la funcion devuelve la ruta de salida
     assert result == fake_out
+
+
+# --- Sidecar de sincronia video<->vuelta (ADR 0024) ----------------------------
+
+
+def test_sync_sidecar_roundtrip(tmp_path):
+    video = str(tmp_path / "lap_composed.mp4")
+    path = compose.write_sync_sidecar(
+        video, {"csv_path": "vuelta.csv", "laptime": 394.05, "offset": 12.3}
+    )
+    assert path == video + compose.SYNC_SIDECAR_SUFFIX
+    data = compose.read_sync_sidecar(video)
+    assert data["format"] == "sgi-sync-v1"
+    assert data["laptime"] == 394.05
+    assert data["csv_path"] == "vuelta.csv"
+
+
+def test_read_sync_sidecar_missing_or_corrupt(tmp_path):
+    video = str(tmp_path / "externo.mp4")
+    assert compose.read_sync_sidecar(video) is None
+    with open(compose.sync_sidecar_path(video), "w", encoding="utf-8") as f:
+        f.write("{esto no es json")
+    assert compose.read_sync_sidecar(video) is None
+
+
+def test_read_sync_sidecar_rechaza_formato_desconocido(tmp_path):
+    """Un sgi-sync-v2 futuro (semantica posiblemente distinta) no debe ser
+    validado por un lector v1: read devuelve None y el mux no valida."""
+    import json
+
+    video = str(tmp_path / "lap.mp4")
+    with open(compose.sync_sidecar_path(video), "w", encoding="utf-8") as f:
+        json.dump({"format": "sgi-sync-v2", "laptime": 100.0}, f)
+    assert compose.read_sync_sidecar(video) is None
+
+
+def test_check_sync_sidecar_rechaza_origen_distinto(tmp_path):
+    """Dos vueltas de archivos distintos pueden durar casi igual: si el sidecar
+    registra el origen y el caller lo provee, el origen tambien se compara."""
+    import pytest
+
+    from fantasma.core.lap import Lap
+
+    video = str(tmp_path / "lap.mp4")
+    compose.write_sync_sidecar(video, {"csv_path": r"C:\datos\race_A.csv", "laptime": 394.05})
+    lap = Lap(channels={"time": [0.0, 394.05], "dist": [0.0, 20571.0]})
+    # mismo laptime, mismo origen -> pasa
+    compose.check_sync_sidecar(video, lap, source_name="race_A.csv")
+    # mismo laptime, origen distinto -> error
+    with pytest.raises(RuntimeError):
+        compose.check_sync_sidecar(video, lap, source_name="race_B.csv")
+    # sin source_name (CLI, sidecars viejos) -> solo laptime, pasa
+    compose.check_sync_sidecar(video, lap)
+
+
+def test_compose_video_sin_sync_info_borra_sidecar_huerfano(monkeypatch, tmp_path):
+    """Re-componer al mismo output sin vuelta cargada no debe dejar el sidecar
+    de la corrida anterior validando el video nuevo (falsa luz verde)."""
+    fake_out = str(tmp_path / "out.mp4")
+    compose.write_sync_sidecar(fake_out, {"csv_path": "vieja.csv", "laptime": 100.0})
+    monkeypatch.setattr(
+        compose.shutil, "which", lambda n: "/usr/bin/ffmpeg" if n == "ffmpeg" else None
+    )
+    monkeypatch.setattr(compose, "_nvenc_available", lambda *a: False)
+    monkeypatch.setattr(compose.subprocess, "run", lambda *a, **k: _FakeProcOk())
+
+    compose.compose_video(video="fake_video.mp4", overlay="fake_overlay.webm", output=fake_out)
+
+    assert compose.read_sync_sidecar(fake_out) is None
+
+
+def test_check_sync_sidecar_acepta_vuelta_correcta_y_rechaza_otra(tmp_path):
+    """El mux con la vuelta equivocada producia cues corridos segundos (la causa
+    real de desync del panel 2 del Paso 5). Con sidecar, laptime distinto = error."""
+    import pytest
+
+    from fantasma.core.lap import Lap
+
+    video = str(tmp_path / "lap_composed.mp4")
+    compose.write_sync_sidecar(video, {"csv_path": "vuelta.csv", "laptime": 394.05})
+
+    lap_ok = Lap(channels={"time": [0.0, 394.05], "dist": [0.0, 20571.0]})
+    compose.check_sync_sidecar(video, lap_ok)  # no debe lanzar
+
+    lap_otra = Lap(channels={"time": [0.0, 391.60], "dist": [0.0, 20571.0]})
+    with pytest.raises(RuntimeError, match="394.05"):
+        compose.check_sync_sidecar(video, lap_otra)
+
+
+def test_check_sync_sidecar_sin_sidecar_no_valida(tmp_path):
+    """Video externo sin sidecar: comportamiento previo intacto (no valida nada)."""
+    from fantasma.core.lap import Lap
+
+    lap = Lap(channels={"time": [0.0, 100.0], "dist": [0.0, 5000.0]})
+    compose.check_sync_sidecar(str(tmp_path / "externo.mp4"), lap)  # no debe lanzar
+
+
+def test_mux_rechaza_vuelta_que_no_corresponde(monkeypatch, tmp_path):
+    """mux_pace_notes_into_video corta ANTES de invocar ffmpeg si el sidecar
+    delata que la vuelta cargada no es la del video."""
+    import pytest
+
+    from fantasma.core.lap import Lap
+    from fantasma.viz.compose import mux_pace_notes_into_video
+
+    video = str(tmp_path / "lap_composed.mp4")
+    compose.write_sync_sidecar(video, {"csv_path": "vuelta.csv", "laptime": 394.05})
+    called = []
+    monkeypatch.setattr(compose.subprocess, "run", lambda *a, **k: called.append(1))
+
+    lap_otra = Lap(channels={"time": [0.0, 380.00], "dist": [0.0, 20571.0]})
+    with pytest.raises(RuntimeError):
+        mux_pace_notes_into_video(video, str(tmp_path), lap_otra, str(tmp_path / "out.mp4"))
+    assert called == [], "ffmpeg no debe invocarse con vuelta equivocada"
+
+
+def test_compose_video_escribe_sidecar(monkeypatch, tmp_path):
+    """compose_video con sync_info escribe <output>.sync.json con offset y duracion."""
+    fake_out = str(tmp_path / "out.mp4")
+    monkeypatch.setattr(
+        compose.shutil, "which", lambda n: "/usr/bin/ffmpeg" if n == "ffmpeg" else None
+    )
+    monkeypatch.setattr(compose, "_nvenc_available", lambda *a: False)
+    monkeypatch.setattr(compose.subprocess, "run", lambda *a, **k: _FakeProcOk())
+
+    compose.compose_video(
+        video="fake_video.mp4",
+        overlay="fake_overlay.webm",
+        output=fake_out,
+        offset=12.5,
+        lap_duration=394.05,
+        sync_info={"csv_path": "vuelta.csv", "laptime": 394.05},
+    )
+
+    data = compose.read_sync_sidecar(fake_out)
+    assert data is not None
+    assert data["csv_path"] == "vuelta.csv"
+    assert data["laptime"] == 394.05
+    assert data["offset"] == 12.5
+    assert data["lap_duration"] == 394.05
