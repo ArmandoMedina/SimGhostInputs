@@ -33,3 +33,4 @@ bifurcación equivocada.
 | [0021](0021-flujo-solo-pacenotes.md) | Flujo "Solo Pace Notes": ruta directa Importar→Análisis→Pace Notes (Paso 0 nuevo flujo) | Aceptada | 2026-07-05 |
 | [0022](0022-ci-release-installer.md) | CI que genera y adjunta el instalador Windows en cada release (versión parametrizada, job muerto eliminado) | Aceptada | 2026-07-05 |
 | [0023](0023-fuente-unica-de-version.md) | Fuente única de verdad de la versión: literal `__version__` en `fantasma/__init__.py` | Aceptada | 2026-07-05 |
+| [0024](0024-sincronia-pace-notes.md) | Sincronía de pace notes: anticipación por tiempo, gap global y sidecar video↔vuelta | Aceptada | 2026-07-05 |

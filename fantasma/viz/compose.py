@@ -1,5 +1,6 @@
 """Compositor: superpone el overlay (canal alfa) sobre el video de grabación con ffmpeg."""
 
+import json
 import os
 import re
 import shutil
@@ -179,6 +180,68 @@ def _has_audio(ffprobe, video_path):
         return False
 
 
+SYNC_SIDECAR_SUFFIX = ".sync.json"
+
+
+def sync_sidecar_path(video_path):
+    """Ruta del sidecar de sincronía de un video compuesto."""
+    return video_path + SYNC_SIDECAR_SUFFIX
+
+
+def write_sync_sidecar(video_path, info):
+    """Escribe junto al video un JSON con la identidad de la vuelta que lo originó.
+
+    Sin este vínculo el mux de pace notes es una lotería: el panel ② del Paso 5
+    sincroniza con la vuelta que esté cargada en memoria, y dos vueltas de
+    laptime parecido (394.05 vs 394.07) tienen splits distintos — deriva de
+    segundos (ADR 0024). Campos esperados en info: ``csv_path``, ``laptime``,
+    ``offset``, ``lap_duration`` (los ausentes simplemente no se validan).
+    """
+    path = sync_sidecar_path(video_path)
+    payload = {"format": "sgi-sync-v1"}
+    payload.update(info)
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(payload, f, indent=2, ensure_ascii=False)
+    return path
+
+
+def read_sync_sidecar(video_path):
+    """Lee el sidecar de sincronía del video, o None si no existe o es ilegible."""
+    path = sync_sidecar_path(video_path)
+    if not os.path.exists(path):
+        return None
+    try:
+        with open(path, encoding="utf-8") as f:
+            return json.load(f)
+    except (OSError, ValueError):
+        return None
+
+
+def check_sync_sidecar(video_path, lap, tolerance_s=0.1):
+    """Valida que la vuelta cargada corresponda al video, si hay sidecar.
+
+    Lanza RuntimeError con mensaje accionable si el laptime del sidecar difiere
+    del de la vuelta más de tolerance_s. Sin sidecar (video externo) no valida
+    nada — comportamiento previo intacto.
+    """
+    sidecar = read_sync_sidecar(video_path)
+    if not sidecar or sidecar.get("laptime") is None:
+        return
+    expected = float(sidecar["laptime"])
+    if abs(expected - lap.laptime) > tolerance_s:
+        raise RuntimeError(
+            "Este video se compuso con una vuelta de %.2f s (%s), pero la vuelta "
+            "cargada dura %.2f s: los cues quedarían desincronizados. Carga esa "
+            "vuelta en el Paso 1, o borra el archivo %s para forzar el mux."
+            % (
+                expected,
+                sidecar.get("csv_path") or "csv de origen desconocido",
+                lap.laptime,
+                sync_sidecar_path(video_path),
+            )
+        )
+
+
 def _audio_mix_filter(video_has_audio, vid_stream="0:a", cue_stream="2:a"):
     """Genera el filtro amix para mezclar audio del video con un WAV de cues.
 
@@ -216,6 +279,7 @@ def compose_video(
     pace_notes_dir=None,
     pace_notes_volume=1.0,
     lap=None,
+    sync_info=None,
 ):
     """Superpone overlay con canal alfa sobre el video de grabación.
 
@@ -244,6 +308,10 @@ def compose_video(
         pace_notes_volume: Volumen de los Pace Notes (default 1.0).
         lap:               Vuelta del piloto requerida para sincronizar los
                            Pace Notes por distancia.
+        sync_info:         Dict con la identidad de la vuelta del video
+                           (``csv_path``, ``laptime``…). Si se provee, al
+                           terminar se escribe el sidecar ``<output>.sync.json``
+                           que el mux del Paso 5 valida (ADR 0024).
 
     Returns:
         Dict con keys ``path``, ``encoder`` y ``duration_s``.
@@ -382,6 +450,12 @@ def compose_video(
         if _pn_tmpdir is not None:
             _pn_tmpdir.cleanup()
 
+    if sync_info is not None:
+        info = dict(sync_info)
+        info.setdefault("offset", offset)
+        info.setdefault("lap_duration", lap_duration)
+        write_sync_sidecar(output, info)
+
     _enc_name = "h264_nvenc" if use_nvenc else "libx264"
     return {"path": output, "encoder": _enc_name, "duration_s": round(time.time() - _t0, 1)}
 
@@ -402,7 +476,13 @@ def mux_pace_notes_into_video(video, pace_notes_dir, lap, output, volume=1.0):
 
     Returns:
         str: Ruta del video de salida (igual a ``output``).
+
+    Raises:
+        RuntimeError: si el video tiene sidecar de sincronía (ADR 0024) y la
+            vuelta cargada no corresponde (laptime difiere > 0.1 s).
     """
+    check_sync_sidecar(video, lap)
+
     ffmpeg = shutil.which("ffmpeg")
     if not ffmpeg:
         import platform as _platform

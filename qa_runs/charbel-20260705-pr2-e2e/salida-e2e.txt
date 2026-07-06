@@ -1,0 +1,7 @@
+﻿ref=378.40 s  drv=394.05 s
+curvas=55  rows=55
+pack: 101 entradas en C:\Users\amedina\Downloads\0207\_pack_FIXED
+countdowns=27  anticipo en ref: mediana 3.60 s  min 2.76  max 4.26
+eventos=101  descartados_gap_global=16  descartados_antes_de_meta=1
+
+OK: todas las propiedades del ADR 0024 se cumplen en datos reales
