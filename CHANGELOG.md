@@ -4,6 +4,9 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/). Versionado
 
 ## [Unreleased]
 
+### Corregido
+- **El mux del Paso 5 («Aplicar sonido a video existente») tronaba siempre** (`fantasma/ui/ng_step5.py`): `_do_mux` leía `state.drv_name` de forma tardía **dentro** del hilo de `run.io_bound`, pero `AppState` es un proxy sobre `app.storage.user`, que solo se puede tocar en contexto UI → `RuntimeError: app.storage.user can only be used within a UI context` y el botón moría con un toast rojo en ~1 s sin arrancar ffmpeg. `_drv_lap` ya se capturaba antes del hilo por esta misma razón; `drv_name` se quedó colgado. Corregido capturando `_source_name = state.drv_name` en contexto UI antes de lanzar el hilo. Destapado por el QA E2E con Playwright del 2026-07-06 (el flujo por script no lo veía porque no pasa por la UI). El compose del Paso 4 (panel ④) no estaba afectado: ahí los `state.*` ya se capturan como locales antes de componer.
+
 ### Cambiado
 - **El último tono del countdown ES el punto de frenada** ([ADR 0025](docs/decisions/0025-countdown-ancla-en-la-frenada.md), enmienda al 0024): el evento `brake_countdown` se ancla en la frenada con su anticipo como `lead_m`, y el pack lo expande en 2 tics de aviso (660/770 Hz, a `lead_m` y `lead_m/2` antes) más el tono de frenada (1000 Hz) exacto donde frena la referencia — "nada de 1,2,3, ya: el 3 debe ser el ya" (feedback del PO con dato: los 3 bips sonaban en el metro 4463 con la frenada real en 4682). Tics que caen antes de la meta o a <50 m de otro cue se omiten; el tono de frenada nunca se pierde. Leyenda del Paso 5 actualizada; 2 tests nuevos. Evidencia: `qa_runs/charbel-20260706-cinta-estudio/` (iteración 3).
 
