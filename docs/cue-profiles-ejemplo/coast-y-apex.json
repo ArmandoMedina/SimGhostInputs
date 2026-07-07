@@ -1,0 +1,54 @@
+{
+  "schema": "simghost-cue-profile",
+  "version": 1,
+  "name": "coast-y-apex",
+  "description": "El pack default mas coast (inercia en curvas sin frenada) y apex (correccion de V-Min) encendidos. Para pilotos trabajando ritmo en curvas rapidas.",
+  "cues": [
+    {
+      "type": "brake_countdown",
+      "enabled": true,
+      "priority": 100
+    },
+    {
+      "type": "brake",
+      "enabled": true,
+      "priority": 80
+    },
+    {
+      "type": "brake_release",
+      "enabled": true,
+      "priority": 70
+    },
+    {
+      "type": "turn_in",
+      "enabled": true,
+      "priority": 60
+    },
+    {
+      "type": "throttle_on",
+      "enabled": true,
+      "priority": 85
+    },
+    {
+      "type": "full_throttle",
+      "enabled": true,
+      "priority": 75
+    },
+    {
+      "type": "apex",
+      "enabled": true,
+      "priority": 90
+    },
+    {
+      "type": "coast",
+      "enabled": true,
+      "priority": 50,
+      "solo_sin_frenada": true
+    },
+    {
+      "type": "gear",
+      "enabled": false,
+      "priority": 65
+    }
+  ]
+}

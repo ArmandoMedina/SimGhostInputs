@@ -1,0 +1,54 @@
+{
+  "schema": "simghost-cue-profile",
+  "version": 1,
+  "name": "default",
+  "description": "El pack de hoy: mismos tipos activos y mismas prioridades que trae el motor de fabrica (DEFAULT_CONFIG). Punto de partida para armar tu propio pack.",
+  "cues": [
+    {
+      "type": "brake_countdown",
+      "enabled": true,
+      "priority": 100
+    },
+    {
+      "type": "brake",
+      "enabled": true,
+      "priority": 80
+    },
+    {
+      "type": "brake_release",
+      "enabled": true,
+      "priority": 70
+    },
+    {
+      "type": "turn_in",
+      "enabled": true,
+      "priority": 60
+    },
+    {
+      "type": "throttle_on",
+      "enabled": true,
+      "priority": 85
+    },
+    {
+      "type": "full_throttle",
+      "enabled": true,
+      "priority": 75
+    },
+    {
+      "type": "apex",
+      "enabled": false,
+      "priority": 90
+    },
+    {
+      "type": "coast",
+      "enabled": false,
+      "priority": 50,
+      "solo_sin_frenada": true
+    },
+    {
+      "type": "gear",
+      "enabled": false,
+      "priority": 65
+    }
+  ]
+}

@@ -1,0 +1,54 @@
+{
+  "schema": "simghost-cue-profile",
+  "version": 1,
+  "name": "solo-frenada",
+  "description": "Solo el tono de frenada y su countdown de aviso. Util para pistas nuevas o pilotos que se saturan con cues de salida de curva.",
+  "cues": [
+    {
+      "type": "brake_countdown",
+      "enabled": true,
+      "priority": 100
+    },
+    {
+      "type": "brake",
+      "enabled": true,
+      "priority": 80
+    },
+    {
+      "type": "brake_release",
+      "enabled": false,
+      "priority": 70
+    },
+    {
+      "type": "turn_in",
+      "enabled": false,
+      "priority": 60
+    },
+    {
+      "type": "throttle_on",
+      "enabled": false,
+      "priority": 85
+    },
+    {
+      "type": "full_throttle",
+      "enabled": false,
+      "priority": 75
+    },
+    {
+      "type": "apex",
+      "enabled": false,
+      "priority": 90
+    },
+    {
+      "type": "coast",
+      "enabled": false,
+      "priority": 50,
+      "solo_sin_frenada": true
+    },
+    {
+      "type": "gear",
+      "enabled": false,
+      "priority": 65
+    }
+  ]
+}
