@@ -92,11 +92,12 @@ PLAN_CUES = [
 # activos, mismas prioridades que antes vivian hardcodeadas en
 # _corner_candidates.
 DEFAULT_CONFIG = {
-    # Tics de aviso del countdown de frenada (ADR 0024/0026). Su enabled y
-    # priority NO estan conectados todavia al mecanismo de tics en
-    # plan_tone_events (esta atado al milestone "brake" protegido y no pasa
-    # por _corner_candidates); se documenta aqui por catalogo completo.
-    # Conectarlo (apagar el countdown por separado) es follow-up.
+    # Tics de aviso del countdown de frenada (ADR 0024/0026). enabled gatea
+    # si se generan los tics en plan_tone_events (la frenada protegida sigue
+    # sonando aunque el countdown este apagado: el countdown se apaga, la
+    # frenada no). priority fija el campo "priority" de cada tic (reemplaza
+    # el 100 que antes vivia hardcodeado). El countdown sigue atado a su
+    # frenada — cuenta HACIA ella, no vive suelto.
     "brake_countdown": {"enabled": True, "priority": 100},
     "brake": {"enabled": True, "priority": 80},
     "brake_release": {"enabled": True, "priority": 70},
@@ -299,31 +300,38 @@ def plan_tone_events(
     # lead_m < 2*min_gap_m (curvas por debajo de ~103 km/h con el default de
     # 3.5 s) tiraba el tic step=1 contra su propia frenada. Se recorren en
     # orden de distancia (greedy) para resolver tic-vs-tic entre curvas.
-    timeline = [(idx, e["distance"]) for idx, e in enumerate(kept)]
-    tic_candidates = []
-    for idx, e in enumerate(kept):
-        if e.get("protected") and e.get("lead_m"):
-            for step, frac in ((0, 1.0), (1, 0.5)):
-                d = int(round(e["distance"] - e["lead_m"] * frac))
-                tic_candidates.append((d, step, idx, e))
+    # brake_countdown.enabled gatea este bloque completo: si esta apagado no
+    # se genera ningun tic, pero la frenada protegida (ya en "kept") sigue
+    # sonando intacta. brake_countdown.priority reemplaza el 100 que antes
+    # vivia hardcodeado aqui; no participa en la regla de cabida de arriba
+    # (own_idx sigue siendo la unica exclusion, sin tocar).
+    countdown_cfg = _cue_cfg(cue_config, "brake_countdown")
     tics = []
-    for d, step, own_idx, e in sorted(tic_candidates, key=lambda x: x[0]):
-        if d <= 0:
-            continue
-        if any(abs(d - t) < min_gap_m for t_idx, t in timeline if t_idx != own_idx):
-            continue
-        timeline.append((own_idx, d))
-        tics.append(
-            {
-                "corner_id": e["corner_id"],
-                "corner_name": e["corner_name"],
-                "cue": "brake_tic",
-                "distance": d,
-                "priority": 100,
-                "reason": "aviso de frenada",
-                "step": step,
-            }
-        )
+    if countdown_cfg["enabled"]:
+        timeline = [(idx, e["distance"]) for idx, e in enumerate(kept)]
+        tic_candidates = []
+        for idx, e in enumerate(kept):
+            if e.get("protected") and e.get("lead_m"):
+                for step, frac in ((0, 1.0), (1, 0.5)):
+                    d = int(round(e["distance"] - e["lead_m"] * frac))
+                    tic_candidates.append((d, step, idx, e))
+        for d, step, own_idx, e in sorted(tic_candidates, key=lambda x: x[0]):
+            if d <= 0:
+                continue
+            if any(abs(d - t) < min_gap_m for t_idx, t in timeline if t_idx != own_idx):
+                continue
+            timeline.append((own_idx, d))
+            tics.append(
+                {
+                    "corner_id": e["corner_id"],
+                    "corner_name": e["corner_name"],
+                    "cue": "brake_tic",
+                    "distance": d,
+                    "priority": countdown_cfg["priority"],
+                    "reason": "aviso de frenada",
+                    "step": step,
+                }
+            )
 
     all_events = sorted(kept + tics, key=lambda c: c["distance"])
     return {
@@ -563,20 +571,25 @@ def _countdown_lead_m(brake, countdown_m, countdown_s, min_lead_m=60, max_lead_m
 
 
 def _cue_cfg(cue_config, cue):
-    """Config de un tipo de cue con fallback a DEFAULT_CONFIG.
+    """Config RESUELTA de un tipo de cue: DEFAULT_CONFIG mezclado campo a
+    campo con el override del usuario.
 
-    Un cue_config parcial (solo algunas claves, p.ej. en un test que solo
-    quiere subir una prioridad) no debe dejar sin enabled/priority a los tipos
-    que no menciono explicitamente.
+    Una clave ausente en el override, o presente con valor None (una UI
+    futura podria mandar {"priority": None} para "usa el default"), cae al
+    valor de DEFAULT_CONFIG — nunca None. Devuelve el dict completo (enabled,
+    priority y demas campos del tipo) para que los call sites lean
+    cfg["priority"] / cfg["enabled"] directo, sin un literal de fallback que
+    duplique los numeros de DEFAULT_CONFIG.
     """
-    cfg = (cue_config or {}).get(cue)
-    if cfg is None:
-        cfg = DEFAULT_CONFIG.get(cue, {"enabled": True, "priority": 50})
-    return cfg
+    resolved = dict(DEFAULT_CONFIG.get(cue, {"enabled": True, "priority": 50}))
+    override = (cue_config or {}).get(cue) or {}
+    for key, value in override.items():
+        if value is not None:
+            resolved[key] = value
+    return resolved
 
 
 def _corner_candidates(row, corner, countdown_m, countdown_s=DEFAULT_COUNTDOWN_S, cue_config=None):
-    cue_config = cue_config or DEFAULT_CONFIG
     loss = _as_float(row.get("time_lost", 0))
     flags = str(row.get("flags", ""))
     d_brake = _as_float(row.get("d_brake_m", 0)) if row.get("d_brake_m") not in (None, "") else 0
@@ -588,7 +601,7 @@ def _corner_candidates(row, corner, countdown_m, countdown_s=DEFAULT_COUNTDOWN_S
 
     brake_cfg = _cue_cfg(cue_config, "brake")
     brake = _milestone(corner, "brake")
-    if brake_cfg.get("enabled", True) and brake and brake.get("d") is not None:
+    if brake_cfg["enabled"] and brake and brake.get("d") is not None:
         brake_d = _as_float(brake["d"])
         lead_m = _countdown_lead_m(brake, countdown_m, countdown_s)
         # Tono de frenada UNIVERSAL: toda curva con milestone de frenada suena,
@@ -601,7 +614,7 @@ def _corner_candidates(row, corner, countdown_m, countdown_s=DEFAULT_COUNTDOWN_S
                 corner,
                 "brake",
                 brake_d,
-                brake_cfg.get("priority", 80),
+                brake_cfg["priority"],
                 "marca frenada",
                 lead_m=lead_m,
                 protected=True,
@@ -610,103 +623,88 @@ def _corner_candidates(row, corner, countdown_m, countdown_s=DEFAULT_COUNTDOWN_S
 
     release_cfg = _cue_cfg(cue_config, "brake_release")
     release = _milestone(corner, "brake_release")
-    if (
-        release_cfg.get("enabled", True)
-        and release
-        and release.get("d") is not None
-        and braking_issue
-    ):
+    if release_cfg["enabled"] and release and release.get("d") is not None and braking_issue:
         candidates.append(
             _event(
                 row,
                 corner,
                 "brake_release",
                 _as_float(release["d"]),
-                release_cfg.get("priority", 70),
+                release_cfg["priority"],
                 "salida de freno",
             )
         )
 
     turn_cfg = _cue_cfg(cue_config, "turn_in")
     turn = _milestone(corner, "turn_in")
-    if turn_cfg.get("enabled", True) and turn and turn.get("d") is not None and loss >= 0.25:
+    if turn_cfg["enabled"] and turn and turn.get("d") is not None and loss >= 0.25:
         candidates.append(
             _event(
                 row,
                 corner,
                 "turn_in",
                 _as_float(turn["d"]),
-                turn_cfg.get("priority", 60),
+                turn_cfg["priority"],
                 "inicio de giro",
             )
         )
 
     throttle_cfg = _cue_cfg(cue_config, "throttle_on")
     throttle = _milestone(corner, "throttle_on")
-    if (
-        throttle_cfg.get("enabled", True)
-        and throttle
-        and throttle.get("d") is not None
-        and exit_issue
-    ):
+    if throttle_cfg["enabled"] and throttle and throttle.get("d") is not None and exit_issue:
         candidates.append(
             _event(
                 row,
                 corner,
                 "throttle_on",
                 _as_float(throttle["d"]),
-                throttle_cfg.get("priority", 85),
+                throttle_cfg["priority"],
                 "inicio de gas",
             )
         )
 
     full_cfg = _cue_cfg(cue_config, "full_throttle")
     full = _milestone(corner, "full_throttle")
-    if (
-        full_cfg.get("enabled", True)
-        and full
-        and full.get("d") is not None
-        and (exit_issue or loss >= 0.25)
-    ):
+    if full_cfg["enabled"] and full and full.get("d") is not None and (exit_issue or loss >= 0.25):
         candidates.append(
             _event(
                 row,
                 corner,
                 "full_throttle",
                 _as_float(full["d"]),
-                full_cfg.get("priority", 75),
+                full_cfg["priority"],
                 "gas a fondo",
             )
         )
 
     apex_cfg = _cue_cfg(cue_config, "apex")
     apex = _milestone(corner, "apex")
-    if apex_cfg.get("enabled", False) and apex and apex.get("d") is not None and apex_issue:
+    if apex_cfg["enabled"] and apex and apex.get("d") is not None and apex_issue:
         candidates.append(
             _event(
                 row,
                 corner,
                 "apex",
                 _as_float(apex["d"]),
-                apex_cfg.get("priority", 90),
+                apex_cfg["priority"],
                 "corrige V-Min/apex",
             )
         )
 
     coast_cfg = _cue_cfg(cue_config, "coast")
     coast = _milestone(corner, "coast_start")
-    if coast_cfg.get("enabled", False) and coast and coast.get("d") is not None:
+    if coast_cfg["enabled"] and coast and coast.get("d") is not None:
         # Sin frenada: no hay milestone "brake" en esta curva (turn_in +
         # release ya cubren la fase de freno cuando si la hay).
         sin_frenada = _milestone(corner, "brake") is None
-        if not coast_cfg.get("solo_sin_frenada", True) or sin_frenada:
+        if not coast_cfg["solo_sin_frenada"] or sin_frenada:
             candidates.append(
                 _event(
                     row,
                     corner,
                     "coast",
                     _as_float(coast["d"]),
-                    coast_cfg.get("priority", 50),
+                    coast_cfg["priority"],
                     "inercia",
                 )
             )

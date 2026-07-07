@@ -742,3 +742,73 @@ def test_frenada_protegida_universal_pese_a_su_prioridad_en_config():
     brakes = [e for e in plan["events"] if e["cue"] == "brake"]
     assert [e["distance"] for e in brakes] == [1000]
     assert not any(e["cue"] == "throttle_on" for e in plan["events"])
+
+
+# ── _cue_cfg: config resuelta, sin literales duplicados (Reviewer WS-2) ───────
+
+
+def test_cue_cfg_resuelve_config_completa():
+    """_cue_cfg devuelve el dict COMPLETO (enabled + priority + demas campos)
+    de DEFAULT_CONFIG mezclado con el override; una clave ausente en el
+    override cae al default sin perder el resto de los campos del tipo."""
+    from fantasma.viz.pacenotes import DEFAULT_CONFIG, _cue_cfg
+
+    assert _cue_cfg(None, "turn_in") == DEFAULT_CONFIG["turn_in"]
+    assert _cue_cfg({"turn_in": {"priority": None}}, "turn_in") == DEFAULT_CONFIG["turn_in"]
+    assert _cue_cfg({"turn_in": {"priority": 999}}, "turn_in") == {
+        "enabled": True,
+        "priority": 999,
+    }
+    # coast trae un campo extra (solo_sin_frenada): un override que solo toca
+    # priority no debe perderlo.
+    resolved = _cue_cfg({"coast": {"priority": 10}}, "coast")
+    assert resolved == {"enabled": False, "priority": 10, "solo_sin_frenada": True}
+
+
+def test_cue_cfg_priority_none_no_crashea_el_sort_de_la_cabida():
+    """Un cue_config con priority=None (p.ej. una UI que manda 'usa el
+    default') no debe crashear sorted(..., key=lambda c: -c['priority']); cae
+    al valor de DEFAULT_CONFIG (60 para turn_in) en vez de None."""
+    from fantasma.viz.pacenotes import DEFAULT_CONFIG, plan_tone_events
+
+    rows = [{"id": "C01", "name": "C01", "time_lost": 0.5, "flags": ""}]
+    corners = [{"id": "C01", "name": "C01", "milestones": {"turn_in": {"d": 1000}}}]
+    cue_config = {**DEFAULT_CONFIG, "turn_in": {"enabled": True, "priority": None}}
+    plan = plan_tone_events(rows, corners, top=1, cue_config=cue_config)
+    turn_events = [e for e in plan["events"] if e["cue"] == "turn_in"]
+    assert turn_events and turn_events[0]["priority"] == 60
+
+
+# ── Countdown wireado: enabled gatea, priority reemplaza el 100 (WS-2) ───────
+
+
+def test_countdown_deshabilitado_omite_tics_pero_la_frenada_sigue():
+    """brake_countdown.enabled=False apaga los tics del countdown, pero el
+    tono de frenada protegido sigue sonando intacto: el countdown se apaga,
+    la frenada no (decision del PO)."""
+    from fantasma.viz.pacenotes import DEFAULT_CONFIG, plan_tone_events
+
+    rows = [{"id": "C01", "name": "C01", "time_lost": 0.5, "flags": "frenada"}]
+    corners = [{"id": "C01", "name": "C01", "milestones": {"brake_start": {"d": 2000, "v": 216}}}]
+
+    cue_config = {**DEFAULT_CONFIG, "brake_countdown": {"enabled": False, "priority": 100}}
+    plan = plan_tone_events(rows, corners, top=1, cue_config=cue_config)
+    assert not any(e["cue"] == "brake_tic" for e in plan["events"])
+    brakes = [e for e in plan["events"] if e["cue"] == "brake"]
+    assert brakes and brakes[0]["distance"] == 2000 and brakes[0].get("protected")
+
+
+def test_countdown_priority_configurable_se_refleja_en_los_tics():
+    """brake_countdown.priority reemplaza el 100 hardcodeado: el campo
+    priority de cada brake_tic generado en el plan sale de cue_config, no de
+    un literal fijo en plan_tone_events."""
+    from fantasma.viz.pacenotes import DEFAULT_CONFIG, plan_tone_events
+
+    rows = [{"id": "C01", "name": "C01", "time_lost": 0.5, "flags": "frenada"}]
+    corners = [{"id": "C01", "name": "C01", "milestones": {"brake_start": {"d": 2000, "v": 216}}}]
+
+    cue_config = {**DEFAULT_CONFIG, "brake_countdown": {"enabled": True, "priority": 42}}
+    plan = plan_tone_events(rows, corners, top=1, cue_config=cue_config)
+    tics = [e for e in plan["events"] if e["cue"] == "brake_tic"]
+    assert len(tics) == 2
+    assert all(t["priority"] == 42 for t in tics)
