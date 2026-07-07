@@ -12,49 +12,65 @@
 
 ## Estado actual
 
-**Sesión de merge + revisada (2026-07-06).** master avanzó a `f8835de` con **4 PRs fundidos**
-esta sesión, tras revisar los 6 con Reviewers:
-- **#33** — silencia el ERROR flaky de JS del simulador NiceGUI en CI (test infra).
-- **#34** — cobertura de `viz/report.py` y `viz/charts.py` (cierra deuda ROADMAP Alta).
-- **#30** — el mux del Paso 5 no leía `state.drv_name` fuera del contexto UI.
-- **#31** — botones de acción legibles + inputs de ruta a ancho completo.
+**Sesión de "cues configurables" (2026-07-07).** En curso el rediseño que el PO pidió tras revisar la
+cinta: los cues pasan de set hardcodeado a **catálogo configurable con prioridad**, con perfiles JSON
+compartibles (packs de comunidad). Reencuadra el ADR 0026 (el ápex **no se borra, se apaga por
+defecto**). Todo en la rama **`feat/cues-configurables`** (parte de #29), que **absorbe a #29 y #32**
+— se fundirá como un solo release coherente; #32 se cierra absorbido. El PO autorizó commit/push/PR en
+automático; el **merge lo dispara él** (avisar y preguntar). Regla de método vigente: **todo entregable
+que el PO evalúa sale de la UI real, E2E clic-por-clic con Playwright**, nunca por script externo.
 
-**Abiertos, con fix y CI verde, BLOQUEADOS por el oído del PO:**
-- **#29 `feat/cues-frenada-universal`** (ADR 0026) — frenada universal+protegida (metro 819),
-  countdown oportunista por cabida (metro 4463), fuera el tono de ápex. La revisada encontró
-  y Ahiram arregló (`a321011`) un bug: el tic del countdown se **auto-rechazaba contra su
-  propia frenada** en curvas < ~103 km/h; ahora la timeline de cabida excluye el propio grupo
-  de la curva (2 tests nuevos). **Gate: validación auditiva** — el material `_DEMO_COMPLETO_SUBS.mp4`
-  no está en esta PC, no se puede regenerar la cinta aquí.
-- **#32 `feat/cue-subtitles`** (ADR 0027) — subtítulos que nombran cada cue, quemados en el
-  video. Ahiram blindó (`a37491c`) un bug: con subtítulos ON y rutas relativas, el video final
-  se perdía en el tmpdir (ahora `abspath` a video/overlay/output). **Gate: tras oír la cinta,
-  el PO decide si los subtítulos se quedan o se ajustan** (color/tamaño/duración).
+**Plan persistido:** `~/.claude/plans/tender-hugging-whale.md` — tiene el detalle de cada workstream.
 
-Ambos PRs quedan para **merge conjunto tras la validación auditiva**; el merge lo dispara el PO
-(la barrera de auto-mode bloquea que la IA funda PRs de código sin aprobación humana — se
-respeta la regla del merge conjunto).
+**Hecho y revisado (commits en `feat/cues-configurables`, todo pusheado a origin):**
+- **WS-1** `5bc17f9`+`3215095` — motor: `throttle_on` sostenido (15 muestras, patrón de `full_throttle`)
+  + modela el **coast** (`coast_start`/`coast_end`); arregla el bug **317/393** (el roce fugaz ya no
+  cuenta como "inicio de acelerador", ancla en el gas real). Reviewer + fix del borde de ventana.
+  Doc dueño: `docs/formato-datos.md`.
+- **WS-2** `1d62758`+`229c93e` — **catálogo filtrable + prioridad configurable**: `DEFAULT_CONFIG`
+  (default = comportamiento de hoy, sin regresión), `cue_config` threadeado por
+  `build_pack→build_tone_pack→plan_tone_events→_corner_candidates`, la cabida usa la prioridad de la
+  config, **frenada protegida sigue universal**. Ápex (off por defecto), coast (off, flag "solo curvas
+  sin frenada"), slot de `gear`. Countdown wireado (enable + prioridad de tics, `a321011` intacto).
+  2 pasadas de Reviewer, LIMPIO. `_cue_cfg` resuelve config completa (rellena faltantes + `None`→default).
+- **WS-3** `d742513` — formato de perfil JSON compartible (`fantasma/viz/cue_profiles.py`):
+  load/save/validate/degradar con gracia, `profiles_dir()` (`~/.simghostinputs/cue-profiles`),
+  `list_profiles`; 3 ejemplos en `docs/cue-profiles-ejemplo/`.
+- **WS-4** `f947a9d`+`6a61ce5`+`39cefb6`+`292b35d` — UI del Paso 5 (casillas + `ui.number` de prioridad
+  por cue + cargar/importar/guardar perfil, persistencia en `AppState.cue_config`). Robustez ante JSON
+  malformado (3 bugs del Reviewer arreglados con tests falla-sin/pasa-con: `list_profiles` no crashea,
+  `cues` mal formado → `ValueError`, `priority` no-numérico manejado; confirma sobrescritura). Affordance
+  del sub-checkbox de coast (CSS en `ng_app.py`). E2E parametrizado (`SIMGHOST_TEST_MATERIAL`).
+  Reviewer + Mariana (evidencia en `qa_runs/mariana-20260707/`). Suite: **308 passed, 10 skipped**.
 
-Contexto previo: `master` venía en **v2.2.0** con el "pedo de los sonidos" (#25/#26/#27) y el
-countdown anclado del [ADR 0025](docs/decisions/0025-countdown-ancla-en-la-frenada.md) (#28)
-ya mergeados — enmendados por el ADR 0026 de #29.
+**Decisión del countdown (opción 3 acotada):** se puede apagar + prioridad como metadata, pero **sigue
+oportunista** (no pelea por espacio en la cabida) — hacerlo pelear contradiría el diseño validado de
+oído. Si el PO de verdad quiere que el 3-2-1 desplace otros cues, es un cambio aparte y más riesgoso.
 
-> **Pendiente fuera del repo:** la skill global `release-helper` (paso 2) aún dice "bump `pyproject.toml`";
-> desde la #24 el bump va a `fantasma/__init__.py`. Actualizarla cuando el PO lo autorice.
+**Material de pruebas en esta PC:** `C:\Users\jose_\Downloads\Pruebas finales` (los CSV existen; el E2E
+ya lee `SIMGHOST_TEST_MATERIAL`, con fallback a la ruta histórica).
 
 ## Siguiente acción
 
-1. **Validación auditiva del PO (gate de #29 y #32)** — regenerar la cinta con el código de #29
-   (ya con el fix del countdown) y oírla: 819 suena en frenada, 4463 sin bips huérfanos,
-   countdown 3-2-1 donde debe, sin ápex, y en curvas lentas los DOS tics del countdown. Bloqueado
-   hasta que `_DEMO_COMPLETO_SUBS.mp4` esté en una PC con acceso al material.
-2. **Merge conjunto de #29 + #32** tras (1). Lo dispara el PO (auto-mode bloquea que la IA funda
-   PRs de código). Antes de fundir #29: pasarle una revisada final si se toca más; #32 ídem.
-3. Si la cinta le funciona: llevar al motor/UI los **upshifts de la referencia** y la
-   **generación del `.srt`** (candidata Alta en ROADMAP; hoy son scripts de qa_runs). Y el PO
-   decide si los **subtítulos de #32** se quedan o se ajustan (color/tamaño/duración).
-Si esta sesión murió a medias: verificar contra el código real qué quedó mergeado
-(`git log`, `gh pr list`) y retomar aquí.
+Retomar en `feat/cues-configurables`. En orden:
+1. **WS-5** — traer los subtítulos de #32 (`build_cue_ass`, `compose` `burn_cue_subs`) sobre el motor
+   final; adaptar al catálogo/coast; arreglar la ventana fija de 1.5 s (hasta el siguiente cue o mínimo
+   sensato). Nota: el countdown final es el de #29 (tics), no el WAV de #32.
+2. **WS-6** — ADR nuevo (reencuadra 0026: catálogo configurable con prioridad; coast; formato de perfil
+   compartible; enmienda 0027) + Escribano (CHANGELOG, ux-patterns, hud-reference, product/, ROADMAP con
+   las deudas de abajo, y codificar en `docs/decisions/0003-testing.md` la regla del E2E-Playwright).
+3. **Cinta desde el E2E real** del Paso 5 (con un perfil de cues), `SIMGHOST_TEST_MATERIAL=C:\Users\jose_\Downloads\Pruebas finales`, para que el PO la oiga/vea (fin del 317/393).
+4. Abrir el **PR paraguas** (sin fundir; el merge lo dispara el PO). Antes: barrido de Reviewer
+   consolidado que incluya la robustez de WS-3/WS-4 (`292b35d` aún sin pasada dedicada).
+
+**Deuda anotada (Reviewer WS-1, a ROADMAP en WS-6):** (a) `throttle_on_window`/`full_throttle` en
+muestras fijas, no normalizado por tasa de muestreo (mal a ≠50 Hz); (b) coast no se emite si hay frenada
+sin `brake_release` (trail-braking al borde del segmento).
+
+**Decisiones de juicio del PO pendientes (no bugs — QA de Mariana):** asimetría leyenda-cerrada /
+cues-abierta; rango de prioridad 0-999 sin pista visual; columnas desbalanceadas con cues abierto;
+¿el select de perfiles necesita salvaguarda anti-cambio-accidental?; modo-claro fuera de alcance (la app
+fuerza dark global, `ng_app.py:17`).
 
 ## Backlog
 
