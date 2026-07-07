@@ -12,36 +12,47 @@
 
 ## Estado actual
 
-**Rama activa `feat/cues-frenada-universal` (sin push todavía):** rediseño del modelo de
-cues de pace notes, commits `2f426ae` (código) + `ce01d72` (ADR 0026). Cierra dos
-defectos que el PO reportó de oído sobre la cinta de estudio regenerada:
-- **Metro 819** (frenada muda por competencia de gap) — el tono de frenada pasa a ser
-  **universal y protegido**: suena en toda curva con `brake_start`, ningún gap lo tira.
-- **Metro 4463** (3 bips sin frenada cerca) — el countdown pasa a **oportunista por
-  cabida**: los 2 tics se colocan solo donde quepan contra TODA la línea de tiempo
-  (tics de otras curvas incluidos), si no caben queda solo el tono de frenada.
-- Además se retiró el **tono** de ápex del pack sonoro (el milestone sigue en datos, voz
-  y matching). Detalle completo: [ADR 0026](docs/decisions/0026-cues-frenada-universal-countdown-oportunista.md).
-Suite: 248 passed. **Bloqueado: el oído del PO sobre la cinta regenerada con este
-rediseño** — el material real (`_DEMO_COMPLETO_SUBS.mp4`) no está en esta PC, así que no
-se puede regenerar ni escuchar aquí. Falta también abrir el PR (push pendiente).
+**Sesión de merge + revisada (2026-07-06).** master avanzó a `f8835de` con **4 PRs fundidos**
+esta sesión, tras revisar los 6 con Reviewers:
+- **#33** — silencia el ERROR flaky de JS del simulador NiceGUI en CI (test infra).
+- **#34** — cobertura de `viz/report.py` y `viz/charts.py` (cierra deuda ROADMAP Alta).
+- **#30** — el mux del Paso 5 no leía `state.drv_name` fuera del contexto UI.
+- **#31** — botones de acción legibles + inputs de ruta a ancho completo.
 
-Contexto previo: `master` en **v2.2.0**, con el "pedo de los sonidos" (3 PRs: #25 `normalize=0`,
-#26 [ADR 0024](docs/decisions/0024-sincronia-pace-notes.md) sincronía+gap global+sidecar,
-#27 UI del Paso 5) y el countdown anclado del [ADR 0025](docs/decisions/0025-countdown-ancla-en-la-frenada.md)
-(#28) ya mergeados — ambos quedan enmendados por el ADR 0026 de esta rama.
+**Abiertos, con fix y CI verde, BLOQUEADOS por el oído del PO:**
+- **#29 `feat/cues-frenada-universal`** (ADR 0026) — frenada universal+protegida (metro 819),
+  countdown oportunista por cabida (metro 4463), fuera el tono de ápex. La revisada encontró
+  y Ahiram arregló (`a321011`) un bug: el tic del countdown se **auto-rechazaba contra su
+  propia frenada** en curvas < ~103 km/h; ahora la timeline de cabida excluye el propio grupo
+  de la curva (2 tests nuevos). **Gate: validación auditiva** — el material `_DEMO_COMPLETO_SUBS.mp4`
+  no está en esta PC, no se puede regenerar la cinta aquí.
+- **#32 `feat/cue-subtitles`** (ADR 0027) — subtítulos que nombran cada cue, quemados en el
+  video. Ahiram blindó (`a37491c`) un bug: con subtítulos ON y rutas relativas, el video final
+  se perdía en el tmpdir (ahora `abspath` a video/overlay/output). **Gate: tras oír la cinta,
+  el PO decide si los subtítulos se quedan o se ajustan** (color/tamaño/duración).
+
+Ambos PRs quedan para **merge conjunto tras la validación auditiva**; el merge lo dispara el PO
+(la barrera de auto-mode bloquea que la IA funda PRs de código sin aprobación humana — se
+respeta la regla del merge conjunto).
+
+Contexto previo: `master` venía en **v2.2.0** con el "pedo de los sonidos" (#25/#26/#27) y el
+countdown anclado del [ADR 0025](docs/decisions/0025-countdown-ancla-en-la-frenada.md) (#28)
+ya mergeados — enmendados por el ADR 0026 de #29.
 
 > **Pendiente fuera del repo:** la skill global `release-helper` (paso 2) aún dice "bump `pyproject.toml`";
 > desde la #24 el bump va a `fantasma/__init__.py`. Actualizarla cuando el PO lo autorice.
 
 ## Siguiente acción
 
-1. **Push de `feat/cues-frenada-universal` y abrir el PR** con el rediseño (819/4463/apex).
-2. **Regenerar la cinta de estudio con este rediseño y conseguir el oído del PO** — bloqueado
-   hasta que el material real (`_DEMO_COMPLETO_SUBS.mp4`) esté disponible en una PC con acceso
-   a `qa_runs/charbel-20260706-cinta-estudio/` o equivalente.
+1. **Validación auditiva del PO (gate de #29 y #32)** — regenerar la cinta con el código de #29
+   (ya con el fix del countdown) y oírla: 819 suena en frenada, 4463 sin bips huérfanos,
+   countdown 3-2-1 donde debe, sin ápex, y en curvas lentas los DOS tics del countdown. Bloqueado
+   hasta que `_DEMO_COMPLETO_SUBS.mp4` esté en una PC con acceso al material.
+2. **Merge conjunto de #29 + #32** tras (1). Lo dispara el PO (auto-mode bloquea que la IA funda
+   PRs de código). Antes de fundir #29: pasarle una revisada final si se toca más; #32 ídem.
 3. Si la cinta le funciona: llevar al motor/UI los **upshifts de la referencia** y la
-   **generación del `.srt`** (candidata Alta en ROADMAP; hoy son scripts de qa_runs).
+   **generación del `.srt`** (candidata Alta en ROADMAP; hoy son scripts de qa_runs). Y el PO
+   decide si los **subtítulos de #32** se quedan o se ajustan (color/tamaño/duración).
 Si esta sesión murió a medias: verificar contra el código real qué quedó mergeado
 (`git log`, `gh pr list`) y retomar aquí.
 
