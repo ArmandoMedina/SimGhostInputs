@@ -41,9 +41,10 @@ Todo importador convierte a este modelo (`fantasma/core/lap.py`):
 2. **Kink**: pico de |G lateral| > 2.2 sostenido, sin V-Min en ±80m (curvas rápidas sin frenada).
 3. **Segmentación**: cada curva solo analiza su tramo (punto medio con las curvas vecinas, con tope de 450 m hacia atrás y 350 m hacia adelante) — evita contaminarse con la frenada de la curva siguiente.
 4. **Frenada real**: último bloque de freno con pico ≥50%; los blips del trail braking no cuentan como inicio de frenada.
-5. Hitos: `brake_start`, `turn_in` (|volante|>8° hacia el lado de la curva), `brake_release` (<2%), `throttle_on` (>5%), `apex` (V-Min), `full_throttle` (≥98% sostenido), `g_lat_max`, `lift` (en curvas sin freno). Cada hito lleva `d` (m), `t` (s), `v` (km/h).
+5. Hitos: `brake_start`, `turn_in` (|volante|>8° hacia el lado de la curva), `brake_release` (<2%), `throttle_on` (>5% **sostenido**: ancla en el primer punto donde el throttle cruza el umbral y se mantiene por encima durante `throttle_on_window` muestras seguidas — igual criterio que `full_throttle`, para que un roce fugaz de pedal, ej. freno-motor o ruido, no gane el hito frente a la aceleración real), `apex` (V-Min), `full_throttle` (≥98% sostenido), `g_lat_max`, `lift` (en curvas sin freno), `coast_start`/`coast_end` (ver punto 6bis). Cada hito lleva `d` (m), `t` (s), `v` (km/h).
 6. **Overlap**: si `throttle_on.d < brake_release.d`, se registra `overlap_m` (solape gas/freno).
-7. **Pendiente**: si hay canal `alt`, gradiente ±100m alrededor del ápex → `slope` (subida/bajada/plano) y `slope_pct`.
+7. **Coast**: tramo entre el fin de la frenada (`brake_release`, o `lift` en curvas sin freno) y el `throttle_on` sostenido donde el piloto no toca ni freno ni gas (`throttle` y `brake` ambos por debajo de sus umbrales, `throttle_on` y `brake_on` respectivamente). Si existe hueco se marcan `coast_start` (primer punto del tramo) y `coast_end` (último). Si el gas se solapa con el freno (overlap, ver punto 6) no hay hueco y no se emite coast.
+8. **Pendiente**: si hay canal `alt`, gradiente ±100m alrededor del ápex → `slope` (subida/bajada/plano) y `slope_pct`.
 
 ## Esquema de corners JSON
 
@@ -71,6 +72,8 @@ Todo importador convierte a este modelo (`fantasma/core/lap.py`):
         "apex":        {"d": 7233, "t": 135.6, "v": 76, "gear": 1, "g_lat": 2.42},
         "full_throttle":{"d": 7349, "t": 139.1, "v": 118, "gear": 2},
         "g_lat_max":   {"d": 7230, "g_lat": 2.5}
+        // coast_start/coast_end: solo si hay hueco entre brake_release y
+        // throttle_on (no en este ejemplo, que tiene overlap_m)
       },
       "tolerances": {"brake_start_m": 10, "vmin_kmh": 4}   // opcional, para avisos
     }

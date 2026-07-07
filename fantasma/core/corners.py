@@ -8,6 +8,12 @@ Metodologia (validada contra telemetria real del Nordschleife):
   las curvas vecinas) para no contaminarse con la frenada de la curva siguiente.
 - La frenada real es el ultimo bloque de freno con pico >= 50%; los blips de
   trail-braking no cuentan como inicio de frenada.
+- El gas real (`throttle_on`) exige throttle sostenido, igual que `full_throttle`;
+  un roce fugaz de pedal no cuenta como inicio de aceleracion.
+- Entre el fin de la frenada (o el lift) y el gas sostenido puede existir un
+  tramo de coast (freno y gas ambos por debajo de su umbral): se marca con
+  `coast_start`/`coast_end` cuando existe hueco (si el gas se solapa con el
+  freno, no hay coast).
 """
 
 
@@ -83,7 +89,14 @@ def detect_corners(
 
 
 def extract_milestones(
-    lap, events=None, brake_on=10, brake_strong=50, throttle_on=5, full_throttle=98, turn_in_deg=8
+    lap,
+    events=None,
+    brake_on=10,
+    brake_strong=50,
+    throttle_on=5,
+    full_throttle=98,
+    turn_in_deg=8,
+    throttle_on_window=15,
 ):
     """Extrae los hitos de cada curva, con segmentacion por curva.
     Devuelve lista de dicts estilo corners.json."""
@@ -140,19 +153,39 @@ def extract_milestones(
             )
             if ti and ti["time"] < ap["time"]:
                 ms["turn_in"] = _pt(ti)
-        # gas
-        g0 = next(
-            (
-                s
-                for s in seg
-                if s["time"] >= ap["time"] - 0.6 and s.get("throttle", 0) > throttle_on
-            ),
-            None,
-        )
+        # gas: ancla en el throttle SOSTENIDO, no en el primer cruce del umbral
+        # (mismo criterio que full_throttle: umbral + N muestras seguidas). Un
+        # roce fugaz de pedal (freno-motor, ruido) cruza el umbral un instante
+        # pero no se sostiene y no debe ganar el hito. throttle_on_window=15
+        # reusa la ventana que ya usa full_throttle (~0.3s a 50Hz, coherente
+        # con el gap de 0.3s que funde bloques de frenada en este mismo modulo).
+        g0 = None
+        for j, s in enumerate(seg):
+            if s["time"] < ap["time"] - 0.6 or s.get("throttle", 0) <= throttle_on:
+                continue
+            if all(x.get("throttle", 0) > throttle_on for x in seg[j : j + throttle_on_window]):
+                g0 = s
+                break
         if g0:
             ms["throttle_on"] = _pt(g0, throttle_pct=round(g0["throttle"]))
             if "brake_release" in ms and g0["dist"] < ms["brake_release"]["d"]:
                 overlap = round(ms["brake_release"]["d"] - g0["dist"])
+            # coast: freno y gas ambos por debajo de su umbral, entre el fin de
+            # la frenada (o el lift, en curvas sin freno) y el gas sostenido. Si
+            # el gas se solapa con el freno (overlap) el intervalo queda vacio
+            # y no se emite coast.
+            end_ref = ms.get("brake_release") or ms.get("lift")
+            if end_ref:
+                coast = [
+                    s
+                    for s in seg
+                    if end_ref["t"] < s["time"] < g0["time"]
+                    and s.get("brake", 0) < brake_on
+                    and s.get("throttle", 0) < throttle_on
+                ]
+                if coast:
+                    ms["coast_start"] = _pt(coast[0])
+                    ms["coast_end"] = _pt(coast[-1])
         ms["apex"] = _pt(ap, g_lat=ap.get("glat"))
         g100 = None
         for j, s in enumerate(post):
