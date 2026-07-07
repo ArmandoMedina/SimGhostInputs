@@ -192,3 +192,97 @@ def test_list_profiles_survives_corrupt_file(tmp_path, monkeypatch):
     names = {entry["name"] for entry in listed}
     assert "Bueno" in names
     assert "corrupto" in names
+
+
+def test_list_profiles_survives_non_object_json(tmp_path, monkeypatch, capsys):
+    """Un .json valido pero no-objeto (p.ej. una lista) no tumba el listado
+    con AttributeError -- se lista con el nombre de archivo como fallback."""
+    monkeypatch.setattr(cue_profiles.Path, "home", classmethod(lambda cls: tmp_path))
+    lib = cue_profiles.profiles_dir()
+    cue_profiles.save_profile(lib / "bueno.json", None, name="Bueno")
+    (lib / "lista-suelta.json").write_text("[1, 2, 3]", encoding="utf-8")
+    listed = cue_profiles.list_profiles()
+    assert len(listed) == 2
+    names = {entry["name"] for entry in listed}
+    assert "Bueno" in names
+    assert "lista-suelta" in names
+    assert "lista-suelta" in capsys.readouterr().err
+
+
+def test_list_profiles_survives_malformed_cues(tmp_path, monkeypatch):
+    """Un perfil con "cues" mal formado (no lista) no rompe list_profiles:
+    el listado solo lee "name", la validacion de "cues" es cosa de load_profile."""
+    monkeypatch.setattr(cue_profiles.Path, "home", classmethod(lambda cls: tmp_path))
+    lib = cue_profiles.profiles_dir()
+    profile = {
+        "schema": cue_profiles.SCHEMA_NAME,
+        "version": 1,
+        "name": "cues-rotas",
+        "cues": "brake",
+    }
+    (lib / "cues-rotas.json").write_text(json.dumps(profile), encoding="utf-8")
+    listed = cue_profiles.list_profiles()
+    assert len(listed) == 1
+    assert listed[0]["name"] == "cues-rotas"
+
+
+def test_profile_to_config_cues_not_a_list_raises_value_error():
+    """ "cues": "brake" (string, no lista) da ValueError claro, no AttributeError."""
+    profile = {"schema": cue_profiles.SCHEMA_NAME, "version": 1, "cues": "brake"}
+    with pytest.raises(ValueError, match="lista"):
+        cue_profiles.profile_to_config(profile)
+
+
+def test_profile_to_config_cue_not_a_dict_raises_value_error():
+    """ "cues": ["brake"] (elementos string, no objetos) da ValueError claro."""
+    profile = {"schema": cue_profiles.SCHEMA_NAME, "version": 1, "cues": ["brake"]}
+    with pytest.raises(ValueError, match="objeto"):
+        cue_profiles.profile_to_config(profile)
+
+
+def test_profile_to_config_cue_without_type_raises_value_error():
+    """Un cue sin "type" da ValueError claro, no un KeyError/AttributeError."""
+    profile = {
+        "schema": cue_profiles.SCHEMA_NAME,
+        "version": 1,
+        "cues": [{"enabled": True, "priority": 80}],
+    }
+    with pytest.raises(ValueError, match="type"):
+        cue_profiles.profile_to_config(profile)
+
+
+def test_profile_to_config_priority_not_numeric_raises_value_error():
+    """ "priority": "alta" da ValueError claro (via int() con try), no crashea
+    en silencio para reventar despues en la UI."""
+    profile = {
+        "schema": cue_profiles.SCHEMA_NAME,
+        "version": 1,
+        "cues": [{"type": "brake", "enabled": True, "priority": "alta"}],
+    }
+    with pytest.raises(ValueError, match="priority"):
+        cue_profiles.profile_to_config(profile)
+
+
+def test_load_profile_priority_not_numeric_raises_value_error(tmp_path):
+    """El mismo caso pero a traves de load_profile (path completo de carga)."""
+    path = tmp_path / "prioridad-rota.json"
+    profile = {
+        "schema": cue_profiles.SCHEMA_NAME,
+        "version": 1,
+        "cues": [{"type": "brake", "enabled": True, "priority": "alta"}],
+    }
+    path.write_text(json.dumps(profile), encoding="utf-8")
+    with pytest.raises(ValueError, match="priority"):
+        cue_profiles.load_profile(path)
+
+
+def test_profile_to_config_coerces_enabled_and_solo_sin_frenada_to_bool():
+    """enabled/solo_sin_frenada no-bool (p.ej. 1/0) se coaccionan a bool real."""
+    profile = {
+        "schema": cue_profiles.SCHEMA_NAME,
+        "version": 1,
+        "cues": [{"type": "coast", "enabled": 1, "priority": 50, "solo_sin_frenada": 0}],
+    }
+    cue_config = cue_profiles.profile_to_config(profile)
+    assert cue_config["coast"]["enabled"] is True
+    assert cue_config["coast"]["solo_sin_frenada"] is False

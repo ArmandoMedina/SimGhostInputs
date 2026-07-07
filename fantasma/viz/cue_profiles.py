@@ -43,6 +43,19 @@ def config_to_profile(cue_config=None, name="", description="") -> dict:
     }
 
 
+def _coerce_priority(value, cue_type: str):
+    """Fuerza priority a int; ValueError claro (no el TypeError/ValueError
+    crudo de int()) si el valor no es coercible -- frontera robusta ante un
+    pack de terceros con "priority": "alta"."""
+    try:
+        return int(value)
+    except (TypeError, ValueError) as e:
+        raise ValueError(
+            'el perfil de cues no es valido: "priority" del cue "%s" debe ser un numero, '
+            "se recibio %r" % (cue_type, value)
+        ) from e
+
+
 def profile_to_config(profile: dict) -> dict:
     """Convierte el dict de un perfil (ya cargado) de vuelta a cue_config.
 
@@ -51,17 +64,47 @@ def profile_to_config(profile: dict) -> dict:
     futura de esta app debe seguir cargando los cues que esta version conoce.
     Campos faltantes por cue quedan tal cual (build_pack los resuelve al
     default via _cue_cfg, misma semantica que un override parcial hoy).
+
+    Frontera robusta: "cues" debe ser una lista de objetos con "type" (si no,
+    ValueError claro, nunca AttributeError). priority se fuerza a int;
+    enabled/solo_sin_frenada se fuerzan a bool -- un JSON de un tercero con
+    tipos torcidos no debe reventar mas adelante en la UI o en build_pack.
+    Un valor explicito None se trata como campo ausente (mismo criterio que
+    _assemble_cue_config en ng_step5.py).
     """
+    cues = profile.get("cues", [])
+    if not isinstance(cues, list):
+        raise ValueError(
+            'el perfil de cues no es valido: "cues" debe ser una lista, se recibio %s'
+            % type(cues).__name__
+        )
     cue_config = {}
-    for cue in profile.get("cues", []):
+    for cue in cues:
+        if not isinstance(cue, dict):
+            raise ValueError(
+                'el perfil de cues no es valido: cada elemento de "cues" debe ser un '
+                "objeto, se recibio %s" % type(cue).__name__
+            )
         cue_type = cue.get("type")
+        if not isinstance(cue_type, str) or not cue_type:
+            raise ValueError('el perfil de cues no es valido: un cue no tiene "type"')
         if cue_type not in DEFAULT_CONFIG:
             print(
                 'aviso: perfil de cues trae un tipo desconocido "%s", se ignora' % cue_type,
                 file=sys.stderr,
             )
             continue
-        cue_config[cue_type] = {k: v for k, v in cue.items() if k != "type"}
+        entry = {}
+        for key, value in cue.items():
+            if key == "type" or value is None:
+                continue
+            if key == "priority":
+                entry[key] = _coerce_priority(value, cue_type)
+            elif key in ("enabled", "solo_sin_frenada"):
+                entry[key] = bool(value)
+            else:
+                entry[key] = value
+        cue_config[cue_type] = entry
     return cue_config
 
 
@@ -117,16 +160,30 @@ def save_profile(path, cue_config, name, description="") -> Path:
 def list_profiles() -> list:
     """Perfiles disponibles en profiles_dir(): [{"name", "path"}, ...] para un dropdown.
 
-    Un archivo que no se puede leer o parsear se lista igual (con el nombre de
-    archivo como fallback) en vez de romper el listado completo por un pack
-    corrupto de un tercero.
+    Un archivo que no se puede leer, parsear, o cuyo JSON valido no es un
+    objeto (p. ej. una lista suelta) se lista igual (con el nombre de archivo
+    como fallback y un aviso a stderr) en vez de romper el listado completo
+    por un pack corrupto de un tercero. Nunca llama profile_to_config aqui:
+    "cues" mal formado no afecta el listado, solo se valida al cargar.
     """
     results = []
     for file in sorted(profiles_dir().glob("*.json")):
+        name = file.stem
         try:
             profile = json.loads(file.read_text(encoding="utf-8"))
-            name = profile.get("name") or file.stem
-        except (OSError, json.JSONDecodeError):
-            name = file.stem
+        except (OSError, json.JSONDecodeError) as e:
+            print(
+                'aviso: no se pudo leer el perfil de cues "%s": %s' % (file.name, e),
+                file=sys.stderr,
+            )
+        else:
+            if isinstance(profile, dict):
+                name = profile.get("name") or file.stem
+            else:
+                print(
+                    'aviso: el perfil de cues "%s" no es un objeto JSON valido, se usa '
+                    "el nombre de archivo" % file.name,
+                    file=sys.stderr,
+                )
         results.append({"name": name, "path": str(file)})
     return results
