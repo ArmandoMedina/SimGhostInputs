@@ -518,3 +518,227 @@ def test_brake_y_countdown_frecuencias_distintas():
 
     assert DEFAULT_FREQS["brake"] == 1000
     assert DEFAULT_FREQS["brake"] != DEFAULT_FREQS["brake_countdown"]
+
+
+# ── cue_config: catalogo filtrable + prioridad configurable (WS-2) ────────────
+
+
+def test_default_config_reproduce_comportamiento_actual():
+    """Con DEFAULT_CONFIG (o sin pasar cue_config) el pack es identico al de
+    hoy: mismos tipos activos con las mismas prioridades que antes vivian
+    hardcodeadas en _corner_candidates."""
+    from fantasma.viz.pacenotes import DEFAULT_CONFIG, plan_tone_events
+
+    rows = [{"id": "C01", "name": "C01", "time_lost": 0.5, "flags": "frenada"}]
+    corners = [
+        {
+            "id": "C01",
+            "name": "C01",
+            # Milestones espaciados >100 m entre si para que ninguno compita
+            # por cabida (min_gap_m default=50) — el foco de este test es la
+            # paridad DEFAULT_CONFIG vs sin cue_config, no la regla de cabida.
+            "milestones": {
+                "brake_start": {"d": 1000},
+                "brake_release": {"d": 1100},
+                "turn_in": {"d": 1200},
+                "apex": {"d": 1300},
+                "throttle_on": {"d": 1400},
+                "full_throttle": {"d": 1500},
+            },
+        }
+    ]
+    sin_config = plan_tone_events(rows, corners, top=1, max_events_per_corner=10)
+    con_default = plan_tone_events(
+        rows, corners, top=1, max_events_per_corner=10, cue_config=DEFAULT_CONFIG
+    )
+    assert sin_config == con_default
+    # brake_tic: los 2 tics de aviso del countdown, siempre presentes junto a
+    # una frenada protegida con lead_m (mecanismo aparte, no gateado por
+    # cue_config en este WS). apex NO aparece: apagado por defecto.
+    cues = {e["cue"] for e in sin_config["events"]}
+    assert cues == {
+        "brake",
+        "brake_tic",
+        "brake_release",
+        "turn_in",
+        "throttle_on",
+        "full_throttle",
+    }
+    priorities = {e["cue"]: e["priority"] for e in sin_config["events"]}
+    assert priorities == {
+        "brake": 80,
+        "brake_tic": 100,
+        "brake_release": 70,
+        "turn_in": 60,
+        "throttle_on": 85,
+        "full_throttle": 75,
+    }
+
+
+def test_cue_deshabilitado_no_aparece_en_el_pack():
+    """Un tipo con enabled=False no genera candidatos, aunque su milestone
+    exista y sus condiciones de severidad se cumplan."""
+    from fantasma.viz.pacenotes import DEFAULT_CONFIG, plan_tone_events
+
+    rows = [{"id": "C01", "name": "C01", "time_lost": 0.5, "flags": "vmin"}]
+    corners = [
+        {
+            "id": "C01",
+            "name": "C01",
+            "milestones": {"brake_start": {"d": 1000}, "turn_in": {"d": 1015}},
+        }
+    ]
+    cue_config = {**DEFAULT_CONFIG, "turn_in": {"enabled": False, "priority": 60}}
+    plan = plan_tone_events(rows, corners, top=1, cue_config=cue_config)
+    assert not any(e["cue"] == "turn_in" for e in plan["events"])
+    assert any(e["cue"] == "brake" for e in plan["events"])
+
+
+def test_apex_off_por_defecto_y_aparece_al_habilitarlo():
+    """apex esta apagado por defecto (ADR 0026); al habilitarlo en cue_config
+    vuelve a sonar."""
+    from fantasma.viz.pacenotes import DEFAULT_CONFIG, plan_tone_events
+
+    rows = [{"id": "C01", "name": "C01", "time_lost": 0.5, "flags": "vmin"}]
+    corners = [
+        {
+            "id": "C01",
+            "name": "C01",
+            # apex a 200 m de la frenada: fuera del min_gap_m default (50) para
+            # que el cue quede aislado y la asercion sea sobre enabled, no
+            # sobre la regla de cabida contra la frenada protegida.
+            "milestones": {"brake_start": {"d": 1000}, "apex": {"d": 1200}},
+        }
+    ]
+    plan_default = plan_tone_events(rows, corners, top=1)
+    assert not any(e["cue"] == "apex" for e in plan_default["events"])
+
+    cue_config = {**DEFAULT_CONFIG, "apex": {"enabled": True, "priority": 90}}
+    plan_on = plan_tone_events(rows, corners, top=1, cue_config=cue_config)
+    assert any(e["cue"] == "apex" for e in plan_on["events"])
+
+
+def test_coast_off_por_defecto_y_aparece_en_curva_sin_frenada():
+    """coast esta apagado por defecto; al habilitarlo en una curva SIN
+    milestone de frenada, aparece."""
+    from fantasma.viz.pacenotes import DEFAULT_CONFIG, plan_tone_events
+
+    rows = [{"id": "C01", "name": "C01", "time_lost": 0.5, "flags": ""}]
+    corners = [
+        {
+            "id": "C01",
+            "name": "C01",
+            "milestones": {"coast_start": {"d": 900}, "coast_end": {"d": 950}},
+        }
+    ]
+    plan_default = plan_tone_events(rows, corners, top=1)
+    assert not any(e["cue"] == "coast" for e in plan_default["events"])
+
+    cue_config = {**DEFAULT_CONFIG, "coast": {"enabled": True, "priority": 50}}
+    plan_on = plan_tone_events(rows, corners, top=1, cue_config=cue_config)
+    coast_events = [e for e in plan_on["events"] if e["cue"] == "coast"]
+    assert coast_events and coast_events[0]["distance"] == 900
+
+
+def test_coast_solo_sin_frenada_no_aparece_en_curva_con_frenada():
+    """Con solo_sin_frenada=True (default), coast no suena en una curva que
+    tambien tiene milestone de frenada."""
+    from fantasma.viz.pacenotes import DEFAULT_CONFIG, plan_tone_events
+
+    rows = [{"id": "C01", "name": "C01", "time_lost": 0.5, "flags": "frenada"}]
+    corners = [
+        {
+            "id": "C01",
+            "name": "C01",
+            "milestones": {
+                "brake_start": {"d": 800},
+                "coast_start": {"d": 900},
+                "coast_end": {"d": 950},
+            },
+        }
+    ]
+    cue_config = {
+        **DEFAULT_CONFIG,
+        "coast": {"enabled": True, "priority": 50, "solo_sin_frenada": True},
+    }
+    plan = plan_tone_events(rows, corners, top=1, cue_config=cue_config)
+    assert not any(e["cue"] == "coast" for e in plan["events"])
+    assert any(e["cue"] == "brake" for e in plan["events"])
+
+    cue_config_sin_filtro = {
+        **DEFAULT_CONFIG,
+        "coast": {"enabled": True, "priority": 50, "solo_sin_frenada": False},
+    }
+    plan_sin_filtro = plan_tone_events(rows, corners, top=1, cue_config=cue_config_sin_filtro)
+    assert any(e["cue"] == "coast" for e in plan_sin_filtro["events"])
+
+
+def test_gear_es_solo_un_slot_reservado():
+    """gear esta en el catalogo pero apagado y sin logica de deteccion: un
+    milestone 'gear' en la curva no genera ningun candidato de tipo gear."""
+    from fantasma.viz.pacenotes import DEFAULT_CONFIG, plan_tone_events
+
+    assert DEFAULT_CONFIG["gear"]["enabled"] is False
+    rows = [{"id": "C01", "name": "C01", "time_lost": 0.5, "flags": ""}]
+    corners = [
+        {
+            "id": "C01",
+            "name": "C01",
+            "milestones": {"brake_start": {"d": 1000}, "gear": {"d": 1010}},
+        }
+    ]
+    cue_config = {**DEFAULT_CONFIG, "gear": {"enabled": True, "priority": 65}}
+    plan = plan_tone_events(rows, corners, top=1, cue_config=cue_config)
+    assert not any(e["cue"] == "gear" for e in plan["events"])
+
+
+def test_prioridad_configurable_invierte_quien_sobrevive_la_colision():
+    """La clave de la feature: cambiar la prioridad de un tipo en cue_config
+    invierte quien gana una colision por cabida entre dos curvas distintas.
+
+    C01 tiene un turn_in (prioridad default 60, no protegido) y C02 tiene un
+    throttle_on (prioridad default 85, no protegido) a menos de min_gap_m de
+    distancia. Con la config por defecto gana throttle_on (mayor prioridad).
+    Al subir la prioridad de turn_in por encima de la de throttle_on, gana
+    turn_in en su lugar."""
+    from fantasma.viz.pacenotes import DEFAULT_CONFIG, plan_tone_events
+
+    rows = [
+        {"id": "C01", "name": "C01", "time_lost": 0.5, "flags": ""},
+        {"id": "C02", "name": "C02", "time_lost": 0.5, "flags": ""},
+    ]
+    corners = [
+        {"id": "C01", "name": "C01", "milestones": {"turn_in": {"d": 1000}}},
+        {"id": "C02", "name": "C02", "milestones": {"throttle_on": {"d": 1020}}},
+    ]
+
+    plan_default = plan_tone_events(rows, corners, top=2, min_gap_m=50)
+    cues_default = {e["cue"] for e in plan_default["events"]}
+    assert "throttle_on" in cues_default
+    assert "turn_in" not in cues_default
+
+    cue_config = {**DEFAULT_CONFIG, "turn_in": {"enabled": True, "priority": 999}}
+    plan_invertido = plan_tone_events(rows, corners, top=2, min_gap_m=50, cue_config=cue_config)
+    cues_invertidas = {e["cue"] for e in plan_invertido["events"]}
+    assert "turn_in" in cues_invertidas
+    assert "throttle_on" not in cues_invertidas
+
+
+def test_frenada_protegida_universal_pese_a_su_prioridad_en_config():
+    """La frenada sigue siendo PROTEGIDA (nunca la tira la cabida) incluso si
+    su prioridad en cue_config es la mas baja del catalogo."""
+    from fantasma.viz.pacenotes import DEFAULT_CONFIG, plan_tone_events
+
+    rows = [
+        {"id": "C01", "name": "C01", "time_lost": 0.3, "flags": ""},
+        {"id": "C02", "name": "C02", "time_lost": 0.3, "flags": ""},
+    ]
+    corners = [
+        {"id": "C01", "name": "C01", "milestones": {"brake_start": {"d": 1000}}},
+        {"id": "C02", "name": "C02", "milestones": {"throttle_on": {"d": 1020}}},
+    ]
+    cue_config = {**DEFAULT_CONFIG, "brake": {"enabled": True, "priority": 1}}
+    plan = plan_tone_events(rows, corners, top=2, min_gap_m=50, cue_config=cue_config)
+    brakes = [e for e in plan["events"] if e["cue"] == "brake"]
+    assert [e["distance"] for e in brakes] == [1000]
+    assert not any(e["cue"] == "throttle_on" for e in plan["events"])

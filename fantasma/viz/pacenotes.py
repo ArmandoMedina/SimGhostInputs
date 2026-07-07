@@ -50,6 +50,7 @@ DEFAULT_FREQS = {
     "gas": 220,
     "gas_100": 180,
     "full_throttle": 180,
+    "coast": 340,
 }
 MILESTONE_ALIASES = {
     "brake": ["brake", "brake_start"],
@@ -72,6 +73,7 @@ MILESTONE_LABELS = {
     "gas_100": "gas completo",
     "full_throttle": "gas completo",
     "turn_in": "turn-in",
+    "coast": "inercia",
 }
 PLAN_CUES = [
     "brake_countdown",
@@ -81,6 +83,42 @@ PLAN_CUES = [
     "throttle_on",
     "full_throttle",
 ]
+# Catalogo COMPLETO de tipos de cue con su configuracion por defecto (enabled +
+# priority). PLAN_CUES arriba sigue siendo la lista que consume la leyenda de
+# la UI (Paso 5, WS-4) y NO se toca aqui: enumera solo los tipos que suenan
+# HOY por defecto. DEFAULT_CONFIG es el catalogo mas amplio (incluye tipos
+# apagados por defecto) que se threadea por el pipeline via cue_config. Con
+# DEFAULT_CONFIG el pack es identico al de hoy (no-regresion): mismos tipos
+# activos, mismas prioridades que antes vivian hardcodeadas en
+# _corner_candidates.
+DEFAULT_CONFIG = {
+    # Tics de aviso del countdown de frenada (ADR 0024/0026). Su enabled y
+    # priority NO estan conectados todavia al mecanismo de tics en
+    # plan_tone_events (esta atado al milestone "brake" protegido y no pasa
+    # por _corner_candidates); se documenta aqui por catalogo completo.
+    # Conectarlo (apagar el countdown por separado) es follow-up.
+    "brake_countdown": {"enabled": True, "priority": 100},
+    "brake": {"enabled": True, "priority": 80},
+    "brake_release": {"enabled": True, "priority": 70},
+    "turn_in": {"enabled": True, "priority": 60},
+    "throttle_on": {"enabled": True, "priority": 85},
+    "full_throttle": {"enabled": True, "priority": 75},
+    # Reincorporado al catalogo (ADR 0026 lo apago, no lo borro). Apagado por
+    # defecto: no-regresion con el pack de hoy, que no suena en el apex.
+    "apex": {"enabled": False, "priority": 90},
+    # Coast/inercia (WS-1: milestones coast_start/coast_end en corners.py). Un
+    # solo cue en coast_start, no dos: coast_end no marca una accion del
+    # piloto, solo el fin del hueco de inercia — un cue de entrada basta para
+    # avisar "aqui no hay ni freno ni gas". solo_sin_frenada=True: en curvas
+    # CON frenada el freno-turn_in-release ya cubre esa fase; el coast se
+    # reserva para curvas sin freno, donde es la unica pista de que hay que
+    # soltar el pedal antes de dar gas. Apagado por defecto.
+    "coast": {"enabled": False, "priority": 50, "solo_sin_frenada": True},
+    # Cambio de marcha: slot reservado, SIN IMPLEMENTAR. TODO: la deteccion de
+    # marcha (leer "gear" del milestone, decidir el umbral del cue) es
+    # follow-up; no se generan candidatos para este tipo todavia.
+    "gear": {"enabled": False, "priority": 65},
+}
 
 
 def generate_tone(freq_hz, duration_s, volume=0.8, sample_rate=24000) -> bytes:
@@ -118,6 +156,7 @@ def build_tone_pack(
     smart=True,
     track_name=None,
     countdown_s=DEFAULT_COUNTDOWN_S,
+    cue_config=None,
 ) -> dict:
     out = Path(outdir)
     out.mkdir(parents=True, exist_ok=True)
@@ -126,7 +165,7 @@ def build_tone_pack(
     entries = []
     files = []
     plan = (
-        plan_tone_events(rows, corners, top=top, countdown_s=countdown_s)
+        plan_tone_events(rows, corners, top=top, countdown_s=countdown_s, cue_config=cue_config)
         if smart
         else _legacy_tone_events(rows, corners, top, milestones)
     )
@@ -159,7 +198,9 @@ def plan_tone_events(
     max_events_per_corner=3,
     countdown_m=120,
     countdown_s=DEFAULT_COUNTDOWN_S,
+    cue_config=None,
 ) -> dict:
+    cue_config = cue_config or DEFAULT_CONFIG
     events = []
     corners_plan = []
 
@@ -167,7 +208,7 @@ def plan_tone_events(
         corner = _find_corner(row, corners)
         if not corner:
             continue
-        candidates = _corner_candidates(row, corner, countdown_m, countdown_s)
+        candidates = _corner_candidates(row, corner, countdown_m, countdown_s, cue_config)
         selected = []
         skipped = []
         for candidate in sorted(candidates, key=lambda c: (-c["priority"], c["distance"])):
@@ -391,11 +432,19 @@ def build_voice_pack(rows, corners, outdir, top=5, lang="es-MX", track_name=None
     return {"outdir": str(out), "files": files, "entries": len(entries)}
 
 
-def build_pack(rows, corners, outdir, mode="tones", top=5, **kwargs) -> dict:
+def build_pack(rows, corners, outdir, mode="tones", top=5, cue_config=None, **kwargs) -> dict:
     track_name = kwargs.pop("track_name", None)
     if mode == "tones":
         tone_kwargs = {k: v for k, v in kwargs.items() if k != "lang"}
-        return build_tone_pack(rows, corners, outdir, top=top, track_name=track_name, **tone_kwargs)
+        return build_tone_pack(
+            rows,
+            corners,
+            outdir,
+            top=top,
+            track_name=track_name,
+            cue_config=cue_config,
+            **tone_kwargs,
+        )
     if mode == "voice":
         return build_voice_pack(
             rows, corners, outdir, top=top, lang=kwargs.get("lang", "es-MX"), track_name=track_name
@@ -404,7 +453,9 @@ def build_pack(rows, corners, outdir, mode="tones", top=5, **kwargs) -> dict:
         raise ValueError("modo invalido: %s" % mode)
 
     tone_kwargs = {k: v for k, v in kwargs.items() if k != "lang"}
-    tones = build_tone_pack(rows, corners, outdir, top=top, track_name=track_name, **tone_kwargs)
+    tones = build_tone_pack(
+        rows, corners, outdir, top=top, track_name=track_name, cue_config=cue_config, **tone_kwargs
+    )
     tone_entries = _read_entries(Path(outdir) / "metadata.json")
     voice = build_voice_pack(
         rows, corners, outdir, top=top, lang=kwargs.get("lang", "es-MX"), track_name=track_name
@@ -511,52 +562,154 @@ def _countdown_lead_m(brake, countdown_m, countdown_s, min_lead_m=60, max_lead_m
     return max(min_lead_m, min(max_lead_m, lead))
 
 
-def _corner_candidates(row, corner, countdown_m, countdown_s=DEFAULT_COUNTDOWN_S):
+def _cue_cfg(cue_config, cue):
+    """Config de un tipo de cue con fallback a DEFAULT_CONFIG.
+
+    Un cue_config parcial (solo algunas claves, p.ej. en un test que solo
+    quiere subir una prioridad) no debe dejar sin enabled/priority a los tipos
+    que no menciono explicitamente.
+    """
+    cfg = (cue_config or {}).get(cue)
+    if cfg is None:
+        cfg = DEFAULT_CONFIG.get(cue, {"enabled": True, "priority": 50})
+    return cfg
+
+
+def _corner_candidates(row, corner, countdown_m, countdown_s=DEFAULT_COUNTDOWN_S, cue_config=None):
+    cue_config = cue_config or DEFAULT_CONFIG
     loss = _as_float(row.get("time_lost", 0))
     flags = str(row.get("flags", ""))
     d_brake = _as_float(row.get("d_brake_m", 0)) if row.get("d_brake_m") not in (None, "") else 0
     d_gas = _as_float(row.get("d_gas100_m", 0)) if row.get("d_gas100_m") not in (None, "") else 0
     braking_issue = "frenada" in flags or d_brake > 15
     exit_issue = abs(d_gas) > 20 or (loss >= 0.25 and "vmin" not in flags)
+    apex_issue = "vmin" in flags or loss >= 0.25
     candidates = []
 
+    brake_cfg = _cue_cfg(cue_config, "brake")
     brake = _milestone(corner, "brake")
-    if brake and brake.get("d") is not None:
+    if brake_cfg.get("enabled", True) and brake and brake.get("d") is not None:
         brake_d = _as_float(brake["d"])
         lead_m = _countdown_lead_m(brake, countdown_m, countdown_s)
         # Tono de frenada UNIVERSAL: toda curva con milestone de frenada suena,
-        # sin importar severidad. Es PROTEGIDO — ningun gap lo descarta (R1). El
-        # countdown (tics de aviso) se coloca aparte y de forma oportunista en
-        # plan_tone_events usando lead_m.
+        # sin importar severidad. Es PROTEGIDO — ningun gap lo descarta (R1), sin
+        # importar su prioridad en config. El countdown (tics de aviso) se
+        # coloca aparte y de forma oportunista en plan_tone_events usando lead_m.
         candidates.append(
             _event(
-                row, corner, "brake", brake_d, 80, "marca frenada", lead_m=lead_m, protected=True
+                row,
+                corner,
+                "brake",
+                brake_d,
+                brake_cfg.get("priority", 80),
+                "marca frenada",
+                lead_m=lead_m,
+                protected=True,
             )
         )
 
+    release_cfg = _cue_cfg(cue_config, "brake_release")
     release = _milestone(corner, "brake_release")
-    if release and release.get("d") is not None and braking_issue:
+    if (
+        release_cfg.get("enabled", True)
+        and release
+        and release.get("d") is not None
+        and braking_issue
+    ):
         candidates.append(
-            _event(row, corner, "brake_release", _as_float(release["d"]), 70, "salida de freno")
+            _event(
+                row,
+                corner,
+                "brake_release",
+                _as_float(release["d"]),
+                release_cfg.get("priority", 70),
+                "salida de freno",
+            )
         )
 
+    turn_cfg = _cue_cfg(cue_config, "turn_in")
     turn = _milestone(corner, "turn_in")
-    if turn and turn.get("d") is not None and loss >= 0.25:
+    if turn_cfg.get("enabled", True) and turn and turn.get("d") is not None and loss >= 0.25:
         candidates.append(
-            _event(row, corner, "turn_in", _as_float(turn["d"]), 60, "inicio de giro")
+            _event(
+                row,
+                corner,
+                "turn_in",
+                _as_float(turn["d"]),
+                turn_cfg.get("priority", 60),
+                "inicio de giro",
+            )
         )
 
+    throttle_cfg = _cue_cfg(cue_config, "throttle_on")
     throttle = _milestone(corner, "throttle_on")
-    if throttle and throttle.get("d") is not None and exit_issue:
+    if (
+        throttle_cfg.get("enabled", True)
+        and throttle
+        and throttle.get("d") is not None
+        and exit_issue
+    ):
         candidates.append(
-            _event(row, corner, "throttle_on", _as_float(throttle["d"]), 85, "inicio de gas")
+            _event(
+                row,
+                corner,
+                "throttle_on",
+                _as_float(throttle["d"]),
+                throttle_cfg.get("priority", 85),
+                "inicio de gas",
+            )
         )
 
+    full_cfg = _cue_cfg(cue_config, "full_throttle")
     full = _milestone(corner, "full_throttle")
-    if full and full.get("d") is not None and (exit_issue or loss >= 0.25):
+    if (
+        full_cfg.get("enabled", True)
+        and full
+        and full.get("d") is not None
+        and (exit_issue or loss >= 0.25)
+    ):
         candidates.append(
-            _event(row, corner, "full_throttle", _as_float(full["d"]), 75, "gas a fondo")
+            _event(
+                row,
+                corner,
+                "full_throttle",
+                _as_float(full["d"]),
+                full_cfg.get("priority", 75),
+                "gas a fondo",
+            )
         )
+
+    apex_cfg = _cue_cfg(cue_config, "apex")
+    apex = _milestone(corner, "apex")
+    if apex_cfg.get("enabled", False) and apex and apex.get("d") is not None and apex_issue:
+        candidates.append(
+            _event(
+                row,
+                corner,
+                "apex",
+                _as_float(apex["d"]),
+                apex_cfg.get("priority", 90),
+                "corrige V-Min/apex",
+            )
+        )
+
+    coast_cfg = _cue_cfg(cue_config, "coast")
+    coast = _milestone(corner, "coast_start")
+    if coast_cfg.get("enabled", False) and coast and coast.get("d") is not None:
+        # Sin frenada: no hay milestone "brake" en esta curva (turn_in +
+        # release ya cubren la fase de freno cuando si la hay).
+        sin_frenada = _milestone(corner, "brake") is None
+        if not coast_cfg.get("solo_sin_frenada", True) or sin_frenada:
+            candidates.append(
+                _event(
+                    row,
+                    corner,
+                    "coast",
+                    _as_float(coast["d"]),
+                    coast_cfg.get("priority", 50),
+                    "inercia",
+                )
+            )
 
     return candidates
 
