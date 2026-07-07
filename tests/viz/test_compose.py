@@ -255,6 +255,71 @@ def test_compose_video_burn_cue_subs_wires_ass_filter(monkeypatch, tmp_path):
     assert runs[0]["ass_ok"], "el .ass debe existir en cwd durante el encode"
 
 
+def test_compose_video_burn_cue_subs_normalizes_relative_paths(monkeypatch, tmp_path):
+    """Con burn_cue_subs, ffmpeg corre con cwd en el tmpdir del .ass: si video,
+    overlay u output llegan relativos (los campos del Paso 4 son texto libre),
+    ffmpeg los resolveria contra ESE tmpdir en vez del cwd real — inputs no
+    encontrados o, peor, el output se escribe DENTRO del tmpdir que se borra
+    al terminar (archivo final perdido en silencio). Regresion (Reviewer, PR #32).
+    """
+    import fantasma.viz.pacenotes as _pn_mod
+    from tests.conftest import make_lap
+
+    lap = make_lap()
+    monkeypatch.chdir(tmp_path)
+
+    pn_dir = "pndir"
+    os.makedirs(pn_dir, exist_ok=True)
+    rel_video = "video.mp4"
+    rel_overlay = "overlay.webm"
+    rel_output = os.path.join("out", "composed.mp4")
+
+    monkeypatch.setattr(
+        _pn_mod, "render_pace_notes_track", lambda *a, **k: open(a[2], "wb").close()
+    )
+    monkeypatch.setattr(_pn_mod, "build_cue_ass", lambda *a, **k: "[Script Info]\nfake")
+    monkeypatch.setattr(compose, "_probe_resolution", lambda *a: (1024, 1024))
+
+    runs = []
+
+    def fake_run(cmd, **kwargs):
+        runs.append({"cmd": list(cmd), "cwd": kwargs.get("cwd")})
+        return _FakeProcOk()
+
+    monkeypatch.setattr(
+        compose.shutil, "which", lambda n: "/usr/bin/ffmpeg" if n == "ffmpeg" else None
+    )
+    monkeypatch.setattr(compose, "_nvenc_available", lambda *a: False)
+    monkeypatch.setattr(compose, "_has_audio", lambda *a: False)
+    monkeypatch.setattr(compose.subprocess, "run", fake_run)
+
+    compose.compose_video(
+        video=rel_video,
+        overlay=rel_overlay,
+        output=rel_output,
+        pace_notes_dir=pn_dir,
+        lap=lap,
+        burn_cue_subs=True,
+    )
+
+    assert runs, "ffmpeg debe haber sido invocado"
+    cmd = runs[0]["cmd"]
+    subs_cwd = runs[0]["cwd"]
+    assert subs_cwd, "burn_cue_subs debe correr con cwd en la carpeta del .ass"
+    # el tmpdir del .ass es un directorio del sistema, distinto del cwd real
+    assert os.path.abspath(subs_cwd) != str(tmp_path)
+
+    i_values = [cmd[i + 1] for i, a in enumerate(cmd) if a == "-i"]
+    assert os.path.abspath(rel_video) in i_values
+    assert os.path.abspath(rel_overlay) in i_values
+    assert cmd[-1] == os.path.abspath(rel_output)
+
+    # ninguno de los paths reales quedo relativo al cwd del subprocess (el
+    # tmpdir del .ass) — solo el .ass mismo debe resolverse ahi
+    for p in (*i_values, cmd[-1]):
+        assert os.path.isabs(p)
+
+
 def test_compose_video_no_burn_when_build_cue_ass_returns_none(monkeypatch, tmp_path):
     """Si build_cue_ass devuelve None (nada que rotular), no se quema ningun .ass."""
     import fantasma.viz.pacenotes as _pn_mod

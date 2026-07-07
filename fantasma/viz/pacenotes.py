@@ -499,7 +499,7 @@ def build_cue_ass(pace_notes_dir, lap, video_w, video_h, hud_margin_v=None):
         if dist is None:
             continue
         t = _dist_to_time(lap, _as_float(dist))
-        if t is None or t < 0 or t > lap.laptime:
+        if t < 0 or t > lap.laptime:
             continue
         name, label = _split_cue_desc(entry.get("description", ""))
         color = CUE_SUB_COLORS.get(label, "&H00FFFFFF")

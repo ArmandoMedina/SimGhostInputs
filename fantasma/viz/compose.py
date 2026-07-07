@@ -128,6 +128,7 @@ def _caption_margin_v(position, video_h, overlay_h, scale):
     que subirlos por encima de su alto (overlay_h·scale). Si el HUD esta arriba,
     basta un margen chico.
     """
+    position = position if position in POSITIONS else "bottom-right"
     gap = int(video_h * 0.03)
     if position.startswith("bottom"):
         hud_h = int(overlay_h * scale) if overlay_h else int(video_h * 0.30)
@@ -426,6 +427,15 @@ def compose_video(
             else "sudo apt install ffmpeg"
         )
         raise RuntimeError("ffmpeg no encontrado en PATH — instálalo con: %s" % _cmd)
+
+    # Con burn_cue_subs el subprocess corre con cwd en el tmpdir del .ass (ver
+    # _run_cwd más abajo): sin normalizar, un video/overlay/output relativo
+    # (los campos del Paso 4 son texto libre) se resolvería contra ESE tmpdir
+    # en vez del cwd real — inputs no encontrados o, peor, el output se
+    # escribe dentro del tmpdir que se borra al terminar (Reviewer, PR #32).
+    video = os.path.abspath(video)
+    overlay = os.path.abspath(overlay)
+    output = os.path.abspath(output)
 
     out_dir = os.path.dirname(output)
     if out_dir:
