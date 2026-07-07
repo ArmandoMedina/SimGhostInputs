@@ -250,24 +250,28 @@ def plan_tone_events(
 
     # Countdown OPORTUNISTA: por cada frenada protegida con lead_m, 2 tics de
     # aviso antes de la frenada (en brake_d - lead_m y brake_d - lead_m/2). Cada
-    # tic entra SOLO si cabe a >=min_gap de TODO sonido ya en la linea de tiempo
-    # (frenadas, cues y tics ya insertados, incluidos los de OTRAS curvas). Se
-    # recorren en orden de distancia (greedy) para resolver tic-vs-tic. El 3er
-    # sonido es la frenada; nunca hay un 4o "ya" (R2).
-    timeline = [e["distance"] for e in kept]
+    # tic entra SOLO si cabe a >=min_gap de TODO sonido de OTRO grupo ya en la
+    # linea de tiempo (frenadas y tics de OTRAS curvas). El tono de frenada de
+    # SU MISMA curva y su tic hermano quedan fuera de la comparacion: son un
+    # solo grupo cohesivo (2 tics + el "ya" en brake_d, ADR 0026) y un tic no
+    # puede auto-rechazarse contra el evento que anuncia. Sin esta exclusion,
+    # lead_m < 2*min_gap_m (curvas por debajo de ~103 km/h con el default de
+    # 3.5 s) tiraba el tic step=1 contra su propia frenada. Se recorren en
+    # orden de distancia (greedy) para resolver tic-vs-tic entre curvas.
+    timeline = [(idx, e["distance"]) for idx, e in enumerate(kept)]
     tic_candidates = []
-    for e in kept:
+    for idx, e in enumerate(kept):
         if e.get("protected") and e.get("lead_m"):
             for step, frac in ((0, 1.0), (1, 0.5)):
                 d = int(round(e["distance"] - e["lead_m"] * frac))
-                tic_candidates.append((d, step, e))
+                tic_candidates.append((d, step, idx, e))
     tics = []
-    for d, step, e in sorted(tic_candidates, key=lambda x: x[0]):
+    for d, step, own_idx, e in sorted(tic_candidates, key=lambda x: x[0]):
         if d <= 0:
             continue
-        if any(abs(d - t) < min_gap_m for t in timeline):
+        if any(abs(d - t) < min_gap_m for t_idx, t in timeline if t_idx != own_idx):
             continue
-        timeline.append(d)
+        timeline.append((own_idx, d))
         tics.append(
             {
                 "corner_id": e["corner_id"],

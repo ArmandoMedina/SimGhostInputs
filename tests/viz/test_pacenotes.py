@@ -358,6 +358,49 @@ def test_dos_countdowns_encadenados_no_amontonan_tics():
     assert len(tics) < 4
 
 
+def test_countdown_tics_no_se_autorrechazan_contra_su_propia_frenada():
+    """Regresion: con lead_m < 2*min_gap_m (curvas por debajo de ~103 km/h con
+    el countdown_s default), el tic step=1 (brake_d - lead_m/2) caia a <min_gap_m
+    de SU PROPIA frenada y se perdia aunque no compitiera con ningun otro
+    sonido. El tono de frenada y sus 2 tics son un solo grupo cohesivo (ADR
+    0026): la cabida se chequea contra OTROS sonidos, nunca contra el propio
+    grupo."""
+    from fantasma.viz.pacenotes import plan_tone_events
+
+    rows = [{"id": "C01", "name": "C01", "time_lost": 0.5, "flags": "frenada"}]
+    # v=90 km/h -> lead_m=87.5, redondeado a 88 (< 2*min_gap_m=100): antes del
+    # fix el tic step=1 (2000-44=1956) caia a 44 m de la frenada (<50) y se
+    # descartaba pese a no competir con nada mas.
+    corners = [{"id": "C01", "name": "C01", "milestones": {"brake_start": {"d": 2000, "v": 90}}}]
+    plan = plan_tone_events(rows, corners, top=1)
+    brake = next(e for e in plan["events"] if e["cue"] == "brake")
+    assert brake["distance"] == 2000
+    assert brake["lead_m"] == 88
+    tics = sorted(e["distance"] for e in plan["events"] if e["cue"] == "brake_tic")
+    assert tics == [1912, 1956]
+
+
+def test_countdown_tic_de_otra_curva_si_se_descarta_por_cabida():
+    """La exclusion del propio grupo no exime a un tic de respetar la cabida
+    contra OTRAS curvas — eso reabriria el bug 4463 (ADR 0026): un tic que
+    caeria a <min_gap_m de un evento ajeno se sigue descartando."""
+    from fantasma.viz.pacenotes import plan_tone_events
+
+    rows = [
+        {"id": "C01", "name": "C01", "time_lost": 0.5, "flags": "frenada"},
+        {"id": "C00", "name": "C00", "time_lost": 0.5, "flags": ""},
+    ]
+    corners = [
+        {"id": "C01", "name": "C01", "milestones": {"brake_start": {"d": 2000, "v": 90}}},
+        # throttle_on de C00 a 10 m del tic step=0 de C01 (1912): se descarta
+        # por cabida contra OTRA curva; el step=1 (1956) si cabe y sobrevive.
+        {"id": "C00", "name": "C00", "milestones": {"throttle_on": {"d": 1902}}},
+    ]
+    plan = plan_tone_events(rows, corners, top=2, min_gap_m=50)
+    tics = sorted(e["distance"] for e in plan["events"] if e["cue"] == "brake_tic")
+    assert tics == [1956]
+
+
 def test_plan_legacy_tiene_mismo_esquema():
     """El plan legacy (smart=False) expone skipped_global vacio: mismo esquema."""
     from fantasma.viz.pacenotes import _legacy_tone_events
