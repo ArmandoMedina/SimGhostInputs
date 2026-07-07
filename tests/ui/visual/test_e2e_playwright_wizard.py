@@ -13,6 +13,7 @@ NiceGUI 3.x expone e.file.name y e.file.read() (async). Los handlers ahora usan
 la API correcta, por lo que set_input_files en los tests dispara el flujo completo.
 """
 
+import os
 from pathlib import Path
 
 import pytest
@@ -24,13 +25,17 @@ from playwright.sync_api import TimeoutError as PlaywrightTimeoutError  # noqa: 
 # ---------------------------------------------------------------------------
 # Archivos CSV de prueba reales (rutas verificadas que existen en disco)
 # ---------------------------------------------------------------------------
-REF_CSV = (
-    r"C:\Repositorio personal\Paterial para test (no es un repo)"
-    r"\GO BMW M4 GT3 NORDSCHLEIFE 2025 E Q01 MOTEC.csv"
+# Carpeta de material configurable via SIMGHOST_TEST_MATERIAL: la ruta del
+# repo original no existe en toda PC de desarrollo (Reviewer). Sin la env
+# var cae al valor historico, y el skipif de abajo sigue cubriendo el caso
+# de que ninguna de las dos exista.
+_MATERIAL_DIR = os.environ.get(
+    "SIMGHOST_TEST_MATERIAL",
+    r"C:\Repositorio personal\Paterial para test (no es un repo)",
 )
-DRV_CSV = (
-    r"C:\Repositorio personal\Paterial para test (no es un repo)"
-    r"\Nordschleife_2020_BMW_M4_GT3_jocmaster_Race_2026-06-21T122432.csv"
+REF_CSV = str(Path(_MATERIAL_DIR) / "GO BMW M4 GT3 NORDSCHLEIFE 2025 E Q01 MOTEC.csv")
+DRV_CSV = str(
+    Path(_MATERIAL_DIR) / "Nordschleife_2020_BMW_M4_GT3_jocmaster_Race_2026-06-21T122432.csv"
 )
 
 # Skip del modulo completo si los CSVs no existen en disco. Sin este guard,
