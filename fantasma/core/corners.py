@@ -163,7 +163,10 @@ def extract_milestones(
         for j, s in enumerate(seg):
             if s["time"] < ap["time"] - 0.6 or s.get("throttle", 0) <= throttle_on:
                 continue
-            if all(x.get("throttle", 0) > throttle_on for x in seg[j : j + throttle_on_window]):
+            window = seg[j : j + throttle_on_window]
+            if len(window) == throttle_on_window and all(
+                x.get("throttle", 0) > throttle_on for x in window
+            ):
                 g0 = s
                 break
         if g0:
@@ -172,10 +175,10 @@ def extract_milestones(
                 overlap = round(ms["brake_release"]["d"] - g0["dist"])
             # coast: freno y gas ambos por debajo de su umbral, entre el fin de
             # la frenada (o el lift, en curvas sin freno) y el gas sostenido. Si
-            # el gas se solapa con el freno (overlap) el intervalo queda vacio
-            # y no se emite coast.
+            # el gas se solapa con el freno (overlap) no hay hueco y no se
+            # emite coast.
             end_ref = ms.get("brake_release") or ms.get("lift")
-            if end_ref:
+            if end_ref and end_ref["t"] < g0["time"]:
                 coast = [
                     s
                     for s in seg

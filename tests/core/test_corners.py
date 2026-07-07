@@ -117,6 +117,22 @@ def test_coast_detected_between_brake_release_and_sustained_throttle():
     )
 
 
+def test_throttle_on_ignores_blip_at_tail_of_segment():
+    # blip corto (3 muestras >umbral) pegado al final del segmento (limite
+    # `hi`): sin la guarda de longitud, seg[j:j+throttle_on_window] devuelve
+    # menos de throttle_on_window muestras ahi y all() pasa trivialmente,
+    # anclando throttle_on en un roce que nunca se sostuvo 15 muestras.
+    lap = _lap_with_custom_pedals(brake_range=(150.0, 270.0), onset_d=10_000.0)
+    dist = lap.channels["dist"]
+    throttle = lap.channels["throttle"]
+    for i, d in enumerate(dist):
+        if 658.0 <= d <= 660.0:
+            throttle[i] = 20.0
+    corners = extract_milestones(lap)
+    ms = corners[0]["milestones"]
+    assert "throttle_on" not in ms
+
+
 def test_no_coast_when_gas_overlaps_brake():
     # gas pegado al freno (overlap, dentro de la ventana de busqueda de 0.6s
     # antes del apex): no hay hueco, no hay coast.
