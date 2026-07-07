@@ -56,6 +56,7 @@ _T_PAGE_LOAD = 20_000  # NiceGUI + Quasar inicial
 _T_NAV = 15_000  # navegación entre pasos
 _T_UPLOAD = 90_000  # subida + parsing CSV grande en Python puro (hasta 90 s)
 _T_OVERLAY = 600_000  # render completo (hasta 10 min para Nordschleife)
+_T_ANALYSIS = 90_000  # compare() metro a metro (Paso 2, flujo pacenotes)
 
 
 # ---------------------------------------------------------------------------
@@ -117,6 +118,38 @@ def _do_step1(page, url: str) -> None:
     # Botón del flujo "compose" en Paso 1: "Cargar y generar overlay →"
     page.locator("button", has_text="Cargar y generar overlay").click()
     page.wait_for_selector("text=Paso 3", timeout=_T_NAV)
+
+
+def _do_step5_pacenotes(page, url: str) -> None:
+    """Completa el flujo 'Solo Pace Notes' hasta el Paso 5 con analisis real.
+
+    Flujo pacenotes (steps [0,1,2,5]): Paso 0 -> Paso 1 (sube CSVs) -> Paso 2
+    (analisis automatico al entrar, compare() metro a metro) -> boton
+    "Generar Pace Notes" -> Paso 5, ya con state.rows/state.corners poblados
+    (necesarios para que el panel de cues del Paso 5 se renderice).
+    """
+    page.goto(url, wait_until="domcontentloaded")
+    page.wait_for_selector("text=SimGhostInputs", timeout=_T_PAGE_LOAD)
+
+    card = page.locator(".q-card", has_text="Solo Pace Notes")
+    card.locator("button", has_text="Elegir este").click()
+    page.wait_for_selector("text=Seleccionado", timeout=10_000)
+    page.locator("button", has_text="Empezar").click()
+    page.wait_for_selector("text=Paso 1", timeout=_T_NAV)
+
+    _upload_file(page, 0, REF_CSV)
+    page.wait_for_selector("text=Referencia cargada", timeout=_T_UPLOAD)
+    _upload_file(page, 1, DRV_CSV)
+    page.wait_for_selector("text=Tu vuelta cargada", timeout=_T_UPLOAD)
+
+    page.locator("button", has_text="Cargar y ver análisis").click()
+    page.wait_for_selector("text=Paso 2", timeout=_T_NAV)
+
+    # El analisis corre automaticamente al entrar al Paso 2; esperar a que
+    # aparezca el boton hacia el Paso 5 cubre el spinner "Comparando vuelta...".
+    page.wait_for_selector("text=🔔 Generar Pace Notes", timeout=_T_ANALYSIS)
+    page.locator("button", has_text="Generar Pace Notes").click()
+    page.wait_for_selector("text=Paso 5", timeout=_T_NAV)
 
 
 def _get_computed_style(page, locator, prop: str) -> str:
@@ -357,3 +390,46 @@ def test_pw_step0_selected_button_visibility(pw_page, nicegui_url):
         f"diferencia={contrast:.1f} (mínimo: 50). "
         "Fix: quitar .props('flat') de botones de tarjeta en ng_step0.py."
     )
+
+
+def test_pw_step5_cues_section_renders(pw_page, nicegui_url):
+    """Paso 5 (WS-4): la sección de cues renderiza sin excepción con analisis real.
+
+    Verifica que, con state.rows/state.corners poblados (flujo pacenotes real,
+    sin analisis no se llega a ver el panel de cues -- solo el guard):
+    - El panel expansible "Cues: selección y prioridad" es visible.
+    - Existe al menos una casilla por tipo de cue implementado (checkbox).
+    - Existe al menos un control de prioridad (ui.number con label "Prioridad").
+    - El bloque de perfiles (cargar/guardar) esta presente.
+    Screenshot: qa_runs/playwright_e2e/step5_cues.png
+    """
+    page = pw_page
+
+    _do_step5_pacenotes(page, nicegui_url)
+
+    page.wait_for_selector("text=Cues: selección y prioridad", timeout=_T_NAV)
+
+    # Casillas de cues implementados (etiquetas de _CUE_LABELS en ng_step5.py)
+    for label in (
+        "Countdown de frenada",
+        "Frenada",
+        "Soltar freno",
+        "Turn-in",
+        "Inicio de acelerador",
+        "Gas completo",
+        "Ápex",
+        "Coast (inercia)",
+    ):
+        assert page.locator(f"text={label}").count() > 0, f"Falta la casilla de '{label}'"
+
+    # Control de prioridad (ui.number con label "Prioridad", una por cue)
+    priority_inputs = page.get_by_label("Prioridad")
+    assert priority_inputs.count() >= 8, (
+        f"Se esperaban al menos 8 controles de Prioridad, se encontraron {priority_inputs.count()}"
+    )
+
+    # Bloque de perfiles (cargar/guardar)
+    assert page.locator("text=Perfiles de cues").count() > 0
+    assert page.locator("button", has_text="Guardar perfil").count() > 0
+
+    page.screenshot(path=str(SCREENSHOT_DIR / "step5_cues.png"))

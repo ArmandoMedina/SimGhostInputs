@@ -1,10 +1,72 @@
 """Paso 5 — Pace Notes: genera cues de audio para CrewChief (NiceGUI)."""
 
 import os
+import re
 
 from nicegui import run, ui
 
 from .ng_helpers import _fmt_lap, render_breadcrumb
+
+# Tipos de cue IMPLEMENTADOS en el motor (fantasma.viz.pacenotes.DEFAULT_CONFIG)
+# que el Paso 5 expone para selección/prioridad (WS-4). "gear" queda fuera: es
+# un slot reservado sin generar candidatos todavia (ver DEFAULT_CONFIG).
+_CUE_TYPES = [
+    "brake_countdown",
+    "brake",
+    "brake_release",
+    "turn_in",
+    "throttle_on",
+    "full_throttle",
+    "apex",
+    "coast",
+]
+_CUE_LABELS = {
+    "brake_countdown": "Countdown de frenada (3-2-1)",
+    "brake": "Frenada",
+    "brake_release": "Soltar freno",
+    "turn_in": "Turn-in",
+    "throttle_on": "Inicio de acelerador",
+    "full_throttle": "Gas completo",
+    "apex": "Ápex",
+    "coast": "Coast (inercia)",
+}
+
+
+def _assemble_cue_config(raw: dict) -> dict:
+    """Arma un cue_config listo para build_pack a partir de valores planos.
+
+    raw: {tipo: {"enabled": bool|None, "priority": num|None, **extra}} — el
+    formato que entregan los controles ya leidos (checkbox.value, number.value).
+    Prioridad se fuerza a int (ui.number entrega float); enabled se fuerza a
+    bool. Claves ausentes o en None se omiten: build_pack cae al default de
+    ese campo via _cue_cfg, misma semantica que un override parcial de perfil.
+    Pura (sin NiceGUI) para poder testearla sin la fixture de UI.
+    """
+    cue_config = {}
+    for cue_type, values in raw.items():
+        if not values:
+            continue
+        entry = {}
+        enabled = values.get("enabled")
+        if enabled is not None:
+            entry["enabled"] = bool(enabled)
+        priority = values.get("priority")
+        if priority is not None:
+            entry["priority"] = int(priority)
+        for key, value in values.items():
+            if key in ("enabled", "priority") or value is None:
+                continue
+            entry[key] = value
+        if entry:
+            cue_config[cue_type] = entry
+    return cue_config
+
+
+def _safe_profile_filename(name: str) -> str:
+    """Nombre de archivo seguro (sin separadores de ruta) para un perfil nuevo."""
+    name = (name or "").strip() or "perfil"
+    safe = re.sub(r"[^\w\- ]+", "_", name).strip() or "perfil"
+    return safe + ".json"
 
 
 async def render(state, navigate):
@@ -115,6 +177,217 @@ async def render(state, navigate):
                                 },
                             ],
                         ).classes("w-full").props("dense flat hide-bottom")
+
+                    # ── Cues: selección + prioridad + perfiles (WS-4) ────────
+                    from fantasma.viz.pacenotes import _cue_cfg
+
+                    _persisted_cfg = state.cue_config
+                    cue_controls = {}
+
+                    def _current_cue_config():
+                        raw = {}
+                        for _t, _c in cue_controls.items():
+                            raw[_t] = {
+                                "enabled": _c["enabled"].value,
+                                "priority": _c["priority"].value,
+                            }
+                            if "solo_sin_frenada" in _c:
+                                raw[_t]["solo_sin_frenada"] = _c["solo_sin_frenada"].value
+                        return _assemble_cue_config(raw)
+
+                    def _persist_cue_config(_=None):
+                        state.cue_config = _current_cue_config()
+
+                    def _apply_cue_config(cue_config):
+                        """Refleja un cue_config (perfil cargado o default) en los controles."""
+                        for _t, _c in cue_controls.items():
+                            _resolved = _cue_cfg(cue_config, _t)
+                            _c["enabled"].set_value(bool(_resolved["enabled"]))
+                            _c["priority"].set_value(_resolved["priority"])
+                            if "solo_sin_frenada" in _c:
+                                _c["solo_sin_frenada"].set_value(
+                                    bool(_resolved.get("solo_sin_frenada", True))
+                                )
+                        _persist_cue_config()
+
+                    with ui.expansion("Cues: selección y prioridad", value=True).classes(
+                        "w-full mt-3"
+                    ):
+                        ui.label(
+                            "Activa o apaga cada tipo de cue y ajusta su prioridad "
+                            "(mayor número = gana el hueco cuando dos sonidos compiten)."
+                        ).classes("text-xs text-gray-400 mb-2")
+
+                        for _cue_type in _CUE_TYPES:
+                            _resolved = _cue_cfg(_persisted_cfg, _cue_type)
+                            with ui.row().classes("items-center gap-3 w-full mb-1"):
+                                _chk = ui.checkbox(
+                                    _CUE_LABELS.get(_cue_type, _cue_type),
+                                    value=bool(_resolved["enabled"]),
+                                ).classes("w-56")
+                                _num = (
+                                    ui.number(
+                                        value=_resolved["priority"],
+                                        min=0,
+                                        max=999,
+                                        precision=0,
+                                        label="Prioridad",
+                                    )
+                                    .classes("w-28")
+                                    .tooltip(
+                                        "Mayor número = gana el hueco cuando dos "
+                                        "sonidos compiten por el mismo espacio."
+                                    )
+                                )
+                                _num.bind_enabled_from(_chk, "value")
+                                cue_controls[_cue_type] = {"enabled": _chk, "priority": _num}
+                                if _cue_type == "brake":
+                                    _chk.tooltip(
+                                        "Si la apagas, el countdown de frenada tampoco "
+                                        "sonará (cuelga de esta)."
+                                    )
+                                if _cue_type == "coast":
+                                    _solo_chk = ui.checkbox(
+                                        "Solo curvas sin frenada",
+                                        value=bool(_resolved.get("solo_sin_frenada", True)),
+                                    ).tooltip(
+                                        "En curvas CON frenada el freno/turn-in/release ya "
+                                        "cubre esa fase; deja esto activo para reservar el "
+                                        "coast a curvas sin freno."
+                                    )
+                                    _solo_chk.bind_enabled_from(_chk, "value")
+                                    cue_controls[_cue_type]["solo_sin_frenada"] = _solo_chk
+                                    _solo_chk.on_value_change(_persist_cue_config)
+                                _chk.on_value_change(_persist_cue_config)
+                                _num.on_value_change(_persist_cue_config)
+
+                        with ui.row().classes("items-center gap-3 w-full mb-1"):
+                            ui.checkbox("Cambio de marcha", value=False).disable().tooltip(
+                                "En desarrollo: la detección de cambios de marcha "
+                                "todavía no está implementada."
+                            )
+
+                        ui.separator().classes("my-2")
+                        ui.label("Perfiles de cues").classes("text-sm font-bold text-white mb-1")
+
+                        try:
+                            from fantasma.viz.cue_profiles import (
+                                list_profiles,
+                                load_profile,
+                                profiles_dir,
+                                save_profile,
+                            )
+
+                            _profiles_ok = True
+                        except Exception as _e:
+                            _profiles_ok = False
+                            ui.label(
+                                "No se pudo cargar el módulo de perfiles de cues: %s" % _e
+                            ).classes("text-xs text-yellow-400")
+
+                        if _profiles_ok:
+                            with ui.row().classes("w-full gap-2 items-end mb-2"):
+                                profile_select = (
+                                    ui.select({}, label="Cargar perfil")
+                                    .classes("flex-1")
+                                    .tooltip(
+                                        "Perfiles guardados en tu carpeta de perfiles de cues."
+                                    )
+                                )
+
+                                def _refresh_profile_options():
+                                    try:
+                                        _profiles = list_profiles()
+                                        _opts = {p["path"]: p["name"] for p in _profiles}
+                                        profile_select.set_options(_opts)
+                                    except OSError as _e:
+                                        ui.notify(
+                                            "No se pudo listar los perfiles de cues: %s" % _e,
+                                            type="negative",
+                                        )
+
+                                def _on_profile_selected(e):
+                                    _path = e.value
+                                    if not _path:
+                                        return
+                                    try:
+                                        _cfg = load_profile(_path)
+                                    except ValueError as _err:
+                                        ui.notify(str(_err), type="negative")
+                                        return
+                                    _apply_cue_config(_cfg)
+                                    ui.notify("Perfil aplicado", type="positive")
+
+                                profile_select.on_value_change(_on_profile_selected)
+
+                                def _import_profile():
+                                    from .ng_helpers import _pick_file
+
+                                    _path = _pick_file(
+                                        "Importar perfil de cues",
+                                        [("Perfil de cues", "*.json"), ("Todos", "*.*")],
+                                    )
+                                    if not _path:
+                                        return
+                                    try:
+                                        _cfg = load_profile(_path)
+                                    except ValueError as _err:
+                                        ui.notify(str(_err), type="negative")
+                                        return
+                                    _apply_cue_config(_cfg)
+                                    ui.notify("Perfil importado y aplicado", type="positive")
+
+                                ui.button("Importar...", on_click=_import_profile).classes(
+                                    "btn-secondary"
+                                ).props("flat").tooltip(
+                                    "Cargar un perfil de cues desde cualquier carpeta."
+                                )
+
+                            with ui.dialog() as save_profile_dialog, ui.card():
+                                ui.label("Guardar perfil de cues").classes("font-bold text-lg mb-2")
+                                profile_name_input = ui.input(label="Nombre").classes("w-full")
+                                profile_desc_input = ui.input(
+                                    label="Descripción (opcional)"
+                                ).classes("w-full")
+
+                                def _do_save_profile():
+                                    _name = (profile_name_input.value or "").strip()
+                                    if not _name:
+                                        ui.notify("Indica un nombre para el perfil", type="warning")
+                                        return
+                                    try:
+                                        _path = profiles_dir() / _safe_profile_filename(_name)
+                                        save_profile(
+                                            _path,
+                                            _current_cue_config(),
+                                            _name,
+                                            profile_desc_input.value or "",
+                                        )
+                                    except OSError as _err:
+                                        ui.notify(
+                                            "No se pudo guardar el perfil: %s" % _err,
+                                            type="negative",
+                                        )
+                                        return
+                                    ui.notify("Perfil guardado: %s" % _name, type="positive")
+                                    save_profile_dialog.close()
+                                    _refresh_profile_options()
+
+                                with ui.row().classes("gap-2 mt-2"):
+                                    ui.button("Guardar", on_click=_do_save_profile).classes(
+                                        "btn-primary"
+                                    ).props("flat")
+                                    ui.button("Cancelar", on_click=save_profile_dialog.close).props(
+                                        "flat"
+                                    )
+
+                            ui.button("Guardar perfil", on_click=save_profile_dialog.open).classes(
+                                "btn-secondary"
+                            ).props("flat").tooltip(
+                                "Guarda la selección y prioridad actuales como un perfil reusable."
+                            )
+
+                            _refresh_profile_options()
 
                     ui.label("Curvas a cubrir").classes("text-sm font-bold text-white mb-1 mt-3")
                     all_corners_chk = ui.checkbox(
@@ -237,6 +510,8 @@ async def render(state, navigate):
                             ui.spinner()
                             ui.label("Generando pace notes...").classes("text-sm text-gray-400")
 
+                        _cue_config = _current_cue_config()
+
                         def _build():
                             from fantasma.viz.pacenotes import build_pack
 
@@ -249,6 +524,7 @@ async def render(state, navigate):
                                 volume=_vol,
                                 lang=_lang,
                                 track_name=_track,
+                                cue_config=_cue_config,
                             )
 
                         try:

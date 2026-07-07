@@ -206,6 +206,17 @@ class AppState:
     def compose_offset(self, v):
         self._set("compose_offset", v)
 
+    # ── pace notes / cues (Paso 5) ───────────────────────────────────────────
+
+    @property
+    def cue_config(self):
+        """Overrides de cue_config del Paso 5 (WS-4); None = usa DEFAULT_CONFIG."""
+        return self._get("cue_config")
+
+    @cue_config.setter
+    def cue_config(self, v):
+        self._set("cue_config", v)
+
     # ── preferencias de flujo ─────────────────────────────────────────────────
 
     @property

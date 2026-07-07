@@ -134,6 +134,14 @@ La UI principal de v2.0 migró de Streamlit a **NiceGUI** ([ADR 0018](decisions/
 
 Historial de decisiones de UX que alteraron el layout o el flujo de la UI — para que el baseline visual tenga contexto al regenerarse.
 
+### feat/cues-configurables (Unreleased)
+
+**Sección «Cues: selección y prioridad» + perfiles en el Paso 5 (WS-4) — patrón «checkbox + número, no drag-sort»:**
+- Cada tipo de cue del catálogo (`DEFAULT_CONFIG` de `pacenotes.py`) se expone como una fila `ui.checkbox` (encendido) + `ui.number` (prioridad), con `bind_enabled_from` para que el número solo sea editable si el checkbox está activo — mismo patrón que «Top N curvas» (§4, "Curvas a cubrir"), sin reordenar por arrastre (over-engineering para una lista de 8 filas).
+- Cargar/guardar perfil sigue el patrón de diálogo ya usado en `ng_step0.py` (`ui.dialog()` + `ui.card()` con inputs y botones Guardar/Cancelar) y el de `ui.select` reactivo de `lang_select` (aplica al elegir, sin botón «Cargar» aparte).
+- Heurística cubierta: **Reconocer en vez de recordar** (§1.4) — el estado de cada cue se ve de un vistazo, sin flags de CLI. **Prevención de errores** (§1.3) — el perfil inválido o de versión no soportada avisa con `ui.notify` en vez de crashear el paso.
+- Patrón reusable: para un catálogo pequeño y fijo de opciones con on/off + un número asociado, una fila por ítem con `bind_enabled_from` es más simple y auditable que una tabla editable o un componente de terceros.
+
 ### feat/cues-frenada-universal (Unreleased)
 
 **Leyenda de tonos del Paso 5 — el tono de ápex desaparece solo, sin tocar la UI:**

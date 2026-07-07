@@ -59,6 +59,7 @@ class _StateWithRowsNoDrv:
         self.last_overlay = None
         self.last_compose_video = None
         self.last_pacenotes = ""
+        self.cue_config = None
 
 
 @pytest.mark.asyncio
@@ -148,3 +149,94 @@ async def test_guard_does_not_hide_panel2_without_analysis(user, monkeypatch):
     await user.should_see("GENERAR")
     # Panel② sigue renderizado
     await user.should_see("Aplicar sonido")
+
+
+# ---------------------------------------------------------------------------
+# Cues: selección, prioridad y perfiles (WS-4)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_step5_cues_section_renders_without_exception(user, monkeypatch):
+    """Con rows/corners presentes, la sección de cues renderiza sin crash."""
+    import fantasma.ui.ng_app as _ng_mod
+
+    monkeypatch.setattr(_ng_mod, "AppState", lambda: _StateWithRowsNoDrv())
+
+    from fantasma.ui.ng_app import main_page  # noqa: F401
+
+    await user.open("/")
+    user.find("Pace Notes").click()
+    await user.should_see("Cues: selección y prioridad")
+    await user.should_see("Perfiles de cues")
+
+
+@pytest.mark.asyncio
+async def test_step5_cues_have_checkbox_and_priority_control(user, monkeypatch):
+    """Cada tipo de cue implementado trae su checkbox y su control de prioridad."""
+    from nicegui import ui
+
+    import fantasma.ui.ng_app as _ng_mod
+    from fantasma.ui.ng_step5 import _CUE_LABELS, _CUE_TYPES
+
+    monkeypatch.setattr(_ng_mod, "AppState", lambda: _StateWithRowsNoDrv())
+
+    from fantasma.ui.ng_app import main_page  # noqa: F401
+
+    await user.open("/")
+    user.find("Pace Notes").click()
+    await user.should_see("Cues: selección y prioridad")
+
+    checkbox_texts = {e.text for e in user.client.elements.values() if isinstance(e, ui.checkbox)}
+    for cue_type in _CUE_TYPES:
+        label = _CUE_LABELS[cue_type]
+        assert label in checkbox_texts, "Falta la casilla de '%s'" % label
+
+    priority_numbers = [
+        e
+        for e in user.client.elements.values()
+        if isinstance(e, ui.number) and e._props.get("label") == "Prioridad"
+    ]
+    assert len(priority_numbers) == len(_CUE_TYPES), (
+        "Se esperaban %d controles de Prioridad (uno por tipo de cue), se "
+        "encontraron %d" % (len(_CUE_TYPES), len(priority_numbers))
+    )
+
+    # coast trae ademas la casilla "solo curvas sin frenada"
+    assert "Solo curvas sin frenada" in checkbox_texts
+
+    # gear queda deshabilitado (slot sin implementar), no forma parte del catalogo activo
+    gear_checkboxes = [
+        e
+        for e in user.client.elements.values()
+        if isinstance(e, ui.checkbox) and e.text == "Cambio de marcha"
+    ]
+    assert gear_checkboxes and not gear_checkboxes[0].enabled
+
+
+@pytest.mark.asyncio
+async def test_step5_cue_config_persists_to_state(user, monkeypatch):
+    """Apagar un checkbox de cue persiste el cambio en AppState.cue_config."""
+    from nicegui import ui
+
+    import fantasma.ui.ng_app as _ng_mod
+
+    _state = _StateWithRowsNoDrv()
+    monkeypatch.setattr(_ng_mod, "AppState", lambda: _state)
+
+    from fantasma.ui.ng_app import main_page  # noqa: F401
+
+    await user.open("/")
+    user.find("Pace Notes").click()
+    await user.should_see("Cues: selección y prioridad")
+
+    apex_checkbox = next(
+        e for e in user.client.elements.values() if isinstance(e, ui.checkbox) and e.text == "Ápex"
+    )
+    # Ápex esta apagado por defecto (DEFAULT_CONFIG); lo prendemos y verificamos
+    # que el cambio se refleje en el cue_config persistido.
+    apex_checkbox.set_value(True)
+    await user.should_see("Cues: selección y prioridad")
+
+    assert getattr(_state, "cue_config", None) is not None
+    assert _state.cue_config.get("apex", {}).get("enabled") is True
