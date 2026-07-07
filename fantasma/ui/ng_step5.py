@@ -296,11 +296,17 @@ async def render(state, navigate):
                                 )
 
                                 def _refresh_profile_options():
+                                    # Except generico a proposito: list_profiles() ya
+                                    # es robusta (nunca lanza ante un pack corrupto de
+                                    # un tercero), pero este es el borde de render del
+                                    # Paso 5 -- cualquier falla imprevista al poblar el
+                                    # select se degrada a un notify, nunca tumba la
+                                    # pagina (Reviewer/Mariana).
                                     try:
                                         _profiles = list_profiles()
                                         _opts = {p["path"]: p["name"] for p in _profiles}
                                         profile_select.set_options(_opts)
-                                    except OSError as _e:
+                                    except Exception as _e:
                                         ui.notify(
                                             "No se pudo listar los perfiles de cues: %s" % _e,
                                             type="negative",
@@ -310,12 +316,16 @@ async def render(state, navigate):
                                     _path = e.value
                                     if not _path:
                                         return
+                                    # cargar Y aplicar dentro del mismo try: un perfil
+                                    # que pasa load_profile pero cuyo _apply_cue_config
+                                    # revienta (p.ej. tipos que se cuelan pese a la
+                                    # validacion) no debe tumbar la pagina (Reviewer).
                                     try:
                                         _cfg = load_profile(_path)
+                                        _apply_cue_config(_cfg)
                                     except ValueError as _err:
                                         ui.notify(str(_err), type="negative")
                                         return
-                                    _apply_cue_config(_cfg)
                                     ui.notify("Perfil aplicado", type="positive")
 
                                 profile_select.on_value_change(_on_profile_selected)
@@ -331,10 +341,10 @@ async def render(state, navigate):
                                         return
                                     try:
                                         _cfg = load_profile(_path)
+                                        _apply_cue_config(_cfg)
                                     except ValueError as _err:
                                         ui.notify(str(_err), type="negative")
                                         return
-                                    _apply_cue_config(_cfg)
                                     ui.notify("Perfil importado y aplicado", type="positive")
 
                                 ui.button("Importar...", on_click=_import_profile).classes(
@@ -350,13 +360,8 @@ async def render(state, navigate):
                                     label="Descripción (opcional)"
                                 ).classes("w-full")
 
-                                def _do_save_profile():
-                                    _name = (profile_name_input.value or "").strip()
-                                    if not _name:
-                                        ui.notify("Indica un nombre para el perfil", type="warning")
-                                        return
+                                def _write_profile(_name, _path):
                                     try:
-                                        _path = profiles_dir() / _safe_profile_filename(_name)
                                         save_profile(
                                             _path,
                                             _current_cue_config(),
@@ -373,11 +378,55 @@ async def render(state, navigate):
                                     save_profile_dialog.close()
                                     _refresh_profile_options()
 
+                                def _do_save_profile():
+                                    _name = (profile_name_input.value or "").strip()
+                                    if not _name:
+                                        ui.notify("Indica un nombre para el perfil", type="warning")
+                                        return
+                                    _path = profiles_dir() / _safe_profile_filename(_name)
+                                    if _path.exists():
+                                        # Confirma antes de pisar un perfil existente en
+                                        # silencio -- el nombre sanitizado puede colisionar
+                                        # con uno guardado con otro nombre "visual" (Mariana).
+                                        _pending_overwrite["name"] = _name
+                                        _pending_overwrite["path"] = _path
+                                        overwrite_label.set_text(
+                                            'Ya existe un perfil guardado como "%s". '
+                                            "¿Sobrescribirlo?" % _path.name
+                                        )
+                                        overwrite_dialog.open()
+                                        return
+                                    _write_profile(_name, _path)
+
                                 with ui.row().classes("gap-2 mt-2"):
                                     ui.button("Guardar", on_click=_do_save_profile).classes(
                                         "btn-primary"
                                     ).props("flat")
                                     ui.button("Cancelar", on_click=save_profile_dialog.close).props(
+                                        "flat"
+                                    )
+
+                            # Dialogo de confirmacion SEPARADO del de guardar (no
+                            # anidado): un ui.dialog dentro de otro depende del
+                            # teleport de Quasar y no es un patron soportado. Perfil
+                            # pendiente de confirmar via _pending_overwrite (nombre +
+                            # ruta ya resueltos en _do_save_profile).
+                            _pending_overwrite = {}
+
+                            with ui.dialog() as overwrite_dialog, ui.card():
+                                overwrite_label = ui.label("")
+
+                                def _confirm_overwrite():
+                                    overwrite_dialog.close()
+                                    _write_profile(
+                                        _pending_overwrite["name"], _pending_overwrite["path"]
+                                    )
+
+                                with ui.row().classes("gap-2 mt-2"):
+                                    ui.button(
+                                        "Sí, sobrescribir", on_click=_confirm_overwrite
+                                    ).classes("btn-primary").props("flat")
+                                    ui.button("Cancelar", on_click=overwrite_dialog.close).props(
                                         "flat"
                                     )
 

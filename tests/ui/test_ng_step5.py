@@ -240,3 +240,137 @@ async def test_step5_cue_config_persists_to_state(user, monkeypatch):
 
     assert getattr(_state, "cue_config", None) is not None
     assert _state.cue_config.get("apex", {}).get("enabled") is True
+
+
+# ---------------------------------------------------------------------------
+# Perfiles: robustez ante JSON malformado (Reviewer/Mariana, fix consolidado)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_step5_importing_profile_with_bad_priority_notifies_not_crashes(
+    user, monkeypatch, tmp_path
+):
+    """Un perfil con "priority": "alta" ya no revienta el Paso 5 al aplicarlo
+    (antes _apply_cue_config quedaba fuera del try/except ValueError): ahora
+    load_profile lo rechaza con ValueError y la UI solo notifica."""
+    import json
+
+    from nicegui import ui
+
+    import fantasma.ui.ng_app as _ng_mod
+    from fantasma.viz import cue_profiles
+
+    monkeypatch.setattr(cue_profiles.Path, "home", classmethod(lambda cls: tmp_path))
+    lib = cue_profiles.profiles_dir()
+    profile = {
+        "schema": cue_profiles.SCHEMA_NAME,
+        "version": cue_profiles.SCHEMA_VERSION,
+        "name": "prioridad rota",
+        "cues": [{"type": "brake", "enabled": True, "priority": "alta"}],
+    }
+    (lib / "roto.json").write_text(json.dumps(profile), encoding="utf-8")
+
+    monkeypatch.setattr(_ng_mod, "AppState", lambda: _StateWithRowsNoDrv())
+    from fantasma.ui.ng_app import main_page  # noqa: F401
+
+    await user.open("/")
+    user.find("Pace Notes").click()
+    await user.should_see("Cues: selección y prioridad")
+
+    profile_select = next(
+        e
+        for e in user.client.elements.values()
+        if isinstance(e, ui.select) and e._props.get("label") == "Cargar perfil"
+    )
+    profile_select.set_value(str(lib / "roto.json"))
+
+    # Notifica el motivo (no crashea): el resto del Paso 5 sigue en pantalla.
+    await user.should_see("priority")
+    await user.should_see("Cues: selección y prioridad")
+
+
+@pytest.mark.asyncio
+async def test_step5_refresh_profile_options_survives_unexpected_error(user, monkeypatch):
+    """Un fallo inesperado al listar perfiles se degrada a notify, no tumba
+    el render del Paso 5 (blindaje explicito pedido por el Reviewer)."""
+    import fantasma.ui.ng_app as _ng_mod
+    from fantasma.viz import cue_profiles
+
+    def _boom():
+        raise RuntimeError("disco no disponible")
+
+    monkeypatch.setattr(cue_profiles, "list_profiles", _boom)
+    monkeypatch.setattr(_ng_mod, "AppState", lambda: _StateWithRowsNoDrv())
+    from fantasma.ui.ng_app import main_page  # noqa: F401
+
+    await user.open("/")
+    user.find("Pace Notes").click()
+    await user.should_see("Cues: selección y prioridad")
+    await user.should_see("No se pudo listar los perfiles de cues")
+
+
+def _click_element(user, element):
+    """Dispara el listener 'click' de un elemento puntual (sin pasar por
+    user.find, cuyo matching de texto es ambiguo entre "Guardar perfil" el
+    boton y "Guardar perfil de cues" el titulo del dialogo). Misma mecanica
+    que UserInteraction._dispatch_click en nicegui.testing.user."""
+    from nicegui import events
+
+    with user.client:
+        for listener in element._event_listeners.values():
+            if listener.element_id != element.id or listener.type != "click":
+                continue
+            events.handle_event(
+                listener.handler,
+                events.GenericEventArguments(sender=element, client=user.client, args=None),
+            )
+
+
+@pytest.mark.asyncio
+async def test_step5_save_profile_asks_confirmation_before_overwrite(user, monkeypatch, tmp_path):
+    """Guardar con un nombre que ya existe pide confirmacion antes de pisar
+    el perfil (Mariana): no debe sobrescribirse hasta que el usuario confirma."""
+    from nicegui import ui
+
+    import fantasma.ui.ng_app as _ng_mod
+    from fantasma.viz import cue_profiles
+
+    monkeypatch.setattr(cue_profiles.Path, "home", classmethod(lambda cls: tmp_path))
+    lib = cue_profiles.profiles_dir()
+    cue_profiles.save_profile(lib / "existente.json", None, name="existente")
+    _original_mtime = (lib / "existente.json").stat().st_mtime_ns
+
+    monkeypatch.setattr(_ng_mod, "AppState", lambda: _StateWithRowsNoDrv())
+    from fantasma.ui.ng_app import main_page  # noqa: F401
+
+    await user.open("/")
+    user.find("Pace Notes").click()
+    await user.should_see("Cues: selección y prioridad")
+
+    def _button(label):
+        return next(
+            e
+            for e in user.client.elements.values()
+            if isinstance(e, ui.button) and e._props.get("label") == label
+        )
+
+    _click_element(user, _button("Guardar perfil"))
+    await user.should_see("Guardar perfil de cues")
+
+    name_input = next(
+        e
+        for e in user.client.elements.values()
+        if isinstance(e, ui.input) and e._props.get("label") == "Nombre"
+    )
+    name_input.set_value("existente")
+
+    _click_element(user, _button("Guardar"))
+    await user.should_see("¿Sobrescribirlo?")
+
+    # Todavia no se sobrescribio: el archivo no cambio.
+    assert (lib / "existente.json").stat().st_mtime_ns == _original_mtime
+
+    _click_element(user, _button("Sí, sobrescribir"))
+    await user.should_see("Perfil guardado")
+    assert (lib / "existente.json").stat().st_mtime_ns != _original_mtime
