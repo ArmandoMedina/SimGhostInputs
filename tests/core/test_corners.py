@@ -167,8 +167,11 @@ def test_detect_gear_shifts_ignora_blip_de_una_muestra():
     debe aparecer como un cambio ni desplazar la marcha "actual" que se
     compara contra el siguiente cambio real."""
     # indice 3: blip de 1 muestra (3->4->3); indice 8: cambio real 3->4
-    # sostenido; indice 12: cambio real 4->5 sostenido.
-    gear_sequence = [3, 3, 3, 4, 3, 3, 3, 3] + [4, 4, 4, 4] + [5, 5, 5, 5]
+    # sostenido; indice 12: cambio real 4->5 sostenido. Un par de muestras de
+    # cola extra en el ultimo grupo evitan que la confirmacion dependa de un
+    # empate flotante exacto contra hold_until (time[i] acumula error de
+    # redondeo con dt=0.05).
+    gear_sequence = [3, 3, 3, 4, 3, 3, 3, 3] + [4, 4, 4, 4] + [5, 5, 5, 5, 5, 5]
     lap = _gear_lap(gear_sequence)
 
     shifts = detect_gear_shifts(lap, min_hold_s=0.15)
@@ -177,6 +180,33 @@ def test_detect_gear_shifts_ignora_blip_de_una_muestra():
         {"distance": 80, "gear_from": 3, "gear_to": 4},
         {"distance": 120, "gear_from": 4, "gear_to": 5},
     ]
+
+
+def test_detect_gear_shifts_debounce_filtra_blip_con_muestreo_lento():
+    """Regresion: con dt de muestreo >= min_hold_s, el bucle de verificacion
+    viejo arrancaba en j=i (comparandose contra si mismo, siempre True) y la
+    condicion `time[j] < hold_until` nunca volvia a cumplirse -- CUALQUIER
+    blip de 1 muestra se aceptaba como cambio real. Con dt=0.2s (> 0.15s de
+    min_hold_s) un blip 3->4->3 debe seguir descartandose: la muestra
+    siguiente (revierte a 3) SI debe consultarse."""
+    gear_sequence = [3, 3, 4, 3, 3, 3]
+    lap = _gear_lap(gear_sequence, dt=0.2)
+
+    shifts = detect_gear_shifts(lap, min_hold_s=0.15)
+
+    assert shifts == []
+
+
+def test_detect_gear_shifts_cambio_real_con_muestreo_lento_si_se_detecta():
+    """Sanity del fix: un cambio REAL y sostenido tambien se detecta con
+    dt >= min_hold_s -- el fix no rechaza todo por sistema, solo exige que la
+    muestra siguiente confirme (no contradiga) la marcha nueva."""
+    gear_sequence = [3, 3, 4, 4, 4, 4]
+    lap = _gear_lap(gear_sequence, dt=0.2)
+
+    shifts = detect_gear_shifts(lap, min_hold_s=0.15)
+
+    assert shifts == [{"distance": 20, "gear_from": 3, "gear_to": 4}]
 
 
 def test_detect_gear_shifts_sin_canal_gear_no_crashea():

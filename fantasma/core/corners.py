@@ -243,8 +243,17 @@ def detect_gear_shifts(lap, min_hold_s=0.15):
     descartado NO mueve la marcha "actual": el siguiente cambio real se sigue
     comparando contra la marcha previa al ruido.
 
-    Devuelve una lista ordenada por distancia:
-    [{"distance", "gear_from", "gear_to"}, ...]
+    Confirmacion: se recorren las muestras SIGUIENTES a la candidata (i+1,
+    i+2, ...) -- nunca la propia candidata, que siempre "coincide consigo
+    misma" y no prueba nada. Se confirma en cuanto una muestra coincide con
+    la marcha nueva Y su tiempo ya alcanzo min_hold_s; se rechaza en cuanto
+    una muestra difiere. Si la vuelta se acaba antes de alcanzar min_hold_s
+    sin haber visto ninguna muestra que contradiga, el candidato se
+    RECHAZA igual (evidencia insuficiente): mejor perder un cambio real
+    pegado al final de la vuelta que aceptar un blip sin verificar -- este
+    modulo prioriza no generar un cue erroneo. Esto tambien cubre, sin caso
+    especial, el muestreo mas lento que min_hold_s (dt >= min_hold_s): la
+    primera muestra siguiente decide sola, revierta o confirme.
     """
     if not (lap.has("gear") and lap.has("dist") and lap.has("time")):
         return []
@@ -261,11 +270,14 @@ def detect_gear_shifts(lap, min_hold_s=0.15):
             i += 1
             continue
         hold_until = time[i] + min_hold_s
-        j = i
-        held = True
-        while j < n and time[j] < hold_until:
+        j = i + 1
+        held = False
+        while j < n:
             if gear[j] != g:
                 held = False
+                break
+            held = time[j] >= hold_until
+            if held:
                 break
             j += 1
         if held:

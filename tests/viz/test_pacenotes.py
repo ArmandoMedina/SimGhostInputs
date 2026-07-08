@@ -1037,6 +1037,108 @@ def test_plan_tone_events_gear_shifts_genera_eventos_gear():
     assert priorities == {75}
 
 
+def test_gear_shift_event_gs_malformado_se_descarta_sin_crashear():
+    """_gear_shift_event es la frontera contra gear_shifts malformado (p.ej.
+    un corners_detected.json viejo o editado a mano sin "distance"/"gear_to"):
+    devuelve None en vez de KeyError -- mismo espiritu defensivo que
+    cue_profiles.py con perfiles de terceros."""
+    from fantasma.viz.pacenotes import _gear_shift_event
+
+    assert _gear_shift_event({"gear_to": 3}, 75) is None  # sin "distance"
+    assert _gear_shift_event({"distance": 500}, 75) is None  # sin "gear_to"
+    assert _gear_shift_event({"distance": 500, "gear_to": None}, 75) is None
+    assert _gear_shift_event({"distance": "no-numero", "gear_to": 3}, 75) is None
+    assert _gear_shift_event({"distance": 500, "gear_to": "no-numero"}, 75) is None
+    # una entrada valida si construye el evento normalmente
+    ok = _gear_shift_event({"distance": 500, "gear_to": 3}, 75)
+    assert ok is not None
+    assert ok["distance"] == 500 and ok["cue"] == "gear"
+
+
+def test_plan_tone_events_gear_shifts_con_entradas_malformadas_no_crashea():
+    """plan_tone_events con un gear_shifts que trae entradas malformadas
+    (sin las claves de detect_gear_shifts) descarta esas entradas y sigue
+    generando las validas -- no revienta el pack completo por una entrada
+    corrupta."""
+    from fantasma.viz.pacenotes import DEFAULT_CONFIG, plan_tone_events
+
+    gear_shifts = [
+        {"distance": 500, "gear_from": 2, "gear_to": 3},  # valida
+        {"distance": 900},  # sin gear_to: se descarta
+        {"gear_to": 4},  # sin distance: se descarta
+        {"distance": "x", "gear_to": 5},  # distance no numerica: se descarta
+    ]
+    cue_config = {**DEFAULT_CONFIG, "gear": {"enabled": True, "priority": 75, "sound": False}}
+    plan = plan_tone_events([], [], top=5, cue_config=cue_config, gear_shifts=gear_shifts)
+    gear_events = [e for e in plan["events"] if e["cue"] == "gear"]
+    assert len(gear_events) == 1
+    assert gear_events[0]["distance"] == 500
+
+
+def test_plan_tone_events_gear_shift_distance_no_positiva_se_descarta():
+    """Mismo guard que el resto de candidatos (linea ~267, 'antes_de_la_meta'):
+    un cambio de marcha con distance<=0 (dato malformado o curva pegada a la
+    meta) se descarta, no se clampea a 0 -- un cue en t=0 del video suena
+    aleatorio (QA 2026-07-05)."""
+    from fantasma.viz.pacenotes import DEFAULT_CONFIG, plan_tone_events
+
+    gear_shifts = [
+        {"distance": 0, "gear_from": 1, "gear_to": 2},
+        {"distance": -10, "gear_from": 2, "gear_to": 3},
+        {"distance": 500, "gear_from": 3, "gear_to": 4},
+    ]
+    cue_config = {**DEFAULT_CONFIG, "gear": {"enabled": True, "priority": 75, "sound": False}}
+    plan = plan_tone_events([], [], top=5, cue_config=cue_config, gear_shifts=gear_shifts)
+    gear_events = [e for e in plan["events"] if e["cue"] == "gear"]
+    assert len(gear_events) == 1
+    assert gear_events[0]["distance"] == 500
+
+
+def test_default_freqs_tiene_entrada_gear_sin_colisionar():
+    """DEFAULT_FREQS trae "gear" (gear=False por sound en el catalogo, pero
+    un perfil de terceros puede forzar sound=true via cue_profiles.py): sin
+    esta entrada, _render_cue caeria al fallback de 440 Hz, casi pegado a
+    apex (400 Hz) y reabriendo la colision de frecuencias que este cambio
+    corrige para el resto del catalogo."""
+    from fantasma.viz.pacenotes import DEFAULT_FREQS
+
+    assert "gear" in DEFAULT_FREQS
+    freqs = list(DEFAULT_FREQS.values())
+    # unica: no coincide exacto con ninguna otra frecuencia del catalogo
+    assert freqs.count(DEFAULT_FREQS["gear"]) == 1
+    # bien separada (ratio >= 1.14, mismo criterio que el resto de la tabla)
+    # de sus dos vecinas mas cercanas en la escala.
+    others = sorted(f for f in freqs if f != DEFAULT_FREQS["gear"])
+    gear_f = DEFAULT_FREQS["gear"]
+    neighbor_below = max((f for f in others if f < gear_f), default=None)
+    neighbor_above = min((f for f in others if f > gear_f), default=None)
+    if neighbor_below:
+        assert gear_f / neighbor_below >= 1.14
+    if neighbor_above:
+        assert neighbor_above / gear_f >= 1.14
+
+
+def test_render_cue_gear_con_sound_forzado_usa_default_freqs_no_fallback(monkeypatch):
+    """Si un perfil de terceros fuerza sound=true para gear, _render_cue debe
+    sonar a DEFAULT_FREQS["gear"], no al fallback generico de 440 Hz (que
+    "apex" SI usa a proposito por no tener entrada propia)."""
+    import fantasma.viz.pacenotes as pacenotes_mod
+    from fantasma.viz.pacenotes import DEFAULT_FREQS, _render_cue
+
+    captured = {}
+
+    def _fake_generate_tone(freq_hz, duration_s, volume=0.8, sample_rate=24000):
+        captured["freq_hz"] = freq_hz
+        return b"RIFF"
+
+    monkeypatch.setattr(pacenotes_mod, "generate_tone", _fake_generate_tone)
+
+    _render_cue({"cue": "gear", "distance": 500}, DEFAULT_FREQS, 0.1, 0.8)
+
+    assert captured["freq_hz"] == DEFAULT_FREQS["gear"]
+    assert captured["freq_hz"] != 440
+
+
 def test_plan_tone_events_gear_apagado_por_defecto_no_genera_nada():
     """Sin habilitar 'gear' en cue_config, un gear_shifts no vacio no produce
     ningun evento (no-regresion: gear sigue apagado por defecto)."""

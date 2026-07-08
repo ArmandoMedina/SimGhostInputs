@@ -51,6 +51,13 @@ DEFAULT_FREQS = {
     "brake_countdown": 800,
     "brake": 1000,
     "brake_release": 820,
+    # gear (cambio de marcha): sound=False por defecto en DEFAULT_CONFIG (sin
+    # QA de oido todavia), pero un perfil de terceros puede forzar sound=true
+    # (cue_profiles.py ya coacciona ese campo) -- sin esta entrada, _render_cue
+    # caeria al fallback de 440 Hz, que casi no separa de apex (400, ratio
+    # 1.1) ni de turn_in (500, ratio 1.14 al filo). 650 Hz cae en el hueco
+    # entre turn_in (500) y brake_countdown (800), bien separado de ambos.
+    "gear": 650,
     "turn_in": 500,
     "apex": 400,
     "throttle_on": 250,
@@ -299,11 +306,17 @@ def plan_tone_events(
     # de candidatos que las curvas, ANTES del sort, para participar en la
     # resolucion de cabida/prioridad global de abajo (sin duplicar esa logica
     # aqui). No pertenecen a ninguna curva: no entran a corners_plan (mismo
-    # criterio que brake_tic, agregado mas abajo).
+    # criterio que brake_tic, agregado mas abajo). Mismo guard que el resto de
+    # candidatos por curva (linea ~267): un cambio de marcha cuyo anticipo (o
+    # dato malformado) cae en distance<=0 se descarta, no se clampea a 0 (un
+    # cue en t=0 del video suena aleatorio, QA 2026-07-05).
     gear_cfg = _cue_cfg(cue_config, "gear")
     if gear_cfg["enabled"]:
         for gs in gear_shifts or []:
-            events.append(_gear_shift_event(gs, gear_cfg["priority"]))
+            gear_event = _gear_shift_event(gs, gear_cfg["priority"])
+            if gear_event is None or gear_event["distance"] <= 0:
+                continue
+            events.append(gear_event)
 
     events.sort(key=lambda c: c["distance"])
     # Gap minimo GLOBAL: el de arriba solo separa cues DENTRO de una curva; en
@@ -818,11 +831,26 @@ def _gear_shift_event(gs, priority):
     que `_metadata_entry`/`build_cue_ass` ya saben mostrar como el "nombre"
     bajo la etiqueta del cue. Sin `lead_m` ni `protected`: un cambio de
     marcha compite por cabida como cualquier otro cue no protegido.
+
+    Frontera robusta (Reviewer): `gs` puede venir de un
+    ``corners_detected.json`` cargado o editado a mano, sin las claves que
+    `detect_gear_shifts` siempre genera. Una entrada sin "distance"/"gear_to"
+    validos devuelve None (se descarta esa entrada, no revienta el pack
+    completo) -- mismo espiritu que `cue_profiles.py` con perfiles de
+    terceros.
     """
-    distance = _as_float(gs["distance"])
+    distance = gs.get("distance")
+    gear_to = gs.get("gear_to")
+    if distance is None or gear_to is None:
+        return None
+    try:
+        distance = _as_float(distance)
+        gear_to = int(gear_to)
+    except (TypeError, ValueError):
+        return None
     return {
         "corner_id": "gear-%d" % int(round(distance)),
-        "corner_name": "cambio a %s" % _gear_label(gs["gear_to"]),
+        "corner_name": "cambio a %s" % _gear_label(gear_to),
         "cue": "gear",
         "distance": int(round(distance)),
         "priority": priority,
