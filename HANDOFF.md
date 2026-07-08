@@ -60,12 +60,14 @@ oído.
    `tests/viz/test_charts.py`, `tests/viz/test_report.py` — estos últimos son adds paralelos, no debería
    haber choque de contenido). Hay que traer `master` a la rama (merge o rebase) y resolver antes de
    poder fundir.
-3. **CI nunca corrió sobre esta rama/PR** — verificado con `gh api .../actions/runs`: la última corrida
-   en todo el repo es del 2026-07-07T00:18Z; los pushes de hoy (2026-07-08, incluido el PR #35) no
-   dispararon `tests.yml` pese a que Actions está `enabled`/`active` y el YAML es válido. No es
-   necesariamente un bug de este release — puede ser un gap de la plataforma (a investigar: un push
-   trivial después de resolver el conflicto del punto 2 debería re-disparar el workflow; si sigue en
-   blanco, escalar). **No fundir sin CI verde** (regla del propio flujo).
+3. **CI nunca corrió sobre esta rama/PR — confirmado, no es lag.** `gh api .../actions/runs`: la última
+   corrida en todo el repo es del 2026-07-07T00:18Z. Probé con un push de control (el commit de este
+   mismo HANDOFF, `8e358a1`) y **tampoco disparó** `tests.yml`, pese a que Actions está `enabled`/`active`,
+   el repo es público (sin límite de minutos) y el YAML es válido (`push: branches: [master]` +
+   `pull_request: branches: [master]` — el PR #35 sí apunta a `master`, debería calzar). Esto ya **no es
+   de este release**, es un gap de plataforma/cuenta que afecta a todo el repo desde ayer — **el PO
+   debe revisarlo** (¿límite de la cuenta? ¿outage de Actions? ¿algo cambió en permisos del repo?) antes
+   de confiar en que el CI vaya a bloquear nada. **No fundir sin CI verde** (regla del propio flujo).
 4. Tras resolver 2 y 3: barrido de Reviewer consolidado sobre el diff final del PR, luego el PO aprieta
    el merge.
 
