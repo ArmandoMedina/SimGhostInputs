@@ -233,6 +233,50 @@ def extract_milestones(
     return corners
 
 
+def detect_gear_shifts(lap, min_hold_s=0.15):
+    """Detecta cambios de marcha a lo largo de TODA la vuelta (no por curva).
+
+    Diff entre muestras consecutivas del canal `gear`. Un cambio candidato en
+    la muestra i solo se confirma si la marcha nueva se sostiene al menos
+    `min_hold_s` antes de volver a cambiar -- descarta blips de una sola
+    muestra (ruido de sensor durante el propio cambio de marcha). Un blip
+    descartado NO mueve la marcha "actual": el siguiente cambio real se sigue
+    comparando contra la marcha previa al ruido.
+
+    Devuelve una lista ordenada por distancia:
+    [{"distance", "gear_from", "gear_to"}, ...]
+    """
+    if not (lap.has("gear") and lap.has("dist") and lap.has("time")):
+        return []
+    gear = lap.col("gear")
+    dist = lap.col("dist")
+    time = lap.col("time")
+    n = len(gear)
+    shifts = []
+    prev_gear = gear[0] if n else None
+    i = 1
+    while i < n:
+        g = gear[i]
+        if g == prev_gear:
+            i += 1
+            continue
+        hold_until = time[i] + min_hold_s
+        j = i
+        held = True
+        while j < n and time[j] < hold_until:
+            if gear[j] != g:
+                held = False
+                break
+            j += 1
+        if held:
+            shifts.append(
+                {"distance": round(dist[i]), "gear_from": int(prev_gear), "gear_to": int(g)}
+            )
+            prev_gear = g
+        i += 1
+    return shifts
+
+
 def _pt(s, **extra):
     p = {"d": round(s["dist"]), "t": round(s["time"], 2), "v": round(s["speed"])}
     if "gear" in s:

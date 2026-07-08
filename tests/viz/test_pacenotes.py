@@ -334,7 +334,8 @@ def test_dos_countdowns_encadenados_no_amontonan_tics():
     """Regresion 4463 (tic-vs-tic): dos frenadas encadenadas no apilan sus tics.
     Cada tic entra solo si cabe a >=min_gap de TODO sonido ya colocado, incluidos
     los tics de la OTRA curva; el que no cabe se omite. Ningun tic queda a
-    <min_gap de otro sonido."""
+    <min_gap de otro sonido. Formula-agnostico: no hardcodea distancias de tic,
+    solo los invariantes (cabida y que no se pierda ninguna frenada)."""
     from fantasma.viz.pacenotes import plan_tone_events
 
     rows = [
@@ -350,34 +351,40 @@ def test_dos_countdowns_encadenados_no_amontonan_tics():
     # las dos frenadas protegidas a 40 m suenan ambas (R1)
     assert sorted(e["distance"] for e in events if e["cue"] == "brake") == [1000, 1040]
     tics = [e for e in events if e["cue"] == "brake_tic"]
-    dists = [e["distance"] for e in events]
     for tic in tics:
-        others = [d for d in dists if d != tic["distance"]]
+        # excluye la frenada de SU MISMA curva: es un solo grupo cohesivo
+        # (ADR 0026) y con el countdown uniforme (0.75 s) el gap tic->propia
+        # frenada es, A PROPOSITO, menor que min_gap_m — la cabida se exige
+        # solo contra sonidos de OTRAS curvas.
+        others = [
+            e["distance"]
+            for e in events
+            if e["distance"] != tic["distance"] and e["corner_id"] != tic["corner_id"]
+        ]
         assert all(abs(tic["distance"] - o) >= 50 for o in others)
     # se omitieron tics: los 4 (2 por curva) no caben sin encimarse
     assert len(tics) < 4
 
 
 def test_countdown_tics_no_se_autorrechazan_contra_su_propia_frenada():
-    """Regresion: con lead_m < 2*min_gap_m (curvas por debajo de ~103 km/h con
-    el countdown_s default), el tic step=1 (brake_d - lead_m/2) caia a <min_gap_m
-    de SU PROPIA frenada y se perdia aunque no compitiera con ningun otro
-    sonido. El tono de frenada y sus 2 tics son un solo grupo cohesivo (ADR
-    0026): la cabida se chequea contra OTROS sonidos, nunca contra el propio
-    grupo."""
+    """Regresion: con lead_m < 2*min_gap_m (curvas lentas), el tic step=1
+    (brake_d - lead_m/2) caia a <min_gap_m de SU PROPIA frenada y se perdia
+    aunque no compitiera con ningun otro sonido. El tono de frenada y sus 2
+    tics son un solo grupo cohesivo (ADR 0026): la cabida se chequea contra
+    OTROS sonidos, nunca contra el propio grupo."""
     from fantasma.viz.pacenotes import plan_tone_events
 
     rows = [{"id": "C01", "name": "C01", "time_lost": 0.5, "flags": "frenada"}]
-    # v=90 km/h -> lead_m=87.5, redondeado a 88 (< 2*min_gap_m=100): antes del
-    # fix el tic step=1 (2000-44=1956) caia a 44 m de la frenada (<50) y se
-    # descartaba pese a no competir con nada mas.
+    # v=90 km/h -> lead_m=90/3.6*0.75*2=37.5, redondeado a 38 (< 2*min_gap_m=100):
+    # sin la exclusion de grupo, el tic step=1 (2000-19=1981) caia a 19 m de
+    # la frenada (<50) y se descartaria pese a no competir con nada mas.
     corners = [{"id": "C01", "name": "C01", "milestones": {"brake_start": {"d": 2000, "v": 90}}}]
     plan = plan_tone_events(rows, corners, top=1)
     brake = next(e for e in plan["events"] if e["cue"] == "brake")
     assert brake["distance"] == 2000
-    assert brake["lead_m"] == 88
+    assert brake["lead_m"] == 38
     tics = sorted(e["distance"] for e in plan["events"] if e["cue"] == "brake_tic")
-    assert tics == [1912, 1956]
+    assert tics == [1962, 1981]
 
 
 def test_countdown_tic_de_otra_curva_si_se_descarta_por_cabida():
@@ -391,14 +398,15 @@ def test_countdown_tic_de_otra_curva_si_se_descarta_por_cabida():
         {"id": "C00", "name": "C00", "time_lost": 0.5, "flags": ""},
     ]
     corners = [
-        {"id": "C01", "name": "C01", "milestones": {"brake_start": {"d": 2000, "v": 90}}},
-        # throttle_on de C00 a 10 m del tic step=0 de C01 (1912): se descarta
-        # por cabida contra OTRA curva; el step=1 (1956) si cabe y sobrevive.
-        {"id": "C00", "name": "C00", "milestones": {"throttle_on": {"d": 1902}}},
+        {"id": "C01", "name": "C01", "milestones": {"brake_start": {"d": 2000, "v": 216}}},
+        # throttle_on de C00 a 10 m del tic step=0 de C01 (1910): se descarta
+        # por cabida contra OTRA curva; el step=1 (1955), a 55 m, si cabe y
+        # sobrevive.
+        {"id": "C00", "name": "C00", "milestones": {"throttle_on": {"d": 1900}}},
     ]
     plan = plan_tone_events(rows, corners, top=2, min_gap_m=50)
     tics = sorted(e["distance"] for e in plan["events"] if e["cue"] == "brake_tic")
-    assert tics == [1956]
+    assert tics == [1955]
 
 
 def test_plan_legacy_tiene_mismo_esquema():
@@ -410,22 +418,26 @@ def test_plan_legacy_tiene_mismo_esquema():
 
 
 def test_countdown_anticipa_por_tiempo_con_v():
-    """Con v en el milestone, el anticipo es countdown_s segundos a esa velocidad
-    (216 km/h = 60 m/s -> 3.5 s = 210 m), no los 120 m fijos. La frenada se ancla
-    en su punto real (protegida) y lleva el anticipo en lead_m; los tics se
-    colocan a lead_m y lead_m/2 antes."""
+    """Con v en el milestone, el anticipo es POR TIEMPO a esa velocidad: 2
+    gaps de DEFAULT_COUNTDOWN_GAP_S segundos cada uno (216 km/h = 60 m/s ->
+    0.75 s = 45 m por gap -> lead_m=90), no los 120 m fijos. La frenada se
+    ancla en su punto real (protegida) y lleva el anticipo en lead_m; los
+    tics se colocan a lead_m y lead_m/2 antes — dos gaps de exactamente el
+    mismo tamano (lead_m/2 cada uno), sin importar el clamp."""
     from fantasma.viz.pacenotes import plan_tone_events
 
     rows = [{"id": "C01", "name": "C01", "time_lost": 0.5, "flags": "frenada"}]
     corners = [{"id": "C01", "name": "C01", "milestones": {"brake_start": {"d": 2000, "v": 216}}}]
-    plan = plan_tone_events(rows, corners, top=1, countdown_s=3.5)
+    plan = plan_tone_events(rows, corners, top=1)
     brake = next(e for e in plan["events"] if e["cue"] == "brake")
     assert brake["distance"] == 2000
-    assert brake["lead_m"] == 210
+    assert brake["lead_m"] == 90
     assert brake.get("protected")
     # 2 tics de aviso antes de la frenada, en brake_d - lead_m y brake_d - lead_m/2
     tics = sorted(e["distance"] for e in plan["events"] if e["cue"] == "brake_tic")
-    assert tics == [1790, 1895]
+    assert tics == [1910, 1955]
+    # los dos gaps (tic0->tic1, tic1->frenada) son iguales: countdown uniforme
+    assert tics[1] - tics[0] == brake["distance"] - tics[1]
     # el 3er (ultimo) sonido es la frenada; nada de un 4o "ya"
     assert max(e["distance"] for e in plan["events"]) == 2000
 
@@ -449,8 +461,8 @@ def test_pack_expande_countdown_y_el_tercer_bip_es_el_ya(tmp_path):
         if "frenada" in e["description"]
     )
     assert cues == [
-        (1790, "contador de frenada"),
-        (1895, "contador de frenada"),
+        (1910, "contador de frenada"),
+        (1955, "contador de frenada"),
         (2000, "punto de frenada"),
     ]
     for d, _ in cues:
@@ -471,26 +483,26 @@ def test_pack_omite_tic_encimado_pero_nunca_el_ya(tmp_path):
     ]
     corners = [
         {"id": "C01", "name": "C01", "milestones": {"brake_start": {"d": 2000, "v": 216}}},
-        # throttle_on de C00 a 30 m del tic 1 de C01 (1790): el tic se omite
-        {"id": "C00", "name": "C00", "milestones": {"throttle_on": {"d": 1760}}},
+        # throttle_on de C00 a 30 m del tic 0 de C01 (1910): el tic se omite
+        {"id": "C00", "name": "C00", "milestones": {"throttle_on": {"d": 1880}}},
     ]
     build_tone_pack(rows, corners, str(tmp_path), top=0)
     entries = json.loads((tmp_path / "metadata.json").read_text(encoding="utf-8"))["entries"]
     dists = {e["distanceRoundTrack"]: e["description"] for e in entries}
-    assert 1790 not in dists
-    assert "contador de frenada" in dists[1895]
+    assert 1910 not in dists
+    assert "contador de frenada" in dists[1955]
     assert "punto de frenada" in dists[2000]
 
 
 def test_countdown_lead_clamps_y_fallback():
-    from fantasma.viz.pacenotes import _countdown_lead_m
+    from fantasma.viz.pacenotes import DEFAULT_COUNTDOWN_GAP_S, _countdown_lead_m
 
-    # 36 km/h * 3.5 s = 35 m -> clamp al minimo de 60 m
-    assert _countdown_lead_m({"v": 36}, 120, 3.5) == 60
-    # 700 km/h * 3.5 s = 680 m -> clamp al maximo de 350 m
-    assert _countdown_lead_m({"v": 700}, 120, 3.5) == 350
+    # 36 km/h -> 10 m/s * 0.75 s * 2 = 15 m -> clamp al minimo de 30 m
+    assert _countdown_lead_m({"v": 36}, 120, DEFAULT_COUNTDOWN_GAP_S) == 30
+    # 700 km/h -> 194.4 m/s * 0.75 s * 2 = 291.7 m -> clamp al maximo de 250 m
+    assert _countdown_lead_m({"v": 700}, 120, DEFAULT_COUNTDOWN_GAP_S) == 250
     # sin v (corners viejos, tests sinteticos) -> fallback al countdown_m fijo
-    assert _countdown_lead_m({"d": 500}, 120, 3.5) == 120
+    assert _countdown_lead_m({"d": 500}, 120, DEFAULT_COUNTDOWN_GAP_S) == 120
 
 
 def test_top_cero_incluye_curvas_sin_perdida():
@@ -566,12 +578,12 @@ def test_default_config_reproduce_comportamiento_actual():
     }
     priorities = {e["cue"]: e["priority"] for e in sin_config["events"]}
     assert priorities == {
-        "brake": 80,
-        "brake_tic": 100,
-        "brake_release": 70,
-        "turn_in": 60,
-        "throttle_on": 85,
-        "full_throttle": 75,
+        "brake": 100,
+        "brake_tic": 50,
+        "brake_release": 45,
+        "turn_in": 70,
+        "throttle_on": 95,
+        "full_throttle": 90,
     }
 
 
@@ -674,8 +686,11 @@ def test_coast_solo_sin_frenada_no_aparece_en_curva_con_frenada():
 
 
 def test_gear_es_solo_un_slot_reservado():
-    """gear esta en el catalogo pero apagado y sin logica de deteccion: un
-    milestone 'gear' en la curva no genera ningun candidato de tipo gear."""
+    """gear esta apagado por defecto (DEFAULT_CONFIG) y NO se detecta desde un
+    milestone de la curva: sus eventos salen exclusivamente del parametro
+    `gear_shifts` de plan_tone_events (detect_gear_shifts, lap-wide), nunca de
+    `_corner_candidates`. Un milestone 'gear' colgado de una curva no genera
+    ningun candidato de tipo gear, con o sin cue_config habilitado."""
     from fantasma.viz.pacenotes import DEFAULT_CONFIG, plan_tone_events
 
     assert DEFAULT_CONFIG["gear"]["enabled"] is False
@@ -758,17 +773,23 @@ def test_cue_cfg_resuelve_config_completa():
     assert _cue_cfg({"turn_in": {"priority": 999}}, "turn_in") == {
         "enabled": True,
         "priority": 999,
+        "sound": True,
     }
     # coast trae un campo extra (solo_sin_frenada): un override que solo toca
     # priority no debe perderlo.
     resolved = _cue_cfg({"coast": {"priority": 10}}, "coast")
-    assert resolved == {"enabled": False, "priority": 10, "solo_sin_frenada": True}
+    assert resolved == {
+        "enabled": False,
+        "priority": 10,
+        "solo_sin_frenada": True,
+        "sound": True,
+    }
 
 
 def test_cue_cfg_priority_none_no_crashea_el_sort_de_la_cabida():
     """Un cue_config con priority=None (p.ej. una UI que manda 'usa el
     default') no debe crashear sorted(..., key=lambda c: -c['priority']); cae
-    al valor de DEFAULT_CONFIG (60 para turn_in) en vez de None."""
+    al valor de DEFAULT_CONFIG (70 para turn_in) en vez de None."""
     from fantasma.viz.pacenotes import DEFAULT_CONFIG, plan_tone_events
 
     rows = [{"id": "C01", "name": "C01", "time_lost": 0.5, "flags": ""}]
@@ -776,7 +797,7 @@ def test_cue_cfg_priority_none_no_crashea_el_sort_de_la_cabida():
     cue_config = {**DEFAULT_CONFIG, "turn_in": {"enabled": True, "priority": None}}
     plan = plan_tone_events(rows, corners, top=1, cue_config=cue_config)
     turn_events = [e for e in plan["events"] if e["cue"] == "turn_in"]
-    assert turn_events and turn_events[0]["priority"] == 60
+    assert turn_events and turn_events[0]["priority"] == 70
 
 
 # ── Countdown wireado: enabled gatea, priority reemplaza el 100 (WS-2) ───────
@@ -925,3 +946,160 @@ def test_build_cue_ass_sin_entradas_no_rotula(tmp_path, lap_factory):
     pack = _write_cue_pack(tmp_path, [])
 
     assert build_cue_ass(pack, lap, 1024, 1024) is None
+
+
+# ── Reencuadre de prioridades (QA 2026-07-08): freno/gas arriba, turn_in su ──
+# ── propio escalon, countdown/soltar-freno/coast oportunistas ────────────────
+
+
+def test_turn_in_gana_a_brake_release_en_saturacion_por_prioridad():
+    """Con la tabla nueva turn_in=70 > brake_release=45: en una saturacion
+    global entre ambos, turn_in se queda con el hueco y brake_release cae."""
+    from fantasma.viz.pacenotes import plan_tone_events
+
+    rows = [
+        {"id": "C_release", "name": "C_release", "time_lost": 0.5, "flags": "frenada"},
+        {"id": "C_turn", "name": "C_turn", "time_lost": 0.5, "flags": ""},
+    ]
+    corners = [
+        {"id": "C_release", "name": "C_release", "milestones": {"brake_release": {"d": 1000}}},
+        # a 20 m de brake_release (<50): compiten por el mismo hueco
+        {"id": "C_turn", "name": "C_turn", "milestones": {"turn_in": {"d": 1020}}},
+    ]
+    plan = plan_tone_events(rows, corners, top=2, min_gap_m=50)
+    assert any(e["cue"] == "turn_in" for e in plan["events"])
+    assert not any(e["cue"] == "brake_release" for e in plan["events"])
+    assert any(
+        s["cue"] == "brake_release" and s["reason"] == "too_close_global"
+        for s in plan["skipped_global"]
+    )
+
+
+def test_turn_in_ya_colocado_bloquea_los_tics_del_countdown_cercano():
+    """Un turn_in de otra curva, ya asentado en 'kept', bloquea AMBOS tics del
+    countdown de una frenada vecina si caen a <min_gap_m -- el freno protegido
+    (el "ya") no se ve afectado."""
+    from fantasma.viz.pacenotes import plan_tone_events
+
+    rows = [
+        {"id": "C_brake", "name": "C_brake", "time_lost": 0.5, "flags": "frenada"},
+        {"id": "C_turn", "name": "C_turn", "time_lost": 0.5, "flags": ""},
+    ]
+    corners = [
+        {"id": "C_brake", "name": "C_brake", "milestones": {"brake_start": {"d": 2000, "v": 216}}},
+        # lead_m=90 -> tics candidatos en 1910 y 1955; turn_in en 1950 cae a
+        # <50 m de AMBOS.
+        {"id": "C_turn", "name": "C_turn", "milestones": {"turn_in": {"d": 1950}}},
+    ]
+    plan = plan_tone_events(rows, corners, top=2, min_gap_m=50)
+    assert any(e["cue"] == "turn_in" and e["distance"] == 1950 for e in plan["events"])
+    assert any(e["cue"] == "brake" and e["distance"] == 2000 for e in plan["events"])
+    assert not any(e["cue"] == "brake_tic" for e in plan["events"])
+
+
+def test_countdown_gap_uniforme_en_dos_velocidades():
+    """El gap tic0->tic1 y el gap tic1->frenada son EXACTAMENTE iguales entre
+    si (tolerancia +-1m por redondeo), en dos velocidades distintas -- el
+    countdown de frenada suena parejo sin importar que tan rapido se llegue."""
+    from fantasma.viz.pacenotes import plan_tone_events
+
+    for v, brake_d in ((90, 2000), (216, 2000)):
+        rows = [{"id": "C01", "name": "C01", "time_lost": 0.5, "flags": "frenada"}]
+        corners = [
+            {"id": "C01", "name": "C01", "milestones": {"brake_start": {"d": brake_d, "v": v}}}
+        ]
+        plan = plan_tone_events(rows, corners, top=1)
+        tic0, tic1 = sorted(e["distance"] for e in plan["events"] if e["cue"] == "brake_tic")
+        gap0 = tic1 - tic0
+        gap1 = brake_d - tic1
+        assert abs(gap0 - gap1) <= 1, "v=%s: gap0=%s gap1=%s" % (v, gap0, gap1)
+
+
+# ── Cue "gear" (cambio de marcha, solo subtitulo) — detect_gear_shifts wireado ─
+
+
+def test_plan_tone_events_gear_shifts_genera_eventos_gear():
+    """gear_shifts se mergea a la lista de candidatos y participa en la MISMA
+    resolucion de cabida/prioridad global: los eventos "gear" salen con la
+    prioridad configurada (75 por defecto)."""
+    from fantasma.viz.pacenotes import DEFAULT_CONFIG, plan_tone_events
+
+    assert DEFAULT_CONFIG["gear"]["priority"] == 75
+    gear_shifts = [
+        {"distance": 500, "gear_from": 2, "gear_to": 3},
+        {"distance": 900, "gear_from": 3, "gear_to": 4},
+    ]
+    cue_config = {**DEFAULT_CONFIG, "gear": {"enabled": True, "priority": 75, "sound": False}}
+    plan = plan_tone_events([], [], top=5, cue_config=cue_config, gear_shifts=gear_shifts)
+    gear_events = sorted(e["distance"] for e in plan["events"] if e["cue"] == "gear")
+    assert gear_events == [500, 900]
+    priorities = {e["priority"] for e in plan["events"] if e["cue"] == "gear"}
+    assert priorities == {75}
+
+
+def test_plan_tone_events_gear_apagado_por_defecto_no_genera_nada():
+    """Sin habilitar 'gear' en cue_config, un gear_shifts no vacio no produce
+    ningun evento (no-regresion: gear sigue apagado por defecto)."""
+    from fantasma.viz.pacenotes import plan_tone_events
+
+    gear_shifts = [{"distance": 500, "gear_from": 2, "gear_to": 3}]
+    plan = plan_tone_events([], [], top=5, gear_shifts=gear_shifts)
+    assert not any(e["cue"] == "gear" for e in plan["events"])
+
+
+def test_plan_tone_events_gear_shift_compite_por_cabida_global():
+    """Un cambio de marcha demasiado cerca de un cue de mayor prioridad
+    (throttle_on=95 > gear=75) pierde el hueco en la resolucion global -- la
+    MISMA regla de cabida que cualquier cue no protegido, sin logica aparte."""
+    from fantasma.viz.pacenotes import DEFAULT_CONFIG, plan_tone_events
+
+    rows = [{"id": "C01", "name": "C01", "time_lost": 0.5, "flags": ""}]
+    corners = [{"id": "C01", "name": "C01", "milestones": {"throttle_on": {"d": 1020}}}]
+    gear_shifts = [{"distance": 1000, "gear_from": 2, "gear_to": 3}]
+    cue_config = {**DEFAULT_CONFIG, "gear": {"enabled": True, "priority": 75, "sound": False}}
+    plan = plan_tone_events(
+        rows, corners, top=1, min_gap_m=50, cue_config=cue_config, gear_shifts=gear_shifts
+    )
+    assert any(e["cue"] == "throttle_on" for e in plan["events"])
+    assert not any(e["cue"] == "gear" for e in plan["events"])
+    assert any(
+        s["cue"] == "gear" and s["reason"] == "too_close_global" for s in plan["skipped_global"]
+    )
+
+
+def test_build_tone_pack_gear_sin_audio_pero_en_metadata(tmp_path):
+    """gear (sound=False) no genera WAV pero si queda en metadata.json para
+    que build_cue_ass lo subtitule igual."""
+    import json
+
+    from fantasma.viz.pacenotes import DEFAULT_CONFIG, build_tone_pack
+
+    gear_shifts = [{"distance": 500, "gear_from": 2, "gear_to": 3}]
+    cue_config = {**DEFAULT_CONFIG, "gear": {"enabled": True, "priority": 75, "sound": False}}
+    result = build_tone_pack(
+        [], [], str(tmp_path), top=5, cue_config=cue_config, gear_shifts=gear_shifts
+    )
+    entries = json.loads((tmp_path / "metadata.json").read_text(encoding="utf-8"))["entries"]
+    gear_entries = [e for e in entries if "cambio de marcha" in e["description"]]
+    assert len(gear_entries) == 1
+    assert gear_entries[0]["distanceRoundTrack"] == 500
+    assert gear_entries[0]["fileNames"] == []
+    assert gear_entries[0]["recordingNames"] == []
+    assert not list(tmp_path.glob("500_*.wav"))
+    assert result["entries"] == 1
+
+
+def test_build_cue_ass_gear_rotula_cambio_de_marcha(tmp_path, lap_factory):
+    """Un cue gear se rotula 'cambio a 3ª' bajo la etiqueta 'cambio de
+    marcha', con su color propio -- aunque no tenga WAV asociado."""
+    from fantasma.viz.pacenotes import CUE_SUB_COLORS, _metadata_entry, build_cue_ass
+
+    lap = lap_factory(length_m=1500.0)
+    entries = [_metadata_entry("cambio a 3ª", "gear", 700, None)]
+    pack = _write_cue_pack(tmp_path, entries)
+
+    ass = build_cue_ass(pack, lap, 1024, 1024)
+
+    assert "cambio de marcha" in ass
+    assert "cambio a 3ª" in ass
+    assert CUE_SUB_COLORS["cambio de marcha"] in ass

@@ -67,8 +67,8 @@ def profile_to_config(profile: dict) -> dict:
 
     Frontera robusta: "cues" debe ser una lista de objetos con "type" (si no,
     ValueError claro, nunca AttributeError). priority se fuerza a int;
-    enabled/solo_sin_frenada se fuerzan a bool -- un JSON de un tercero con
-    tipos torcidos no debe reventar mas adelante en la UI o en build_pack.
+    enabled/solo_sin_frenada/sound se fuerzan a bool -- un JSON de un tercero
+    con tipos torcidos no debe reventar mas adelante en la UI o en build_pack.
     Un valor explicito None se trata como campo ausente (mismo criterio que
     _assemble_cue_config en ng_step5.py).
     """
@@ -100,7 +100,7 @@ def profile_to_config(profile: dict) -> dict:
                 continue
             if key == "priority":
                 entry[key] = _coerce_priority(value, cue_type)
-            elif key in ("enabled", "solo_sin_frenada"):
+            elif key in ("enabled", "solo_sin_frenada", "sound"):
                 entry[key] = bool(value)
             else:
                 entry[key] = value

@@ -32,15 +32,15 @@ def test_round_trip_default_config(tmp_path):
 def test_round_trip_custom_config(tmp_path):
     """Un cue_config custom (solo brake+countdown activos) sobrevive el round-trip."""
     custom = {
-        "brake_countdown": {"enabled": True, "priority": 100},
-        "brake": {"enabled": True, "priority": 80},
-        "brake_release": {"enabled": False, "priority": 70},
-        "turn_in": {"enabled": False, "priority": 60},
-        "throttle_on": {"enabled": False, "priority": 85},
-        "full_throttle": {"enabled": False, "priority": 75},
-        "apex": {"enabled": False, "priority": 90},
-        "coast": {"enabled": False, "priority": 50, "solo_sin_frenada": True},
-        "gear": {"enabled": False, "priority": 65},
+        "brake_countdown": {"enabled": True, "priority": 100, "sound": True},
+        "brake": {"enabled": True, "priority": 80, "sound": True},
+        "brake_release": {"enabled": False, "priority": 70, "sound": True},
+        "turn_in": {"enabled": False, "priority": 60, "sound": True},
+        "throttle_on": {"enabled": False, "priority": 85, "sound": True},
+        "full_throttle": {"enabled": False, "priority": 75, "sound": True},
+        "apex": {"enabled": False, "priority": 90, "sound": True},
+        "coast": {"enabled": False, "priority": 50, "solo_sin_frenada": True, "sound": True},
+        "gear": {"enabled": False, "priority": 65, "sound": False},
     }
     path = tmp_path / "solo-frenada.json"
     cue_profiles.save_profile(path, custom, name="solo-frenada")

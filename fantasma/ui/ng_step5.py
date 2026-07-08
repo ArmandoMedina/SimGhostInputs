@@ -8,8 +8,10 @@ from nicegui import run, ui
 from .ng_helpers import _fmt_lap, render_breadcrumb
 
 # Tipos de cue IMPLEMENTADOS en el motor (fantasma.viz.pacenotes.DEFAULT_CONFIG)
-# que el Paso 5 expone para selección/prioridad (WS-4). "gear" queda fuera: es
-# un slot reservado sin generar candidatos todavia (ver DEFAULT_CONFIG).
+# que el Paso 5 expone para selección/prioridad (WS-4). "gear" (cambio de
+# marcha) esta acotado a SUBTITULO -- sound=False en DEFAULT_CONFIG, sin tono
+# propio todavia -- pero se lista igual que apex/coast: apagado por defecto,
+# activable desde aqui.
 _CUE_TYPES = [
     "brake_countdown",
     "brake",
@@ -19,9 +21,10 @@ _CUE_TYPES = [
     "full_throttle",
     "apex",
     "coast",
+    "gear",
 ]
 _CUE_LABELS = {
-    "brake_countdown": "Countdown de frenada (3-2-1)",
+    "brake_countdown": "Countdown de frenada",
     "brake": "Frenada",
     "brake_release": "Soltar freno",
     "turn_in": "Turn-in",
@@ -29,6 +32,7 @@ _CUE_LABELS = {
     "full_throttle": "Gas completo",
     "apex": "Ápex",
     "coast": "Coast (inercia)",
+    "gear": "Cambio de marcha (solo subtítulo)",
 }
 
 
@@ -122,7 +126,7 @@ async def render(state, navigate):
 
                     from fantasma.viz.pacenotes import (
                         COUNTDOWN_SCALE,
-                        DEFAULT_COUNTDOWN_S,
+                        DEFAULT_COUNTDOWN_GAP_S,
                         DEFAULT_FREQS,
                         MILESTONE_LABELS,
                         PLAN_CUES,
@@ -140,18 +144,18 @@ async def render(state, navigate):
                         for _cue in PLAN_CUES:
                             _base = DEFAULT_FREQS.get(_cue, 0)
                             if _cue == "brake_countdown":
-                                # frecuencias y anticipo derivados del motor
-                                # (COUNTDOWN_SCALE, DEFAULT_COUNTDOWN_S): si el
-                                # sintetizador cambia, la leyenda no miente.
+                                # frecuencias y ritmo derivados del motor
+                                # (COUNTDOWN_SCALE, DEFAULT_COUNTDOWN_GAP_S): si
+                                # el sintetizador cambia, la leyenda no miente.
                                 _ticks = "-".join(str(round(_base * f)) for f in COUNTDOWN_SCALE)
                                 _sound = (
-                                    "%d tics de aviso (%s Hz) desde ~%.1f s antes; "
-                                    "el tono de frenada (%d Hz) es el «¡ya!»: suena "
-                                    "exacto donde frena la referencia"
+                                    "%d tics de aviso (%s Hz) con %.2f s parejos entre sí y "
+                                    "hasta la frenada; el tono de frenada (%d Hz) es el "
+                                    "«¡ya!»: suena exacto donde frena la referencia"
                                     % (
                                         len(COUNTDOWN_SCALE),
                                         _ticks,
-                                        DEFAULT_COUNTDOWN_S,
+                                        DEFAULT_COUNTDOWN_GAP_S,
                                         DEFAULT_FREQS.get("brake", 1000),
                                     )
                                 )
@@ -258,14 +262,14 @@ async def render(state, navigate):
                                     _solo_chk.bind_enabled_from(_chk, "value")
                                     cue_controls[_cue_type]["solo_sin_frenada"] = _solo_chk
                                     _solo_chk.on_value_change(_persist_cue_config)
+                                if _cue_type == "gear":
+                                    _chk.tooltip(
+                                        "Marca los cambios de marcha de la vuelta de "
+                                        "referencia solo con SUBTÍTULO, sin sonido "
+                                        "(todavía no tiene tono propio)."
+                                    )
                                 _chk.on_value_change(_persist_cue_config)
                                 _num.on_value_change(_persist_cue_config)
-
-                        with ui.row().classes("items-center gap-3 w-full mb-1"):
-                            ui.checkbox("Cambio de marcha", value=False).disable().tooltip(
-                                "En desarrollo: la detección de cambios de marcha "
-                                "todavía no está implementada."
-                            )
 
                         ui.separator().classes("my-2")
                         ui.label("Perfiles de cues").classes("text-sm font-bold text-white mb-1")

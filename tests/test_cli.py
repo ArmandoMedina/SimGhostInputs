@@ -19,7 +19,14 @@ from types import SimpleNamespace
 
 import pytest
 
-from fantasma.cli import _force_utf8_console, _overlay_progress, cmd_compare, cmd_pacenotes, main
+from fantasma.cli import (
+    _force_utf8_console,
+    _load_corners_json,
+    _overlay_progress,
+    cmd_compare,
+    cmd_pacenotes,
+    main,
+)
 from fantasma.core.lap import Lap
 
 
@@ -157,6 +164,78 @@ def test_pacenotes_cli_genera_pack(tmp_path):
     # countdown anclado en la frenada (ADR 0025): tics en 1680 y 1740, "ya" en 1800,
     # gas en 1900; el apex (1847) se descarta por quedar a <50 m del ancla del countdown
     assert len(list(out.glob("*.wav"))) == 4
+
+
+def test_load_corners_json_extrae_gear_shifts_si_estan():
+    """_load_corners_json expone 'gear_shifts' (escrito por cmd_detect) para
+    que cmd_pacenotes lo reenvie a build_pack; ausente -> lista vacia, nunca
+    KeyError."""
+    import json
+
+    data_con = {
+        "corners": [],
+        "gear_shifts": [{"distance": 500, "gear_from": 2, "gear_to": 3}],
+    }
+    data_sin = {"corners": []}
+
+    import tempfile
+    from pathlib import Path
+
+    with tempfile.TemporaryDirectory() as tmp:
+        p_con = Path(tmp) / "con.json"
+        p_sin = Path(tmp) / "sin.json"
+        p_con.write_text(json.dumps(data_con), encoding="utf-8")
+        p_sin.write_text(json.dumps(data_sin), encoding="utf-8")
+
+        assert _load_corners_json(str(p_con))["gear_shifts"] == data_con["gear_shifts"]
+        assert _load_corners_json(str(p_sin))["gear_shifts"] == []
+
+
+def test_pacenotes_cli_reenvia_gear_shifts_a_build_pack(tmp_path, monkeypatch):
+    """cmd_pacenotes lee 'gear_shifts' del JSON de corners y lo pasa tal cual
+    a build_pack -- wiring end-to-end de la vuelta de referencia."""
+    import json
+
+    corners = tmp_path / "corners.json"
+    compare = tmp_path / "corners_compare.csv"
+    out = tmp_path / "pace_notes"
+    corners.write_text(
+        json.dumps(
+            {
+                "corners": [],
+                "gear_shifts": [{"distance": 500, "gear_from": 2, "gear_to": 3}],
+            }
+        ),
+        encoding="utf-8",
+    )
+    compare.write_text("id,name,apex_d,time_lost\n", encoding="utf-8")
+
+    captured = {}
+
+    def _fake_build_pack(rows, corners_arg, outdir, **kwargs):
+        captured["gear_shifts"] = kwargs.get("gear_shifts")
+        return {"outdir": str(outdir), "files": [], "entries": 0}
+
+    import fantasma.viz.pacenotes as pacenotes_mod
+
+    monkeypatch.setattr(pacenotes_mod, "build_pack", _fake_build_pack)
+
+    args = SimpleNamespace(
+        corners=str(corners),
+        compare=str(compare),
+        top=1,
+        mode="tones",
+        lang="es-MX",
+        output_dir=str(out),
+        brake_freq=880,
+        apex_freq=440,
+        gas_freq=220,
+        tone_duration=0.05,
+        volume=0.8,
+        legacy_all_tones=False,
+    )
+    cmd_pacenotes(args)
+    assert captured["gear_shifts"] == [{"distance": 500, "gear_from": 2, "gear_to": 3}]
 
 
 def test_main_propaga_exit_code_del_subcomando(monkeypatch):

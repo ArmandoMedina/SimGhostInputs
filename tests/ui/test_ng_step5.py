@@ -205,13 +205,16 @@ async def test_step5_cues_have_checkbox_and_priority_control(user, monkeypatch):
     # coast trae ademas la casilla "solo curvas sin frenada"
     assert "Solo curvas sin frenada" in checkbox_texts
 
-    # gear queda deshabilitado (slot sin implementar), no forma parte del catalogo activo
+    # gear (cambio de marcha) esta implementado -- solo subtitulo, sin sonido
+    # propio -- y se lista como un cue mas: apagado por defecto (igual que
+    # apex/coast) pero activable, no deshabilitado.
     gear_checkboxes = [
         e
         for e in user.client.elements.values()
-        if isinstance(e, ui.checkbox) and e.text == "Cambio de marcha"
+        if isinstance(e, ui.checkbox) and e.text == _CUE_LABELS["gear"]
     ]
-    assert gear_checkboxes and not gear_checkboxes[0].enabled
+    assert gear_checkboxes and gear_checkboxes[0].enabled
+    assert gear_checkboxes[0].value is False
 
 
 @pytest.mark.asyncio

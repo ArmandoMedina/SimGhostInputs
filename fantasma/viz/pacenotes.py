@@ -26,9 +26,13 @@ def crewchief_pacenotes_dir(track_name: str) -> str:
 
 
 DEFAULT_MILESTONES = ["brake", "apex", "gas"]
-# Anticipo del countdown en segundos (ADR 0024). Fuente unica: la UI (leyenda
-# del Paso 5) y las firmas de este modulo lo leen de aqui — no lo dupliques.
-DEFAULT_COUNTDOWN_S = 3.5
+# Gap UNIFORME entre los 3 sonidos del countdown de frenada (tic1 -> tic2 ->
+# frenada), en segundos. Reemplaza la vieja formula de fracciones atada a un
+# "anticipo total" (DEFAULT_COUNTDOWN_S=3.5, ~1.75s por gap): el PO reporto el
+# contador "muy lento y a veces no completa los 3 sonidos" (QA 2026-07-08).
+# Fuente unica: la UI (leyenda del Paso 5) y las firmas de este modulo lo leen
+# de aqui — no lo dupliques.
+DEFAULT_COUNTDOWN_GAP_S = 0.75
 # Escala de los tics de AVISO del countdown (fracciones de la frecuencia base).
 # El "¡ya!" no esta aqui: es el tono de frenada (DEFAULT_FREQS["brake"]) y suena
 # EXACTO en el punto de frenada de la referencia — el PO: "el 3er bip tiene que
@@ -39,18 +43,21 @@ COUNTDOWN_SCALE = (0.75, 0.875)
 # expansion del countdown en build_tone_pack lo comparten.
 DEFAULT_MIN_GAP_M = 50
 DEFAULT_FREQS = {
-    "brake_countdown": 880,
-    # brake a 1000 Hz, NO 880: el countdown termina su escala en 880 y con la
-    # misma frecuencia eran indistinguibles al oido (QA 2026-07-05, ADR 0024).
+    # brake_countdown a 800 Hz, brake a 1000 Hz: distintos entre si (QA
+    # 2026-07-05, ADR 0024) y turn_in ya no comparte 660 Hz con ningun tic
+    # resultante (800*COUNTDOWN_SCALE = 600, 700 Hz) — el PO reporto que el
+    # primer tic sonaba igual que turn_in (QA 2026-07-08, ver tabla de
+    # frecuencias del reencuadre).
+    "brake_countdown": 800,
     "brake": 1000,
-    "brake_release": 720,
-    "turn_in": 660,
-    "apex": 440,
-    "throttle_on": 260,
+    "brake_release": 820,
+    "turn_in": 500,
+    "apex": 400,
+    "throttle_on": 250,
     "gas": 220,
-    "gas_100": 180,
-    "full_throttle": 180,
-    "coast": 340,
+    "gas_100": 190,
+    "full_throttle": 320,
+    "coast": 160,
 }
 MILESTONE_ALIASES = {
     "brake": ["brake", "brake_start"],
@@ -74,6 +81,7 @@ MILESTONE_LABELS = {
     "full_throttle": "gas completo",
     "turn_in": "turn-in",
     "coast": "inercia",
+    "gear": "cambio de marcha",
 }
 # Color .ass (&HAABBGGRR, alpha 00 = opaco) por etiqueta legible — la misma que
 # MILESTONE_LABELS pone en entry["description"]. Fuente unica del codigo de color
@@ -88,6 +96,7 @@ CUE_SUB_COLORS = {
     "turn-in": "&H00FFFFFF",  # blanco
     "apex": "&H000099FF",  # ambar
     "inercia": "&H00FFFF00",  # cian (coast: ni freno ni gas)
+    "cambio de marcha": "&H00FF00FF",  # magenta (gear: solo subtitulo, sin sonido)
 }
 # Ventana de cada subtitulo (s). La #32 usaba una ventana FIJA [t-0.15, t+1.35]
 # que se apagaba antes de tiempo. Ahora el rotulo dura hasta el siguiente cue
@@ -114,21 +123,28 @@ PLAN_CUES = [
 # activos, mismas prioridades que antes vivian hardcodeadas en
 # _corner_candidates.
 DEFAULT_CONFIG = {
-    # Tics de aviso del countdown de frenada (ADR 0024/0026). enabled gatea
-    # si se generan los tics en plan_tone_events (la frenada protegida sigue
-    # sonando aunque el countdown este apagado: el countdown se apaga, la
-    # frenada no). priority fija el campo "priority" de cada tic (reemplaza
-    # el 100 que antes vivia hardcodeado). El countdown sigue atado a su
-    # frenada — cuenta HACIA ella, no vive suelto.
-    "brake_countdown": {"enabled": True, "priority": 100},
-    "brake": {"enabled": True, "priority": 80},
-    "brake_release": {"enabled": True, "priority": 70},
-    "turn_in": {"enabled": True, "priority": 60},
-    "throttle_on": {"enabled": True, "priority": 85},
-    "full_throttle": {"enabled": True, "priority": 75},
+    # Prioridades reencuadradas (QA 2026-07-08 sobre la cinta del PR #35):
+    # freno/gas arriba, turn_in su propio escalon, countdown/soltar-freno/coast
+    # oportunistas ("solo si cabe"). brake sigue protegido (R1) sin importar
+    # su numero; el resto participa en la cabida global por prioridad.
+    #
+    # enabled gatea si se generan candidatos de ese tipo en plan_tone_events
+    # (para brake_countdown: la frenada protegida sigue sonando aunque el
+    # countdown este apagado — el countdown se apaga, la frenada no).
+    # sound gatea si ese candidato se sintetiza a WAV en build_tone_pack: en
+    # True para todos salvo gear (solo subtitulo, sin audio todavia — no se
+    # quiso meter una frecuencia nueva sin QA de oido).
+    "brake_countdown": {"enabled": True, "priority": 50, "sound": True},
+    "brake": {"enabled": True, "priority": 100, "sound": True},
+    "brake_release": {"enabled": True, "priority": 45, "sound": True},
+    "turn_in": {"enabled": True, "priority": 70, "sound": True},
+    "throttle_on": {"enabled": True, "priority": 95, "sound": True},
+    "full_throttle": {"enabled": True, "priority": 90, "sound": True},
     # Reincorporado al catalogo (ADR 0026 lo apago, no lo borro). Apagado por
-    # defecto: no-regresion con el pack de hoy, que no suena en el apex.
-    "apex": {"enabled": False, "priority": 90},
+    # defecto: no-regresion con el pack de hoy, que no suena en el apex. El PO
+    # no lo menciono en el reencuadre de prioridades; queda igual (90) aunque
+    # empate en numero con full_throttle — sigue apagado, no es urgente.
+    "apex": {"enabled": False, "priority": 90, "sound": True},
     # Coast/inercia (WS-1: milestones coast_start/coast_end en corners.py). Un
     # solo cue en coast_start, no dos: coast_end no marca una accion del
     # piloto, solo el fin del hueco de inercia — un cue de entrada basta para
@@ -136,11 +152,13 @@ DEFAULT_CONFIG = {
     # CON frenada el freno-turn_in-release ya cubre esa fase; el coast se
     # reserva para curvas sin freno, donde es la unica pista de que hay que
     # soltar el pedal antes de dar gas. Apagado por defecto.
-    "coast": {"enabled": False, "priority": 50, "solo_sin_frenada": True},
-    # Cambio de marcha: slot reservado, SIN IMPLEMENTAR. TODO: la deteccion de
-    # marcha (leer "gear" del milestone, decidir el umbral del cue) es
-    # follow-up; no se generan candidatos para este tipo todavia.
-    "gear": {"enabled": False, "priority": 65},
+    "coast": {"enabled": False, "priority": 20, "solo_sin_frenada": True, "sound": True},
+    # Cambio de marcha (detect_gear_shifts en core/corners.py): implementado
+    # acotado a SUBTITULO, sin sonido (sound=False) — evita meter una
+    # frecuencia nueva sin QA de oido. Apagado por defecto (no-regresion); al
+    # habilitarlo, los eventos "gear" compiten en la MISMA resolucion de
+    # cabida/prioridad global que el resto del catalogo.
+    "gear": {"enabled": False, "priority": 75, "sound": False},
 }
 
 
@@ -178,8 +196,9 @@ def build_tone_pack(
     volume=0.8,
     smart=True,
     track_name=None,
-    countdown_s=DEFAULT_COUNTDOWN_S,
+    countdown_gap_s=DEFAULT_COUNTDOWN_GAP_S,
     cue_config=None,
+    gear_shifts=None,
 ) -> dict:
     out = Path(outdir)
     out.mkdir(parents=True, exist_ok=True)
@@ -188,7 +207,14 @@ def build_tone_pack(
     entries = []
     files = []
     plan = (
-        plan_tone_events(rows, corners, top=top, countdown_s=countdown_s, cue_config=cue_config)
+        plan_tone_events(
+            rows,
+            corners,
+            top=top,
+            countdown_gap_s=countdown_gap_s,
+            cue_config=cue_config,
+            gear_shifts=gear_shifts,
+        )
         if smart
         else _legacy_tone_events(rows, corners, top, milestones)
     )
@@ -197,13 +223,15 @@ def build_tone_pack(
     for event in plan["events"]:
         distance = int(event["distance"])
         cue = event["cue"]
-        data = _render_cue(event, freqs, duration, volume)
-        variant = variants.get(distance, 0)
-        variants[distance] = variant + 1
-        filename = "%d_%d.wav" % (distance, variant)
-        path = out / filename
-        path.write_bytes(data)
-        files.append(str(path))
+        filename = None
+        if _cue_sound_enabled(cue_config, cue):
+            data = _render_cue(event, freqs, duration, volume)
+            variant = variants.get(distance, 0)
+            variants[distance] = variant + 1
+            filename = "%d_%d.wav" % (distance, variant)
+            path = out / filename
+            path.write_bytes(data)
+            files.append(str(path))
         entries.append(_metadata_entry(event["corner_name"], cue, distance, filename))
 
     metadata_path = _write_metadata(out, entries, track_name=track_name)
@@ -220,8 +248,9 @@ def plan_tone_events(
     min_gap_m=DEFAULT_MIN_GAP_M,
     max_events_per_corner=3,
     countdown_m=120,
-    countdown_s=DEFAULT_COUNTDOWN_S,
+    countdown_gap_s=DEFAULT_COUNTDOWN_GAP_S,
     cue_config=None,
+    gear_shifts=None,
 ) -> dict:
     cue_config = cue_config or DEFAULT_CONFIG
     events = []
@@ -231,7 +260,7 @@ def plan_tone_events(
         corner = _find_corner(row, corners)
         if not corner:
             continue
-        candidates = _corner_candidates(row, corner, countdown_m, countdown_s, cue_config)
+        candidates = _corner_candidates(row, corner, countdown_m, countdown_gap_s, cue_config)
         selected = []
         skipped = []
         for candidate in sorted(candidates, key=lambda c: (-c["priority"], c["distance"])):
@@ -265,6 +294,16 @@ def plan_tone_events(
                 "skipped": [_plan_public(c) for c in skipped],
             }
         )
+
+    # Cambios de marcha (detect_gear_shifts, lap-wide): entran a la MISMA lista
+    # de candidatos que las curvas, ANTES del sort, para participar en la
+    # resolucion de cabida/prioridad global de abajo (sin duplicar esa logica
+    # aqui). No pertenecen a ninguna curva: no entran a corners_plan (mismo
+    # criterio que brake_tic, agregado mas abajo).
+    gear_cfg = _cue_cfg(cue_config, "gear")
+    if gear_cfg["enabled"]:
+        for gs in gear_shifts or []:
+            events.append(_gear_shift_event(gs, gear_cfg["priority"]))
 
     events.sort(key=lambda c: c["distance"])
     # Gap minimo GLOBAL: el de arriba solo separa cues DENTRO de una curva; en
@@ -576,19 +615,23 @@ def _legacy_tone_events(rows, corners, top, milestones):
     }
 
 
-def _countdown_lead_m(brake, countdown_m, countdown_s, min_lead_m=60, max_lead_m=350):
+def _countdown_lead_m(brake, countdown_m, countdown_gap_s, min_lead_m=30, max_lead_m=250):
     """Distancia de anticipo del countdown de frenada.
 
-    Por tiempo: countdown_s segundos a la velocidad de llegada a la frenada
-    (v del milestone, km/h), acotada a [min_lead_m, max_lead_m]. Los 120 m
-    fijos daban ~2 s a velocidad GT3 — insuficiente para reaccionar (el PO
-    pidio 3-4 s; ADR 0024). Fallback al countdown_m fijo si el milestone no
-    trae v (corners JSON viejos, tests sinteticos).
+    lead_m representa DOS gaps de countdown_gap_s segundos cada uno (tic1 ->
+    tic2 -> frenada), a la velocidad de llegada a la frenada (v del milestone,
+    km/h): lead_m = v/3.6 * countdown_gap_s * 2, acotado a [min_lead_m,
+    max_lead_m]. plan_tone_events reparte ese lead_m en los tics con las
+    fracciones (1.0, 0.5) de COUNTDOWN_SCALE-como-distancia — como ambos
+    gaps resultantes son lead_m/2, salen SIEMPRE iguales entre si sin importar
+    el clamp (uniformidad garantizada por construccion, no por el valor
+    exacto de lead_m). Fallback al countdown_m fijo si el milestone no trae v
+    (corners JSON viejos, tests sinteticos).
     """
     v = brake.get("v")
     if not v:
         return countdown_m
-    lead = _as_float(v) / 3.6 * countdown_s
+    lead = _as_float(v) / 3.6 * countdown_gap_s * 2
     return max(min_lead_m, min(max_lead_m, lead))
 
 
@@ -603,7 +646,7 @@ def _cue_cfg(cue_config, cue):
     cfg["priority"] / cfg["enabled"] directo, sin un literal de fallback que
     duplique los numeros de DEFAULT_CONFIG.
     """
-    resolved = dict(DEFAULT_CONFIG.get(cue, {"enabled": True, "priority": 50}))
+    resolved = dict(DEFAULT_CONFIG.get(cue, {"enabled": True, "priority": 50, "sound": True}))
     override = (cue_config or {}).get(cue) or {}
     for key, value in override.items():
         if value is not None:
@@ -611,7 +654,9 @@ def _cue_cfg(cue_config, cue):
     return resolved
 
 
-def _corner_candidates(row, corner, countdown_m, countdown_s=DEFAULT_COUNTDOWN_S, cue_config=None):
+def _corner_candidates(
+    row, corner, countdown_m, countdown_gap_s=DEFAULT_COUNTDOWN_GAP_S, cue_config=None
+):
     loss = _as_float(row.get("time_lost", 0))
     flags = str(row.get("flags", ""))
     d_brake = _as_float(row.get("d_brake_m", 0)) if row.get("d_brake_m") not in (None, "") else 0
@@ -625,7 +670,7 @@ def _corner_candidates(row, corner, countdown_m, countdown_s=DEFAULT_COUNTDOWN_S
     brake = _milestone(corner, "brake")
     if brake_cfg["enabled"] and brake and brake.get("d") is not None:
         brake_d = _as_float(brake["d"])
-        lead_m = _countdown_lead_m(brake, countdown_m, countdown_s)
+        lead_m = _countdown_lead_m(brake, countdown_m, countdown_gap_s)
         # Tono de frenada UNIVERSAL: toda curva con milestone de frenada suena,
         # sin importar severidad. Es PROTEGIDO — ningun gap lo descarta (R1), sin
         # importar su prioridad en config. El countdown (tics de aviso) se
@@ -750,6 +795,52 @@ def _event(row, corner, cue, distance, priority, reason, lead_m=None, protected=
     return event
 
 
+def _gear_label(gear):
+    """Etiqueta corta de una marcha: N (neutro), R (reversa) o el numero.
+
+    Mismo criterio que overlay.py (t_gear_val): gear==0 es neutro, gear<0 es
+    reversa — no asumimos que solo existan marchas positivas.
+    """
+    g = int(gear)
+    if g == 0:
+        return "N"
+    if g < 0:
+        return "R"
+    return "%dª" % g
+
+
+def _gear_shift_event(gs, priority):
+    """Evento de cue `gear` (shape de `_event`) a partir de un cambio de
+    marcha detectado por `detect_gear_shifts` (core/corners.py).
+
+    No pertenece a ninguna curva — `corner_id` es sintetico (unico por
+    distancia) y `corner_name` lleva el texto del subtitulo ("cambio a 3ª"),
+    que `_metadata_entry`/`build_cue_ass` ya saben mostrar como el "nombre"
+    bajo la etiqueta del cue. Sin `lead_m` ni `protected`: un cambio de
+    marcha compite por cabida como cualquier otro cue no protegido.
+    """
+    distance = _as_float(gs["distance"])
+    return {
+        "corner_id": "gear-%d" % int(round(distance)),
+        "corner_name": "cambio a %s" % _gear_label(gs["gear_to"]),
+        "cue": "gear",
+        "distance": int(round(distance)),
+        "priority": priority,
+        "reason": "cambio de marcha",
+    }
+
+
+def _cue_sound_enabled(cue_config, cue):
+    """Si el cue debe sintetizarse a WAV (True) o solo subtitularse (False).
+
+    `brake_tic` no tiene entrada propia en DEFAULT_CONFIG: su sonido cuelga
+    de `brake_countdown` (mismo criterio que `enabled`/`priority` en
+    plan_tone_events).
+    """
+    key = "brake_countdown" if cue == "brake_tic" else cue
+    return bool(_cue_cfg(cue_config, key).get("sound", True))
+
+
 def _plan_public(event):
     keys = (
         "corner_id",
@@ -793,7 +884,15 @@ def _milestone(corner, name):
 
 
 def _metadata_entry(name, milestone, distance, filename):
+    """Entrada de metadata.json para un cue.
+
+    filename=None (cue con sound=False, p.ej. gear): sin WAV que reproducir,
+    pero la entrada se conserva igual con listas vacias -- build_cue_ass
+    solo lee "description"/"distanceRoundTrack", asi el cue se sigue
+    subtitulando aunque no suene.
+    """
     label = MILESTONE_LABELS.get(milestone, milestone)
+    names = [filename] if filename else []
     return {
         "description": "%s — %s" % (name, label),
         "distanceRoundTrack": distance,
@@ -802,8 +901,8 @@ def _metadata_entry(name, milestone, distance, filename):
         "maximumSpeed": None,
         "minimumYawAngle": None,
         "maximumYawAngle": None,
-        "recordingNames": [filename],
-        "fileNames": [filename],
+        "recordingNames": names,
+        "fileNames": names,
         "playAllInOrder": False,
     }
 

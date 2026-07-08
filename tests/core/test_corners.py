@@ -3,7 +3,7 @@
 import pytest
 
 from conftest import make_lap
-from fantasma.core.corners import detect_corners, extract_milestones
+from fantasma.core.corners import detect_corners, detect_gear_shifts, extract_milestones
 from fantasma.core.lap import Lap
 
 
@@ -142,3 +142,45 @@ def test_no_coast_when_gas_overlaps_brake():
     assert c.get("overlap_m", 0) > 0
     assert "coast_start" not in c["milestones"]
     assert "coast_end" not in c["milestones"]
+
+
+# ── detect_gear_shifts: cambio de marcha lap-wide (cue "gear", solo subtitulo) ─
+
+
+def _gear_lap(gear_sequence, dt=0.05, step_m=10.0):
+    """Lap sintetico con time/dist/gear controlados muestra a muestra -- para
+    scriptar blips exactos, make_lap() no sirve (deriva `gear` de la forma del
+    valle de velocidad, sin control por muestra)."""
+    n = len(gear_sequence)
+    lap = Lap()
+    lap.channels = {
+        "time": [i * dt for i in range(n)],
+        "dist": [i * step_m for i in range(n)],
+        "gear": [float(g) for g in gear_sequence],
+    }
+    return lap
+
+
+def test_detect_gear_shifts_ignora_blip_de_una_muestra():
+    """Dos cambios reales (3->4, 4->5) sostenidos, mas un blip de 1 muestra
+    (3->4->3) que el debounce de min_hold_s debe ignorar por completo -- no
+    debe aparecer como un cambio ni desplazar la marcha "actual" que se
+    compara contra el siguiente cambio real."""
+    # indice 3: blip de 1 muestra (3->4->3); indice 8: cambio real 3->4
+    # sostenido; indice 12: cambio real 4->5 sostenido.
+    gear_sequence = [3, 3, 3, 4, 3, 3, 3, 3] + [4, 4, 4, 4] + [5, 5, 5, 5]
+    lap = _gear_lap(gear_sequence)
+
+    shifts = detect_gear_shifts(lap, min_hold_s=0.15)
+
+    assert shifts == [
+        {"distance": 80, "gear_from": 3, "gear_to": 4},
+        {"distance": 120, "gear_from": 4, "gear_to": 5},
+    ]
+
+
+def test_detect_gear_shifts_sin_canal_gear_no_crashea():
+    """Una vuelta sin canal 'gear' (export sin ese canal) devuelve lista
+    vacia, no un KeyError."""
+    lap = make_lap(channels=("throttle", "brake"))
+    assert detect_gear_shifts(lap) == []
