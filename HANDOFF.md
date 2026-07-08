@@ -12,60 +12,66 @@
 
 ## Estado actual
 
-**Sesión de "cues configurables" (2026-07-07).** En curso el rediseño que el PO pidió tras revisar la
-cinta: los cues pasan de set hardcodeado a **catálogo configurable con prioridad**, con perfiles JSON
-compartibles (packs de comunidad). Reencuadra el ADR 0026 (el ápex **no se borra, se apaga por
-defecto**). Todo en la rama **`feat/cues-configurables`** (parte de #29), que **absorbe a #29 y #32**
-— se fundirá como un solo release coherente; #32 se cierra absorbido. El PO autorizó commit/push/PR en
-automático; el **merge lo dispara él** (avisar y preguntar). Regla de método vigente: **todo entregable
-que el PO evalúa sale de la UI real, E2E clic-por-clic con Playwright**, nunca por script externo.
+**Release "cues configurables" — PR #35 abierto, en revisión del PO.** El rediseño completo (WS-1 a
+WS-6 del plan) está hecho, pusheado y con **PR paraguas abierto**: [#35](https://github.com/ArmandoMedina/SimGhostInputs/pull/35)
+`feat/cues-configurables` → `master`, absorbe #29 y #32. Todo en la rama, nada fundido — **el merge lo
+dispara el PO**.
 
-**Plan persistido:** `~/.claude/plans/tender-hugging-whale.md` — tiene el detalle de cada workstream.
+**Plan persistido:** `~/.claude/plans/tender-hugging-whale.md` — detalle de cada workstream (todos
+cerrados).
 
 **Hecho y revisado (commits en `feat/cues-configurables`, todo pusheado a origin):**
-- **WS-1** `5bc17f9`+`3215095` — motor: `throttle_on` sostenido (15 muestras, patrón de `full_throttle`)
-  + modela el **coast** (`coast_start`/`coast_end`); arregla el bug **317/393** (el roce fugaz ya no
-  cuenta como "inicio de acelerador", ancla en el gas real). Reviewer + fix del borde de ventana.
-  Doc dueño: `docs/formato-datos.md`.
-- **WS-2** `1d62758`+`229c93e` — **catálogo filtrable + prioridad configurable**: `DEFAULT_CONFIG`
-  (default = comportamiento de hoy, sin regresión), `cue_config` threadeado por
-  `build_pack→build_tone_pack→plan_tone_events→_corner_candidates`, la cabida usa la prioridad de la
-  config, **frenada protegida sigue universal**. Ápex (off por defecto), coast (off, flag "solo curvas
-  sin frenada"), slot de `gear`. Countdown wireado (enable + prioridad de tics, `a321011` intacto).
-  2 pasadas de Reviewer, LIMPIO. `_cue_cfg` resuelve config completa (rellena faltantes + `None`→default).
-- **WS-3** `d742513` — formato de perfil JSON compartible (`fantasma/viz/cue_profiles.py`):
-  load/save/validate/degradar con gracia, `profiles_dir()` (`~/.simghostinputs/cue-profiles`),
-  `list_profiles`; 3 ejemplos en `docs/cue-profiles-ejemplo/`.
-- **WS-4** `f947a9d`+`6a61ce5`+`39cefb6`+`292b35d` — UI del Paso 5 (casillas + `ui.number` de prioridad
-  por cue + cargar/importar/guardar perfil, persistencia en `AppState.cue_config`). Robustez ante JSON
-  malformado (3 bugs del Reviewer arreglados con tests falla-sin/pasa-con: `list_profiles` no crashea,
-  `cues` mal formado → `ValueError`, `priority` no-numérico manejado; confirma sobrescritura). Affordance
-  del sub-checkbox de coast (CSS en `ng_app.py`). E2E parametrizado (`SIMGHOST_TEST_MATERIAL`).
-  Reviewer + Mariana (evidencia en `qa_runs/mariana-20260707/`). Suite: **308 passed, 10 skipped**.
+- **WS-1** `5bc17f9`+`3215095` — motor: `throttle_on` sostenido + modela **coast**; arregla el bug
+  **317/393**. Doc dueño: `docs/formato-datos.md`.
+- **WS-2** `1d62758`+`229c93e` — catálogo filtrable + prioridad configurable, `DEFAULT_CONFIG` sin
+  regresión, frenada protegida universal.
+- **WS-3** `d742513` — formato de perfil JSON compartible (`fantasma/viz/cue_profiles.py`).
+- **WS-4** `f947a9d`+`6a61ce5`+`39cefb6`+`292b35d` — UI Paso 5 (casillas, prioridad, perfiles),
+  robustez ante JSON malformado. Reviewer + Mariana (`qa_runs/mariana-20260707/`).
+- **WS-5** `ef2d8cc` — subtítulos de cues sobre el motor final + ventana adaptativa (ya no 1.5 s fija).
+- **WS-6** `5c6eefc` (ADR 0027, reencuadra 0026) + `4d77e7e` (Escribano: CHANGELOG, formato-datos,
+  guia-usuario, ux-patterns, ROADMAP).
+- **Cinta E2E real** `9ac4a9a` — Playwright encadena Paso 5 (pack con coast + todas las curvas) y
+  Paso 0→1→3→4 (compone el video con overlay+subtítulos), 100% desde la UI. Generó el entregable
+  **`C:\Users\jose_\Downloads\Pruebas finales\2_estudio_coast_ADR0027.mp4`** (687 MB, 2026-07-08 09:38)
+  con evidencia en `qa_runs/cinta-adr0027/` (screenshots del pack, overlay, video y 2 subtítulos:
+  "inercia" en m950, "acelerador" en m1425 — el bug 317/393 ya no dice "inicio de acelerador" ahí).
+- **Regla de cambio de marcha** `0d19159` — anotada en ROADMAP (decisión de diseño del PO 2026-07-08:
+  estudio=referencia, en-vivo=RPM reales; única excepción a "nunca generar cues desde la vuelta del
+  piloto"). Es la nota de follow-up del slot `gear`, no una implementación.
 
 **Decisión del countdown (opción 3 acotada):** se puede apagar + prioridad como metadata, pero **sigue
 oportunista** (no pelea por espacio en la cabida) — hacerlo pelear contradiría el diseño validado de
-oído. Si el PO de verdad quiere que el 3-2-1 desplace otros cues, es un cambio aparte y más riesgoso.
+oído.
 
-**Material de pruebas en esta PC:** `C:\Users\jose_\Downloads\Pruebas finales` (los CSV existen; el E2E
-ya lee `SIMGHOST_TEST_MATERIAL`, con fallback a la ruta histórica).
+**Material de pruebas en esta PC:** `C:\Users\jose_\Downloads\Pruebas finales`.
 
 ## Siguiente acción
 
-Retomar en `feat/cues-configurables`. En orden:
-1. **WS-5** — traer los subtítulos de #32 (`build_cue_ass`, `compose` `burn_cue_subs`) sobre el motor
-   final; adaptar al catálogo/coast; arreglar la ventana fija de 1.5 s (hasta el siguiente cue o mínimo
-   sensato). Nota: el countdown final es el de #29 (tics), no el WAV de #32.
-2. **WS-6** — ADR nuevo (reencuadra 0026: catálogo configurable con prioridad; coast; formato de perfil
-   compartible; enmienda 0027) + Escribano (CHANGELOG, ux-patterns, hud-reference, product/, ROADMAP con
-   las deudas de abajo, y codificar en `docs/decisions/0003-testing.md` la regla del E2E-Playwright).
-3. **Cinta desde el E2E real** del Paso 5 (con un perfil de cues), `SIMGHOST_TEST_MATERIAL=C:\Users\jose_\Downloads\Pruebas finales`, para que el PO la oiga/vea (fin del 317/393).
-4. Abrir el **PR paraguas** (sin fundir; el merge lo dispara el PO). Antes: barrido de Reviewer
-   consolidado que incluya la robustez de WS-3/WS-4 (`292b35d` aún sin pasada dedicada).
+**El código y las docs del release están cerrados. Lo que falta es de proceso/revisión, no desarrollo:**
 
-**Deuda anotada (Reviewer WS-1, a ROADMAP en WS-6):** (a) `throttle_on_window`/`full_throttle` en
-muestras fijas, no normalizado por tasa de muestreo (mal a ≠50 Hz); (b) coast no se emite si hay frenada
-sin `brake_release` (trail-braking al borde del segmento).
+1. **PO: mirar/oír `2_estudio_coast_ADR0027.mp4`** (ruta arriba) — el checkpoint de Mariana capturó
+   screenshots pero el veredicto final sobre el audio/video es del PO, no de la IA.
+2. **PR #35 tiene conflicto de merge con `master`** (`mergeStateStatus: DIRTY`, `mergeable: CONFLICTING`)
+   — `master` avanzó con 2 PRs fundidos después de que esta rama arrancó (#31 botones legibles, #34
+   cobertura report/charts). Conflictan: `CHANGELOG.md`, `ROADMAP.md`, `docs/guia-usuario.md`,
+   `docs/ux-patterns.md`, `fantasma/ui/ng_app.py`, `fantasma/ui/ng_step5.py`, y archivos nuevos de test
+   sin conflicto real (`tests/ui/conftest.py` vs `tests/ui/test_ci_flaky_filter.py`,
+   `tests/viz/test_charts.py`, `tests/viz/test_report.py` — estos últimos son adds paralelos, no debería
+   haber choque de contenido). Hay que traer `master` a la rama (merge o rebase) y resolver antes de
+   poder fundir.
+3. **CI nunca corrió sobre esta rama/PR** — verificado con `gh api .../actions/runs`: la última corrida
+   en todo el repo es del 2026-07-07T00:18Z; los pushes de hoy (2026-07-08, incluido el PR #35) no
+   dispararon `tests.yml` pese a que Actions está `enabled`/`active` y el YAML es válido. No es
+   necesariamente un bug de este release — puede ser un gap de la plataforma (a investigar: un push
+   trivial después de resolver el conflicto del punto 2 debería re-disparar el workflow; si sigue en
+   blanco, escalar). **No fundir sin CI verde** (regla del propio flujo).
+4. Tras resolver 2 y 3: barrido de Reviewer consolidado sobre el diff final del PR, luego el PO aprieta
+   el merge.
+
+**Deuda anotada (Reviewer WS-1, ya en ROADMAP):** (a) `throttle_on_window`/`full_throttle` en muestras
+fijas, no normalizado por tasa de muestreo (mal a ≠50 Hz); (b) coast no se emite si hay frenada sin
+`brake_release` (trail-braking al borde del segmento).
 
 **Decisiones de juicio del PO pendientes (no bugs — QA de Mariana):** asimetría leyenda-cerrada /
 cues-abierta; rango de prioridad 0-999 sin pista visual; columnas desbalanceadas con cues abierto;
