@@ -1,7 +1,14 @@
 # ADR 0027 — Cues como catálogo configurable con prioridad, perfiles compartibles, coast y subtítulos quemados (enmienda a los ADR 0024, 0025 y 0026)
 
-- **Estado:** Aceptada
+- **Estado:** Aceptada · enmendada por [ADR 0028](0028-cues-reencuadre-prioridades-countdown-frecuencias-gear.md) (2026-07-08)
 - **Fecha:** 2026-07-08
+
+> **Enmienda (ADR 0028):** el slot `gear` deja de estar "documentado pero sin implementar" —
+> queda implementado, acotado a subtítulo (`sound=False`, sin audio todavía). El esquema de
+> config de cue suma el campo `sound` junto a `enabled`/`priority`. Los valores por defecto de
+> `DEFAULT_CONFIG` (prioridades) y `DEFAULT_FREQS` (frecuencias) cambian; el modelo de catálogo
+> configurable, prioridad por cue y perfiles compartibles de este ADR **sigue vigente sin
+> cambio**.
 
 ## Contexto
 
