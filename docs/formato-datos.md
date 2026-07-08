@@ -83,6 +83,38 @@ Todo importador convierte a este modelo (`fantasma/core/lap.py`):
 
 Campos extra (`voice_name`, `description`, `coaching_priority`...) se conservan y son libres — otras herramientas pueden usarlos.
 
+## Cambios de marcha (`gear_shifts`)
+
+`fantasma detect` calcula, además de `corners`, los cambios de marcha de la vuelta que se le pasa: `detect_gear_shifts(lap, min_hold_s=0.15)` (`fantasma/core/corners.py`) recorre **toda la vuelta** (no por curva — un cambio de marcha puede caer en cualquier punto, dentro o fuera de una curva) comparando el canal `gear` muestra a muestra, con un debounce de `min_hold_s` segundos: un cambio candidato solo se confirma si la marcha nueva se sostiene ese tiempo antes de volver a cambiar, para descartar blips de una sola muestra. `corners_detected.json` agrega la clave `gear_shifts` junto a `corners`:
+
+```json
+{
+  "corners": [...],
+  "gear_shifts": [
+    {"distance": 1745, "gear_from": 3, "gear_to": 4}
+  ]
+}
+```
+
+- `distance` (m, entero redondeado) — punto de la vuelta donde se confirma el cambio.
+- `gear_from` / `gear_to` (entero) — marcha antes/después; `0` = neutro, negativo = reversa (mismo criterio que el canal `gear`).
+- Lista ordenada por `distance`.
+
+`fantasma pacenotes` (`cmd_pacenotes`) lee `gear_shifts` del JSON de curvas y lo pasa a `build_pack(..., gear_shifts=...)`; si el archivo no trae la clave (`corners_detected.json` de una versión anterior, o una lista plana de curvas sin envoltorio), se asume lista vacía — no revienta. En la UI (`fantasma-ng`), `AppState.gear_shifts` se calcula siempre sobre la vuelta de **referencia** (Pasos 1/2/3), coherente con la regla de producto "estudio = referencia; en vivo = RPM real del piloto" del `ROADMAP.md`. Alimenta el cue `gear` (ver esquema de configuración de cues abajo) — [ADR 0028](decisions/0028-cues-reencuadre-prioridades-countdown-frecuencias-gear.md).
+
+## Esquema de configuración de cues (perfiles)
+
+`DEFAULT_CONFIG` (`fantasma/viz/pacenotes.py`) y los perfiles JSON compartibles que consume `profile_to_config` (`fantasma/viz/cue_profiles.py`) describen cada tipo de cue de pace notes con:
+
+| Campo | Tipo | Significado |
+| :-- | :-- | :-- |
+| `enabled` | bool | si se generan candidatos de ese tipo en `plan_tone_events` |
+| `priority` | int | gana el hueco cuando dos cues compiten por el mismo espacio (gap mínimo global) |
+| `sound` | bool | si el candidato se sintetiza a WAV en `build_tone_pack` (campo nuevo, [ADR 0028](decisions/0028-cues-reencuadre-prioridades-countdown-frecuencias-gear.md)). `False` = el cue solo se subtitula (`build_cue_ass`): no genera audio ni entrada en `fileNames`/`recordingNames` de `metadata.json` (quedan `[]`). Default `True` para todo el catálogo salvo `gear` |
+| `solo_sin_frenada` | bool | solo aplica a `coast`: no compite en curvas que ya tienen frenada |
+
+El cue `gear` (cambio de marcha, `{"enabled": False, "priority": 75, "sound": False}`) es el primero del catálogo con `sound=False`: participa en la resolución de cabida/prioridad igual que cualquier otro cue, pero no se sintetiza a WAV — solo aparece en el subtítulo quemado con la etiqueta `"cambio a Nª"` (ver la tabla de colores en `docs/hud-reference.md`). Un perfil de terceros puede forzar `sound: true` en cualquier cue; `profile_to_config` coacciona el campo a `bool` igual que `enabled`/`solo_sin_frenada`.
+
 ## API pública de `fantasma.core`
 
 El paquete declara `__all__` con los símbolos de uso externo: `Lap`, `samples`, `detect_corners`, `extract_milestones`, `compare`, `corner_coaching`, `delta_trace`, `resample` y el módulo `wear`. Funciones internas de `wear` (`_slip_index`, `_assist_count`, `_tyre_temp_avg`) llevan el prefijo `_` y no forman parte de la API estable.

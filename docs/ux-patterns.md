@@ -148,6 +148,12 @@ Historial de decisiones de UX que alteraron el layout o el flujo de la UI — pa
 - Heurística cubierta: **Ayuda y documentación en contexto** (§1.9) — el subtítulo enseña el pack sin salir del video. **Reconocer en vez de recordar** (§1.4) — la leyenda de colores queda quemada en el propio video, no hay que memorizar la tabla.
 - Patrón reusable: opción avanzada de compose = checkbox + caption `text-xs text-gray-400 ml-8` sin controles adicionales, consistente con el resto de la sección.
 
+**Cue `gear` cierra el ciclo "fila deshabilitada" → "fila activa del mismo patrón" (ADR 0028):**
+- La fila «Cambio de marcha» dejó de ser un `ui.checkbox(...).disable()` suelto fuera del bucle (con la nota «en desarrollo») y pasó a ser una fila más del mismo bucle `for _cue_type in _CUE_TYPES` que genera Ápex/Coast/etc. — mismo patrón «checkbox + número», sin componente nuevo. Se distingue de las demás solo por un `tooltip()` que aclara "solo subtítulo, sin sonido todavía" en vez de deshabilitar el control.
+- Heurística cubierta: **Prevención de errores** (§1.3) — en vez de una fila muerta que invita a preguntarse "¿por qué no funciona?", la fila queda activable y el tooltip explica la limitación real (sin audio) en el momento en que el usuario la toca.
+- Patrón reusable: un cue "a medias" (sin una parte del mecanismo implementada todavía) se expone igual que uno completo — la limitación se comunica con un tooltip puntual, no ocultando o deshabilitando el control entero.
+- La leyenda del countdown (misma sección) cambió de fraseo ("arrancan ~X s antes" → "con N s parejos entre sí y hasta la frenada") para reflejar el gap uniforme del ADR 0028; sigue derivada de `COUNTDOWN_SCALE`/`DEFAULT_COUNTDOWN_GAP_S` del motor, mismo patrón DRY que ya tenía.
+
 ### feat/cues-frenada-universal (Unreleased)
 
 **Leyenda de tonos del Paso 5 — el tono de ápex desaparece solo, sin tocar la UI:**

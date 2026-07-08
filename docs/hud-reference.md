@@ -182,9 +182,12 @@ Fuente única: `CUE_SUB_COLORS` en `fantasma/viz/pacenotes.py`.
 | turn-in | blanco | `turn_in` |
 | apex | ámbar | `apex` |
 | inercia | cian | `coast` (ni freno ni gas) |
+| cambio de marcha | magenta | `gear` (solo subtítulo — no genera audio, [ADR 0028](decisions/0028-cues-reencuadre-prioridades-countdown-frecuencias-gear.md)) |
 
 Diseño completo (catálogo configurable, coast, perfiles, ventana adaptativa) en el
-[ADR 0027](decisions/0027-cues-catalogo-configurable-perfiles-coast-subtitulos.md).
+[ADR 0027](decisions/0027-cues-catalogo-configurable-perfiles-coast-subtitulos.md), reencuadrado
+(prioridades, countdown, frecuencias, cue `gear`) en el
+[ADR 0028](decisions/0028-cues-reencuadre-prioridades-countdown-frecuencias-gear.md).
 
 ---
 
