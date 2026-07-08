@@ -27,6 +27,7 @@ Usuario (piloto o ingeniero de datos) que llega al Paso 5 desde el botón «Gene
 - Idioma (solo en modo voz/ambos): `es-MX`, `es-ES`, `en-US`.
 - Directorio de salida (pre-rellenado con la ruta de CrewChief detectada por `crewchief_pacenotes_dir(track)`).
 - Para mux standalone: video existente + carpeta del pack + vuelta del piloto (`state.drv_lap`) + ruta de salida opcional.
+- Selección y prioridad de cues del catálogo (`enabled`/`priority` por tipo, resuelto por [[PAC-02 - Plan anti-saturacion de senales]]) y perfil a cargar/guardar/importar — ver [ADR 0027](../../docs/decisions/0027-cues-catalogo-configurable-perfiles-coast-subtitulos.md) y la guía de usuario (Paso 5, «Cues: selección y prioridad»).
 
 ## Salidas funcionales
 - Pack de pace notes generado en el directorio de CrewChief (delegado a `build_pack` de [[PAC-01 - Generar pack de pace notes CrewChief]]).
@@ -42,6 +43,7 @@ Usuario (piloto o ingeniero de datos) que llega al Paso 5 desde el botón «Gene
 - El botón «Aplicar sonido» se deshabilita hasta que estén rellenos el video, la carpeta del pack, y `state.drv_lap` esté cargada; mientras está deshabilitado, un caption bajo el botón lista exactamente qué falta.
 - El panel ① incluye una leyenda plegable de tonos derivada del motor (`PLAN_CUES`/`DEFAULT_FREQS`/`COUNTDOWN_SCALE`/`DEFAULT_COUNTDOWN_S` — DRY: si el motor cambia, la leyenda no miente), con la aclaración de que los tonos marcan los puntos de la vuelta de referencia.
 - Si el video elegido en ② trae sidecar `.sync.json` (ADR 0024), la UI lo coteja con `compose.sync_sidecar_mismatch` (la misma fuente que usa el mux para negarse) y muestra ✓ verde o ⚠ amarillo antes de apretar el botón.
+- El panel ① expone además cada tipo de cue del catálogo (`DEFAULT_CONFIG` de `pacenotes.py`) como fila `enabled`+`priority`; los perfiles se cargan, guardan e importan como JSON portable en `~/.simghostinputs/cue-profiles/`, con degradación con gracia ante perfiles inválidos o de terceros (nunca crashea el paso).
 
 ## Criterios de aceptación
 - Dado que `state.rows` o `state.corners` es None, cuando se renderiza el Paso 5, entonces el panel ① muestra el aviso de "falta el análisis" y el botón de vuelta al Paso 2 en lugar del formulario de generación; el panel ② («Aplicar sonido a un video existente») permanece visible y usable.

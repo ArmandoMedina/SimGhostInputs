@@ -142,6 +142,12 @@ Historial de decisiones de UX que alteraron el layout o el flujo de la UI — pa
 - Heurística cubierta: **Reconocer en vez de recordar** (§1.4) — el estado de cada cue se ve de un vistazo, sin flags de CLI. **Prevención de errores** (§1.3) — el perfil inválido o de versión no soportada avisa con `ui.notify` en vez de crashear el paso.
 - Patrón reusable: para un catálogo pequeño y fijo de opciones con on/off + un número asociado, una fila por ítem con `bind_enabled_from` es más simple y auditable que una tabla editable o un componente de terceros.
 
+**Casilla «Quemar subtítulos de cues» en el Paso 4 (WS-5) — patrón «checkbox + caption descriptivo»:**
+- `ui.checkbox("Quemar subtítulos de cues (nombra cada sonido + leyenda)")` vive dentro de la sección plegable «Pace Notes en el video compuesto», con el mismo patrón que el resto de opciones de esa sección: checkbox seguido de un `ui.label` en clase `text-xs text-gray-400 ml-8` a modo de caption explicativo, sin diálogo aparte.
+- El valor se pasa como `burn_cue_subs=True` a `compose_video`; el color de cada etiqueta sale de `CUE_SUB_COLORS` (`fantasma/viz/pacenotes.py`), fuente única compartida con la tabla de colores de `hud-reference.md`.
+- Heurística cubierta: **Ayuda y documentación en contexto** (§1.9) — el subtítulo enseña el pack sin salir del video. **Reconocer en vez de recordar** (§1.4) — la leyenda de colores queda quemada en el propio video, no hay que memorizar la tabla.
+- Patrón reusable: opción avanzada de compose = checkbox + caption `text-xs text-gray-400 ml-8` sin controles adicionales, consistente con el resto de la sección.
+
 ### feat/cues-frenada-universal (Unreleased)
 
 **Leyenda de tonos del Paso 5 — el tono de ápex desaparece solo, sin tocar la UI:**
