@@ -35,4 +35,5 @@ bifurcación equivocada.
 | [0023](0023-fuente-unica-de-version.md) | Fuente única de verdad de la versión: literal `__version__` en `fantasma/__init__.py` | Aceptada | 2026-07-05 |
 | [0024](0024-sincronia-pace-notes.md) | Sincronía de pace notes: anticipación por tiempo, gap global y sidecar video↔vuelta | Aceptada · enmend. 2026-07-06 | 2026-07-05 |
 | [0025](0025-countdown-ancla-en-la-frenada.md) | El último tono del countdown ES el punto de frenada (enmienda ADR 0024) | Aceptada · enmend. 2026-07-06 | 2026-07-06 |
-| [0026](0026-cues-frenada-universal-countdown-oportunista.md) | Cues de frenada universales: tono protegido, countdown oportunista y fuera el tono de apex (enmienda ADR 0024 y 0025) | Aceptada | 2026-07-06 |
+| [0026](0026-cues-frenada-universal-countdown-oportunista.md) | Cues de frenada universales: tono protegido, countdown oportunista y fuera el tono de apex (enmienda ADR 0024 y 0025) | Aceptada · enmend. 2026-07-08 | 2026-07-06 |
+| [0027](0027-cues-catalogo-configurable-perfiles-coast-subtitulos.md) | Cues como catálogo configurable con prioridad, perfiles compartibles, coast y subtítulos quemados (enmienda ADR 0024, 0025 y 0026) | Aceptada | 2026-07-08 |

@@ -1,7 +1,12 @@
 # ADR 0026 — Cues de frenada universales: tono de frenada protegido, countdown oportunista y fuera el tono de apex (enmienda a los ADR 0024 y 0025)
 
-- **Estado:** Aceptada
+- **Estado:** Aceptada · enmendada por [ADR 0027](0027-cues-catalogo-configurable-perfiles-coast-subtitulos.md) (2026-07-08)
 - **Fecha:** 2026-07-06
+
+> **Enmienda (ADR 0027):** el tono de apex ya **no se borra** — vuelve al catálogo de cues
+> apagado por defecto. Las prioridades de cue dejan de estar hardcodeadas y pasan a ser
+> configurables por perfil. La frenada protegida y el countdown oportunista de este ADR
+> **siguen vigentes**.
 
 ## Contexto
 
