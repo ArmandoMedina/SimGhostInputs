@@ -391,6 +391,14 @@ async def render(state, navigate):
                             "btn-secondary"
                         ).props("flat")
 
+                    subs_check = ui.checkbox(
+                        "Quemar subtítulos de cues (nombra cada sonido + leyenda)"
+                    )
+                    ui.label(
+                        "Rotula en el video qué significa cada sonido cuando suena. "
+                        "Ideal para revisar o aprender el pack."
+                    ).classes("text-xs text-gray-400 ml-8")
+
                 pn_section.set_visibility(False)
 
                 def _toggle_pn_section(e):
@@ -567,6 +575,7 @@ async def render(state, navigate):
                 "pace_notes_dir": pn_dir_input.value,
                 "pace_notes_volume": 1.0,
                 "lap": _drv_lap,
+                "burn_cue_subs": bool(subs_check.value),
             }
 
         # Identidad de la vuelta para el sidecar <output>.sync.json (ADR 0024):

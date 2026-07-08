@@ -812,3 +812,116 @@ def test_countdown_priority_configurable_se_refleja_en_los_tics():
     tics = [e for e in plan["events"] if e["cue"] == "brake_tic"]
     assert len(tics) == 2
     assert all(t["priority"] == 42 for t in tics)
+
+
+def _write_cue_pack(tmp_path, entries):
+    """Escribe un metadata.json de pack para probar build_cue_ass."""
+    import json
+
+    (tmp_path / "metadata.json").write_text(
+        json.dumps({"entries": entries}, ensure_ascii=False), encoding="utf-8"
+    )
+    return str(tmp_path)
+
+
+def test_build_cue_ass_rotula_cada_cue(tmp_path, lap_factory):
+    """build_cue_ass emite un Dialogue por cue, con su etiqueta, color y leyenda."""
+    from fantasma.viz.pacenotes import CUE_SUB_COLORS, _metadata_entry, build_cue_ass
+
+    lap = lap_factory(length_m=1500.0)
+    entries = [
+        _metadata_entry("Curva 1", "brake", 400, "400_0.wav"),
+        _metadata_entry("Curva 2", "throttle_on", 1000, "1000_0.wav"),
+    ]
+    pack = _write_cue_pack(tmp_path, entries)
+
+    ass = build_cue_ass(pack, lap, 1024, 1024)
+
+    assert "PlayResX: 1024" in ass and "PlayResY: 1024" in ass
+    assert "punto de frenada" in ass
+    assert "inicio de acelerador" in ass
+    assert "Curva 1" in ass and "Curva 2" in ass
+    assert CUE_SUB_COLORS["punto de frenada"] in ass
+    assert "LEYENDA DE SONIDOS" in ass
+    # dos cues -> dos Dialogue de estilo Cue (+ la leyenda)
+    assert ass.count("Dialogue: 0,") == 3
+
+
+def test_build_cue_ass_sincroniza_con_el_tono(tmp_path, lap_factory):
+    """El tiempo del rotulo usa _dist_to_time igual que el audio (t - LEAD)."""
+    from fantasma.viz.pacenotes import (
+        CUE_SUB_LEAD_S,
+        _ass_time,
+        _dist_to_time,
+        _metadata_entry,
+        build_cue_ass,
+    )
+
+    lap = lap_factory(length_m=1500.0)
+    entries = [_metadata_entry("Curva 1", "brake", 400, "400_0.wav")]
+    pack = _write_cue_pack(tmp_path, entries)
+    t = _dist_to_time(lap, 400.0)
+
+    ass = build_cue_ass(pack, lap, 1024, 1024)
+
+    assert _ass_time(t - CUE_SUB_LEAD_S) in ass
+
+
+def test_build_cue_ass_ventana_adaptativa(tmp_path, lap_factory):
+    """La duracion del rotulo se estira hasta el siguiente cue (acotada por
+    MIN/MAX), no la ventana fija de 1.5 s de la #32.
+
+    Con dos cues, el fin del primero es min(t2 - GAP, t1 + MAX) acotado a >=
+    t1 + MIN; el segundo (sin siguiente) dura hasta t2 + MAX.
+    """
+    from fantasma.viz.pacenotes import (
+        CUE_SUB_GAP_S,
+        CUE_SUB_MAX_S,
+        CUE_SUB_MIN_S,
+        _ass_time,
+        _dist_to_time,
+        _metadata_entry,
+        build_cue_ass,
+    )
+
+    lap = lap_factory(length_m=1500.0)
+    entries = [
+        _metadata_entry("Curva 1", "brake", 400, "400_0.wav"),
+        _metadata_entry("Curva 2", "throttle_on", 460, "460_0.wav"),
+    ]
+    pack = _write_cue_pack(tmp_path, entries)
+    t1 = _dist_to_time(lap, 400.0)
+    t2 = _dist_to_time(lap, 460.0)
+
+    ass = build_cue_ass(pack, lap, 1024, 1024)
+
+    end1 = max(t1 + CUE_SUB_MIN_S, min(t2 - CUE_SUB_GAP_S, t1 + CUE_SUB_MAX_S))
+    end2 = min(t2 + CUE_SUB_MAX_S, lap.laptime)
+    assert _ass_time(end1) in ass
+    assert _ass_time(end2) in ass
+    # ya no es la ventana fija de la #32
+    assert _ass_time(t1 + 1.35) not in ass
+
+
+def test_build_cue_ass_coast_rotula_inercia(tmp_path, lap_factory):
+    """Un cue coast se rotula 'inercia' con su color propio (catalogo WS-1/WS-2)."""
+    from fantasma.viz.pacenotes import CUE_SUB_COLORS, _metadata_entry, build_cue_ass
+
+    lap = lap_factory(length_m=1500.0)
+    entries = [_metadata_entry("Curva 3", "coast", 700, "700_0.wav")]
+    pack = _write_cue_pack(tmp_path, entries)
+
+    ass = build_cue_ass(pack, lap, 1024, 1024)
+
+    assert "inercia" in ass
+    assert CUE_SUB_COLORS["inercia"] in ass
+
+
+def test_build_cue_ass_sin_entradas_no_rotula(tmp_path, lap_factory):
+    """Un pack sin cues no tiene nada que rotular -> None."""
+    from fantasma.viz.pacenotes import build_cue_ass
+
+    lap = lap_factory(length_m=1500.0)
+    pack = _write_cue_pack(tmp_path, [])
+
+    assert build_cue_ass(pack, lap, 1024, 1024) is None
