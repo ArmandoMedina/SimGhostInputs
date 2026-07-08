@@ -118,6 +118,7 @@ class _StateWithRef:
         self.last_compose_video = None
         self.corners = None
         self.corners_editable = False
+        self.gear_shifts = None
         self.last_overlay = None
         self.last_pacenotes = None
 
@@ -135,6 +136,7 @@ class _StateForCompose:
         self.last_compose_video = None
         self.corners = None
         self.corners_editable = False
+        self.gear_shifts = None
         self.last_overlay = None
         self.last_pacenotes = None
         self.auto_compose = False
@@ -163,6 +165,7 @@ async def test_step3_auto_compose_checkbox_visible_in_compose_flow(user, monkeyp
     _fake_corners_mod = types.ModuleType("fantasma.core.corners")
     _fake_corners_mod.detect_corners = lambda lap: ([], {})
     _fake_corners_mod.extract_milestones = lambda lap, evs: []
+    _fake_corners_mod.detect_gear_shifts = lambda lap: []
     monkeypatch.setitem(sys.modules, "fantasma.core.corners", _fake_corners_mod)
 
     monkeypatch.setattr(_ui, "timer", lambda *a, **kw: _NoOpTimer())
@@ -197,6 +200,7 @@ async def test_step3_renders_with_ref_lap_and_detect_corners_mocked(user, monkey
     _fake_corners_mod = types.ModuleType("fantasma.core.corners")
     _fake_corners_mod.detect_corners = lambda lap: ([], {})
     _fake_corners_mod.extract_milestones = lambda lap, evs: []
+    _fake_corners_mod.detect_gear_shifts = lambda lap: []
     monkeypatch.setitem(sys.modules, "fantasma.core.corners", _fake_corners_mod)
 
     # ui.timer: no-op para evitar RuntimeError en teardown de Windows
@@ -212,6 +216,39 @@ async def test_step3_renders_with_ref_lap_and_detect_corners_mocked(user, monkey
     await user.should_see("Paso 3")
     await user.should_not_see("Primero carga")
     await user.should_see("Generar overlay")
+
+
+@pytest.mark.asyncio
+async def test_step3_detect_puebla_state_gear_shifts(user, monkeypatch, lap_factory):
+    """La deteccion bajo demanda del Paso 3 tambien detecta cambios de marcha
+    sobre la vuelta de REFERENCIA (ref_lap) y los guarda en state.gear_shifts,
+    con el mismo mecanismo (run.io_bound) que detect_corners."""
+    from nicegui import ui as _ui
+
+    import fantasma.ui.ng_app as _ng_mod
+
+    monkeypatch.setattr("shutil.which", lambda name: "/fake/ffmpeg")
+
+    _gear_shifts = [{"distance": 250, "gear_from": 2, "gear_to": 3}]
+    _fake_corners_mod = types.ModuleType("fantasma.core.corners")
+    _fake_corners_mod.detect_corners = lambda lap: ([], {})
+    _fake_corners_mod.extract_milestones = lambda lap, evs: []
+    _fake_corners_mod.detect_gear_shifts = lambda lap: _gear_shifts
+    monkeypatch.setitem(sys.modules, "fantasma.core.corners", _fake_corners_mod)
+
+    monkeypatch.setattr(_ui, "timer", lambda *a, **kw: _NoOpTimer())
+
+    ref = lap_factory()
+    _state = _StateWithRef(ref)
+    monkeypatch.setattr(_ng_mod, "AppState", lambda: _state)
+
+    from fantasma.ui.ng_app import main_page  # noqa: F401
+
+    await user.open("/")
+    user.find("Overlay").click()
+    await user.should_see("Generar overlay")
+
+    assert _state.gear_shifts == _gear_shifts
 
 
 # ---------------------------------------------------------------------------

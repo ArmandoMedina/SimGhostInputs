@@ -284,3 +284,95 @@ async def test_step2_renders_with_summary_and_charts_mocked(user, monkeypatch, l
     await user.should_see("Paso 2")
     await user.should_not_see("Primero carga")
     assert charts_called, "render_charts no fue invocado — run.io_bound no lo ejecuto"
+
+
+# ---------------------------------------------------------------------------
+# gear_shifts: wiring de detect_gear_shifts(ref_lap) hacia state.gear_shifts
+# ---------------------------------------------------------------------------
+
+
+class _StateForCompare:
+    """Estado minimo sin analisis previo (summary/corners/gear_shifts en None)
+    para ejercer la rama fresca de _do_compare (deteccion de curvas + marchas)."""
+
+    def __init__(self, ref_lap, drv_lap):
+        self.nav_step = 0
+        self.flow_key = "analisis"
+        self.flow_chosen = True
+        self.ref_lap = ref_lap
+        self.drv_lap = drv_lap
+        self.corners = None
+        self.corners_editable = False
+        self.gear_shifts = None
+        self.summary = None
+        self.rows = None
+        self.trace = None
+        self.charts_paths = None
+        self.last_overlay = None
+        self.last_compose_video = None
+        self.last_pacenotes = None
+
+
+@pytest.mark.asyncio
+async def test_step2_do_compare_detecta_y_persiste_gear_shifts(user, monkeypatch, lap_factory):
+    """Sin corners/gear_shifts previos, _do_compare detecta ambos sobre la
+    vuelta de REFERENCIA (no la del piloto) y los persiste en state.gear_shifts.
+
+    Parchea funciones puntuales de los modulos REALES (monkeypatch.setattr),
+    no los reemplaza enteros en sys.modules: un reemplazo total de
+    fantasma.core.corners/compare rompe imports transitivos ajenos (p.ej.
+    fantasma/core/__init__.py hace `from .corners import ..., samples` y
+    `from .compare import ..., corner_coaching, delta_trace`) si algo dispara
+    esas importaciones frescas mientras el modulo esta sustituido."""
+    from nicegui import ui as _ui
+
+    # fantasma.core.compare: import ... as rebinds via el paquete fantasma.core,
+    # que hace `from .compare import compare, ...` en su __init__.py -- eso
+    # SOMBREA el atributo "compare" del paquete con la FUNCION, no el modulo.
+    # sys.modules[...] evita esa ambiguedad y da el modulo real siempre.
+    import fantasma.core.compare  # noqa: F401  (garantiza que este en sys.modules)
+    import fantasma.core.corners as _real_corners
+    import fantasma.ui.ng_app as _ng_mod
+
+    _real_compare = sys.modules["fantasma.core.compare"]
+
+    _gear_shifts = [{"distance": 300, "gear_from": 3, "gear_to": 4}]
+    _seen_gear_shift_lap = []
+
+    monkeypatch.setattr(_real_corners, "detect_corners", lambda lap: ([], {}))
+    monkeypatch.setattr(_real_corners, "extract_milestones", lambda lap, evs: [])
+
+    def _fake_detect_gear_shifts(lap):
+        _seen_gear_shift_lap.append(lap)
+        return _gear_shifts
+
+    monkeypatch.setattr(_real_corners, "detect_gear_shifts", _fake_detect_gear_shifts)
+
+    def _fake_compare(ref_lap, drv_lap, step=1.0, corners=None):
+        return (
+            [],
+            [],
+            {"avisos": [], "ref_laptime": 90.0, "drv_laptime": 92.5, "total_delta": 2.5},
+        )
+
+    monkeypatch.setattr(_real_compare, "compare", _fake_compare)
+
+    _fake_charts_mod = types.ModuleType("fantasma.viz.charts")
+    _fake_charts_mod.render_charts = lambda trace, rows, corners, outdir, top=None: []
+    monkeypatch.setitem(sys.modules, "fantasma.viz.charts", _fake_charts_mod)
+
+    ref = lap_factory()
+    drv = lap_factory()
+    _state = _StateForCompare(ref, drv)
+    monkeypatch.setattr(_ng_mod, "AppState", lambda: _state)
+
+    from fantasma.ui.ng_app import main_page  # noqa: F401
+
+    await user.open("/")
+    user.find(kind=_ui.button, content="Análisis").click()
+    await user.should_see("Paso 2")
+    await user.should_not_see("Primero carga")
+
+    assert _state.gear_shifts == _gear_shifts
+    # detect_gear_shifts se llamo con la vuelta de REFERENCIA, no la del piloto
+    assert _seen_gear_shift_lap == [ref]

@@ -60,6 +60,7 @@ class _StateWithRowsNoDrv:
         self.last_compose_video = None
         self.last_pacenotes = ""
         self.cue_config = None
+        self.gear_shifts = []
 
 
 @pytest.mark.asyncio
@@ -132,6 +133,7 @@ class _StateNoPaceData:
         self.last_overlay = None
         self.last_compose_video = None
         self.last_pacenotes = ""
+        self.gear_shifts = []
 
 
 @pytest.mark.asyncio
@@ -215,6 +217,73 @@ async def test_step5_cues_have_checkbox_and_priority_control(user, monkeypatch):
     ]
     assert gear_checkboxes and gear_checkboxes[0].enabled
     assert gear_checkboxes[0].value is False
+
+
+# ---------------------------------------------------------------------------
+# gear_shifts: wiring de state.gear_shifts hacia build_pack (Paso 5, panel ①)
+# ---------------------------------------------------------------------------
+
+
+class _StateWithGearShifts:
+    """Estado minimo con rows/corners y gear_shifts pre-detectados (Paso 1/2/3)."""
+
+    def __init__(self, gear_shifts):
+        self.nav_step = 0
+        self.flow_key = "pacenotes"
+        self.flow_chosen = True
+        self.ref_lap = None
+        self.drv_lap = None
+        self.corners = [{"name": "C01", "apex_d": 100}]
+        self.corners_editable = False
+        self.summary = None
+        self.rows = [{"name": "C01", "apex_d": 100, "time_lost": 0.5}]
+        self.trace = []
+        self.charts_paths = None
+        self.last_overlay = None
+        self.last_compose_video = None
+        self.last_pacenotes = ""
+        self.cue_config = None
+        self.gear_shifts = gear_shifts
+
+
+@pytest.mark.asyncio
+async def test_step5_generar_reenvia_gear_shifts_a_build_pack(user, monkeypatch, tmp_path):
+    """Al pulsar 'Generar Pace Notes', state.gear_shifts se reenvia tal cual a
+    build_pack -- wiring end-to-end de la deteccion de cambios de marcha
+    (Paso 1/2/3) hacia el pack final."""
+    from nicegui import ui
+
+    import fantasma.ui.ng_app as _ng_mod
+    import fantasma.viz.pacenotes as _pacenotes_mod
+
+    gear_shifts = [{"distance": 500, "gear_from": 2, "gear_to": 3}]
+    monkeypatch.setattr(_ng_mod, "AppState", lambda: _StateWithGearShifts(gear_shifts))
+
+    captured = {}
+
+    def _fake_build_pack(rows, corners, outdir, **kwargs):
+        captured["gear_shifts"] = kwargs.get("gear_shifts")
+        return {"outdir": str(outdir), "files": [], "entries": 0}
+
+    monkeypatch.setattr(_pacenotes_mod, "build_pack", _fake_build_pack)
+
+    from fantasma.ui.ng_app import main_page  # noqa: F401
+
+    await user.open("/")
+    user.find("Pace Notes").click()
+    await user.should_see("Cues: selección y prioridad")
+
+    outdir_input = next(
+        e
+        for e in user.client.elements.values()
+        if isinstance(e, ui.input) and e._props.get("label") == "Carpeta destino (CrewChief)"
+    )
+    outdir_input.set_value(str(tmp_path))
+
+    user.find("Generar Pace Notes").click()
+    await user.should_see("Directorio:")
+
+    assert captured.get("gear_shifts") == gear_shifts
 
 
 @pytest.mark.asyncio

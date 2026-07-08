@@ -285,15 +285,25 @@ async def render(state, navigate):
         try:
 
             def _detect():
-                from fantasma.core.corners import detect_corners, extract_milestones
+                from fantasma.core.corners import (
+                    detect_corners,
+                    detect_gear_shifts,
+                    extract_milestones,
+                )
 
                 _evs, _ = detect_corners(ref_lap)
-                return extract_milestones(ref_lap, _evs)
+                _corners = extract_milestones(ref_lap, _evs)
+                # Cambio de marcha (subtitulo, sound=False): sale de la vuelta
+                # de REFERENCIA (ROADMAP: modo estudio = referencia).
+                return _corners, detect_gear_shifts(ref_lap)
 
-            corners_holder["list"] = await run.io_bound(_detect)
+            corners_holder["list"], _detected_gear_shifts = await run.io_bound(_detect)
         except Exception:
             corners_holder["list"] = []
+            _detected_gear_shifts = []
         state.corners = corners_holder["list"]
+        if not state.gear_shifts:
+            state.gear_shifts = _detected_gear_shifts
         if _detect_hint is not None:
             _detect_hint.delete()
         if _gen_btn_ref["btn"] is not None:

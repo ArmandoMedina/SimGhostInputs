@@ -349,14 +349,19 @@ async def render(state, navigate):
                 return
             try:
                 from fantasma.core.corners import detect_corners as _dc
+                from fantasma.core.corners import detect_gear_shifts as _dgs
                 from fantasma.core.corners import extract_milestones as _em
                 from fantasma.core.normalize import fastest_lap as _fl
 
-                _evs, _ = _dc(_fl(ref_state["laps"]))
-                cdet = _em(_fl(ref_state["laps"]), _evs)
+                _ref_lap = _fl(ref_state["laps"])
+                _evs, _ = _dc(_ref_lap)
+                cdet = _em(_ref_lap, _evs)
                 corners_state["data"] = cdet
                 state.corners = cdet
                 state.corners_editable = True
+                # Cambio de marcha (subtitulo, sound=False): sale de la
+                # vuelta de REFERENCIA (ROADMAP: modo estudio = referencia).
+                state.gear_shifts = _dgs(_ref_lap)
                 ui.notify(f"{len(cdet)} curvas detectadas automaticamente.", type="positive")
             except Exception as ex:
                 ui.notify(f"Error: {ex}", type="negative")

@@ -564,6 +564,7 @@ async def render(state, navigate):
                             ui.label("Generando pace notes...").classes("text-sm text-gray-400")
 
                         _cue_config = _current_cue_config()
+                        _gear_shifts = state.gear_shifts or []
 
                         def _build():
                             from fantasma.viz.pacenotes import build_pack
@@ -578,6 +579,7 @@ async def render(state, navigate):
                                 lang=_lang,
                                 track_name=_track,
                                 cue_config=_cue_config,
+                                gear_shifts=_gear_shifts,
                             )
 
                         try:

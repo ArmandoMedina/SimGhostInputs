@@ -59,6 +59,7 @@ class _StateWithRefLaps:
         self.drv_name = ""
         self.corners = None
         self.corners_editable = False
+        self.gear_shifts = None
         self.summary = None
         self.last_overlay = None
         self.last_compose_video = None
@@ -97,3 +98,56 @@ async def test_step1_ref_indicator_ok_when_preloaded(user, monkeypatch, lap_fact
         "El indicador 'Referencia' no tiene clase 'ok' en el render inicial "
         "aunque ref_laps está pre-cargado (I1)"
     )
+
+
+# ---------------------------------------------------------------------------
+# "Detectar curvas automaticamente": tambien detecta cambios de marcha
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_step1_detectar_curvas_puebla_gear_shifts(user, monkeypatch, lap_factory):
+    """El boton 'Detectar curvas automaticamente' tambien corre
+    detect_gear_shifts sobre la vuelta de REFERENCIA (fastest_lap de
+    ref_laps) y lo guarda en state.gear_shifts, junto con state.corners.
+
+    Parchea funciones puntuales del modulo REAL (monkeypatch.setattr), no
+    reemplaza fantasma.core.corners entero en sys.modules: un reemplazo total
+    rompe imports transitivos ajenos (p.ej. fantasma/core/__init__.py hace
+    `from .corners import ..., samples`) si algo dispara esa importacion
+    fresca mientras el modulo esta sustituido (regresion detectada en esta
+    sesion combinando tests)."""
+    import fantasma.core.corners as _real_corners
+    import fantasma.ui.ng_app as _ng_mod
+
+    _gear_shifts = [{"distance": 150, "gear_from": 1, "gear_to": 2}]
+    _seen_gear_shift_lap = []
+
+    monkeypatch.setattr(_real_corners, "detect_corners", lambda lap: ([], {}))
+    monkeypatch.setattr(_real_corners, "extract_milestones", lambda lap, evs: [])
+
+    def _fake_detect_gear_shifts(lap):
+        _seen_gear_shift_lap.append(lap)
+        return _gear_shifts
+
+    monkeypatch.setattr(_real_corners, "detect_gear_shifts", _fake_detect_gear_shifts)
+
+    ref = lap_factory()
+    _state = _StateWithRefLaps(ref)
+    monkeypatch.setattr(_ng_mod, "AppState", lambda: _state)
+
+    from fantasma.ui.ng_app import main_page  # noqa: F401
+
+    await user.open("/")
+    user.find("Importar").click()
+    await user.should_see("Paso 1")
+
+    user.find("Detectar curvas automaticamente").click()
+    # should_see tambien revisa ui.notify() (UserNotify.contains) -- espera a
+    # que el handler async termine antes de leer el estado mutado.
+    await user.should_see("curvas detectadas automaticamente")
+
+    assert _state.gear_shifts == _gear_shifts
+    # detect_gear_shifts se llamo con la vuelta de REFERENCIA (fastest_lap de
+    # ref_laps), no con una vuelta del piloto.
+    assert _seen_gear_shift_lap == [ref]
