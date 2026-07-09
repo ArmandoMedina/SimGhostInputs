@@ -45,13 +45,27 @@ def _style(ax, title=None):
 # ---------------------------------------------------------------------------
 
 
+def _corner_lo(corner, seg_lo):
+    """Borde inferior de la ventana de PROPIEDAD de la curva (ADR 0031, Opcion A).
+
+    `segment_m` NO es contrato de contencion: `brake_start` puede caer FUERA del
+    segmento (curva cuya frenada empieza tras un kink, antes de `segment_m[0]`).
+    La ventana se deriva del HITO publicado `brake_start` y no de un pad fijo: el
+    pad de 120 m era una defensa incidental que truncaria el inicio de la frenada
+    en silencio si el hueco `brake_start`->`segment_m[0]` lo superara.
+    """
+    bs = (corner.get("milestones") or {}).get("brake_start") or {}
+    bd = bs.get("d")
+    return min(seg_lo, bd) if bd is not None else seg_lo
+
+
 def plot_corner(trace, corner, row, outdir, step=5.0, pad_m=120):
     """Gráfica ghost de una curva: hasta 5 paneles (velocidad, gas, freno, volante, G-lat)."""
     plt = _mpl()
     if plt is None:
         return None
-    lo, hi = corner.get("segment_m") or corner.get("range_m")
-    lo, hi = lo - pad_m, hi + pad_m
+    seg_lo, hi = corner.get("segment_m") or corner.get("range_m")
+    lo, hi = _corner_lo(corner, seg_lo) - pad_m, hi + pad_m
     pts = [p for p in trace if lo <= p["dist"] <= hi]
     if len(pts) < 5:
         return None

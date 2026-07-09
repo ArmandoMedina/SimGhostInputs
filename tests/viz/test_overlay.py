@@ -49,6 +49,68 @@ def test_flag_recent_grid_clamps_index_past_end():
     assert overlay._flag_recent_grid(g, 50, 8) is True
 
 
+# ── _corner_at / _corner_lo: propiedad de la frenada (ADR 0031) ──────────────
+
+
+def _cbs(corners):
+    """Reproduce corners_by_seg como lo arma render_overlay: ((lo, hi), corner)."""
+    return [((c["segment_m"][0], c["segment_m"][1]), c) for c in corners]
+
+
+def test_corner_lo_extiende_hasta_brake_start_previo_al_segmento():
+    # brake_start (360) precede a segment_m[0] (400): la ventana baja hasta la frenada
+    c = {"segment_m": [400, 700], "milestones": {"brake_start": {"d": 360}}}
+    assert overlay._corner_lo(c, 400) == 360
+
+
+def test_corner_lo_no_sube_por_encima_del_segmento():
+    # frenada normal (brake_start 450 >= segment_m[0] 400): la ventana NO se recorta
+    c = {"segment_m": [400, 700], "milestones": {"brake_start": {"d": 450}}}
+    assert overlay._corner_lo(c, 400) == 400
+
+
+def test_corner_lo_sin_brake_start_cae_al_segmento():
+    c = {"segment_m": [400, 700], "milestones": {}}
+    assert overlay._corner_lo(c, 400) == 400
+
+
+def test_corner_at_frenada_extendida_atribuye_a_la_curva_siguiente():
+    """Frenada larga de T2 que empieza (brake_start=360) antes de su segment_m[0]=400.
+
+    En el hueco [360, 400] el segmento crudo dice T1 (100..400), pero el pace note
+    ya pertenece a T2: el HUD debe etiquetar T2, no la curva anterior.
+    """
+    corners = [
+        {"name": "T1", "segment_m": [100, 400], "milestones": {"apex": {"d": 300, "v": 120}}},
+        {
+            "name": "T2",
+            "segment_m": [400, 700],
+            "milestones": {"apex": {"d": 600, "v": 90}, "brake_start": {"d": 360}},
+        },
+    ]
+    name, txt = overlay._corner_at(_cbs(corners), 380)
+    assert name == "T2"
+    assert txt == "V-Min objetivo 90 km/h"
+
+
+def test_corner_at_curva_normal_sin_frenada_extendida_no_cambia():
+    """No-regresion: con brake_start dentro del segmento no hay solape y cada metro
+    se atribuye a la curva de siempre."""
+    corners = [
+        {"name": "T1", "segment_m": [100, 400], "milestones": {"apex": {"d": 300, "v": 120}}},
+        {
+            "name": "T2",
+            "segment_m": [400, 700],
+            "milestones": {"apex": {"d": 600, "v": 90}, "brake_start": {"d": 450}},
+        },
+    ]
+    cbs = _cbs(corners)
+    # el hueco [400, 450] sigue siendo de T1 (no hay frenada de T2 aun)
+    assert overlay._corner_at(cbs, 380)[0] == "T1"
+    # dentro de T2 se etiqueta T2
+    assert overlay._corner_at(cbs, 500)[0] == "T2"
+
+
 # ── _run_ffmpeg: captura de stderr ───────────────────────────────────────────
 
 
