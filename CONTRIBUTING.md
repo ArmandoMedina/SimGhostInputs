@@ -230,6 +230,7 @@ Cada hecho vive en **un** documento. Los demás enlazan, no duplican.
 | `docs/guia-usuario.md` | Flujo de usuario de punta a punta (CLI + UI) |
 | `docs/hud-reference.md` | Anatomía y código de colores del HUD |
 | `docs/formato-datos.md` | Modelo canónico de datos, esquema `corners` JSON, salidas CSV, algoritmo de detección |
+| `docs/cues.md` | El **QUÉ** del sistema de cues: catálogo (prioridad, suena/mudo, protegido), anti-saturación, countdown y frontera estudio/vivo. Enlaza a los ADR 0024–0028/0030/0031 (el porqué) y a `pacenotes.py` (`DEFAULT_CONFIG`, la fuente); no los duplica |
 | `CONTRIBUTING.md` | Estructura del proyecto, entorno dev, convenciones y este mapa |
 | `docs/decisions/` + su `README.md` | El porqué de cada decisión (un ADR por decisión) + índice |
 | `docs/glosario.md` | Definición canónica de los términos del proyecto (vocabulario) |
