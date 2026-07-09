@@ -1,12 +1,21 @@
 # ADR 0026 — Cues de frenada universales: tono de frenada protegido, countdown oportunista y fuera el tono de apex (enmienda a los ADR 0024 y 0025)
 
-- **Estado:** Aceptada · enmendada por [ADR 0027](0027-cues-catalogo-configurable-perfiles-coast-subtitulos.md) (2026-07-08)
+- **Estado:** Aceptada · enmendada por [ADR 0027](0027-cues-catalogo-configurable-perfiles-coast-subtitulos.md) (2026-07-08) y por [ADR 0032](0032-regla-de-cabida-del-countdown-solo-cede-lo-que-puede-ceder.md) (2026-07-09)
 - **Fecha:** 2026-07-06
 
 > **Enmienda (ADR 0027):** el tono de apex ya **no se borra** — vuelve al catálogo de cues
 > apagado por defecto. Las prioridades de cue dejan de estar hardcodeadas y pasan a ser
 > configurables por perfil. La frenada protegida y el countdown oportunista de este ADR
 > **siguen vigentes**.
+>
+> **Enmienda ([ADR 0032](0032-regla-de-cabida-del-countdown-solo-cede-lo-que-puede-ceder.md),
+> 2026-07-09):** el countdown oportunista sigue vigente, pero se corrige qué cuenta como
+> "espacio ocupado". La regla 2 de abajo dice que un tic entra solo si está a ≥ `min_gap_m` de
+> **todo** sonido de la timeline; eso hacía que un cue informativo de la curva anterior (p. ej.
+> `full_throttle` de salida) tumbara la anticipación de la frenada siguiente. En adelante solo
+> ocupan espacio las **frenadas protegidas** y los **tics de otras curvas**; un cue no protegido
+> **cede su hueco al tic** (con rastro en `plan.json`). La frenada protegida universal (regla 1)
+> no cambia: un tic jamás la desplaza.
 
 ## Contexto
 

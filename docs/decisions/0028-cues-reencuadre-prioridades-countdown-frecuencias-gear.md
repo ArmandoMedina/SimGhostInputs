@@ -1,6 +1,6 @@
 # ADR 0028 — Reencuadre de prioridades, countdown uniforme, frecuencias y cue `gear` solo-subtítulo (enmienda a los ADR 0025 y 0027)
 
-- **Estado:** Aceptada · enmendada el mismo día (ver abajo)
+- **Estado:** Aceptada · enmendada el mismo día (ver abajo) y por [ADR 0032](0032-regla-de-cabida-del-countdown-solo-cede-lo-que-puede-ceder.md) (2026-07-09)
 - **Fecha:** 2026-07-08
 
 > **Enmienda (mismo día, 2026-07-08, post-QA de esta misma cinta):** el punto 4 de "Cambio de
@@ -27,6 +27,15 @@
 > tocar código de producción reciente (el cue `gear`, en release) sin beneficio funcional real,
 > exactamente el antipatrón que este mismo ADR ya evitó al no ampliar el diff. Checkbox
 > correspondiente en `ROADMAP.md` marcado como resuelto (evaluado, no código).
+
+> **Enmienda ([ADR 0032](0032-regla-de-cabida-del-countdown-solo-cede-lo-que-puede-ceder.md),
+> 2026-07-09):** el split sonoro/mudo de la timeline del `brake_tic` (enmienda del mismo día,
+> arriba) sigue vigente, pero **dentro del pool sonoro** se corrige qué cuenta como espacio
+> ocupado para un tic. Antes, cualquier cue sonoro cercano lo tumbaba; ahora solo lo bloquean las
+> **frenadas protegidas** y los **tics de otras curvas**, y un cue sonoro no protegido (turn_in,
+> throttle_on, full_throttle, brake_release) **cede su hueco al tic** (con rastro en `plan.json`).
+> La invariante de seguridad no cambia: un tic nunca desplaza una frenada protegida. El resto de
+> este ADR (prioridades, countdown uniforme, frecuencias, `gear` solo-subtítulo) sigue vigente.
 
 ## Contexto
 
