@@ -1149,10 +1149,14 @@ def test_plan_tone_events_gear_apagado_por_defecto_no_genera_nada():
     assert not any(e["cue"] == "gear" for e in plan["events"])
 
 
-def test_plan_tone_events_gear_shift_compite_por_cabida_global():
-    """Un cambio de marcha demasiado cerca de un cue de mayor prioridad
-    (throttle_on=95 > gear=75) pierde el hueco en la resolucion global -- la
-    MISMA regla de cabida que cualquier cue no protegido, sin logica aparte."""
+def test_plan_tone_events_gear_shift_no_compite_por_cabida_de_audio():
+    """Un cambio de marcha (mudo, sound=False) cerca de un cue de AUDIO
+    (throttle_on) no le quita el hueco ni lo pierde el mismo -- la cabida
+    global (min_gap_m) es una regla de MEZCLA DE AUDIO (evitar sopa de
+    tonos), y gear no suena. Regresion real (QA 2026-07-08): con gear
+    compitiendo por cabida contra cues de audio, activar "gear" + "Coast"
+    juntos en la cinta de estudio vacio por completo los eventos de coast
+    en zonas sin relacion con ningun cambio de marcha."""
     from fantasma.viz.pacenotes import DEFAULT_CONFIG, plan_tone_events
 
     rows = [{"id": "C01", "name": "C01", "time_lost": 0.5, "flags": ""}]
@@ -1163,10 +1167,53 @@ def test_plan_tone_events_gear_shift_compite_por_cabida_global():
         rows, corners, top=1, min_gap_m=50, cue_config=cue_config, gear_shifts=gear_shifts
     )
     assert any(e["cue"] == "throttle_on" for e in plan["events"])
-    assert not any(e["cue"] == "gear" for e in plan["events"])
+    assert any(e["cue"] == "gear" for e in plan["events"])
+    assert not any(s["cue"] in ("gear", "throttle_on") for s in plan["skipped_global"])
+
+
+def test_plan_tone_events_gear_shifts_cercanos_resuelven_cabida_entre_si():
+    """Dos cambios de marcha mudos a <min_gap_m entre si SI compiten por
+    cabida -- entre ellos (rachas de bajada de cambios en una frenada fuerte
+    quedarian con subtitulos amontonados sin este corte), aunque ninguno
+    compita contra cues de audio."""
+    from fantasma.viz.pacenotes import DEFAULT_CONFIG, plan_tone_events
+
+    gear_shifts = [
+        {"distance": 1000, "gear_from": 4, "gear_to": 3},
+        {"distance": 1020, "gear_from": 3, "gear_to": 2},
+    ]
+    cue_config = {**DEFAULT_CONFIG, "gear": {"enabled": True, "priority": 75, "sound": False}}
+    plan = plan_tone_events(
+        [], [], top=5, min_gap_m=50, cue_config=cue_config, gear_shifts=gear_shifts
+    )
+    gear_events = [e for e in plan["events"] if e["cue"] == "gear"]
+    assert len(gear_events) == 1
     assert any(
         s["cue"] == "gear" and s["reason"] == "too_close_global" for s in plan["skipped_global"]
     )
+
+
+def test_plan_tone_events_gear_no_bloquea_tic_de_countdown():
+    """Un cambio de marcha mudo justo en la distancia de un tic de countdown
+    candidato NO lo tira -- el countdown SI suena, asi que solo debe medirse
+    contra otros sonidos (mismo principio del split sound/silent, encontrado
+    por el Reviewer un choke point mas abajo: la resolucion global ya no
+    comparte pool con gear, pero el timeline del countdown seguia armandose
+    con la lista completa sin filtrar)."""
+    from fantasma.viz.pacenotes import DEFAULT_CONFIG, plan_tone_events
+
+    rows = [{"id": "C01", "name": "C01", "time_lost": 0.5, "flags": "frenada"}]
+    corners = [{"id": "C01", "name": "C01", "milestones": {"brake_start": {"d": 2000, "v": 216}}}]
+    # v=216 con el gap default (0.75s) da lead_m=90 -> tics candidatos en
+    # 1910 (step=0) y 1955 (step=1), ver test_pack_expande_countdown_...
+    gear_shifts = [{"distance": 1910, "gear_from": 4, "gear_to": 3}]
+    cue_config = {**DEFAULT_CONFIG, "gear": {"enabled": True, "priority": 75, "sound": False}}
+    plan = plan_tone_events(
+        rows, corners, top=1, min_gap_m=50, cue_config=cue_config, gear_shifts=gear_shifts
+    )
+    tics = sorted(e["distance"] for e in plan["events"] if e["cue"] == "brake_tic")
+    assert tics == [1910, 1955]
+    assert any(e["cue"] == "gear" and e["distance"] == 1910 for e in plan["events"])
 
 
 def test_build_tone_pack_gear_sin_audio_pero_en_metadata(tmp_path):

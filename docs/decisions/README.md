@@ -37,4 +37,4 @@ bifurcación equivocada.
 | [0025](0025-countdown-ancla-en-la-frenada.md) | El último tono del countdown ES el punto de frenada (enmienda ADR 0024) | Aceptada · enmend. 2026-07-06 | 2026-07-06 |
 | [0026](0026-cues-frenada-universal-countdown-oportunista.md) | Cues de frenada universales: tono protegido, countdown oportunista y fuera el tono de apex (enmienda ADR 0024 y 0025) | Aceptada · enmend. 2026-07-08 | 2026-07-06 |
 | [0027](0027-cues-catalogo-configurable-perfiles-coast-subtitulos.md) | Cues como catálogo configurable con prioridad, perfiles compartibles, coast y subtítulos quemados (enmienda ADR 0024, 0025 y 0026) | Aceptada · enmend. 2026-07-08 | 2026-07-08 |
-| [0028](0028-cues-reencuadre-prioridades-countdown-frecuencias-gear.md) | Reencuadre de prioridades, countdown uniforme, frecuencias y cue `gear` solo-subtítulo (enmienda ADR 0025 y 0027) | Aceptada | 2026-07-08 |
+| [0028](0028-cues-reencuadre-prioridades-countdown-frecuencias-gear.md) | Reencuadre de prioridades, countdown uniforme, frecuencias y cue `gear` solo-subtítulo (enmienda ADR 0025 y 0027) | Aceptada · enmend. 2026-07-08 (mismo día) | 2026-07-08 |

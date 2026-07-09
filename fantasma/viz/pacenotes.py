@@ -318,36 +318,66 @@ def plan_tone_events(
                 continue
             events.append(gear_event)
 
-    events.sort(key=lambda c: c["distance"])
-    # Gap minimo GLOBAL: el de arriba solo separa cues DENTRO de una curva; en
-    # curvas encadenadas quedaban cues de curvas vecinas a <1 s (sopa de tonos,
-    # QA 2026-07-05). Un tono de frenada PROTEGIDO nunca se descarta (R1):
-    # protegido vs no-protegido cae el no-protegido; protegido vs protegido se
-    # quedan ambos (dos frenadas reales pegadas siguen sonando ambas). Entre
-    # no-protegidos gana el de mayor prioridad. Nota: al reemplazar al vecino
-    # anterior no hace falta re-verificar hacia atras — el reemplazado ya
-    # respetaba el gap con su predecesor y el nuevo esta aun mas adelante.
-    kept = []
-    skipped_global = []
-    for event in events:
-        if kept and event["distance"] - kept[-1]["distance"] < min_gap_m:
-            prev = kept[-1]
-            ev_prot = event.get("protected")
-            prev_prot = prev.get("protected")
-            if ev_prot and prev_prot:
-                kept.append(event)
-            elif ev_prot and not prev_prot:
-                skipped_global.append({**kept.pop(), "reason": "too_close_global"})
-                kept.append(event)
-            elif prev_prot and not ev_prot:
-                skipped_global.append({**event, "reason": "too_close_global"})
-            elif event["priority"] > prev["priority"]:
-                skipped_global.append({**kept.pop(), "reason": "too_close_global"})
-                kept.append(event)
+    # Cues MUDOS (sound=False, p.ej. gear) no pelean por cabida de AUDIO: el
+    # gap global de abajo existe para evitar "sopa de tonos" (QA 2026-07-05),
+    # pero un cue sin WAV no suena, asi que no tiene sentido que desplace a uno
+    # que si suena solo por estar cerca en distancia. Sin este corte, un lap
+    # con muchos cambios de marcha (mudos, alta prioridad) vaciaba por completo
+    # cues de audio reales de menor prioridad (coast, full_throttle) en zonas
+    # sin relacion (QA 2026-07-08, regresion detectada al activar "gear" +
+    # "Coast" juntos en la cinta de estudio). Los mudos resuelven su propia
+    # cabida entre ellos (mismo criterio de prioridad/tie-break) para que dos
+    # subtitulos no se pisen, y se recombinan con los de audio despues.
+    # protected (freno) siempre cuenta como sonoro sin importar el campo
+    # "sound" resuelto: es el ÚNICO cue que R1 garantiza que nunca cede un
+    # hueco, y esa garantia es cruzada contra CUALQUIER cue de audio cercano.
+    # Un perfil de terceros con {"type": "brake", "sound": false} (cue_profiles
+    # acepta "sound" en cualquier tipo, no solo "gear") no debe poder sacar la
+    # frenada del pool sonoro y romper esa garantia (Reviewer 2026-07-08).
+    sound_events = [
+        e for e in events if e.get("protected") or _cue_sound_enabled(cue_config, e["cue"])
+    ]
+    silent_events = [
+        e for e in events if not e.get("protected") and not _cue_sound_enabled(cue_config, e["cue"])
+    ]
+
+    def _resolve_min_gap(evs):
+        evs = sorted(evs, key=lambda c: c["distance"])
+        # Gap minimo GLOBAL: el de arriba solo separa cues DENTRO de una curva; en
+        # curvas encadenadas quedaban cues de curvas vecinas a <1 s (sopa de tonos,
+        # QA 2026-07-05). Un tono de frenada PROTEGIDO nunca se descarta (R1):
+        # protegido vs no-protegido cae el no-protegido; protegido vs protegido se
+        # quedan ambos (dos frenadas reales pegadas siguen sonando ambas). Entre
+        # no-protegidos gana el de mayor prioridad. Nota: al reemplazar al vecino
+        # anterior no hace falta re-verificar hacia atras — el reemplazado ya
+        # respetaba el gap con su predecesor y el nuevo esta aun mas adelante.
+        _kept = []
+        _skipped = []
+        for event in evs:
+            if _kept and event["distance"] - _kept[-1]["distance"] < min_gap_m:
+                prev = _kept[-1]
+                ev_prot = event.get("protected")
+                prev_prot = prev.get("protected")
+                if ev_prot and prev_prot:
+                    _kept.append(event)
+                elif ev_prot and not prev_prot:
+                    _skipped.append({**_kept.pop(), "reason": "too_close_global"})
+                    _kept.append(event)
+                elif prev_prot and not ev_prot:
+                    _skipped.append({**event, "reason": "too_close_global"})
+                elif event["priority"] > prev["priority"]:
+                    _skipped.append({**_kept.pop(), "reason": "too_close_global"})
+                    _kept.append(event)
+                else:
+                    _skipped.append({**event, "reason": "too_close_global"})
             else:
-                skipped_global.append({**event, "reason": "too_close_global"})
-        else:
-            kept.append(event)
+                _kept.append(event)
+        return _kept, _skipped
+
+    kept_sound, skipped_sound = _resolve_min_gap(sound_events)
+    kept_silent, skipped_silent = _resolve_min_gap(silent_events)
+    kept = sorted(kept_sound + kept_silent, key=lambda c: c["distance"])
+    skipped_global = skipped_sound + skipped_silent
 
     # Reconciliar el plan por curva: un cue descartado globalmente NO puede
     # seguir en "selected" (plan.json es la auditoria de que suena y que no).
@@ -382,7 +412,16 @@ def plan_tone_events(
     countdown_cfg = _cue_cfg(cue_config, "brake_countdown")
     tics = []
     if countdown_cfg["enabled"]:
-        timeline = [(idx, e["distance"]) for idx, e in enumerate(kept)]
+        # Igual que en la resolucion de cabida global de arriba: un tic de
+        # countdown SI suena, asi que solo debe medirse contra otros eventos
+        # que TAMBIEN suenan. Sin este filtro, un cambio de marcha mudo cerca
+        # de un tic candidato lo tira sin razon -- mismo bug que motivo el
+        # split sound/silent, encontrado en el mismo diff (Reviewer 2026-07-08).
+        timeline = [
+            (idx, e["distance"])
+            for idx, e in enumerate(kept)
+            if _cue_sound_enabled(cue_config, e["cue"])
+        ]
         tic_candidates = []
         for idx, e in enumerate(kept):
             if e.get("protected") and e.get("lead_m"):

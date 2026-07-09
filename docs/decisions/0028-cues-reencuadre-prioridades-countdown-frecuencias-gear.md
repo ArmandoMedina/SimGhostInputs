@@ -1,7 +1,20 @@
 # ADR 0028 — Reencuadre de prioridades, countdown uniforme, frecuencias y cue `gear` solo-subtítulo (enmienda a los ADR 0025 y 0027)
 
-- **Estado:** Aceptada
+- **Estado:** Aceptada · enmendada el mismo día (ver abajo)
 - **Fecha:** 2026-07-08
+
+> **Enmienda (mismo día, 2026-07-08, post-QA de esta misma cinta):** el punto 4 de "Cambio de
+> marcha" más abajo quedó mal — `gear` **no** debe participar en la resolución global de
+> cabida/prioridad junto con cues de audio. Al regenerar la cinta con `gear` habilitado, los
+> ~110 cambios de marcha de la vuelta (mudos, prioridad 75) desplazaron por completo los eventos
+> `coast` (prioridad 20) en zonas sin ninguna relación con un cambio de marcha — un cue sin WAV no
+> tiene por qué competir por "cabida de audio". Fix real: `plan_tone_events` resuelve el gap
+> mínimo en dos grupos independientes (sonoros vs. mudos, según el campo `sound` ya resuelto) y
+> los recombina después; `brake` (protegido) siempre cuenta como sonoro para este corte pase lo
+> que pase con su `sound` resuelto. El mismo corte se aplicó al timeline del countdown de frenada
+> (`brake_tic`), que tenía el mismo bug un choke-point más abajo. Detalle técnico y ejemplo en
+> `docs/formato-datos.md` (sección "Cambios de marcha"). El resto de este ADR (prioridades,
+> countdown uniforme, frecuencias, `gear` acotado a subtítulo) sigue vigente sin cambio.
 
 ## Contexto
 
@@ -76,8 +89,9 @@ confirmados por el PO vía `AskUserQuestion`:
    `_cue_sound_enabled(cue_config, cue)` antes de llamar `_render_cue`/escribir WAV; si es `False`
    (nuevo campo `sound` en el esquema de config de cue, default `True`), la entrada de metadata sale
    con `fileNames`/`recordingNames: []` y `build_cue_ass` la subtitula igual. `gear` entra a
-   `plan_tone_events` con la misma resolución global de cabida/prioridad que cualquier otro cue
-   (participa en el `sort` y en el gap mínimo global antes de la selección), y no entra a
+   `plan_tone_events` y participa en el `sort` global, pero **no** compite por el gap mínimo contra
+   cues de audio — ver enmienda arriba: los `sound=False` resuelven su cabida en un pool aparte de
+   los `sound=True`, para no desplazar audio real solo por ser mudos y frecuentes. No entra a
    `corners_plan["selected"]` — mismo criterio que `brake_tic`, porque no pertenece a ninguna curva.
    `MILESTONE_LABELS["gear"] = "cambio de marcha"`, `CUE_SUB_COLORS["cambio de marcha"] = magenta`.
 

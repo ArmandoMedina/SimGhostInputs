@@ -1,16 +1,19 @@
 """E2E cinta de estudio subtitulada: pace notes con Coast + video con HUD quemado.
 
-ADR-0027 / QA del PO (2026-07-08): produce, con clics reales de Playwright sobre la
-UI NiceGUI (nunca llamando compose_video/build_pack por fuera -- "agarrar el
-programa y generarlo por fuera no son pruebas confiables"), un video de estudio que
-demuestre el cue "Coast (inercia)" quemado como subtitulo. Encadena DOS flujos
+ADR-0027/ADR-0028 / QA del PO (2026-07-08): produce, con clics reales de Playwright
+sobre la UI NiceGUI (nunca llamando compose_video/build_pack por fuera -- "agarrar
+el programa y generarlo por fuera no son pruebas confiables"), un video de estudio
+que demuestre el cue "Coast (inercia)" quemado como subtitulo. Encadena DOS flujos
 reales del wizard porque ninguno solo cubre "generar pack + video con HUD + quemar
 esos subtitulos" de punta a punta:
 
   A) "Solo Pace Notes" (Paso 0->1->2->5): genera el pack de audio con el catalogo
      de cues default y la casilla Coast activada (unico cambio pedido por el PO).
   B) "Video con HUD" (Paso 0->1->3->4): genera el overlay de 2.mp4 y lo compone
-     apuntando al pack del flujo A, con "Quemar subtítulos de cues" activado.
+     apuntando al pack del flujo A, con "Quemar subtítulos de cues" activado y el
+     slider "Tamaño" del HUD (Paso 4) fijado en 0.50 -- el PO vio la cinta anterior
+     (2_estudio_coast_ADR0027.mp4, overlay a 1.0x) y pidio bajar la escala a la
+     mitad porque "no veo nada".
 
 Material real de esta PC (SIMGHOST_TEST_MATERIAL): 2.mp4 es la grabación cuya
 identidad de sincronía (offset, vuelta) quedó registrada en
@@ -58,11 +61,22 @@ pytestmark = pytest.mark.skipif(
 )
 
 _REPO_ROOT = Path(__file__).parent.parent.parent.parent
-_QA_DIR = _REPO_ROOT / "qa_runs" / "cinta-adr0027"
+# Directorio propio (NO "cinta-adr0027"): esa corrida anterior esta citada desde
+# HANDOFF.md con sus propios nombres de archivo -- reusar el directorio pisaria
+# esa evidencia ya referenciada. Esta corrida (escala 0.50, reencuadre ADR-0028)
+# deja su propio rastro; Mariana copia lo relevante a qa_runs/mariana-<fecha>/
+# como parte del checkpoint (ver docs/ux-patterns.md 2-B).
+_QA_DIR = _REPO_ROOT / "qa_runs" / "cinta-adr0028"
 _QA_DIR.mkdir(parents=True, exist_ok=True)
 
-_FINAL_VIDEO = Path(_MATERIAL_DIR) / "2_estudio_coast_ADR0027.mp4"
-_COMPOSE_OUTDIR = Path(_MATERIAL_DIR) / "e2e_adr0027_compose"
+_FINAL_VIDEO = Path(_MATERIAL_DIR) / "2_estudio_reencuadre_ADR0028.mp4"
+_COMPOSE_OUTDIR = Path(_MATERIAL_DIR) / "e2e_adr0028_compose"
+
+# Slider "Tamaño" del HUD (ng_step4.py: ui.slider(min=0.25, max=1.5, step=0.05)).
+# El PO pidió reducir la escala a la mitad ("no veo nada" con el overlay a 1.0x).
+_HUD_SCALE_MIN = 0.25
+_HUD_SCALE_MAX = 1.5
+_HUD_SCALE_TARGET = 0.50
 
 # ---------------------------------------------------------------------------
 # Timeouts (ms)
@@ -157,6 +171,57 @@ def _checkbox_is_checked(box, timeout_ms: int = 0) -> bool:
         box.page.wait_for_timeout(100)
 
 
+def _set_hud_scale(page, target: float, min_v: float = _HUD_SCALE_MIN, max_v: float = _HUD_SCALE_MAX):
+    """Fija el slider "Tamaño" del HUD (Paso 4, ng_step4.py:425) por clic real.
+
+    El q-slider de Quasar/NiceGUI no es un <input type=range>: es un div con
+    role="slider" cuyo valor, al clickear el track, se calcula a partir de la
+    fraccion horizontal del punto clickeado -- value = min + fraccion*(max-min),
+    redondeado al step. Se verifico en vivo (montando solo el Paso 4 con
+    Playwright, en una pagina que cabia entera en el viewport) que un click de
+    precision en esa fraccion cae exacto en el step deseado.
+
+    PRIMER INTENTO FALLIDO (corrida real 2026-07-08): con page.mouse.click(x,y)
+    sobre coordenadas de bounding_box() el slider se quedo en su valor default
+    (1.0) -- en la pagina completa del wizard (con paneles arriba) el track
+    puede no estar dentro del viewport visible, y mouse.click() NO hace
+    auto-scroll (a diferencia de locator.click()). Por eso aqui se usa
+    track.click(position=...): mismo calculo de fraccion, pero dejando que
+    Playwright resuelva scroll-into-view + actionability antes del click.
+
+    No hay un patron previo de sliders en la suite (los demas tests solo tocan
+    checkboxes/inputs) -- este helper es nuevo, documentado para reuso.
+    """
+    track = page.locator(".q-slider__track-container").first
+    track.wait_for(state="visible", timeout=_T_NAV)
+    track.scroll_into_view_if_needed(timeout=_T_NAV)
+    box = track.bounding_box()
+    fraction = (target - min_v) / (max_v - min_v)
+    track.click(position={"x": fraction * box["width"], "y": box["height"] / 2})
+
+    root = page.locator(".q-slider[role=slider]").first
+    deadline = time.monotonic() + 3.0
+    current = None
+    while time.monotonic() < deadline:
+        current = root.get_attribute("aria-valuenow")
+        if current is not None and abs(float(current) - target) < 1e-9:
+            return
+        page.wait_for_timeout(100)
+    # Fallback: nudge con flechas si el click no cayo exacto (p.ej. redondeo
+    # por un layout/DPI distinto al de la maquina donde se verifico el helper).
+    # El propio click de arriba ya dejo el foco en el track (tabindex=0).
+    for _ in range(10):
+        current = float(root.get_attribute("aria-valuenow") or 0.0)
+        if abs(current - target) < 1e-9:
+            return
+        page.keyboard.press("ArrowRight" if current < target else "ArrowLeft")
+        page.wait_for_timeout(150)
+    final = root.get_attribute("aria-valuenow")
+    assert final is not None and abs(float(final) - target) < 1e-9, (
+        f"El slider 'Tamaño' del HUD quedo en {final!r}, no en {target} tras click+ajuste"
+    )
+
+
 def _wait_autosync(page, timeout_ms: int = _T_AUTOSYNC) -> bool:
     """Espera el resultado de 'Detectar sincronía automáticamente' y lo resuelve.
 
@@ -216,13 +281,16 @@ def test_pw_cinta_estudio_subtitulada_default_coast(pw_page, nicegui_url, tmp_pa
 
     Verifica:
     - El pack generado en el flujo A trae al menos una entrada "coast" (inercia).
+    - El slider "Tamaño" del HUD (Paso 4) quedó fijado en 0.50 antes de componer.
     - El video final del flujo B existe y pesa más que un archivo vacío/corrupto.
     - Se recorta un frame del video en el segundo del cue "inercia" (evidencia
       para el PO) y, si existe, también del cue "inicio de acelerador" más cercano.
 
     Guarda:
-    - <SIMGHOST_TEST_MATERIAL>/2_estudio_coast_ADR0027.mp4 -- el entregable.
-    - qa_runs/cinta-adr0027/*.png -- capturas de Playwright + frames del subtítulo.
+    - <SIMGHOST_TEST_MATERIAL>/2_estudio_reencuadre_ADR0028.mp4 -- el entregable.
+    - qa_runs/cinta-adr0028/*.png -- capturas de Playwright + frames del subtítulo
+      (directorio propio, NO pisa qa_runs/cinta-adr0027/ que ya está citado desde
+      HANDOFF.md).
     """
     page = pw_page
 
@@ -239,6 +307,13 @@ def test_pw_cinta_estudio_subtitulada_default_coast(pw_page, nicegui_url, tmp_pa
     # su coast (que solo_sin_frenada=True permite por ser curva sin freno).
     all_box = _click_checkbox(page, "Todas las curvas")
     assert _checkbox_is_checked(all_box), "La casilla 'Todas las curvas' no quedó activada"
+
+    # Cue "gear" (cambio de marcha, solo subtítulo): viene enabled=False por
+    # defecto (DEFAULT_CONFIG) -- sin este click el pack no trae NINGUNA
+    # entrada "gear" y el metro ~1745 (el reclamo original del PO) se queda
+    # sin subtítulo otra vez, aunque el motor ya lo soporte.
+    gear_box = _click_checkbox(page, "Cambio de marcha (solo subtítulo)")
+    assert _checkbox_is_checked(gear_box), "La casilla 'Cambio de marcha' no quedó activada"
     page.screenshot(path=str(_QA_DIR / "01_paso5_coast_activado.png"))
 
     page.locator("button", has_text="Generar Pace Notes").click()
@@ -261,6 +336,12 @@ def test_pw_cinta_estudio_subtitulada_default_coast(pw_page, nicegui_url, tmp_pa
     throttle_entries = [
         e for e in entries if e.get("description", "").endswith("— inicio de acelerador")
     ]
+    gear_entries = [e for e in entries if e.get("description", "").endswith("— cambio de marcha")]
+    assert gear_entries, (
+        "No se generó ninguna entrada 'gear' (cambio de marcha) en el pack pese a "
+        "activar la casilla -- regresión en detect_gear_shifts/plan_tone_events, o "
+        "el wiring de state.gear_shifts se rompió."
+    )
 
     page.screenshot(path=str(_QA_DIR / "02_paso5_pack_generado.png"))
 
@@ -343,6 +424,14 @@ def test_pw_cinta_estudio_subtitulada_default_coast(pw_page, nicegui_url, tmp_pa
     subs_box = _click_checkbox(page, "Quemar subtítulos de cues")
     assert _checkbox_is_checked(subs_box), "La casilla 'Quemar subtítulos de cues' no se activó"
 
+    # ⑤ Escala del HUD: el PO pidió bajarla a la mitad (QA 2026-07-08, "no veo
+    # nada" con el overlay a 1.0x) -- clic real sobre el slider "Tamaño".
+    _set_hud_scale(page, _HUD_SCALE_TARGET)
+    scale_label_text = page.locator("text=/Tamaño:/").first.text_content()
+    assert "0.50" in scale_label_text, (
+        f"La etiqueta del slider no confirma escala 0.50: {scale_label_text!r}"
+    )
+
     page.screenshot(path=str(_QA_DIR / "04_paso4_config_lista.png"))
 
     page.locator("button", has_text="Componer video").click()
@@ -403,3 +492,16 @@ def test_pw_cinta_estudio_subtitulada_default_coast(pw_page, nicegui_url, tmp_pa
             video_t_throttle,
             _QA_DIR / ("subtitulo_acelerador_m%d.png" % throttle_entry["distanceRoundTrack"]),
         )
+
+    # Evidencia puntual del reclamo original del PO (QA 2026-07-08): el metro
+    # ~1745 traía un cambio de marcha sin sonido NI subtítulo. Recorta el cue
+    # "gear" más cercano a esa distancia (el motor no promete exactamente 1745,
+    # depende de dónde detect_gear_shifts marque el cambio real en la vuelta).
+    gear_entry = min(gear_entries, key=lambda e: abs(e.get("distanceRoundTrack", 0) - 1745))
+    t_gear = _dist_to_time(drv_lap, float(gear_entry["distanceRoundTrack"]))
+    video_t_gear = offset_value + t_gear + 0.5
+    _extract_frame(
+        _FINAL_VIDEO,
+        video_t_gear,
+        _QA_DIR / ("subtitulo_cambio_marcha_m%d.png" % gear_entry["distanceRoundTrack"]),
+    )
