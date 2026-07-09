@@ -362,6 +362,7 @@ def cmd_pacenotes(args):
         smart=not args.legacy_all_tones,
         track_name=track_name,
         gear_shifts=gear_shifts,
+        sound_profile=args.sound_profile,
     )
     curves = _count_lost_curves(rows, args.top)
     print("✓ %d curvas, %d archivos en %s" % (curves, len(result["files"]), result["outdir"]))
@@ -641,6 +642,18 @@ def main(argv=None):
     sp.add_argument("--gas-freq", type=float, default=220)
     sp.add_argument("--tone-duration", type=float, default=0.12)
     sp.add_argument("--volume", type=float, default=0.8)
+    from .viz.pacenotes import DEFAULT_SOUND_PROFILE, SOUND_PROFILES
+
+    sp.add_argument(
+        "--sound-profile",
+        choices=SOUND_PROFILES,
+        default=DEFAULT_SOUND_PROFILE,
+        help=(
+            "paleta de sintesis de los cues de tono: seno (actual, solo cambia la "
+            "frecuencia), timbre (forma de onda por familia), ritmo (duracion/patron) "
+            "o chirp (barridos). Default: %(default)s"
+        ),
+    )
     sp.add_argument(
         "--legacy-all-tones",
         action="store_true",

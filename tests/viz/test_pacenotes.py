@@ -1749,3 +1749,157 @@ def test_build_pack_propaga_sound_profile_a_los_tonos(tmp_path):
     brake_seno = next(d_seno.glob("1000_*.wav")).read_bytes()
     brake_timbre = next(d_timbre.glob("1000_*.wav")).read_bytes()
     assert brake_seno != brake_timbre
+
+
+# ── Defectos del sintetizador (revision adversarial 2026-07-09) ───────────────
+
+
+def test_a_freq_cero_no_cuelga_y_error_accionable(tmp_path):
+    """(a) freq <= 0 colgaba _odd_harmonics (bucle infinito, la lista crecia
+    hasta agotar memoria) con las paletas aditivas. build_tone_pack ahora valida
+    la frecuencia y falla RAPIDO con mensaje accionable. Se corre en un hilo con
+    timeout: si el bug reaparece (cuelgue), el hilo sigue vivo y el test falla en
+    vez de colgar la suite entera."""
+    import threading
+
+    from fantasma.viz.pacenotes import build_tone_pack
+
+    result = {}
+
+    def _run():
+        try:
+            build_tone_pack(
+                _PROFILE_ROWS,
+                _PROFILE_CORNERS,
+                str(tmp_path / "z"),
+                top=1,
+                freqs={"brake": 0},
+                sound_profile="timbre",
+            )
+        except ValueError as e:
+            result["err"] = str(e)
+        except BaseException as e:  # noqa: BLE001
+            result["other"] = repr(e)
+
+    t = threading.Thread(target=_run, daemon=True)
+    t.start()
+    t.join(timeout=5)
+    assert not t.is_alive(), "build_tone_pack colgo con freq=0 (bucle infinito en _odd_harmonics)"
+    assert "err" in result, "se esperaba ValueError, se obtuvo: %r" % result.get("other")
+    assert "brake" in result["err"] and "0" in result["err"]
+
+
+def test_a_validate_freqs_rechaza_negativa_y_sobre_nyquist():
+    """(a) _validate_freqs exige positiva y < Nyquist (SR/2). Nombra la clave y
+    el valor infractor. DEFAULT_FREQS pasa el guard sin tocar (no-regresion)."""
+    import pytest
+
+    from fantasma.viz.pacenotes import DEFAULT_FREQS, _validate_freqs
+
+    _validate_freqs(dict(DEFAULT_FREQS))  # no levanta
+    for mala in ({"brake": 0}, {"apex": -5}, {"gas": 20000}):
+        with pytest.raises(ValueError) as exc:
+            _validate_freqs({**DEFAULT_FREQS, **mala})
+        (k,) = mala
+        assert k in str(exc.value)
+
+
+def test_b_odd_harmonics_freq_alta_falla_ruidosa():
+    """(b) freq >= 0.45*SR dejaba _odd_harmonics con lista vacia -> onda en todo
+    ceros -> cue MUDO sin aviso. Ahora levanta ValueError (falla ruidosa). En
+    759413f devolvia [] sin quejarse."""
+    import pytest
+
+    from fantasma.viz.pacenotes import _NYQ_MARGIN, _odd_harmonics
+
+    sr = 24000
+    # Justo por debajo del limite: aun devuelve al menos el fundamental.
+    assert _odd_harmonics(_NYQ_MARGIN * sr - 1, sr) == [1]
+    # En o por encima del limite: antes -> [] (mudo); ahora -> ValueError.
+    with pytest.raises(ValueError):
+        _odd_harmonics(_NYQ_MARGIN * sr + 100, sr)
+
+
+def test_c_float_to_wav_volumen_mayor_que_uno_satura_sin_dar_la_vuelta():
+    """(c) con volume > 1 el clip previo a multiplicar por el volumen no protegia:
+    1.0*1.5*32767 = 49150 desbordaba int16 y daba la vuelta a NEGATIVO (un
+    chasquido con el signo invertido). Ahora se recorta DESPUES del volumen: una
+    senal positiva satura a +1.0, nunca voltea de signo."""
+    import numpy as np
+
+    from fantasma.viz.pacenotes import _float_to_wav
+
+    sig = np.ones(200, dtype=np.float64)  # constante +1.0
+    data = _float_to_wav(sig, 1.5, 24000)
+    samples, _ = _decode_wav(data)
+    # Con el fix: saturado alto y positivo. En 759413f: ~ -0.5 (signo volteado).
+    assert samples.min() > 0.99, "el volumen > 1 volteo el signo (int16 overflow): min=%.3f" % (
+        samples.min()
+    )
+
+
+def test_d_chirp_tic_no_revienta_con_countdown_de_3_tics(monkeypatch):
+    """(d) el perfil chirp indexaba una tupla fija de longitud 2 con `step`,
+    acoplado por convencion —no por codigo— a COUNTDOWN_SCALE. Con un
+    COUNTDOWN_SCALE de 3 tics, chirp reventaba con IndexError mientras las otras
+    paletas seguian. Ahora deriva el tono del tic de _tic_freq (cualquier
+    longitud)."""
+    import fantasma.viz.pacenotes as pn
+
+    monkeypatch.setattr(pn, "COUNTDOWN_SCALE", (0.75, 0.875, 0.95))
+    # step=2 solo existe con un COUNTDOWN_SCALE de 3: en 759413f -> IndexError.
+    data = pn._render_cue(
+        {"cue": "brake_tic", "step": 2}, dict(pn.DEFAULT_FREQS), 0.12, 0.8, sound_profile="chirp"
+    )
+    samples, rate = _decode_wav(data)
+    assert rate == 24000 and len(samples) > 0
+    # seno tambien debe soportar el 3er tic (deriva de COUNTDOWN_SCALE[step]).
+    data_seno = pn._render_cue(
+        {"cue": "brake_tic", "step": 2}, dict(pn.DEFAULT_FREQS), 0.12, 0.8, sound_profile="seno"
+    )
+    assert len(_decode_wav(data_seno)[0]) > 0
+
+
+def test_e_paletas_respetan_duration_como_multiplicador():
+    """(e) timbre/ritmo/chirp ignoraban `duration` (duraciones fijas), mientras
+    seno la respetaba. Ahora cada cue escala con duration/_PROFILE_REF_DURATION:
+    `duration` manda en todas las paletas y el contraste relativo se conserva."""
+    from fantasma.viz.pacenotes import DEFAULT_FREQS, _render_cue
+
+    freqs = dict(DEFAULT_FREQS)
+    for profile in ("timbre", "ritmo", "chirp"):
+        corta = _decode_wav(_render_cue({"cue": "brake"}, freqs, 0.12, 0.8, sound_profile=profile))[
+            0
+        ]
+        larga = _decode_wav(_render_cue({"cue": "brake"}, freqs, 0.30, 0.8, sound_profile=profile))[
+            0
+        ]
+        # En 759413f ambas duraban lo mismo (se ignoraba duration).
+        assert len(larga) > len(corta) * 2, profile
+        # Escala proporcional (x2.5) dentro de tolerancia de muestreo.
+        assert abs(len(larga) / len(corta) - 2.5) < 0.05, (profile, len(larga) / len(corta))
+
+
+def test_f_tic_fallback_unificado_seno_vs_paletas():
+    """(f) el fallback del tono base del tic discrepaba: _tic_freq usaba 800 y la
+    rama seno de _render_cue usaba 880. Inalcanzable por la API publica (el merge
+    con DEFAULT_FREQS lo tapa) pero una bomba de relojeria. Ahora ambos caen a
+    DEFAULT_FREQS['brake_countdown'] -> mismo tono base."""
+    from fantasma.viz.pacenotes import _render_cue, _tic_freq, generate_tone
+
+    # freqs SIN 'brake_countdown' fuerza el fallback en ambos caminos.
+    seno_tic = _render_cue({"cue": "brake_tic", "step": 0}, {}, 0.12, 0.8, sound_profile="seno")
+    esperado = generate_tone(_tic_freq({}, 0), 0.08, volume=0.8)
+    # En 759413f: seno usa 880 (->660 Hz) y _tic_freq usa 800 (->600 Hz): difieren.
+    assert seno_tic == esperado
+
+
+def test_g_seno_y_paletas_comparten_un_unico_fade():
+    """(g) generate_tone (seno) reimplementaba la tuberia de _wave_sine con un
+    fade DISTINTO (0.01 s vs 0.008 s), sesgando la comparacion de oido del PO.
+    Ahora generate_tone ES exactamente _float_to_wav(_wave_sine(...)): mismo fade
+    unico. En 759413f estos bytes difieren (fade 0.01 vs 0.008)."""
+    from fantasma.viz.pacenotes import _float_to_wav, _wave_sine, generate_tone
+
+    f, dur, vol, sr = 1000, 0.12, 0.8, 24000
+    assert generate_tone(f, dur, vol) == _float_to_wav(_wave_sine(f, dur, sr), vol, sr)
