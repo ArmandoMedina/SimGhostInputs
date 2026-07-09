@@ -403,6 +403,14 @@ Al publicar el release, el workflow **`release.yml`** genera y adjunta automáti
 Windows (`SimGhostInputs-vX.Y.Z-Setup.exe`) y un zip portable como **assets permanentes** del
 release de GitHub, sin intervención manual. Ver [ADR 0022](decisions/0022-ci-release-installer.md).
 
+**Caso real (2026-07-09):** entre el tag `v2.2.0` y el `v2.3.0` pasaron 12 commits (una feature
+completa más 8 ítems de deuda técnica) sin que nadie cortara un release — nada disparó
+`release.yml` en ese tiempo. Al fin cortar `v2.3.0`, el job **falló**: `pip install ... nicegui-pack`
+trataba `nicegui-pack` como paquete de PyPI, pero es un script que **ya viene incluido** al instalar
+`nicegui` (el extra `ui-ng`), no una distribución aparte — el bug estaba ahí desde el ADR 0022 y
+nadie lo vio porque el workflow nunca había corrido de verdad. Lección: un workflow que solo se
+dispara al cortar release puede quedar roto en silencio si pasa mucho tiempo sin cortar uno.
+
 ### Las tres dimensiones, y dónde acaba la máquina
 
 El repo cuida la consistencia con **barreras deterministas**, cada una con su herramienta. Importa

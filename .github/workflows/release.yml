@@ -19,7 +19,7 @@ jobs:
           cache: pip
 
       - name: Install deps
-        run: pip install -e ".[ui-ng,overlay,sync,xlsx]" nicegui-pack
+        run: pip install -e ".[ui-ng,overlay,sync,xlsx]"
 
       - name: Install Inno Setup
         run: choco install innosetup -y --no-progress
