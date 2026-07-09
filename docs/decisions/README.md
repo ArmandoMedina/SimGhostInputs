@@ -40,3 +40,4 @@ bifurcación equivocada.
 | [0028](0028-cues-reencuadre-prioridades-countdown-frecuencias-gear.md) | Reencuadre de prioridades, countdown uniforme, frecuencias y cue `gear` solo-subtítulo (enmienda ADR 0025 y 0027) | Aceptada · enmend. 2026-07-08, 2026-07-09 | 2026-07-08 |
 | [0029](0029-lockfile-pip-compile.md) | Lockfile de dependencias con `pip-compile` | Aceptada | 2026-07-09 |
 | [0030](0030-modos-estudio-en-vivo-que-ancla-cada-cue.md) | Modos estudio y en vivo: qué ancla cada cue (posición → pack; estado del coche → en vivo; enmienda ADR 0028) | Aceptada | 2026-07-09 |
+| [0031](0031-propiedad-de-la-frenada-y-contrato-de-segment-m.md) | Propiedad de la frenada y contrato de `segment_m`: los hitos mandan, `segment_m` no contiene; `brake_start` en la fase de pico máximo (enmienda ADR 0025, 0026 y 0028) | Aceptada | 2026-07-09 |
