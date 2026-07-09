@@ -15,6 +15,16 @@
 |---|---|---|
 | GitHub (`gh`) | **ArmandoMedina** (personal) para PRs/releases/API | Hay 2 cuentas logueadas; la de trabajo (`Armandomedina9705`) suele estar activa y **no es collaborator** aquí → `gh auth switch --user ArmandoMedina` antes, y devolver a `Armandomedina9705` al terminar. Verifica con `gh auth status`. |
 
+## Hooks globales de la cuenta (fuera del repo, gobiernan a Mau)
+
+| Hook | Dónde vive | Qué hace | Por qué es de máquina/cuenta y no del repo |
+|---|---|---|---|
+| `agent-concurrency-gate.ps1` | `~/.claude/hooks/agent-concurrency-gate.ps1`, cableado en `~/.claude/settings.json` (`hooks.PreToolUse`, `matcher: "Agent"`) | Tope determinista: cuenta lanzamientos con `isolation: "worktree"` (agentes "pesados" — exploran+codean+testean+abren PR) en los últimos 20 min; al 4º dentro de esa ventana, **deniega** el `Agent` con motivo explícito. Agentes livianos (`Explore`, research sin worktree) nunca cuentan. | Vive en `~/.claude/`, no en `.claude/` del repo — gobierna la cuota de la **cuenta API**, no algo del código. Nace del incidente 2026-07-09: 5 subagentes worktree en paralelo agotaron la cuota de sesión de golpe (ver [ADR 0019, enmienda 2026-07-09](decisions/0019-adopcion-homologacion-starter-v0.5.0.md)). |
+
+> Si migrás de máquina o reinstalás `~/.claude/`, este hook **no viaja con el repo** — hay que
+> recrearlo (el script y el bloque de `settings.json` están documentados en la enmienda del
+> ADR 0019 arriba, con el contenido completo si hace falta reconstruirlo).
+
 ## Máquinas y entornos
 
 | Máquina | Para qué | Cómo llegar |

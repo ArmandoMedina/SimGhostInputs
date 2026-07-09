@@ -39,13 +39,18 @@ def samples(lap):
     return [{k: lap.col(k)[i] for k in keys} for i in range(n)], keys
 
 
-def detect_corners(
-    lap, vmin_window_s=1.2, vmin_prominence_kmh=3.0, kink_glat=2.2, sample_rate_hint=None
-):
-    """Devuelve lista de eventos: [{'kind': 'vmin'|'kink', 'i': indice}] ordenada por distancia.
+def _window_samples(dt, seconds, floor=3):
+    """Convierte una ventana de tiempo (segundos) a conteo de muestras usando
+    el `dt` real de la vuelta -- nunca asume una tasa de muestreo fija (p.ej.
+    50Hz). `floor` evita ventanas degeneradas en vueltas con pocas muestras o
+    con `dt` invalido (<=0: timestamps duplicados o fuera de orden)."""
+    if dt <= 0:
+        return floor
+    return max(floor, int(round(seconds / dt)))
 
-    sample_rate_hint: reservado para uso futuro; dt se calcula directamente de los datos.
-    """
+
+def detect_corners(lap, vmin_window_s=1.2, vmin_prominence_kmh=3.0, kink_glat=2.2):
+    """Devuelve lista de eventos: [{'kind': 'vmin'|'kink', 'i': indice}] ordenada por distancia."""
     data, keys = samples(lap)
     if "speed" not in keys:
         raise ValueError("La vuelta no tiene canal de velocidad")
@@ -57,7 +62,7 @@ def detect_corners(
         )
     # frecuencia de muestreo aproximada
     dt = (data[-1]["time"] - data[0]["time"]) / max(1, len(data) - 1)
-    W = max(3, int(round(vmin_window_s / dt)))
+    W = _window_samples(dt, vmin_window_s)
     events = []
     i = W
     while i < len(data) - W:
@@ -73,7 +78,7 @@ def detect_corners(
         else:
             i += 1
     if "glat" in keys:
-        Wk = max(3, int(round(0.5 / dt)))
+        Wk = _window_samples(dt, 0.5)
         i = Wk
         while i < len(data) - Wk:
             g = abs(data[i]["glat"])
@@ -96,7 +101,7 @@ def extract_milestones(
     throttle_on=5,
     full_throttle=98,
     turn_in_deg=8,
-    throttle_on_window=15,
+    throttle_on_window_s=0.3,
 ):
     """Extrae los hitos de cada curva, con segmentacion por curva.
     Devuelve lista de dicts estilo corners.json."""
@@ -104,6 +109,11 @@ def extract_milestones(
         events, data = detect_corners(lap)
     else:
         data, _ = samples(lap)
+    # dt real de la vuelta (no asume 50Hz): misma formula que detect_corners,
+    # recalculada aqui porque este metodo puede recibir `events` ya calculados
+    # sin haber pasado por detect_corners (y por tanto sin su `dt` local).
+    dt = (data[-1]["time"] - data[0]["time"]) / max(1, len(data) - 1)
+    throttle_on_window = _window_samples(dt, throttle_on_window_s)
     apex_ds = [data[i]["dist"] for _, i in events]
     corners = []
     for n, (kind, ai) in enumerate(events):
@@ -156,9 +166,10 @@ def extract_milestones(
         # gas: ancla en el throttle SOSTENIDO, no en el primer cruce del umbral
         # (mismo criterio que full_throttle: umbral + N muestras seguidas). Un
         # roce fugaz de pedal (freno-motor, ruido) cruza el umbral un instante
-        # pero no se sostiene y no debe ganar el hito. throttle_on_window=15
-        # reusa la ventana que ya usa full_throttle (~0.3s a 50Hz, coherente
-        # con el gap de 0.3s que funde bloques de frenada en este mismo modulo).
+        # pero no se sostiene y no debe ganar el hito. throttle_on_window_s=0.3
+        # (convertido a muestras via dt real, no asume 50Hz) es la misma
+        # ventana que reusa full_throttle -- coherente con el gap de 0.3s que
+        # funde bloques de frenada en este mismo modulo.
         g0 = None
         for j, s in enumerate(seg):
             if s["time"] < ap["time"] - 0.6 or s.get("throttle", 0) <= throttle_on:
@@ -193,7 +204,7 @@ def extract_milestones(
         g100 = None
         for j, s in enumerate(post):
             if s.get("throttle", 0) >= full_throttle and all(
-                x.get("throttle", 0) >= 90 for x in post[j : j + 15]
+                x.get("throttle", 0) >= 90 for x in post[j : j + throttle_on_window]
             ):
                 g100 = s
                 break

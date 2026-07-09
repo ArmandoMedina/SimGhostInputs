@@ -14,8 +14,14 @@
 # (gitignored) con el SHA1 del diff ya aprobado por el PO - solo para el caso
 # raro de aprobar sin artefacto. Ver ADR 0011 (cableado) y ADR 0019 (evidencia).
 # Archivo ASCII (sin acentos) a proposito.
-
-$ErrorActionPreference = 'SilentlyContinue'
+#
+# ERRORES (ALTO-04, fase3-hooks.md): sin $ErrorActionPreference global. Las llamadas
+# reales a git (status/diff) se revisan por $LASTEXITCODE; si git falla de verdad
+# (no "sin cambios" sino un fallo real: git no disponible, repo corrupto, permisos),
+# el hook AVISA (additionalContext, sin decision=block) en vez de tratarlo en
+# silencio como "nada que revisar". `git rev-parse --show-toplevel` abajo NO cambia:
+# "no estoy en un repo git" sigue siendo salida limpia a proposito (comportamiento
+# ya evaluado como safe-fail en la auditoria, fuera del alcance de ALTO-04).
 
 # Evitar bucle si este stop ya viene de un stop-hook.
 $raw = [Console]::In.ReadToEnd()
@@ -25,6 +31,14 @@ if ($inp -and $inp.stop_hook_active) { exit 0 }
 if ($env:CLAUDE_PROJECT_DIR) { Set-Location $env:CLAUDE_PROJECT_DIR }
 $repo = (git rev-parse --show-toplevel 2>$null)
 if (-not $repo) { exit 0 }
+
+function Write-GitFailWarning($comando, $detalle) {
+  $ctx = "AVISO (mariana-stop): '$comando' fallo (exit $LASTEXITCODE): $detalle. " +
+         "No se pudo comprobar cambios visuales en viz/ o ui/; revisalos a mano " +
+         "y deja evidencia en qa_runs/ si aplica (ADR 0019)."
+  $out = @{ hookSpecificOutput = @{ hookEventName = 'Stop'; additionalContext = $ctx } }
+  $out | ConvertTo-Json -Compress -Depth 5
+}
 
 # Areas visuales del manifiesto (rol Mariana).
 $manifestPath = Join-Path $repo 'tools/blast-radius.json'
@@ -39,7 +53,12 @@ function Test-Pattern($path, $pattern) {
 }
 
 # Cambios visuales sin commitear.
-$changed = (git status --porcelain) | ForEach-Object { if ($_.Length -gt 3) { $_.Substring(3).Trim() } }
+$statusRaw = git status --porcelain 2>&1
+if ($LASTEXITCODE -ne 0) {
+  Write-GitFailWarning 'git status --porcelain' ($statusRaw -join ' ')
+  exit 0
+}
+$changed = $statusRaw | ForEach-Object { if ($_.Length -gt 3) { $_.Substring(3).Trim() } }
 $visChanged = @()
 foreach ($f in $changed) {
   foreach ($area in $areasVis) {
@@ -69,7 +88,12 @@ if (Test-Path $qaDir) {
 }
 
 # Respaldo anti-bucle: este diff exacto ya fue aprobado por el PO sin artefacto.
-$payload = ((git diff HEAD -- $visChanged) -join "`n") + "|" + ($visChanged -join "`n")
+$diffRaw = git diff HEAD -- $visChanged 2>&1
+if ($LASTEXITCODE -ne 0) {
+  Write-GitFailWarning 'git diff HEAD -- <areas visuales>' ($diffRaw -join ' ')
+  exit 0
+}
+$payload = (($diffRaw) -join "`n") + "|" + ($visChanged -join "`n")
 $sha1 = New-Object System.Security.Cryptography.SHA1Managed
 $sha = [System.BitConverter]::ToString($sha1.ComputeHash([System.Text.Encoding]::UTF8.GetBytes($payload))).Replace('-','')
 $marker = Join-Path $repo '.claude\.mariana-marker'

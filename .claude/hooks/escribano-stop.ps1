@@ -11,8 +11,14 @@
 # Matcher (homologado a starter v0.5.0, ADR 0019): comodines -like; un patron
 # SIN '/' solo casa archivos en la raiz del repo; 'excluye' (opcional) resta
 # rutas; 'mensaje' (opcional) se anexa al aviso.
-
-$ErrorActionPreference = 'SilentlyContinue'
+#
+# ERRORES (ALTO-04, fase3-hooks.md): sin $ErrorActionPreference global. La llamada
+# real a git status se revisa por $LASTEXITCODE; si git falla de verdad (no "sin
+# cambios" sino un fallo real: git no disponible, repo corrupto, permisos), el hook
+# AVISA (additionalContext, sin decision=block) en vez de tratarlo en silencio como
+# "nada que sincronizar". `git rev-parse --show-toplevel` abajo NO cambia: "no estoy
+# en un repo git" sigue siendo salida limpia a proposito (safe-fail ya evaluado en
+# la auditoria, fuera del alcance de ALTO-04).
 
 # 1. Leer el input del hook. Si este stop YA viene de un stop-hook, no re-bloquear.
 $raw = [Console]::In.ReadToEnd()
@@ -23,7 +29,15 @@ if ($inp -and $inp.stop_hook_active) { exit 0 }
 if ($env:CLAUDE_PROJECT_DIR) { Set-Location $env:CLAUDE_PROJECT_DIR }
 $repo = (git rev-parse --show-toplevel 2>$null)
 if (-not $repo) { exit 0 }
-$changed = (git status --porcelain) | ForEach-Object { if ($_.Length -gt 3) { $_.Substring(3).Trim() } }
+$statusRaw = git status --porcelain 2>&1
+if ($LASTEXITCODE -ne 0) {
+  $ctx = "AVISO (escribano-stop): 'git status --porcelain' fallo (exit $LASTEXITCODE): " +
+         "$($statusRaw -join ' '). No se pudo comprobar doc-drift (seccion 8); revisalo a mano."
+  $out = @{ hookSpecificOutput = @{ hookEventName = 'Stop'; additionalContext = $ctx } }
+  $out | ConvertTo-Json -Compress -Depth 5
+  exit 0
+}
+$changed = $statusRaw | ForEach-Object { if ($_.Length -gt 3) { $_.Substring(3).Trim() } }
 if (-not $changed) { exit 0 }
 
 # 3. Leer el manifiesto unico de blast-radius (la ley).

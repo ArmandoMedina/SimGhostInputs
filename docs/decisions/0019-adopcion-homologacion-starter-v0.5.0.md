@@ -85,3 +85,59 @@ obligatorio del cierre** de cada corrida de QA/auditoría —no una recomendaci�
 en HANDOFF/CHANGELOG debe **citar** su directorio de corrida y ese directorio debe existir en
 git. Sin artefacto commiteado, el veredicto no vale (mismo principio "sin auto-firmas" del
 ADR 0016, ahora durable).
+
+## Enmienda (2026-07-09) — tope determinista de agentes "pesados" concurrentes
+
+Mau (orquestador) lanzó **5 subagentes worktree** (skill Ahiram, cada uno explora+codea+testea+
+abre PR) en paralelo, más su propio trabajo en el hilo principal — el conjunto agotó la cuota de
+sesión de la cuenta (API) de golpe; los 5 fallaron a mitad de tarea con "session limit · resets
+12pm". El trabajo **no se perdió** (cada worktree conserva su diff en disco, verificado con
+`git status` de solo lectura antes de decidir nada), pero el incidente mostró que la disciplina
+de "yo decido cuántos lanzo" —el mismo patrón que el punto (b) de arriba ya reemplazó por una
+regla de proceso— **no escala**: un orquestador bajo presión de avance puede repetir el exceso.
+
+**Decisión (PO, 2026-07-09):** el tope deja de ser un juicio de Mau en cada turno y pasa a un
+**hook determinista fuera del repo** (`~/.claude/hooks/agent-concurrency-gate.ps1`, cableado en
+`~/.claude/settings.json` → `hooks.PreToolUse` con `matcher: "Agent"`; documentado en
+[`docs/recursos-del-proyecto.md`](../recursos-del-proyecto.md) porque es config de máquina/cuenta,
+no del repo). Cuenta cuántos lanzamientos con `isolation: "worktree"` (proxy determinista de
+"pesado": explora+codea+testea+PR, no una búsqueda acotada) ocurrieron en los últimos 20 minutos;
+al 4º dentro de esa ventana, **deniega** el `Agent` con un motivo explícito — mismo mecanismo que
+ya bloqueó el `git push` directo a `master` en esta misma sesión (el clasificador de auto-mode).
+Los agentes sin `isolation: worktree` (Explore, research) nunca cuentan: no repiten el patrón que
+causó el incidente.
+
+- **Por qué un heurístico de campo (`isolation`) y no un juicio de la IA sobre "¿es pesado?":**
+  la sesión que hoy sobrepasó el límite es la misma que debía autoevaluarse — pedirle que se
+  autorregule mejor la próxima vez no es una barrera, es esperanza. El campo `isolation` ya
+  existe en cada llamada y correlaciona 1:1 con el patrón real que rompió la cuota (los 5 agentes
+  fallidos eran los 5 con `isolation: "worktree"`).
+- **Por qué ventana de tiempo y no contador exacto con `SubagentStart`/`SubagentStop`:** un
+  contador exacto que dependa de que `SubagentStop` dispare siempre puede quedar trabado en
+  positivo para siempre si un agente muere sin ese evento (justo lo que pasó hoy) — la ventana de
+  20 minutos se autolimpia sola, sin depender de que nada más se ejecute correctamente.
+
+### Autocrítica (2026-07-09, sin sesgo de confirmación) — qué NO resuelve este hook
+
+El hook en sí no cuesta tokens (es `type: "command"`, un proceso PowerShell local, no llama al
+modelo) y la prueba en seco confirmó el comportamiento (3 pasan, el 4º se deniega) — eso es un
+hecho verificado, no una promesa. Pero declarar el incidente "cerrado" sería sobreconfiado; quedan
+tres grietas reales, sin resolver, llevadas a `ROADMAP.md` como deuda explícita:
+
+1. ~~El campo `tool_input.isolation` nunca se verificó contra una llamada `Agent` real~~ —
+   **confirmado (2026-07-09):** se lanzó un `Agent` real con `isolation: "worktree"` (QA de PR #38)
+   y `~/.claude/.agent-heavy-window.txt` registró la entrada de inmediato. El campo coincide con lo
+   asumido; el hook no estaba en *fail-open* silencioso.
+2. **El "3" es el número que propuso el PO, no uno medido** contra la cuota real de la cuenta ni
+   contra el consumo del propio hilo principal de Mau corriendo en paralelo. Puede seguir siendo
+   insuficiente.
+3. **El hook topa concurrencia, no cupo acumulado.** El aviso de la cuenta decía "session limit ·
+   resets 12pm", lenguaje que sugiere cupo total por ventana de tiempo, no límite de simultaneidad.
+   Si es así, 3 agentes pesados lanzados en secuencia (nunca 4 a la vez) dentro de esa misma ventana
+   agotarían el cupo igual, sin que el tope de concurrencia dispare jamás — el hook tapa el síntoma
+   de hoy (ráfaga en paralelo), no necesariamente la causa si la causa es cupo acumulado.
+
+Ninguno de los tres invalida el mecanismo: sigue siendo estrictamente mejor que el juicio manual de
+Mau por turno, que es lo que falló hoy. Pero el mecanismo reduce la probabilidad de repetir
+*exactamente* este incidente; no la lleva a cero, y no reduce el consumo total de tokens de la
+sesión — solo lo espacia en el tiempo.

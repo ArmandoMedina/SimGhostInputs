@@ -2,8 +2,12 @@
 # frena el cierre y manda a correr /code-review. Usa un marcador con el hash del
 # diff ya revisado (.claude/.review-marker, gitignored) para no re-revisar lo
 # mismo: igual que el escribano, se termina solo. Archivo ASCII a proposito.
-
-$ErrorActionPreference = 'SilentlyContinue'
+#
+# ERRORES (ALTO-04, fase3-hooks.md): sin $ErrorActionPreference global. Las llamadas
+# reales a git (status/diff) se revisan por $LASTEXITCODE; si git falla de verdad
+# (no "sin cambios que revisar" sino un fallo real: git no disponible, repo corrupto,
+# permisos), el hook AVISA (additionalContext, sin decision=block: sigue sin bloquear)
+# en vez de tratarlo en silencio como "nada que revisar".
 
 # Evitar bucle si este stop ya viene de un stop-hook.
 $raw = [Console]::In.ReadToEnd()
@@ -12,12 +16,30 @@ if ($inp -and $inp.stop_hook_active) { exit 0 }
 
 if ($env:CLAUDE_PROJECT_DIR) { Set-Location $env:CLAUDE_PROJECT_DIR }
 
+function Write-GitFailWarning($comando, $detalle) {
+  $ctx = "AVISO (review-stop): '$comando' fallo (exit $LASTEXITCODE): $detalle. " +
+         "No se pudo comprobar si hay codigo sin revisar en fantasma/; revisalo a mano " +
+         "con /code-review antes de cerrar."
+  $out = @{ hookSpecificOutput = @{ hookEventName = 'Stop'; additionalContext = $ctx } }
+  $out | ConvertTo-Json -Compress -Depth 5
+}
+
 # Hay codigo sin commitear en fantasma/?
-$codeChanged = (git status --porcelain -- fantasma) | Where-Object { $_ }
+$statusRaw = git status --porcelain -- fantasma 2>&1
+if ($LASTEXITCODE -ne 0) {
+  Write-GitFailWarning 'git status --porcelain -- fantasma' ($statusRaw -join ' ')
+  exit 0
+}
+$codeChanged = $statusRaw | Where-Object { $_ }
 if (-not $codeChanged) { exit 0 }
 
 # Hash del estado revisable actual (cambios rastreados + lista de no rastreados).
-$payload = ((git diff HEAD -- fantasma) -join "`n") + "|" + (($codeChanged) -join "`n")
+$diffRaw = git diff HEAD -- fantasma 2>&1
+if ($LASTEXITCODE -ne 0) {
+  Write-GitFailWarning 'git diff HEAD -- fantasma' ($diffRaw -join ' ')
+  exit 0
+}
+$payload = (($diffRaw) -join "`n") + "|" + (($codeChanged) -join "`n")
 $sha1 = New-Object System.Security.Cryptography.SHA1Managed
 $sha = [System.BitConverter]::ToString($sha1.ComputeHash([System.Text.Encoding]::UTF8.GetBytes($payload))).Replace('-','')
 

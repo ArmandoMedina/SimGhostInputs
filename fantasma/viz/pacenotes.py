@@ -40,8 +40,22 @@ DEFAULT_COUNTDOWN_GAP_S = 0.75
 # La leyenda de la UI la deriva de aqui; _render_cue la consume por `step`.
 COUNTDOWN_SCALE = (0.75, 0.875)
 # Gap minimo global entre cues (metros). Fuente unica: plan_tone_events y la
-# expansion del countdown en build_tone_pack lo comparten.
+# expansion del countdown en build_tone_pack lo comparten. build_voice_pack
+# tambien lo comparte (ADR 0024, enmienda "notas de voz") via _resolve_min_gap.
 DEFAULT_MIN_GAP_M = 50
+# Anticipo POR TIEMPO de una nota de VOZ antes del punto de frenada, mismo
+# criterio que el countdown de tonos (_countdown_lead_m, ADR 0024): el oido
+# juzga en segundos, no en metros -- 200 m fijos son ~3 s a 216 km/h pero
+# ~10 s a 70 km/h. lead_m = v/3.6 * DEFAULT_VOICE_LEAD_S, acotado a
+# [DEFAULT_VOICE_LEAD_MIN_M, DEFAULT_VOICE_LEAD_MAX_M].
+DEFAULT_VOICE_LEAD_S = 4.0
+DEFAULT_VOICE_LEAD_MIN_M = 60
+DEFAULT_VOICE_LEAD_MAX_M = 400
+# Fallback cuando el milestone de frenada no trae "v" (corners JSON viejos,
+# tests sinteticos): el mismo anticipo fijo de 200 m que build_voice_pack
+# usaba hardcodeado antes de este fix -- no-regresion exacta para fixtures
+# sin canal de velocidad.
+DEFAULT_VOICE_LEAD_FALLBACK_M = 200
 DEFAULT_FREQS = {
     # brake_countdown a 800 Hz, brake a 1000 Hz: distintos entre si (QA
     # 2026-07-05, ADR 0024) y turn_in ya no comparte 660 Hz con ningun tic
@@ -341,41 +355,12 @@ def plan_tone_events(
         e for e in events if not e.get("protected") and not _cue_sound_enabled(cue_config, e["cue"])
     ]
 
-    def _resolve_min_gap(evs):
-        evs = sorted(evs, key=lambda c: c["distance"])
-        # Gap minimo GLOBAL: el de arriba solo separa cues DENTRO de una curva; en
-        # curvas encadenadas quedaban cues de curvas vecinas a <1 s (sopa de tonos,
-        # QA 2026-07-05). Un tono de frenada PROTEGIDO nunca se descarta (R1):
-        # protegido vs no-protegido cae el no-protegido; protegido vs protegido se
-        # quedan ambos (dos frenadas reales pegadas siguen sonando ambas). Entre
-        # no-protegidos gana el de mayor prioridad. Nota: al reemplazar al vecino
-        # anterior no hace falta re-verificar hacia atras — el reemplazado ya
-        # respetaba el gap con su predecesor y el nuevo esta aun mas adelante.
-        _kept = []
-        _skipped = []
-        for event in evs:
-            if _kept and event["distance"] - _kept[-1]["distance"] < min_gap_m:
-                prev = _kept[-1]
-                ev_prot = event.get("protected")
-                prev_prot = prev.get("protected")
-                if ev_prot and prev_prot:
-                    _kept.append(event)
-                elif ev_prot and not prev_prot:
-                    _skipped.append({**_kept.pop(), "reason": "too_close_global"})
-                    _kept.append(event)
-                elif prev_prot and not ev_prot:
-                    _skipped.append({**event, "reason": "too_close_global"})
-                elif event["priority"] > prev["priority"]:
-                    _skipped.append({**_kept.pop(), "reason": "too_close_global"})
-                    _kept.append(event)
-                else:
-                    _skipped.append({**event, "reason": "too_close_global"})
-            else:
-                _kept.append(event)
-        return _kept, _skipped
-
-    kept_sound, skipped_sound = _resolve_min_gap(sound_events)
-    kept_silent, skipped_silent = _resolve_min_gap(silent_events)
+    # Gap minimo GLOBAL: el de arriba (linea ~287) solo separa cues DENTRO de
+    # una curva; en curvas encadenadas quedaban cues de curvas vecinas a <1 s
+    # (sopa de tonos, QA 2026-07-05). _resolve_min_gap (compartida con
+    # build_voice_pack, ADR 0024 enmienda "notas de voz") resuelve esto.
+    kept_sound, skipped_sound = _resolve_min_gap(sound_events, min_gap_m)
+    kept_silent, skipped_silent = _resolve_min_gap(silent_events, min_gap_m)
     kept = sorted(kept_sound + kept_silent, key=lambda c: c["distance"])
     skipped_global = skipped_sound + skipped_silent
 
@@ -480,7 +465,31 @@ def _run_async_in_thread(coro):
         raise exc[0]
 
 
-def build_voice_pack(rows, corners, outdir, top=5, lang="es-MX", track_name=None) -> dict:
+def build_voice_pack(
+    rows,
+    corners,
+    outdir,
+    top=5,
+    lang="es-MX",
+    track_name=None,
+    min_gap_m=DEFAULT_MIN_GAP_M,
+    voice_lead_s=DEFAULT_VOICE_LEAD_S,
+) -> dict:
+    """Genera un pack de notas de VOZ (edge-tts), una por curva top-N.
+
+    Pasa por el MISMO gap minimo global que ``plan_tone_events``
+    (``_resolve_min_gap``, ADR 0024) para que dos narraciones de curvas
+    encadenadas no se encimen — antes este pack no aplicaba ningun gap entre
+    curvas (ROADMAP: "las notas de VOZ no pasan por el plan anti-
+    saturacion"). El limite de una nota por curva es estructural (un
+    candidato por fila, milestone de frenada), sin necesidad de un
+    ``max_events_per_corner`` explicito.
+
+    El anticipo (antes 200 m fijos) se deriva ahora de la velocidad de
+    llegada a la frenada, igual criterio que el countdown de tonos
+    (``_voice_lead_m``): el tiempo de reaccion se mide en segundos, no en
+    metros.
+    """
     if importlib.util.find_spec("edge_tts") is None:
         raise RuntimeError("edge-tts no instalado: ejecuta pip install 'fantasma-inputs[voice]'")
 
@@ -498,6 +507,7 @@ def build_voice_pack(rows, corners, outdir, top=5, lang="es-MX", track_name=None
         metadata_path = _write_metadata(out, entries, track_name=track_name)
         return {"outdir": str(out), "files": [str(metadata_path)], "entries": 0}
 
+    candidates = []
     for row in _top_rows(rows, top):
         corner = _find_corner(row, corners)
         if not corner:
@@ -505,19 +515,37 @@ def build_voice_pack(rows, corners, outdir, top=5, lang="es-MX", track_name=None
         brake = _milestone(corner, "brake") or _milestone(row, "brake")
         if not brake or brake.get("d") is None:
             continue
-        raw_distance = _as_float(brake["d"]) - 200
+        name = _corner_name(row, corner)
+        raw_distance = _as_float(brake["d"]) - _voice_lead_m(brake, voice_lead_s)
         if raw_distance <= 0:
             # La nota caeria antes de la meta (curva pegada al inicio): saltarla,
             # no clampear a 0 — una voz en t=0 del video suena aleatoria. Con
             # aviso: un descarte silencioso hace creer que edge-tts fallo.
             print(
-                "aviso: nota de voz de %s descartada (caeria antes de la meta)"
-                % _corner_name(row, corner),
+                "aviso: nota de voz de %s descartada (caeria antes de la meta)" % name,
                 file=sys.stderr,
             )
             continue
-        distance = int(round(raw_distance))
-        name = _corner_name(row, corner)
+        # Prioridad = tiempo perdido: si dos narraciones colisionan por el gap
+        # global, sobrevive la curva donde mas se pierde (la que mas vale la
+        # pena narrar). "row" viaja aparte (_event no lo conoce) para
+        # recuperar flags/time_lost al armar el texto tras el gap.
+        priority = int(round(_as_float(row.get("time_lost", 0)) * 100))
+        candidate = _event(row, corner, "voice", raw_distance, priority, "nota de voz")
+        candidate["row"] = row
+        candidates.append(candidate)
+
+    kept, skipped = _resolve_min_gap(candidates, min_gap_m)
+    for c in skipped:
+        print(
+            "aviso: nota de voz de %s descartada (muy cerca de otra narracion)" % c["corner_name"],
+            file=sys.stderr,
+        )
+
+    for event in sorted(kept, key=lambda c: c["distance"]):
+        row = event["row"]
+        name = event["corner_name"]
+        distance = event["distance"]
         filename = "%d_0.wav" % distance
         text = _voice_text(row, name)
         with tempfile.TemporaryDirectory() as tmp:
@@ -553,10 +581,19 @@ def build_voice_pack(rows, corners, outdir, top=5, lang="es-MX", track_name=None
     return {"outdir": str(out), "files": files, "entries": len(entries)}
 
 
+# Kwargs de build_pack que solo entiende build_voice_pack (min_gap_m,
+# voice_lead_s): se excluyen de tone_kwargs (build_tone_pack no los acepta,
+# TypeError si se colaran en modo "both") y se reenvian aparte a
+# build_voice_pack -- mismo criterio que "lang", que ya se excluia de
+# tone_kwargs por la misma razon.
+_VOICE_ONLY_KWARGS = ("min_gap_m", "voice_lead_s")
+
+
 def build_pack(rows, corners, outdir, mode="tones", top=5, cue_config=None, **kwargs) -> dict:
     track_name = kwargs.pop("track_name", None)
+    voice_kwargs = {k: kwargs[k] for k in _VOICE_ONLY_KWARGS if k in kwargs}
     if mode == "tones":
-        tone_kwargs = {k: v for k, v in kwargs.items() if k != "lang"}
+        tone_kwargs = {k: v for k, v in kwargs.items() if k != "lang" and k not in voice_kwargs}
         return build_tone_pack(
             rows,
             corners,
@@ -568,18 +605,30 @@ def build_pack(rows, corners, outdir, mode="tones", top=5, cue_config=None, **kw
         )
     if mode == "voice":
         return build_voice_pack(
-            rows, corners, outdir, top=top, lang=kwargs.get("lang", "es-MX"), track_name=track_name
+            rows,
+            corners,
+            outdir,
+            top=top,
+            lang=kwargs.get("lang", "es-MX"),
+            track_name=track_name,
+            **voice_kwargs,
         )
     if mode != "both":
         raise ValueError("modo invalido: %s" % mode)
 
-    tone_kwargs = {k: v for k, v in kwargs.items() if k != "lang"}
+    tone_kwargs = {k: v for k, v in kwargs.items() if k != "lang" and k not in voice_kwargs}
     tones = build_tone_pack(
         rows, corners, outdir, top=top, track_name=track_name, cue_config=cue_config, **tone_kwargs
     )
     tone_entries = _read_entries(Path(outdir) / "metadata.json")
     voice = build_voice_pack(
-        rows, corners, outdir, top=top, lang=kwargs.get("lang", "es-MX"), track_name=track_name
+        rows,
+        corners,
+        outdir,
+        top=top,
+        lang=kwargs.get("lang", "es-MX"),
+        track_name=track_name,
+        **voice_kwargs,
     )
     voice_entries = _read_entries(Path(outdir) / "metadata.json")
     _write_metadata(Path(outdir), tone_entries + voice_entries, track_name=track_name)
@@ -685,6 +734,65 @@ def _countdown_lead_m(brake, countdown_m, countdown_gap_s, min_lead_m=30, max_le
         return countdown_m
     lead = _as_float(v) / 3.6 * countdown_gap_s * 2
     return max(min_lead_m, min(max_lead_m, lead))
+
+
+def _resolve_min_gap(evs, min_gap_m):
+    """Gap minimo GLOBAL entre eventos candidatos, compartido por
+    ``plan_tone_events`` y ``build_voice_pack`` (ADR 0024, enmienda "notas de
+    voz" — antes vivia como funcion anidada solo dentro de plan_tone_events).
+
+    Un evento PROTEGIDO (p.ej. el tono de frenada, R1) nunca se descarta:
+    protegido vs protegido se quedan ambos (dos frenadas reales pegadas
+    siguen sonando ambas); protegido vs no-protegido cae el no-protegido.
+    Entre no-protegidos gana el de mayor ``priority``; en empate sobrevive el
+    que aparece primero (orden de distancia). Nota: al reemplazar al vecino
+    anterior no hace falta re-verificar hacia atras — el reemplazado ya
+    respetaba el gap con su predecesor y el nuevo esta aun mas adelante.
+
+    build_voice_pack NO marca sus eventos como protegidos: la garantia R1 es
+    una decision especifica del beep de frenada (0.12 s, nunca se pisa de
+    verdad); una narracion hablada de ~7.5 s si debe poder ceder su hueco
+    ante una curva vecina, o dos frases se encabalgan (ROADMAP, deuda "las
+    notas de VOZ no pasan por el plan anti-saturacion").
+    """
+    evs = sorted(evs, key=lambda c: c["distance"])
+    kept = []
+    skipped = []
+    for event in evs:
+        if kept and event["distance"] - kept[-1]["distance"] < min_gap_m:
+            prev = kept[-1]
+            ev_prot = event.get("protected")
+            prev_prot = prev.get("protected")
+            if ev_prot and prev_prot:
+                kept.append(event)
+            elif ev_prot and not prev_prot:
+                skipped.append({**kept.pop(), "reason": "too_close_global"})
+                kept.append(event)
+            elif prev_prot and not ev_prot:
+                skipped.append({**event, "reason": "too_close_global"})
+            elif event["priority"] > prev["priority"]:
+                skipped.append({**kept.pop(), "reason": "too_close_global"})
+                kept.append(event)
+            else:
+                skipped.append({**event, "reason": "too_close_global"})
+        else:
+            kept.append(event)
+    return kept, skipped
+
+
+def _voice_lead_m(brake, lead_s):
+    """Anticipo (m) de una nota de VOZ antes del punto de frenada.
+
+    Ver DEFAULT_VOICE_LEAD_S: lead_m = v/3.6 * lead_s, acotado a
+    [DEFAULT_VOICE_LEAD_MIN_M, DEFAULT_VOICE_LEAD_MAX_M]. Sin ``v`` en el
+    milestone, cae a DEFAULT_VOICE_LEAD_FALLBACK_M (el fijo de 200 m que este
+    modulo ya usaba antes de este fix).
+    """
+    v = brake.get("v")
+    if not v:
+        return DEFAULT_VOICE_LEAD_FALLBACK_M
+    lead = _as_float(v) / 3.6 * lead_s
+    return max(DEFAULT_VOICE_LEAD_MIN_M, min(DEFAULT_VOICE_LEAD_MAX_M, lead))
 
 
 def _cue_cfg(cue_config, cue):

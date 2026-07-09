@@ -39,6 +39,10 @@ class _SimpleState:
         self.gear_shifts = None
         self.last_overlay = None
         self.last_pacenotes = None
+        self.active_overlay_job = None
+        self.auto_compose = False
+        self.pending_autocompose = False
+        self.active_overlay_job = None
 
 
 class _NoOpTimer:

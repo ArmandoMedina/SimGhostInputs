@@ -183,6 +183,15 @@ Si usas `fantasma-ng`, el Paso 4 incluye un botón «Detectar sincronía automá
 
 El **Paso 3 (flujo «Video con HUD»)** incluye un checkbox «Al terminar, componer automáticamente»: al activarlo, al finalizar el overlay la app navega al Paso 4 y lanza la composición sin intervención; al terminar el compose recibirás una notificación de escritorio (o un aviso en pantalla si el navegador no lo soporta).
 
+> **¿Puedo navegar a otro paso mientras el overlay está renderizando?** Sí. El render sigue en
+> background aunque salgas del Paso 3 (o refresques la página en la misma pestaña); si vuelves
+> mientras todavía está en curso, la app lo detecta y reengancha la barra de progreso en vez de
+> arrancar un segundo render sobre la misma carpeta de salida (lo que podría corromper el `.webm`).
+> No hace falta esperar en la pantalla del Paso 3 para que el render avance — pero si activaste
+> «componer automáticamente», ese paso a Componer solo se dispara cuando vuelves al Paso 3 (o te
+> quedas en él) y el render ya terminó. Evita abrir el mismo flujo en dos pestañas o ventanas a la
+> vez: cada una lleva su propio seguimiento del render y no se detectan entre sí.
+
 El **Paso 4** incluye una sección opcional **«Pace Notes en el video compuesto»**: activa el checkbox e indica la carpeta del pack generado en el Paso 5; los WAVs se mezclan en el audio del video final durante el compose. Si ya tienes un video compuesto al que solo quieres añadir el sonido del pack, usa el panel «Aplicar sonido a un video existente» del Paso 5 (sin re-encodear).
 
 Dentro de esa misma sección, la casilla **«Quemar subtítulos de cues (nombra cada sonido + leyenda)»** rotula sobre el video, en el instante exacto de cada sonido, una etiqueta con color por tipo de cue más el nombre de la curva —sincronizada con el tono— más una leyenda de colores fija arriba a la izquierda. Solo se rotulan los cues habilitados en el Paso 5 (coast incluido, con la etiqueta «inercia»); si apagaste un cue, no aparece su subtítulo. La duración de cada rótulo es **adaptativa**: dura hasta que entra el siguiente cue (con un respiro breve), acotada entre un mínimo legible y un máximo, en vez de una ventana fija — así no se apaga antes de tiempo ni queda un rótulo viejo colgado en una recta larga. Es la forma más rápida de revisar o aprender un pack de cues antes de llevarlo a pista: detalle del código de colores en la [referencia del HUD](hud-reference.md) y diseño completo en el [ADR 0027](decisions/0027-cues-catalogo-configurable-perfiles-coast-subtitulos.md).

@@ -80,7 +80,9 @@ jobs:
 
       - name: Install package with test extras
         # [ui-ng] agrega NiceGUI (UI v2.0). [sync] aporta numpy/scipy para viz/sync. ffmpeg NO es necesario.
-        run: pip install -e ".[test,ui-ng,sync]"
+        # [voice] aporta edge-tts, que los tests de build_voice_pack (anti-saturación de notas de voz)
+        # importan para monkeypatchear Communicate (mockean la red/ffmpeg, pero necesitan el módulo).
+        run: pip install -e ".[test,ui-ng,sync,voice]"
 
       - name: Run pytest
         run: pytest --ignore=tests/ui/visual

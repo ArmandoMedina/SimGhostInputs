@@ -252,6 +252,14 @@ depender de que invoques nada. La mueven los **hooks de sesión** (`Stop`) en `.
   rastro. El marcador `.claude/.mariana-marker` queda como respaldo para el caso raro de aprobar
   sin artefacto. Ver [ADR 0011](decisions/0011-cablear-mariana-no-charbel.md).
 
+**Si git falla de verdad, el hook avisa, no calla.** Los tres hooks de sesión revisan sus llamadas
+reales a `git status`/`git diff` (no solo interpretan "sin salida" como "sin cambios"): si git falla
+de verdad (no instalado, repo corrupto, permisos — no el caso normal de "nada que revisar"), el hook
+deja un `additionalContext` de aviso y sigue **sin bloquear** (corrección de auditoría, `fase3-hooks.md`
+ALTO-04; el resto de hallazgos de esa auditoría —hooks ciegos ante código ya commiteado, markers
+seteables a mano, evidencia de Mariana sin validar relevancia— se mitigan por disciplina de proceso,
+no por código: ver [ADR 0019](decisions/0019-adopcion-homologacion-starter-v0.5.0.md)).
+
 Ambos son **auto-terminantes**: bloquean solo mientras falte el paso. Es poka-yoke: *el sistema no te
 deja olvidar; y si algo se cuela, el bloqueo del push (doc-gate §8) + git (todo reversible) te dejan corregir.*
 
@@ -376,6 +384,15 @@ Corregido aquí para que la próxima sesión delegue la lectura voluminosa **por
 subagente pero luego corrió `git push` **en sesión** — incongruente. La delegación no es solo de lectura;
 cubre la **ejecución mecánica de git**. Corregido en la *regla dura* de arriba: si el commit va por
 agente, el push también.
+
+**Lección del cuarto caso real (cerrar deuda técnica, 2026-07-09):** el orquestador lanzó **5 subagentes
+worktree pesados** (skill Ahiram, cada uno explora+codea+testea+abre PR) en paralelo, más su propio
+trabajo en el hilo principal — agotó la cuota de sesión de la cuenta de golpe; los 5 fallaron a mitad de
+tarea (nada se perdió: cada worktree conserva su diff en disco). **Regla dura, ahora mecánica, no de
+juicio:** un hook global (`~/.claude/hooks/agent-concurrency-gate.ps1`, fuera del repo — ver
+[`docs/recursos-del-proyecto.md`](recursos-del-proyecto.md)) topa a **3 los agentes con `isolation:
+"worktree"` corriendo en los últimos 20 minutos**; el 4º se deniega solo, sin que el orquestador tenga
+que "acordarse" de contar. Detalle completo en [ADR 0019, enmienda 2026-07-09](decisions/0019-adopcion-homologacion-starter-v0.5.0.md).
 
 ### La frontera de versión (de vez en cuando)
 

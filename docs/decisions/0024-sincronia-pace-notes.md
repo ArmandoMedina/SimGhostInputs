@@ -1,6 +1,6 @@
 # ADR 0024 — Sincronía de pace notes: anticipación por tiempo, gap global y sidecar video↔vuelta
 
-- **Estado:** Aceptada · enmendada por [ADR 0025](0025-countdown-ancla-en-la-frenada.md) y [ADR 0026](0026-cues-frenada-universal-countdown-oportunista.md) (2026-07-06)
+- **Estado:** Aceptada · enmendada por [ADR 0025](0025-countdown-ancla-en-la-frenada.md), [ADR 0026](0026-cues-frenada-universal-countdown-oportunista.md) (2026-07-06) y una enmienda propia sin ADR nuevo (2026-07-09, "notas de voz")
 - **Fecha:** 2026-07-05
 
 > **Enmienda (ADR 0025):** el countdown ya no es un WAV único de 3 tics en el punto de
@@ -11,6 +11,14 @@
 > **Enmienda (ADR 0026):** el gap global por prioridad (punto 2) ya no puede descartar un
 > tono de frenada — la frenada queda protegida y suena universal. El countdown deja de
 > depender de severidad/prioridad y pasa a tics oportunistas por cabida.
+>
+> **Enmienda (2026-07-09, "notas de voz"):** los puntos 1–3 de este ADR (descarte en vez de
+> clamp, gap mínimo global, anticipo por tiempo) se aplicaban solo a `plan_tone_events` /
+> `build_tone_pack`. `build_voice_pack` los reimplementaba a medias por su cuenta: sí
+> descartaba `distance<=0`, pero con un anticipo fijo de 200 m (no por tiempo) y **sin ningún
+> gap entre curvas** — dos frenadas cercanas podían narrar frases de ~7.5 s que se encimaban
+> (deuda del ROADMAP, señalada originalmente por el Reviewer sobre este mismo ADR). Ver
+> sección "Enmienda: notas de voz" más abajo para el detalle del fix.
 
 ## Contexto
 
@@ -82,6 +90,60 @@ Cinco cambios en el motor (`fantasma/viz/pacenotes.py`, `fantasma/viz/compose.py
 - **Ducking/limiter en la mezcla** para el riesgo de clipping de `normalize=0`: se difiere — el
   tono es breve y el WAV ya viene acotado; si aparece distorsión audible, bajar `volume` del cue o
   añadir `alimiter` (nota en `_audio_mix_filter`).
+
+## Enmienda: notas de voz pasan por el mismo plan anti-saturación (2026-07-09)
+
+**Problema.** `build_voice_pack` (`fantasma/viz/pacenotes.py`) no llamaba a `plan_tone_events`:
+recalculaba su propia selección de curvas top-N y su propio descarte de `distance<=0`, pero con
+un anticipo **fijo de 200 m** (el mismo defecto que tenían los 120 m del countdown antes de este
+ADR, corregido entonces solo para tonos) y **sin ningún gap mínimo entre curvas**. Dos frenadas
+cercanas generaban dos narraciones de ~7.5 s que se encimaban en el audio final — síntoma
+observado en la demo `_DEMO_VOZ_referencia`, deuda anotada en el ROADMAP.
+
+**Decisión.** En vez de que `build_voice_pack` reimplemente su propio descarte/gap, reutiliza el
+mecanismo ya existente:
+
+1. El gap mínimo global de `plan_tone_events` (antes una función anidada, `_resolve_min_gap`) se
+   extrajo a función de módulo para poder compartirla sin duplicar la lógica. `build_voice_pack`
+   arma sus candidatos (uno por curva top-N, igual que antes) y los pasa por
+   `_resolve_min_gap(candidates, min_gap_m)` con el mismo `min_gap_m` por defecto (50 m) que usa
+   `plan_tone_events`.
+2. A diferencia del tono de frenada, los eventos de voz **no se marcan como protegidos**: la
+   garantía "nunca se descarta" (R1, ADR 0026) es una decisión específica del beep de 0.12 s, que
+   en la práctica casi nunca se pisa de verdad. Una narración hablada de ~7.5 s sí necesita poder
+   ceder su hueco — si no, el gap sería cosmético y el bug seguiría ahí. Al colisionar dos
+   narraciones, sobrevive la de la curva con más `time_lost` (la que más vale la pena narrar).
+3. El anticipo pasa de metros fijos a **tiempo**: `_voice_lead_m` deriva `lead_m` de la velocidad
+   de llegada a la frenada (`v` del milestone) igual criterio que `_countdown_lead_m` — el oído
+   juzga en segundos, no en metros. Nuevo parámetro `voice_lead_s` (`DEFAULT_VOICE_LEAD_S = 4.0`),
+   acotado a `[60, 400]` m. Sin `v` en el milestone (corners JSON viejos, tests sintéticos), cae al
+   anticipo fijo histórico de 200 m — no-regresión exacta para esos casos.
+
+**Qué NO cambia.** El límite de ~1 nota de voz por curva sigue siendo estructural (un candidato
+por fila con milestone de frenada) — no se agregó un `max_events_per_corner` explícito porque no
+hace falta. El número de curvas narradas por defecto (`top`) no cambia.
+
+**Wiring y efecto secundario benigno (`/code-review` sobre este mismo fix).** `build_pack` ya
+reenviaba los kwargs de `build_tone_pack` desde su punto de entrada público, pero no hacía lo
+mismo con los nuevos `min_gap_m`/`voice_lead_s` de `build_voice_pack` — quedaban inalcanzables
+desde `mode="voice"`/`"both"`. Corregido reenviándolos igual que el resto. Como efecto colateral,
+las entradas de `metadata.json` del pack de voz ahora quedan ordenadas por **distancia** (antes,
+por orden de mayor `time_lost`, el mismo orden en que `_top_rows` procesa las curvas) — esto
+iguala el criterio que `build_tone_pack` ya usaba (su `plan["events"]` siempre sale ordenado por
+distancia) y no afecta a ningún consumidor: `render_pace_notes_track` mezcla cada entrada de forma
+independiente por su `distanceRoundTrack`, y `build_cue_ass` reordena sus rótulos por tiempo antes
+de emitirlos.
+
+**Comportamiento observable pendiente del oído del PO.** Con telemetría real (que sí trae `v` en
+los milestones), las distancias narradas cambian levemente respecto al fijo de 200 m — más
+anticipo en curvas rápidas, menos en curvas lentas, igual que ya ocurre con el countdown de
+tonos. El gap de 50 m entre curvas es el mismo default que tonos; no se subió pese a que una
+frase de voz dura mucho más que un tono de 0.12 s (podría no bastar para evitar TODO solape a
+velocidades muy altas) — se mantiene el mismo número para no reinventar un segundo criterio sin
+evidencia de oído; si el PO sigue escuchando solapes tras este fix, subir `min_gap_m` para el pack
+de voz es el siguiente paso, no un rediseño. El modo `"both"` (tonos + voces) sigue sin gap
+cruzado entre ambos packs — cada uno resuelve el suyo por separado (deuda nueva en el ROADMAP,
+fuera de alcance de este fix).
 
 ## Consecuencias
 
