@@ -4,6 +4,8 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/). Versionado
 
 ## [Unreleased]
 
+## [2.3.1] - 2026-07-09
+
 ### Corregido
 - **El job `release.yml` (build del instalador Windows) fallaba en "Install deps"** (`.github/workflows/release.yml`): intentaba `pip install nicegui-pack` como paquete separado de PyPI, pero `nicegui-pack` no existe ahí — es un script (`nicegui-pack.exe`) que viene incluido dentro del propio paquete `nicegui` (ya instalado vía el extra `ui-ng`). El bug estaba desde el ADR 0022 (2026-07-05) pero nunca se había ejecutado porque no se cortó ningún release hasta v2.3.0. Destapado al cortar v2.3.0.
 - **El job `release.yml` fallaba luego en "Build bundle + installer"** (`pyproject.toml`, `tools/build_installer.py`): `nicegui-pack` invoca `pyinstaller` como subproceso, pero `pyinstaller` no estaba declarado como dependencia en ningún lado — `nicegui` 3.14 no lo trae ni expone un extra `[pack]` propio (sus extras son `altair, anywidget, highcharts, matplotlib, native, plotly, redis`), así que la sugerencia `pip install nicegui[pack]` que imprimía el propio `build_installer.py` tampoco habría funcionado. El síntoma era un `FileNotFoundError: [WinError 2]` opaco desde `subprocess.call` dentro de `nicegui/scripts/pack.py`. Pasaba desapercibido en local porque las máquinas de desarrollo tenían PyInstaller instalado a mano. Nace el extra **`pack = ["pyinstaller>=6,<7"]`**; `build_installer.py` ahora verifica `pyinstaller` en el PATH por adelantado y con un mensaje que sí resuelve el problema. Verificado con un build completo en Windows: bundle de 363.3 MB, `SimGhostInputs.exe` de 28.7 MB.
