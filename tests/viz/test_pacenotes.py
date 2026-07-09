@@ -1358,6 +1358,30 @@ def test_build_tone_pack_silent_wav_es_inaudible_y_valido(tmp_path):
     assert set(frames) == {0}, "el silent.wav debe ser todo ceros (inaudible)"
 
 
+def test_write_silent_wav_regenera_wav_corrupto(tmp_path):
+    """Hardening #9: _write_silent_wav SIEMPRE escribe (ya no usa el guard
+    `if not path.exists()`), igual que los WAV sonoros. Asi un silent.wav
+    truncado/corrupto de una corrida interrumpida se regenera a un WAV valido
+    en vez de quedar como el WAV-que-CrewChief-no-puede-cargar que #9 cierra.
+    Con el viejo guard este test fallaba: el archivo existia y no se
+    reescribia, dejando la cabecera truncada."""
+    import wave
+
+    from fantasma.viz.pacenotes import _SILENT_WAV_NAME, _write_silent_wav
+
+    corrupt = tmp_path / _SILENT_WAV_NAME
+    corrupt.write_bytes(b"RIFF\x00\x00")  # cabecera truncada: no cargable como WAV
+    name = _write_silent_wav(tmp_path)
+    assert name == _SILENT_WAV_NAME
+    # Se regenero a un WAV mono 16-bit valido y de amplitud cero (inaudible).
+    with wave.open(str(corrupt), "rb") as wav:
+        assert wav.getnchannels() == 1
+        assert wav.getsampwidth() == 2
+        frames = wav.readframes(wav.getnframes())
+    assert wav.getnframes() > 0
+    assert set(frames) == {0}
+
+
 def test_build_cue_ass_gear_rotula_cambio_de_marcha(tmp_path, lap_factory):
     """Un cue gear se rotula 'cambio a 3ª' bajo la etiqueta 'cambio de
     marcha', con su color propio -- aunque no tenga WAV asociado."""

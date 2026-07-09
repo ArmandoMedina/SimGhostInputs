@@ -1452,12 +1452,19 @@ def _write_silent_wav(outdir):
 
     Se sintetiza con generate_tone a volumen 0 -> PCM de ceros, un WAV mono
     16-bit valido, misma tuberia (_float_to_wav/_make_wav_bytes) que los cues
-    con sonido; solo el contenido es nulo. Idempotente: si ya existe no lo
-    reescribe. Devuelve el NOMBRE de archivo (relativo, como los cues sonoros).
+    con sonido; solo el contenido es nulo. Devuelve el NOMBRE de archivo
+    (relativo, como los cues sonoros).
+
+    Hardening #9: escribe SIEMPRE, igual que los WAV sonoros (que se
+    sobreescriben incondicionalmente), en vez del viejo guard `if not
+    path.exists()`. Un dir de salida reutilizado con un `silent.wav`
+    truncado/corrupto de una corrida interrumpida NO se regeneraba y quedaba
+    justo como el WAV-que-CrewChief-no-puede-cargar que #9 busca cerrar. El
+    contenido es determinista (~1 KB de ceros), asi que el resultado es
+    identico al de hoy en el caso sano y AUTO-REPARA el caso corrupto.
     """
     path = outdir / _SILENT_WAV_NAME
-    if not path.exists():
-        path.write_bytes(generate_tone(440.0, _MIN_TONE_DURATION, volume=0.0))
+    path.write_bytes(generate_tone(440.0, _MIN_TONE_DURATION, volume=0.0))
     return _SILENT_WAV_NAME
 
 
