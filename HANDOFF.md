@@ -12,6 +12,29 @@
 
 ## Estado actual
 
+**2026-07-08 tarde/noche — fix `gear` vs `coast` cerrado y pusheado, cinta E2E pendiente de rerun.**
+El PO reportó 5 problemas de audio/subtítulos sobre `2_estudio_coast_ADR0027.mp4` (plan
+`~/.claude/plans/squishy-herding-pearl.md`): prioridades reordenadas, countdown a 0.75s uniforme,
+tabla de frecuencias nueva, cue `gear` (cambio de marcha, solo subtítulo) implementado end-to-end —
+todo eso ya commiteado en sesiones previas (`8b5b8cc`..`bfaee58`). Al probar con la UI real, activar
+`gear` desalojaba **todos** los `coast` de la vuelta (mismo pool de cabida global) — bug real, no de
+test. Fix en `3eb6688`: `plan_tone_events` resuelve la cabida en dos pools independientes
+(sonoro/mudo); mismo fix aplicado al timeline de `brake_tic`. Code review (8 ángulos) + pytest
+completo verde. ADR 0028 enmendado, `formato-datos.md` corregido.
+
+**Pendiente para la próxima sesión:** la cinta E2E de verificación (Playwright, Flujo A+B) se corrió
+5 veces; la última (con el fix completo) **pasó el Flujo A** (pack con `coast_entries` y
+`gear_entries` presentes — el fix está confirmado con datos reales) pero **el Flujo B murió en un
+timeout de Playwright** haciendo clic en "Ir al Paso 4" tras generar el overlay (30s excedidos,
+`tests/ui/visual/test_e2e_cinta_estudio_subtitulada.py:384`) — no hubo tiempo de re-lanzar otra
+corrida de ~12 min antes del límite que pidió el PO. Parece timing/UI (Nordschleife es larga, el
+overlay puede tardar y el botón no estaba listo o el estado tardó en propagar), no una regresión de
+datos, pero falta confirmarlo. **Próximo paso: re-correr ese test, y si vuelve a fallar en el mismo
+punto, investigar el timing del Paso 3→4 (¿aumentar `_T_RENDER`? ¿el botón queda deshabilitado un
+tick extra tras "Overlay generado:"?).** Cuando pase, el entregable es
+`2_estudio_reencuadre_ADR0028.mp4` (overlay a 0.5x) + evidencia en `qa_runs/cinta-adr0028/`, y toca
+subirlo a Drive/OneDrive y avisar al PO (pedido explícito, no descartar el paso).
+
 **Release "cues configurables" — PR #35 abierto, en revisión del PO.** El rediseño completo (WS-1 a
 WS-6 del plan) está hecho, pusheado y con **PR paraguas abierto**: [#35](https://github.com/ArmandoMedina/SimGhostInputs/pull/35)
 `feat/cues-configurables` → `master`, absorbe #29 y #32. Todo en la rama, nada fundido — **el merge lo
