@@ -1,7 +1,7 @@
 """Comparacion piloto vs referencia, por distancia (no por tiempo)."""
 
 from . import wear
-from .corners import detect_corners, extract_milestones, samples
+from .corners import detect_corners, extract_milestones, samples, select_brake_phase
 from .normalize import resample
 
 
@@ -318,7 +318,18 @@ def _segment(corner):
 
 
 def _corner_metrics(corner, lap_data):
-    """Metricas del piloto dentro del segmento de una curva de la referencia."""
+    """Metricas del piloto en una curva de la referencia.
+
+    La frenada se detecta con el helper compartido `select_brake_phase` sobre la
+    MISMA ventana ampliada que uso la referencia (`brake_window_m`, publicada por
+    `extract_milestones`) -- no con el segmento por punto medio. Ese es el
+    arreglo: antes este metodo tenia su propia copia del algoritmo de frenada y
+    su propia ventana (el segmento), asi que `d_brake_m` salia asimetrico y
+    levantaba banderas `"frenada"` espurias aunque el piloto frenara en el mismo
+    metro que la referencia. Si la curva no trae `brake_window_m` (corners.json
+    antiguo o curvas escritas a mano), se cae al segmento como respaldo. El resto
+    de metricas (vmin, gas100) sigue acotado al segmento.
+    """
     lo, hi = _segment(corner)
     seg = [s for s in lap_data if lo <= s["dist"] <= hi]
     if not seg:
@@ -329,19 +340,11 @@ def _corner_metrics(corner, lap_data):
     out["vmin_d"] = round(vmin["dist"])
     if "gear" in vmin:
         out["vmin_gear"] = int(vmin["gear"])
-    blocks, cur = [], None
-    for s in seg:
-        if s.get("brake", 0) > 10:
-            if cur and s["time"] - cur[-1]["time"] < 0.3:
-                cur.append(s)
-            else:
-                cur = [s]
-                blocks.append(cur)
-    strong = [b for b in blocks if max(x["brake"] for x in b) >= 50]
-    blk = (strong or blocks or [None])[-1] if (strong or blocks) else None
-    if blk:
-        out["brake_d"] = round(blk[0]["dist"])
-        out["brake_pct"] = round(max(x["brake"] for x in blk))
+    brake_window = corner.get("brake_window_m") or [lo, hi]
+    phase, _ = select_brake_phase(lap_data, brake_window)
+    if phase:
+        out["brake_d"] = round(phase[0]["dist"])
+        out["brake_pct"] = round(max(s["brake"] for s in phase))
     g100 = next((s for s in seg if s["dist"] > vmin["dist"] and s.get("throttle", 0) >= 98), None)
     if g100:
         out["gas100_d"] = round(g100["dist"])

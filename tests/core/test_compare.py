@@ -182,3 +182,72 @@ def test_compare_sin_aviso_piloto_mas_lento():
     _, _, summary = compare(ref, drv, step=5.0)
     avisos = summary.get("avisos", [])
     assert not any("piloto más rápido" in a for a in avisos)
+
+
+# ---------------------------------------------------------------------------
+# Frenada simétrica — referencia y piloto se miden con la MISMA vara
+#
+# El punto de frenada se detectaba en DOS sitios que divergieron: la referencia
+# en corners.extract_milestones (ventana ampliada + fases por pico máximo) y el
+# piloto en compare._corner_metrics (ventana del segmento + "último bloque
+# fuerte"). Esa asimetría inflaba `d_brake_m` y levantaba banderas "frenada"
+# espurias. El helper compartido `select_brake_phase` las mide igual.
+# ---------------------------------------------------------------------------
+
+
+def _single_corner_lap(brake_blocks, apex=400.0, length_m=900.0, base_speed=180.0):
+    """Vuelta de UNA curva (V-Min en `apex`) con el canal de freno escrito a mano
+    a partir de `brake_blocks` = [(d0, d1, peak), ...]; el resto de canales sale
+    de la forma del valle de make_lap. Controla con precisión dos fases fuertes
+    de freno (doble pisada) para provocar la divergencia de algoritmos."""
+    lap = make_lap(
+        length_m=length_m,
+        base_speed=base_speed,
+        valleys=[{"center": apex, "vmin": 80.0, "half_width": 200.0, "direction": "right"}],
+        channels=("throttle", "brake", "steering", "gear", "glat", "glong"),
+    )
+    dist = lap.channels["dist"]
+    brake, throttle = [], []
+    for d in dist:
+        pk = 0.0
+        for d0, d1, p in brake_blocks:
+            if d0 <= d <= d1:
+                pk = max(pk, p)
+        brake.append(pk)
+        throttle.append(0.0 if (pk > 0 or d <= apex) else 100.0)
+    lap.channels["brake"] = brake
+    lap.channels["throttle"] = throttle
+    return lap
+
+
+def test_compare_same_lap_has_zero_d_brake_in_every_corner():
+    """Invariante: si el piloto y la referencia son la MISMA vuelta, entonces
+    `d_brake_m == 0` en TODAS las curvas. Con la asimetría de HEAD (la
+    referencia elige la fase de pico máximo, el piloto el último bloque fuerte)
+    una doble pisada da `d_brake_m != 0` comparando la vuelta contra sí misma:
+    la prueba más limpia de que la asimetría estaba viva. FALLA con HEAD."""
+    lap = _single_corner_lap([(200.0, 260.0, 95.0), (300.0, 360.0, 80.0)])
+    _, rows, _ = compare(lap, lap, step=5.0)
+    braked = [r for r in rows if "d_brake_m" in r]
+    assert braked, "se esperaba al menos una curva con frenada detectada"
+    assert all(r["d_brake_m"] == 0 for r in braked), (
+        "misma vuelta debe dar d_brake_m == 0; filas: %r"
+        % [(r["id"], r["d_brake_m"]) for r in braked]
+    )
+
+
+def test_driver_brake_anchors_on_first_of_double_pedal():
+    """El piloto también se beneficia del arreglo: ante una doble pisada fuerte
+    con el pico mayor en la PRIMERA, `drv_brake_d` ancla en la primera pisada,
+    no en la segunda. Con HEAD el piloto usaba "último bloque fuerte" y anclaba
+    en la segunda (~300); el helper compartido ancla en la de pico máximo
+    (~200). FALLA con HEAD."""
+    ref = _single_corner_lap([(210.0, 360.0, 95.0)])  # frenada limpia de un bloque
+    drv = _single_corner_lap([(200.0, 260.0, 95.0), (300.0, 360.0, 80.0)])  # doble pisada
+    _, rows, _ = compare(ref, drv, step=5.0)
+    braked = [r for r in rows if "drv_brake_d" in r]
+    assert braked, "se esperaba una curva con frenada del piloto"
+    assert braked[0]["drv_brake_d"] <= 260, (
+        "drv_brake_d debe anclar en la primera pisada (~200), no en la segunda (~300); valor: %r"
+        % braked[0]["drv_brake_d"]
+    )

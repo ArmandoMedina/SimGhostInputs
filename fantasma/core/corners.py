@@ -110,6 +110,61 @@ def detect_corners(lap, vmin_window_s=1.2, vmin_prominence_kmh=3.0, kink_glat=2.
     return events, data
 
 
+def select_brake_phase(lap_samples, window_m, brake_on=10, brake_strong=50, phase_gap_s=0.5):
+    """Elige la fase de frenada dentro de una ventana de busqueda.
+
+    Helper COMPARTIDO por `extract_milestones` (mide la referencia) y
+    `compare._corner_metrics` (mide al piloto). Vive aqui, en un solo sitio, a
+    proposito: cuando cada lado tenia su propia copia del algoritmo y su propia
+    ventana, `d_brake_m` salia asimetrico y levantaba banderas `"frenada"`
+    espurias incluso comparando una vuelta contra si misma. Con este helper
+    ambos lados se miden con la MISMA vara.
+
+    `window_m` = [lo, hi]: se consideran las muestras con `lo < dist <= hi`
+    (misma semantica excl-incl que la ventana de frenada ampliada
+    `brake_lo < dist <= apex`). Los puntos con `brake` > `brake_on` se agrupan
+    en bloques (hueco temporal intra-bloque < 0.3 s) y los bloques consecutivos
+    se funden en FASES cuando el hueco es < `phase_gap_s` y el coche sigue
+    desacelerando en el hueco (una suelta breve para rotar). El piso
+    `brake_strong` FILTRA las fases; entre las que quedan gana la de PICO
+    MAXIMO (desempate a la mas tardia); si ninguna alcanza el piso, la ultima
+    fase cronologica.
+
+    Devuelve `(chosen, phases)`: `chosen` es la fase elegida (lista de muestras)
+    o `None` si no hubo frenada; `phases` es la lista completa de fases -- la
+    necesita `brake_release`, que se ancla tras la ULTIMA fase cronologica.
+    """
+    lo, hi = window_m
+    win = [s for s in lap_samples if lo < s["dist"] <= hi]
+    blocks, cur = [], None
+    for s in win:
+        if s.get("brake", 0) > brake_on:
+            if cur and s["time"] - cur[-1]["time"] < 0.3:
+                cur.append(s)
+            else:
+                cur = [s]
+                blocks.append(cur)
+    if not blocks:
+        return None, []
+    phases = [list(blocks[0])]
+    for b in blocks[1:]:
+        prev_last = phases[-1][-1]
+        gap_s = b[0]["time"] - prev_last["time"]
+        still_braking = b[0]["speed"] <= prev_last["speed"] + 2.0
+        if gap_s < phase_gap_s and still_braking:
+            phases[-1].extend(b)
+        else:
+            phases.append(list(b))
+    peaks = [max(s["brake"] for s in ph) for ph in phases]
+    strong = [i for i, pk in enumerate(peaks) if pk >= brake_strong]
+    if strong:
+        top = max(peaks[i] for i in strong)
+        chosen = phases[max(i for i in strong if peaks[i] == top)]
+    else:
+        chosen = phases[-1]
+    return chosen, phases
+
+
 def extract_milestones(
     lap,
     events=None,
@@ -185,46 +240,17 @@ def extract_milestones(
         # previo (no se roba la frenada de la vecina anterior).
         prev_apex = apex_ds[n - 1] if n > 0 else None
         brake_lo = max(prev_apex, ad - 450) if prev_apex is not None else ad - 450
-        brake_pre = [s for s in data if brake_lo < s["dist"] <= ad]
-        blocks, cur = [], None
-        for s in brake_pre:
-            if s.get("brake", 0) > brake_on:
-                if cur and s["time"] - cur[-1]["time"] < 0.3:
-                    cur.append(s)
-                else:
-                    cur = [s]
-                    blocks.append(cur)
-        no_brake = not blocks
+        # Ventana de frenada publicada en el dict de la curva (`brake_window_m`)
+        # para que `compare._corner_metrics` mida al piloto con esta MISMA vara.
+        # Se redondea a enteros (igual que `segment_m`) y se usa ya redondeada
+        # aqui, de modo que la referencia y el piloto filtren por limites
+        # byte-identicos: esa es la condicion para que d_brake_m == 0 cuando son
+        # la misma vuelta.
+        brake_window = [round(brake_lo), round(ad)]
+        phase, phases = select_brake_phase(data, brake_window, brake_on, brake_strong, phase_gap_s)
+        no_brake = phase is None
         overlap = None
-        if blocks:
-            # Agrupar bloques en fases de frenada: se funden los consecutivos
-            # separados por < phase_gap_s cuando el coche sigue desacelerando en
-            # el hueco (v no sube > 2 km/h) -- una suelta breve para rotar, no
-            # una accion distinta. Cada fase se guarda ya aplanada en muestras;
-            # la condicion de fusion solo lee la ultima muestra de la fase.
-            phases = [list(blocks[0])]
-            for b in blocks[1:]:
-                prev_last = phases[-1][-1]
-                gap_s = b[0]["time"] - prev_last["time"]
-                still_braking = b[0]["speed"] <= prev_last["speed"] + 2.0
-                if gap_s < phase_gap_s and still_braking:
-                    phases[-1].extend(b)
-                else:
-                    phases.append(list(b))
-            # El piso es un FILTRO (que fases cuentan como frenada de verdad);
-            # la SELECCION dentro de lo que sobrevive obedece al criterio del
-            # PO: el cue marca donde empezar a cargar el pedal hacia el MAXIMO
-            # freno, asi que gana la fase de PICO MAXIMO, desempatando hacia la
-            # mas tardia (la que entra al apex). Si ninguna fase alcanza el
-            # piso, la ultima fase cronologica (un blip debil y previo del trail
-            # braking no adelanta el hito).
-            peaks = [max(s["brake"] for s in ph) for ph in phases]
-            strong = [i for i, pk in enumerate(peaks) if pk >= brake_strong]
-            if strong:
-                top = max(peaks[i] for i in strong)
-                phase = phases[max(i for i in strong if peaks[i] == top)]
-            else:
-                phase = phases[-1]
+        if phase is not None:
             bs = phase[0]
             bmax = max(phase, key=lambda s: s["brake"])
             ms["brake_start"] = _pt(bs, brake_pct=round(bmax["brake"]))
@@ -324,6 +350,7 @@ def extract_milestones(
             "milestones": ms,
             "no_brake": no_brake,
             "segment_m": [round(lo), round(hi)],
+            "brake_window_m": brake_window,
             "delta_s": round(seg[-1]["time"] - seg[0]["time"], 2),
         }
         if "steering" in ap and near:
