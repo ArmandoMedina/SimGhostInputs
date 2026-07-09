@@ -319,6 +319,21 @@ def test_brake_start_desempate_de_picos_iguales_gana_la_fase_mas_tardia():
     assert ms["brake_start"]["d"] != round(dist[60])
 
 
+def test_brake_start_dos_fases_fuertes_gana_la_temprana_de_pico_mayor():
+    # Dos fases FUERTES separadas (> phase_gap), la TEMPRANA con pico mayor
+    # (100%) que la tardia (90%). brake_start debe anclar en la TEMPRANA: el cue
+    # marca donde empezar a cargar el pedal hacia el maximo freno, y ese maximo
+    # esta en la primera pisada. Es la regresion de C05 sobre la vuelta real de
+    # Nordschleife (100% en d~1042, 90% en d~1117) capturada como test unitario.
+    # HEAD (534fdae, "ultima fase fuerte") elige la tardia y llega tarde; el fix
+    # ("fase de pico maximo") elige la temprana.
+    lap = _lap_brake_blocks(0.05, [(60, 90, 100.0), (140, 165, 90.0)])
+    dist = lap.channels["dist"]
+    ms = extract_milestones(lap)[0]["milestones"]
+    assert ms["brake_start"]["d"] == round(dist[60])
+    assert ms["brake_start"]["d"] != round(dist[140])
+
+
 def test_brake_release_cae_despues_de_una_reaplicacion_suave():
     # Fase A fuerte (pico 60%) -> release -> fase B suave (pico 20%) separada
     # por el gap. brake_release debe caer DESPUES de B (el piloto solto el freno
@@ -376,6 +391,31 @@ def test_turn_in_no_se_adelanta_con_volante_residual_encadenado():
     assert ms["brake_start"]["d"] < 600  # frena antes del punto medio del segmento
     assert "turn_in" in ms
     assert ms["turn_in"]["d"] > 700  # el giro real, no el volante residual (~600)
+
+
+def test_turn_in_recupera_cruce_entre_brake_start_y_segment_m0():
+    # Curva tras un kink: la frenada arranca en ~520, ANTES del punto medio del
+    # segmento (seg0 = 550). El volante cruza 8 grados (ascendente) en ~532, en
+    # la tierra de nadie entre brake_start (~520) y seg0 (550). HEAD (534fdae)
+    # busca turn_in solo dentro de `pre` (dist >= seg0) y pierde ese cruce -- es
+    # la perdida de C14. El fix busca desde brake_start (t0) y lo recupera.
+    valleys = [
+        {"center": 400.0, "vmin": 178.0, "half_width": 70.0, "direction": "left"},
+        {"center": 700.0, "vmin": 80.0, "half_width": 150.0, "direction": "right"},
+    ]
+    lap = make_lap(length_m=1100.0, base_speed=180.0, valleys=valleys)
+    dist = lap.channels["dist"]
+    lap.channels["brake"] = [90.0 if 520.0 <= d <= 700.0 else 0.0 for d in dist]
+    lap.channels["throttle"] = [0.0 if 500.0 <= d <= 700.0 else 100.0 for d in dist]
+    # volante a la derecha (positivo) que cruza 8 grados ascendente en ~532 y
+    # sigue subiendo hasta el apex (nunca vuelve a bajar del umbral).
+    lap.channels["steering"] = [min(25.0, 0.8 * (d - 522.0)) if d >= 522.0 else 0.0 for d in dist]
+    braking = next(c for c in extract_milestones(lap) if c["kind"] == "vmin")
+    ms = braking["milestones"]
+    assert braking["segment_m"][0] == 550
+    assert ms["brake_start"]["d"] < 550
+    assert "turn_in" in ms
+    assert 525 <= ms["turn_in"]["d"] < 550
 
 
 def test_turn_in_normal_con_volante_en_cero_se_detecta():
