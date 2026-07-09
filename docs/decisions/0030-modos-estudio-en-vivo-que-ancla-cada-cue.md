@@ -119,13 +119,20 @@ y **nunca debe ganar un WAV en el pack exportable**.
   `fantasma/viz/pacenotes.py:1070`, `:1080`). El ADR 0028 lo dejaba como "falta el audio, follow-up
   de menor riesgo"; este ADR aclara que, para el **pack exportable**, no es un follow-up
   pendiente: no debe tener audio nunca, porque el disparo por distancia sería dañino.
-- **Riesgo conocido (SIN verificar al 100 %): una lista de audio vacía podría reventar CrewChief en
-  pista.** La misma auditoría del código fuente detectó que `getRandomRecordingName()` indexa
-  `recordingNames[Utilities.random.Next(recordingNames.Count)]`; con `Count == 0` eso lanzaría
-  `ArgumentOutOfRangeException`, y nuestros cues mudos emiten precisamente `recordingNames: []`. El
-  auditor **no pudo trazar** si la ruta de reproducción filtra las entradas sin audio antes de esa
-  llamada, así que **no está confirmado** que el crash se alcance; solo se manifestaría en pista.
-  Arreglo propuesto si se confirma: WAV silencioso en vez de lista vacía. Deuda con el detalle en
+- **Riesgo CONFIRMADO (2026-07-09) contra el fuente real: una lista de audio vacía revienta
+  CrewChief en pista.** La auditoría del código fuente detectó que `getRandomRecordingName()` indexa
+  `recordingNames[Utilities.random.Next(recordingNames.Count)]`; con `Count == 0` eso lanza
+  `ArgumentOutOfRangeException`, y nuestros cues mudos emiten precisamente `recordingNames: []`.
+  **Actualización 2026-07-09:** lo que este ADR dejó como «SIN verificar al 100 %» —porque el auditor
+  no había podido trazar si la ruta de reproducción filtra las entradas sin audio antes de esa
+  llamada— **ya se trazó** contra el fuente real de CrewChief V4 (`DriverTrainingService.cs`, commit
+  `84fe63b` de `mrbelowski/CrewChiefV4`): el crash es **alcanzable y está confirmado**.
+  `getRandomRecordingName` (`:433-437`) indexa `recordingNames[0]` sobre lista vacía;
+  `loadPaceNotes` (`:80-94`) **no** filtra el entry mudo; **no hay `catch`** en la cadena hasta
+  `CrewChief.cs::Run()`, que **mata el hilo principal**. El detalle con las citas y la regla que el
+  pack DEBE cumplir (`recordingNames`/`fileNames` no vacías y del mismo largo) viven en la
+  **Enmienda (2026-07-09)** del [ADR 0002](0002-crewchief-pacenotes.md), SSOT del formato del pack.
+  Arreglo: WAV silencioso en vez de lista vacía para los cues mudos. Deuda con el detalle en
   `ROADMAP.md` (ítem "Nadie ha verificado que CrewChief acepte una entrada de `metadata.json` sin
   audio").
 - **El cambio de marcha sonoro es una feature de `fantasma-live`, no de este repo.** Un cue de

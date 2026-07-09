@@ -136,6 +136,22 @@ La UI principal de v2.0 migró de Streamlit a **NiceGUI** ([ADR 0018](decisions/
 
 Historial de decisiones de UX que alteraron el layout o el flujo de la UI — para que el baseline visual tenga contexto al regenerarse.
 
+### fix/pacenotes-frenada-y-countdown (Unreleased)
+
+**Atribución de curva en el HUD — la etiqueta se ancla a `brake_start`, no a `segment_m`:**
+- El rótulo «Curva / V-Min objetivo» del overlay (`fantasma/viz/overlay.py`, `_corner_at`) dejó de
+  tratar `segment_m` como contrato de contención: la ventana de propiedad de una curva se deriva del
+  hito `brake_start` (`_corner_lo`) y **puede preceder a `segment_m[0]`**; ante solape de ventanas
+  gana la curva **más tardía**, dueña de esos metros de frenada. Efecto visible: en una frenada larga
+  que empieza tras un kink, el HUD ahora nombra la curva que **se está frenando**, no la anterior.
+- Reporte de QA visual (Mariana, Nordschleife): la **C54** se etiquetaba como **C53** con V-Min
+  292 km/h (absurda); ahora sale **C54** con V-Min 102 km/h (correcta).
+- Heurística cubierta: **Correspondencia sistema-mundo real** (§1.2) y **Estética minimalista**
+  (§1.8) — el HUD nombra la curva real del instante en vez de una etiqueta engañosa que competía con
+  la señal. Sin cambio de layout ni de componentes: es atribución de contenido, no de forma.
+- Detalle canónico del comportamiento en [`hud-reference.md`](hud-reference.md) (dueño del HUD) y el
+  porqué en el [ADR 0031](decisions/0031-propiedad-de-la-frenada-y-contrato-de-segment-m.md).
+
 ### feat/cues-configurables (Unreleased)
 
 **Sección «Cues: selección y prioridad» + perfiles en el Paso 5 (WS-4) — patrón «checkbox + número, no drag-sort»:**
