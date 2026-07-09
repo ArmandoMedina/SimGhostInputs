@@ -92,8 +92,9 @@ que corren en varios momentos, con autoridad creciente.
 - **CI / Integración Continua / GitHub Actions / "pipeline" / "workflow"**: una **máquina en la
   nube de GitHub** que corre comprobaciones **solas**. Si una falla, el push queda **en rojo**.
   Es **la barrera que nadie puede saltar** desde su computadora. Los workflows viven en
-  `.github/workflows/`: `tests.yml` (gate de calidad en push/PR) y `release.yml` (genera y adjunta
-  el instalador Windows al publicar un release, [ADR 0022](decisions/0022-ci-release-installer.md)).
+  `.github/workflows/`: `tests.yml` (gate de calidad en push/PR), `release.yml` (genera y adjunta
+  el instalador Windows al publicar un release, [ADR 0022](decisions/0022-ci-release-installer.md))
+  e `installer.yml` (ensaya ese mismo empaquetado en los PR que lo tocan, sin publicar nada).
 - **Verificador (`tools/verificar.ps1`)**: nuestro script de PowerShell que corre **las cuatro
   barreras locales de un jalón** (lint, formato, tests, doc-gate) en modo aviso.
 - **Modo aviso vs bloquea**: *avisar* = imprime el hallazgo y deja seguir; *bloquear* = detiene
@@ -130,7 +131,8 @@ que corren en varios momentos, con autoridad creciente.
 | **Auditor del grafo de docs** | Audita `product/`+`engineering/`: **BLOQUEA** frontmatter incompleto, wikilinks rotos, capacidades `vigente` sin criterios; **avisa** sin-test-citado y huérfanos. Modulado por estado. Dueño: Armando | `tools/auditar.ps1` ([ADR 0016](decisions/0016-gate-grafo-documentacion.md)) |
 | **Hook `pre-push`** | Corre el verificador **solo**, justo antes de `git push` (avisa lint/formato/tests; **bloquea** doc-drift §8) | `.githooks/pre-push` |
 | **CI (push/PR)** | Barrera dura en la nube: lint + formato + tests en cada push/PR | `.github/workflows/tests.yml` |
-| **CI (release)** | Genera y adjunta el instalador Windows (`Setup.exe` + zip portable) como assets permanentes del release de GitHub | `.github/workflows/release.yml` ([ADR 0022](decisions/0022-ci-release-installer.md)) |
+| **CI (release)** | Genera y adjunta el instalador Windows (`Setup.exe` + zip portable) como assets permanentes del release de GitHub. `workflow_dispatch` re-dispara el build contra un tag existente | `.github/workflows/release.yml` ([ADR 0022](decisions/0022-ci-release-installer.md)) |
+| **CI (installer-smoke)** | Ensaya el empaquetado (`nicegui-pack` + Inno Setup) en cada PR que toca el camino del instalador, y deja el `Setup.exe` como artefacto del run | `.github/workflows/installer.yml` |
 | **Import-smoke NiceGUI** | Verifica que `ng_app` importa y arranca sin excepción — sustituyó al smoke visual Playwright al migrar la UI a NiceGUI (hallazgo de auditoría `fase3-ci`). Dueño: Mariana | `tests/ui/visual/` ([ADR 0012](decisions/0012-playwright-smoke-visual-ui.md)) |
 | **Decisiones (ADR)** | El porqué de todo, con su camino descartado | `docs/decisions/` + su `README.md` |
 | **Benchmark del linter** | Por qué ruff y no las alternativas (licencias verificadas) | `docs/benchmark-linter.md` |
@@ -411,6 +413,24 @@ trataba `nicegui-pack` como paquete de PyPI, pero es un script que **ya viene in
 nadie lo vio porque el workflow nunca había corrido de verdad. Lección: un workflow que solo se
 dispara al cortar release puede quedar roto en silencio si pasa mucho tiempo sin cortar uno.
 
+Arreglado eso, el mismo release falló **otra vez**, ahora en el build: `nicegui-pack` invoca
+`pyinstaller` como subproceso, pero `pyinstaller` no estaba declarado en ningún lado (`nicegui` no
+lo trae como dependencia ni expone un extra `[pack]` propio); en local nunca se notó porque las
+máquinas de desarrollo lo tenían instalado a mano. Vive ahora en el extra `pack` de `pyproject.toml`.
+
+De ese doble fallo salieron **dos barreras nuevas**, ambas contra la misma causa raíz (un pipeline
+que nadie ejercita hasta el día que importa):
+
+- **`installer-smoke`** (`.github/workflows/installer.yml`): ensaya el empaquetado completo
+  (`nicegui-pack` + Inno Setup) en cada PR que toque `main_gui.py`, `pyproject.toml`,
+  `tools/build_installer.py`, `tools/installer.iss` o cualquiera de los dos workflows. Deja el
+  `Setup.exe` como artefacto descargable del run, para probar la instalación **antes** de cortar el tag.
+- **`workflow_dispatch`** en `release.yml`: en el evento `release`, GitHub lee el workflow desde el
+  commit del **tag**, no desde `master` — así que un bug en el propio workflow obligaba a borrar y
+  recrear tag y release en cada intento. Un `workflow_dispatch` se lee siempre desde la rama por
+  defecto: se re-dispara el build contra un release ya existente pasándole el tag como input, sin
+  tocar el tag. Es la vía de rescate cuando un release queda publicado sin sus assets.
+
 ### Las tres dimensiones, y dónde acaba la máquina
 
 El repo cuida la consistencia con **barreras deterministas**, cada una con su herramienta. Importa
@@ -529,6 +549,7 @@ C:\Repositorio personal\SimGhostInputs\   <- raíz del repo
 ├─ .githooks/pre-push                      <- el git hook (avisa lint/formato/tests; BLOQUEA doc-drift §8)
 ├─ .github/workflows/tests.yml             <- CI push/PR (barrera en la nube: lint + formato + tests)
 ├─ .github/workflows/release.yml           <- CI release (genera y adjunta el instalador al release de GitHub; ADR 0022)
+├─ .github/workflows/installer.yml         <- CI ensayo del empaquetado en PR (installer-smoke), sin publicar nada
 ├─ .claude/                                <- roles y auto-cableado en sesión (viaja con el repo)
 │  ├─ settings.json                        <- registra los hooks de sesión (Stop)
 │  ├─ hooks/                               <- review-stop, escribano-stop, mariana-stop (frenan el cierre, disparan el rol)

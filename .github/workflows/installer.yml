@@ -1,0 +1,63 @@
+name: installer-smoke
+
+# Ensaya el empaquetado ANTES del dia del release.
+#
+# 'release.yml' solo corre al publicar un release, asi que su primera ejecucion
+# real fue la de v2.3.0 -- y fallo tres veces seguidas, cada una destapando un
+# bug distinto que llevaba meses ahi sin ejercitarse (ADR 0022). Este job corre
+# el MISMO camino (nicegui-pack + Inno Setup) en cada PR que toque algo del
+# empaquetado, sin publicar nada. Lo unico que no ensaya es el upload al release.
+on:
+  pull_request:
+    paths:
+      - "main_gui.py"
+      - "pyproject.toml"
+      - "tools/build_installer.py"
+      - "tools/installer.iss"
+      - ".github/workflows/installer.yml"
+      - ".github/workflows/release.yml"
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      # Mismos extras que release.yml. Si divergen, el ensayo deja de valer.
+      - name: Install deps
+        run: pip install -e ".[ui-ng,overlay,sync,xlsx,pack]"
+
+      - name: Install Inno Setup
+        run: choco install innosetup -y --no-progress
+
+      - name: Build bundle + installer
+        run: python tools/build_installer.py --inno
+
+      # build_installer.py ya sale con codigo != 0 si algo falla, pero el
+      # contrato que le importa a release.yml es que estos dos artefactos
+      # existan con estos nombres: es lo que busca el paso de upload.
+      - name: Verificar artefactos
+        shell: pwsh
+        run: |
+          $bundle = "dist/SimGhostInputs/SimGhostInputs.exe"
+          if (-not (Test-Path $bundle)) { throw "Falta el bundle: $bundle" }
+          $setup = Get-Item dist/SimGhostInputs-*-Setup.exe -ErrorAction SilentlyContinue
+          if (-not $setup) { throw "Falta el instalador: dist/SimGhostInputs-*-Setup.exe" }
+          Write-Host "OK: $($setup.Name) ($([math]::Round($setup.Length / 1MB, 1)) MB)"
+
+      # Queda descargable desde el run: sirve para probar la instalacion a mano
+      # antes de cortar el tag, que es justo lo que nunca se hizo.
+      - name: Publicar instalador como artefacto del run
+        uses: actions/upload-artifact@v4
+        with:
+          name: SimGhostInputs-Setup
+          path: dist/SimGhostInputs-*-Setup.exe
+          if-no-files-found: error
+          retention-days: 14

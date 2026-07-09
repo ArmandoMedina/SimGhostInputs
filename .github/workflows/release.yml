@@ -1,8 +1,23 @@
 name: release
 
+# Dispara al publicar un release (flujo normal) o a mano (rescate).
+#
+# Por que existe 'workflow_dispatch': en el evento 'release', GitHub lee ESTE
+# archivo desde el commit al que apunta el TAG, no desde master. Si el build
+# falla por un bug del propio workflow, arreglarlo en master no sirve de nada:
+# habria que borrar y recrear el tag y el release en cada intento (un release
+# quemado por bug; paso de verdad al cortar v2.3.0, ver ADR 0022). Un
+# 'workflow_dispatch' se lee siempre desde la rama por defecto, asi que permite
+# re-disparar el build contra un release ya existente sin tocar el tag.
 on:
   release:
     types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag del release existente al que subir los assets (p. ej. v2.3.0)"
+        required: true
+        type: string
 
 jobs:
   build-installer:
@@ -11,15 +26,36 @@ jobs:
       contents: write
 
     steps:
+      # Un solo lugar del que sale el nombre del tag: el input (dispatch) o el
+      # release que dispara (published). Sin esto, 'github.event.release' viene
+      # vacio en el dispatch y los assets se subirian a ninguna parte.
+      - name: Resolve tag
+        id: tag
+        shell: bash
+        run: |
+          name="${{ inputs.tag || github.event.release.tag_name }}"
+          if [ -z "$name" ]; then
+            echo "::error::No se pudo resolver el tag del release."
+            exit 1
+          fi
+          echo "name=$name" >> "$GITHUB_OUTPUT"
+
+      # OJO: el codigo se compila desde el TAG, aunque el workflow venga de
+      # master (caso dispatch). El instalador debe corresponder al release.
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ steps.tag.outputs.name }}
 
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
           cache: pip
 
+      # El extra 'pack' trae pyinstaller, que nicegui-pack invoca como
+      # subproceso. nicegui NO lo declara como dependencia ni tiene un extra
+      # [pack] propio: sin esto, nicegui-pack muere con WinError 2.
       - name: Install deps
-        run: pip install -e ".[ui-ng,overlay,sync,xlsx]"
+        run: pip install -e ".[ui-ng,overlay,sync,xlsx,pack]"
 
       - name: Install Inno Setup
         run: choco install innosetup -y --no-progress
@@ -29,14 +65,17 @@ jobs:
 
       - name: Package portable zip
         shell: pwsh
+        env:
+          TAG: ${{ steps.tag.outputs.name }}
         run: |
-          Compress-Archive -Path dist/SimGhostInputs/* -DestinationPath "dist/SimGhostInputs-${{ github.event.release.tag_name }}-portable.zip"
+          Compress-Archive -Path dist/SimGhostInputs/* -DestinationPath "dist/SimGhostInputs-$env:TAG-portable.zip"
 
       - name: Upload assets to release
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.tag.outputs.name }}
         run: |
           $setup = (Get-Item dist/SimGhostInputs-*-Setup.exe).FullName
-          $zip   = "dist/SimGhostInputs-${{ github.event.release.tag_name }}-portable.zip"
-          gh release upload "${{ github.event.release.tag_name }}" $setup $zip --clobber
+          $zip   = "dist/SimGhostInputs-$env:TAG-portable.zip"
+          gh release upload "$env:TAG" $setup $zip --clobber
