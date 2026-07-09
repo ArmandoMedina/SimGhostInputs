@@ -6,8 +6,20 @@ Metodologia (validada contra telemetria real del Nordschleife):
   'kink' (pico de G lateral sostenido sin caida de velocidad).
 - Los hitos de cada curva se extraen SOLO dentro de su segmento (punto medio con
   las curvas vecinas) para no contaminarse con la frenada de la curva siguiente.
-- La frenada real es el ultimo bloque de freno con pico >= 50%; los blips de
-  trail-braking no cuentan como inicio de frenada.
+- EXCEPCION (frenada): la deteccion de frenada usa una ventana propia, mas ancha,
+  que arranca justo despues del apice de la curva PREVIA (no en el punto medio
+  entre apices). El punto medio caia dentro de la zona de frenado cuando la curva
+  anterior es un kink sin frenada, y truncaba el inicio real de la frenada de esta
+  curva. Regla de propiedad: cada curva es DUENA de toda fase de frenada posterior
+  al apice de su vecina previa; nada antes de ese apice se le atribuye (no se roba
+  la frenada de la anterior), y un kink sin frenada nunca absorbe la frenada de la
+  curva siguiente (esa frenada cae despues del apice del kink, no antes).
+- Los bloques de freno se agrupan en FASES: bloques consecutivos separados por
+  menos de `phase_gap_s` y con el coche aun desacelerando en el hueco se funden
+  (una suelta breve para rotar, no una accion distinta). El inicio de frenada
+  ancla en la PRIMERA muestra de la fase que alcanza el pico maximo de freno
+  (donde empieza a cargarse el pedal hacia el maximo). Un blip de trail-braking
+  debil y previo queda en su propia fase, con pico menor, y no adelanta el hito.
 - El gas real (`throttle_on`) exige throttle sostenido, igual que `full_throttle`;
   un roce fugaz de pedal no cuenta como inicio de aceleracion.
 - Entre el fin de la frenada (o el lift) y el gas sostenido puede existir un
@@ -102,6 +114,7 @@ def extract_milestones(
     full_throttle=98,
     turn_in_deg=8,
     throttle_on_window_s=0.3,
+    phase_gap_s=0.5,
 ):
     """Extrae los hitos de cada curva, con segmentacion por curva.
     Devuelve lista de dicts estilo corners.json."""
@@ -128,9 +141,18 @@ def extract_milestones(
             continue
         ap = min(pre[-20:] + post[:20], key=lambda s: s["speed"])
         ms = {}
-        # bloques de frenada
+        # --- deteccion de frenada (ventana propia, ver docstring) --------
+        # Ventana de frenada mas ancha que el segmento: desde justo despues del
+        # apice de la curva previa hasta este apice. Asi no se trunca el inicio
+        # real de la frenada cuando la curva anterior es un kink sin frenada
+        # (su punto medio caia en mitad de la zona de frenado). `ad - 450` es el
+        # mismo tope de look-back que `lo`; la frontera de propiedad es el apice
+        # previo (no se roba la frenada de la vecina anterior).
+        prev_apex = apex_ds[n - 1] if n > 0 else None
+        brake_lo = max(prev_apex, ad - 450) if prev_apex is not None else ad - 450
+        brake_pre = [s for s in data if brake_lo < s["dist"] <= ad]
         blocks, cur = [], None
-        for s in pre:
+        for s in brake_pre:
             if s.get("brake", 0) > brake_on:
                 if cur and s["time"] - cur[-1]["time"] < 0.3:
                     cur.append(s)
@@ -140,12 +162,34 @@ def extract_milestones(
         no_brake = not blocks
         overlap = None
         if blocks:
-            strong = [b for b in blocks if max(s["brake"] for s in b) >= brake_strong]
-            blk = strong[-1] if strong else blocks[-1]
-            bs, bmax = blk[0], max(blk, key=lambda s: s["brake"])
+            # Agrupar bloques en fases de frenada: se funden los consecutivos
+            # separados por < phase_gap_s cuando el coche sigue desacelerando en
+            # el hueco (v no sube > 2 km/h). El hito ancla en la primera muestra
+            # de la fase que alcanza el pico maximo de freno; ante empate de pico
+            # gana la fase mas tardia (la que entra al apex), preservando la
+            # intencion original de `strong[-1]` sin adelantar el hito a un blip.
+            phases = [[blocks[0]]]
+            for b in blocks[1:]:
+                prev_blk = phases[-1][-1]
+                gap_s = b[0]["time"] - prev_blk[-1]["time"]
+                still_braking = b[0]["speed"] <= prev_blk[-1]["speed"] + 2.0
+                if gap_s < phase_gap_s and still_braking:
+                    phases[-1].append(b)
+                else:
+                    phases.append([b])
+            peaks = [max(s["brake"] for blk in ph for s in blk) for ph in phases]
+            top = max(peaks)
+            phase = phases[max(i for i, pk in enumerate(peaks) if pk == top)]
+            phase_samples = [s for blk in phase for s in blk]
+            bs = phase_samples[0]
+            bmax = max(phase_samples, key=lambda s: s["brake"])
             ms["brake_start"] = _pt(bs, brake_pct=round(bmax["brake"]))
             rel = next(
-                (s for s in seg if s["time"] > blk[-1]["time"] - 0.02 and s.get("brake", 0) < 2),
+                (
+                    s
+                    for s in seg
+                    if s["time"] > phase[-1][-1]["time"] - 0.02 and s.get("brake", 0) < 2
+                ),
                 None,
             )
             if rel:

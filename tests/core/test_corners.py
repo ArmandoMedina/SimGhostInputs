@@ -216,6 +216,84 @@ def test_no_coast_when_gas_overlaps_brake():
     assert "coast_end" not in c["milestones"]
 
 
+# ── brake_start: fases de frenada y frontera entre curvas vecinas ─────────────
+
+
+def _lap_brake_blocks(dt_s, blocks):
+    """Vuelta de UNA curva (vmin en ~310 m) con bloques de freno artesanales por
+    ÍNDICE, para controlar con precisión el hueco TEMPORAL entre bloques (la
+    fusión de fases se decide por tiempo, no por distancia). `blocks` es una
+    lista de (i0, i1, peak): brake=peak en los índices [i0, i1)."""
+    lap = make_lap(
+        dt_s=dt_s,
+        length_m=900.0,
+        valleys=[{"center": 310.0, "vmin": 80.0, "half_width": 250.0, "direction": "right"}],
+        channels=("throttle", "brake"),
+    )
+    dist = lap.channels["dist"]
+    n = len(dist)
+    brake = [0.0] * n
+    for i0, i1, pk in blocks:
+        for i in range(i0, min(i1, n)):
+            brake[i] = pk
+    lap.channels["brake"] = brake
+    lap.channels["throttle"] = [100.0 if d > 320 else 0.0 for d in dist]
+    return lap
+
+
+def test_brake_start_en_la_primera_de_una_doble_pisada_fuerte():
+    # dos bloques al 90% separados 0.45 s (< phase_gap 0.5) con el coche aún
+    # desacelerando: son la MISMA frenada partida (una suelta breve para rotar).
+    # El hito ancla donde EMPIEZA a cargarse el pedal, no en la segunda pisada
+    # (que es lo que elegía el antiguo strong[-1]).
+    lap = _lap_brake_blocks(0.05, [(100, 120, 90.0), (128, 165, 90.0)])
+    dist = lap.channels["dist"]
+    ms = extract_milestones(lap)[0]["milestones"]
+    assert ms["brake_start"]["d"] == round(dist[100])
+    assert ms["brake_start"]["d"] != round(dist[128])
+
+
+def test_brake_start_ignora_blip_debil_y_lejano_previo():
+    # un blip débil (30%) y lejano (>0.5 s antes) NO adelanta el hito: queda en su
+    # propia fase, con pico menor que la frenada real; gana la fase de pico máximo.
+    # Preserva la intención original de strong[-1] (un roce previo no cuenta).
+    lap = _lap_brake_blocks(0.05, [(60, 68, 30.0), (130, 165, 90.0)])
+    dist = lap.channels["dist"]
+    ms = extract_milestones(lap)[0]["milestones"]
+    assert ms["brake_start"]["d"] == round(dist[130])
+    assert ms["brake_start"]["d"] != round(dist[60])
+
+
+def test_brake_start_frenada_simple_de_un_bloque_no_regresa():
+    # no-regresión: una frenada continua de un solo bloque ancla en su inicio.
+    lap = _lap_brake_blocks(0.05, [(110, 165, 90.0)])
+    dist = lap.channels["dist"]
+    ms = extract_milestones(lap)[0]["milestones"]
+    assert ms["brake_start"]["d"] == round(dist[110])
+
+
+def test_brake_start_no_lo_trunca_el_segmento_tras_un_kink():
+    # kink (apex ~400, sin frenada) seguido de curva con frenada (apex ~700) cuya
+    # frenada REAL empieza en 520, ANTES del punto medio entre ápices (550). El
+    # hito debe caer en la frenada real (~520), no pegado al borde del segmento
+    # (550). Sin el fix, brake_start = 550 y este test falla. El kink no absorbe
+    # la frenada de la curva siguiente (cae tras su ápice) y viceversa.
+    valleys = [
+        {"center": 400.0, "vmin": 178.0, "half_width": 70.0, "direction": "left"},
+        {"center": 700.0, "vmin": 80.0, "half_width": 150.0, "direction": "right"},
+    ]
+    lap = make_lap(length_m=1100.0, base_speed=180.0, valleys=valleys)
+    dist = lap.channels["dist"]
+    lap.channels["brake"] = [90.0 if 520.0 <= d <= 700.0 else 0.0 for d in dist]
+    lap.channels["throttle"] = [0.0 if 500.0 <= d <= 700.0 else 100.0 for d in dist]
+    corners = extract_milestones(lap)
+    kink = next(c for c in corners if c["kind"] == "kink")
+    braking = next(c for c in corners if c["kind"] == "vmin")
+    assert kink["no_brake"] is True
+    assert braking["segment_m"][0] == 550
+    assert 515 <= braking["milestones"]["brake_start"]["d"] <= 525
+
+
 # ── detect_gear_shifts: cambio de marcha lap-wide (cue "gear", solo subtitulo) ─
 
 
