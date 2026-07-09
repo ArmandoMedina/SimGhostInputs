@@ -18,6 +18,12 @@ class AppState:
     def _set(self, key, value):
         _ng_app.storage.user[key] = value
 
+    def _get_tab(self, key, default=None):
+        return _ng_app.storage.tab.get(key, default)
+
+    def _set_tab(self, key, value):
+        _ng_app.storage.tab[key] = value
+
     # ── navegación ────────────────────────────────────────────────────────────
 
     @property
@@ -216,6 +222,30 @@ class AppState:
     @compose_offset.setter
     def compose_offset(self, v):
         self._set("compose_offset", v)
+
+    # ── jobs en curso (memoria del proceso, no persistidos a disco) ─────────────
+
+    @property
+    def active_overlay_job(self):
+        """RenderJob del overlay del Paso 3 en curso, o None (ng_helpers.RenderJob).
+
+        A diferencia del resto de AppState, vive en app.storage.tab (memoria
+        del proceso, atada a la pestaña del navegador vía tab_id) y no en
+        app.storage.user: RenderJob trae un threading.Event, que no es
+        serializable a JSON, y app.storage.user se respalda a disco en JSON
+        en cada escritura (se rompería en el primer backup). app.storage.tab
+        sobrevive tanto a la navegación entre pasos como a un refresh de
+        página (F5) dentro de la misma pestaña -- a diferencia de
+        app.storage.client, que se pierde con la conexión -- lo suficiente
+        para detectar un render activo si el usuario sale del Paso 3 y
+        vuelve, y no arrancar un segundo render sobre el mismo outdir
+        (riesgo de corromper el .webm de salida).
+        """
+        return self._get_tab("active_overlay_job")
+
+    @active_overlay_job.setter
+    def active_overlay_job(self, v):
+        self._set_tab("active_overlay_job", v)
 
     # ── pace notes / cues (Paso 5) ───────────────────────────────────────────
 
