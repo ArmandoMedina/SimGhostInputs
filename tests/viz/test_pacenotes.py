@@ -1252,3 +1252,251 @@ def test_build_cue_ass_gear_rotula_cambio_de_marcha(tmp_path, lap_factory):
     assert "cambio de marcha" in ass
     assert "cambio a 3ª" in ass
     assert CUE_SUB_COLORS["cambio de marcha"] in ass
+
+
+# ── build_voice_pack: mismo plan anti-saturacion que plan_tone_events ─────────
+# (ADR 0024, enmienda "notas de voz" -- ROADMAP: "las notas de VOZ no pasan
+# por el plan anti-saturacion"). edge_tts esta instalado en el entorno de
+# CI/dev (extra [voice]), pero estos tests igual mockean Communicate.save y
+# la conversion ffmpeg para no depender de red ni de un binario real.
+
+
+class _FakeCommunicate:
+    """Reemplaza edge_tts.Communicate: escribe un mp3 falso sin red."""
+
+    def __init__(self, text, voice=None):
+        self.text = text
+        self.voice = voice
+
+    async def save(self, path):
+        from pathlib import Path
+
+        Path(path).write_bytes(b"fake-mp3")
+
+
+def _fake_ffmpeg_run(cmd, check=True, capture_output=True):
+    """Reemplaza subprocess.run del paso mp3->wav: escribe un WAV valido
+    minimo en la ruta de salida (ultimo argumento del comando ffmpeg)."""
+    from pathlib import Path
+
+    from fantasma.viz.pacenotes import generate_tone
+
+    Path(cmd[-1]).write_bytes(generate_tone(440, 0.05))
+
+    class _Result:
+        returncode = 0
+
+    return _Result()
+
+
+def _mock_voice_deps(monkeypatch):
+    """Mockea edge_tts (sin red) y ffmpeg (sin binario real) -- patron
+    compartido por los tests de build_voice_pack de abajo."""
+    import edge_tts
+
+    import fantasma.viz.pacenotes as pacenotes_mod
+
+    monkeypatch.setattr(edge_tts, "Communicate", _FakeCommunicate)
+    monkeypatch.setattr(pacenotes_mod.subprocess, "run", _fake_ffmpeg_run)
+    monkeypatch.setattr(pacenotes_mod.shutil, "which", lambda name: "/fake/ffmpeg")
+
+
+def test_build_voice_pack_una_nota_por_curva(tmp_path, monkeypatch):
+    """Con una sola curva top-N, build_voice_pack genera exactamente una nota
+    de voz: el limite de 1 por curva es estructural (un candidato por fila,
+    milestone de frenada), sin necesidad de un max_events_per_corner aparte."""
+    _mock_voice_deps(monkeypatch)
+    from fantasma.viz.pacenotes import build_voice_pack
+
+    rows = [{"id": "C01", "name": "C01", "time_lost": 0.5, "flags": "frenada"}]
+    corners = [{"id": "C01", "name": "C01", "milestones": {"brake": {"d": 1000}}}]
+    result = build_voice_pack(rows, corners, str(tmp_path), top=1)
+    assert result["entries"] == 1
+    assert len(list(tmp_path.glob("*.wav"))) == 1
+
+
+def test_build_voice_pack_gap_global_descarta_la_narracion_mas_cercana(
+    tmp_path, monkeypatch, capsys
+):
+    """Dos curvas con puntos de frenada MUY cercanos (a <DEFAULT_MIN_GAP_M
+    tras el anticipo): el MISMO gap global que usa plan_tone_events descarta
+    una de las dos narraciones en vez de generar ambas encimadas -- antes
+    build_voice_pack no aplicaba ningun gap entre curvas."""
+    _mock_voice_deps(monkeypatch)
+    import json
+
+    from fantasma.viz.pacenotes import build_voice_pack
+
+    rows = [
+        {"id": "A", "name": "A", "time_lost": 0.8, "flags": "frenada"},
+        {"id": "B", "name": "B", "time_lost": 0.3, "flags": "frenada"},
+    ]
+    # sin "v": el anticipo cae al fallback fijo de 200 m para ambas -> las
+    # distancias narradas (800 y 820) quedan a 20 m entre si (< 50 m default)
+    corners = [
+        {"id": "A", "name": "A", "milestones": {"brake": {"d": 1000}}},
+        {"id": "B", "name": "B", "milestones": {"brake": {"d": 1020}}},
+    ]
+    result = build_voice_pack(rows, corners, str(tmp_path), top=2)
+    assert result["entries"] == 1
+    assert len(list(tmp_path.glob("*.wav"))) == 1
+    # sobrevive la curva con mas tiempo perdido (A): mismo criterio de
+    # prioridad que el resto del catalogo cuando dos cues colisionan.
+    entries = json.loads((tmp_path / "metadata.json").read_text(encoding="utf-8"))["entries"]
+    assert entries[0]["description"].startswith("A ")
+    assert "descartada" in capsys.readouterr().err
+
+
+def test_build_voice_pack_curvas_lejanas_narran_ambas(tmp_path, monkeypatch):
+    """Dos curvas separadas por mas del gap minimo global narran ambas, sin
+    descartes -- el gap no recorta de mas cuando no hace falta."""
+    _mock_voice_deps(monkeypatch)
+    from fantasma.viz.pacenotes import build_voice_pack
+
+    rows = [
+        {"id": "A", "name": "A", "time_lost": 0.5, "flags": "frenada"},
+        {"id": "B", "name": "B", "time_lost": 0.5, "flags": "frenada"},
+    ]
+    corners = [
+        {"id": "A", "name": "A", "milestones": {"brake": {"d": 1000}}},
+        {"id": "B", "name": "B", "milestones": {"brake": {"d": 3000}}},
+    ]
+    result = build_voice_pack(rows, corners, str(tmp_path), top=2)
+    assert result["entries"] == 2
+    assert len(list(tmp_path.glob("*.wav"))) == 2
+
+
+def test_build_voice_pack_anticipo_por_tiempo_con_v(tmp_path, monkeypatch):
+    """Con "v" en el milestone de frenada, el anticipo se deriva de la
+    velocidad (mismo criterio que el countdown de tonos, _voice_lead_m) en
+    vez del fijo de 200 m: 216 km/h = 60 m/s * 4.0 s (DEFAULT_VOICE_LEAD_S)
+    = 240 m de anticipo -> nota en 2000-240=1760."""
+    _mock_voice_deps(monkeypatch)
+    import json
+
+    from fantasma.viz.pacenotes import build_voice_pack
+
+    rows = [{"id": "C01", "name": "C01", "time_lost": 0.5, "flags": "frenada"}]
+    corners = [{"id": "C01", "name": "C01", "milestones": {"brake": {"d": 2000, "v": 216}}}]
+    build_voice_pack(rows, corners, str(tmp_path), top=1)
+    entries = json.loads((tmp_path / "metadata.json").read_text(encoding="utf-8"))["entries"]
+    assert entries[0]["distanceRoundTrack"] == 1760
+
+
+def test_build_voice_pack_sin_v_usa_fallback_fijo_200m(tmp_path, monkeypatch):
+    """Sin "v" en el milestone (corners JSON viejos, tests sinteticos), el
+    anticipo cae al fijo historico de 200 m -- no-regresion exacta con el
+    comportamiento previo a este fix para fixtures sin canal de velocidad."""
+    _mock_voice_deps(monkeypatch)
+    import json
+
+    from fantasma.viz.pacenotes import build_voice_pack
+
+    rows = [{"id": "C01", "name": "C01", "time_lost": 0.5, "flags": "frenada"}]
+    corners = [{"id": "C01", "name": "C01", "milestones": {"brake": {"d": 1000}}}]
+    build_voice_pack(rows, corners, str(tmp_path), top=1)
+    entries = json.loads((tmp_path / "metadata.json").read_text(encoding="utf-8"))["entries"]
+    assert entries[0]["distanceRoundTrack"] == 800
+
+
+def test_build_voice_pack_sin_ffmpeg_no_genera_wav_ni_crashea(tmp_path, monkeypatch, capsys):
+    """Sin ffmpeg disponible, build_voice_pack no revienta: devuelve
+    entries=0 con metadata.json igual escrito, y un aviso en stderr (no un
+    descarte silencioso que haga creer que edge-tts fallo)."""
+    from fantasma.viz.pacenotes import build_voice_pack
+
+    monkeypatch.setattr("shutil.which", lambda name: None)
+    rows = [{"id": "C01", "name": "C01", "time_lost": 0.5, "flags": "frenada"}]
+    corners = [{"id": "C01", "name": "C01", "milestones": {"brake": {"d": 1000}}}]
+    result = build_voice_pack(rows, corners, str(tmp_path), top=1)
+    assert result["entries"] == 0
+    assert (tmp_path / "metadata.json").exists()
+    assert "ffmpeg" in capsys.readouterr().err
+
+
+def test_build_voice_pack_sin_edge_tts_lanza_error_accionable(tmp_path, monkeypatch):
+    """Sin edge-tts instalado (import fallido), build_voice_pack lanza un
+    RuntimeError con el comando de instalacion en vez de un ImportError
+    crudo -- la frontera se verifica ANTES de tocar filas o curvas."""
+    import pytest
+
+    from fantasma.viz.pacenotes import build_voice_pack
+
+    monkeypatch.setattr("importlib.util.find_spec", lambda name: None)
+    with pytest.raises(RuntimeError, match="edge-tts"):
+        build_voice_pack([], [], str(tmp_path), top=1)
+
+
+def test_build_voice_pack_top_limita_curvas_igual_que_tone_pack(tmp_path, monkeypatch):
+    """top=N sigue seleccionando las N curvas de mayor time_lost, mismo
+    criterio (_top_rows) que build_tone_pack -- no cambia cuantas curvas
+    narra por defecto."""
+    _mock_voice_deps(monkeypatch)
+    from fantasma.viz.pacenotes import build_voice_pack
+
+    rows = [
+        {"id": "A", "name": "A", "time_lost": 0.9, "flags": "frenada"},
+        {"id": "B", "name": "B", "time_lost": 0.1, "flags": "frenada"},
+    ]
+    corners = [
+        {"id": "A", "name": "A", "milestones": {"brake": {"d": 1000}}},
+        {"id": "B", "name": "B", "milestones": {"brake": {"d": 5000}}},
+    ]
+    result = build_voice_pack(rows, corners, str(tmp_path), top=1)
+    assert result["entries"] == 1
+    entries_json = (tmp_path / "metadata.json").read_text(encoding="utf-8")
+    assert "A " in entries_json
+    assert "B " not in entries_json
+
+
+def test_build_pack_mode_voice_wiring(tmp_path, monkeypatch):
+    """build_pack(mode='voice') sigue despachando a build_voice_pack tal
+    cual (wiring end-to-end, no solo la funcion aislada)."""
+    _mock_voice_deps(monkeypatch)
+    from fantasma.viz.pacenotes import build_pack
+
+    rows = [{"id": "C01", "name": "C01", "time_lost": 0.5, "flags": "frenada"}]
+    corners = [{"id": "C01", "name": "C01", "milestones": {"brake": {"d": 1000}}}]
+    result = build_pack(rows, corners, str(tmp_path), mode="voice", top=1)
+    assert result["entries"] == 1
+    assert len(list(tmp_path.glob("*.wav"))) == 1
+
+
+def test_build_pack_mode_voice_reenvia_min_gap_m_y_voice_lead_s(tmp_path, monkeypatch):
+    """build_pack(mode='voice', min_gap_m=..., voice_lead_s=...) reenvia esos
+    kwargs a build_voice_pack -- antes se perdian en silencio (build_pack solo
+    reenviaba 'lang'), dejando los nuevos parametros inalcanzables desde el
+    punto de entrada publico."""
+    _mock_voice_deps(monkeypatch)
+    import fantasma.viz.pacenotes as pacenotes_mod
+    from fantasma.viz.pacenotes import build_pack
+
+    captured = {}
+    real_build_voice_pack = pacenotes_mod.build_voice_pack
+
+    def _spy(*args, **kwargs):
+        captured.update(kwargs)
+        return real_build_voice_pack(*args, **kwargs)
+
+    monkeypatch.setattr(pacenotes_mod, "build_voice_pack", _spy)
+
+    rows = [{"id": "C01", "name": "C01", "time_lost": 0.5, "flags": "frenada"}]
+    corners = [{"id": "C01", "name": "C01", "milestones": {"brake": {"d": 1000}}}]
+    build_pack(rows, corners, str(tmp_path), mode="voice", top=1, min_gap_m=99, voice_lead_s=2.5)
+    assert captured["min_gap_m"] == 99
+    assert captured["voice_lead_s"] == 2.5
+
+
+def test_build_pack_mode_tones_ignora_kwargs_solo_de_voz(tmp_path):
+    """build_pack(mode='tones', min_gap_m=..., voice_lead_s=...) no revienta:
+    esos kwargs son especificos de build_voice_pack (que no participa en modo
+    tones) y build_tone_pack no los acepta -- se descartan en silencio, igual
+    criterio que 'lang' en este mismo modo."""
+    from fantasma.viz.pacenotes import build_pack
+
+    rows = [{"id": "C01", "name": "C01", "time_lost": 0.5, "flags": "frenada"}]
+    corners = [{"id": "C01", "name": "C01", "milestones": {"brake_start": {"d": 1000}}}]
+    result = build_pack(
+        rows, corners, str(tmp_path), mode="tones", top=1, min_gap_m=99, voice_lead_s=2.5
+    )
+    assert result["entries"] >= 1
