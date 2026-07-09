@@ -23,10 +23,18 @@ def main():
     )
     args = parser.parse_args()
 
-    # Verificar nicegui-pack (puede estar instalado como standalone, no vía pip)
+    # Verificar nicegui-pack: es un script que viene DENTRO del paquete nicegui
+    # (extra 'ui-ng'), no un paquete de PyPI aparte.
     if not shutil.which("nicegui-pack"):
         print("ERROR: nicegui-pack no encontrado en PATH.")
-        print("Opciones: pip install nicegui[pack]  o  instalar via nicegui releases")
+        print('Instala el extra que lo trae: pip install -e ".[ui-ng]"')
+        sys.exit(1)
+
+    # Verificar pyinstaller: nicegui-pack lo invoca como subproceso y, si falta,
+    # muere con un WinError 2 opaco. nicegui NO lo declara como dependencia.
+    if not shutil.which("pyinstaller"):
+        print("ERROR: pyinstaller no encontrado en PATH.")
+        print('nicegui-pack lo necesita. Instala: pip install -e ".[pack]"')
         sys.exit(1)
 
     # Limpiar build anterior
@@ -110,9 +118,12 @@ def _compile_inno():
     ]
     iscc = next((c for c in _candidates if c and os.path.exists(c)), None)
     if iscc is None:
-        print("AVISO: ISCC.exe no encontrado. Instala Inno Setup 6 para compilar el instalador.")
+        # Falla duro: --inno es explicito, y salir en silencio dejaba el build
+        # "verde" sin Setup.exe -- el error aparecia despues, en el paso de
+        # upload de release.yml, apuntando al sitio equivocado.
+        print("ERROR: ISCC.exe no encontrado. Instala Inno Setup 6 para compilar el instalador.")
         print("Descarga: https://jrsoftware.org/isdl.php")
-        return
+        sys.exit(1)
     script = "tools/installer.iss"
     if not os.path.exists(script):
         print(f"ERROR: {script} no existe.")
