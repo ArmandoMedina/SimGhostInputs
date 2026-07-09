@@ -116,3 +116,29 @@ causó el incidente.
   contador exacto que dependa de que `SubagentStop` dispare siempre puede quedar trabado en
   positivo para siempre si un agente muere sin ese evento (justo lo que pasó hoy) — la ventana de
   20 minutos se autolimpia sola, sin depender de que nada más se ejecute correctamente.
+
+### Autocrítica (2026-07-09, sin sesgo de confirmación) — qué NO resuelve este hook
+
+El hook en sí no cuesta tokens (es `type: "command"`, un proceso PowerShell local, no llama al
+modelo) y la prueba en seco confirmó el comportamiento (3 pasan, el 4º se deniega) — eso es un
+hecho verificado, no una promesa. Pero declarar el incidente "cerrado" sería sobreconfiado; quedan
+tres grietas reales, sin resolver, llevadas a `ROADMAP.md` como deuda explícita:
+
+1. **El campo `tool_input.isolation` nunca se verificó contra una llamada `Agent` real** — solo se
+   infirió del schema de la herramienta y se probó con stdin sintético. Si el nombre o la forma del
+   campo real no coincide, el `try/catch` del script hace *fail-open* (`exit 0`) sin ningún aviso:
+   el tope quedaría inerte y nadie se entera hasta que se repita el incidente. Se confirma (o se
+   corrige) en el primer uso real, no antes.
+2. **El "3" es el número que propuso el PO, no uno medido** contra la cuota real de la cuenta ni
+   contra el consumo del propio hilo principal de Mau corriendo en paralelo. Puede seguir siendo
+   insuficiente.
+3. **El hook topa concurrencia, no cupo acumulado.** El aviso de la cuenta decía "session limit ·
+   resets 12pm", lenguaje que sugiere cupo total por ventana de tiempo, no límite de simultaneidad.
+   Si es así, 3 agentes pesados lanzados en secuencia (nunca 4 a la vez) dentro de esa misma ventana
+   agotarían el cupo igual, sin que el tope de concurrencia dispare jamás — el hook tapa el síntoma
+   de hoy (ráfaga en paralelo), no necesariamente la causa si la causa es cupo acumulado.
+
+Ninguno de los tres invalida el mecanismo: sigue siendo estrictamente mejor que el juicio manual de
+Mau por turno, que es lo que falló hoy. Pero el mecanismo reduce la probabilidad de repetir
+*exactamente* este incidente; no la lleva a cero, y no reduce el consumo total de tokens de la
+sesión — solo lo espacia en el tiempo.
