@@ -36,12 +36,15 @@ eso la distinción se pierde entre sesiones.
 **El hallazgo nuevo que nadie había conectado** es lo que convierte esta regla de producto en una
 restricción de arquitectura, no solo una preferencia:
 
-> Un pace note de CrewChief **se dispara por `distanceRoundTrack`** — el metro de pista. El
-> chequeo interno `shouldPlay()` solo compara la distancia recorrida contra el metro del evento,
-> con filtros opcionales de vuelta y de **velocidad del coche** (`minimumSpeed`/`maximumSpeed`);
-> no existe ningún campo de RPM del motor (`docs/decisions/0002-crewchief-pacenotes.md:56`,
-> `:70-74`, `:79-87`). El formato **no tiene forma de expresar** "suena cuando el motor llegue a X
-> RPM".
+> Un pace note de CrewChief **se dispara por `distanceRoundTrack`** — el metro de pista, y por nada
+> más. Evidencia externa, de una auditoría del código fuente de CrewChief (no de este repo):
+> `DriverTrainingService.cs::checkDistanceAndPlayIfNeeded` dispara cuando
+> `previousDistanceRoundTrack < entry.distanceRoundTrack && currentDistanceRoundTrack > entry.distanceRoundTrack`
+> — **solo distancia**: ni RPM, ni marcha, ni tiempo, ni velocidad. Y la propia entrada,
+> `MetaDataEntry`, tiene **exactamente cuatro campos** (`description`, `distanceRoundTrack`,
+> `recordingNames`, `fileNames`): no hay ningún campo por el que expresar "suena cuando el motor
+> llegue a X RPM". CrewChief tampoco trae un beep de cambio de marcha por RPM propio. El formato,
+> por construcción, **no tiene forma de expresar un disparo por estado del motor**.
 
 Por lo tanto, un cue de cambio de marcha por revoluciones **no cabe, por construcción, en un pack
 de CrewChief**. Ese cue exige un **listener en vivo** (UDP, en tiempo real) — precisamente
@@ -72,10 +75,13 @@ y **nunca debe ganar un WAV en el pack exportable**.
 - **La regla de producto y la restricción de formato apuntan al mismo lado.** El PO ya había
   decidido, por criterio de coaching, que el cambio de marcha en vivo debe salir de las RPM del
   piloto y no de la referencia (`ROADMAP.md:145`). El hallazgo de arquitectura muestra que ni
-  siquiera es una opción hacerlo dentro de un pack: el formato de CrewChief no puede disparar por
-  RPM (`docs/decisions/0002-crewchief-pacenotes.md:79-87`). Las dos razones —producto y
-  construcción— coinciden, y por eso conviene registrarlas juntas para que ninguna sesión futura
-  intente saltarse una ignorando la otra.
+  siquiera es una opción hacerlo dentro de un pack: la auditoría del código fuente de CrewChief
+  (ver Contexto: `checkDistanceAndPlayIfNeeded` dispara solo por distancia y `MetaDataEntry` no
+  tiene campo de RPM) confirma que el formato **no puede** disparar por estado del motor. Las dos
+  razones —producto y construcción— coinciden, y por eso conviene registrarlas juntas para que
+  ninguna sesión futura intente saltarse una ignorando la otra. **La tesis de este ADR queda
+  CONFIRMADA por evidencia externa (el código de CrewChief), no por autorreferencia al propio
+  repositorio.**
 - **Anclar por "posición" vs. "estado del coche" es el eje que de verdad separa los cues**, no
   "cuál suena bien". Todos los cues de posición comparten que su disparo correcto es un metro de
   la referencia; el cambio de marcha (y sus futuros hermanos por RPM/temperatura/combustible) no,
@@ -113,6 +119,15 @@ y **nunca debe ganar un WAV en el pack exportable**.
   `fantasma/viz/pacenotes.py:1070`, `:1080`). El ADR 0028 lo dejaba como "falta el audio, follow-up
   de menor riesgo"; este ADR aclara que, para el **pack exportable**, no es un follow-up
   pendiente: no debe tener audio nunca, porque el disparo por distancia sería dañino.
+- **Riesgo conocido (SIN verificar al 100 %): una lista de audio vacía podría reventar CrewChief en
+  pista.** La misma auditoría del código fuente detectó que `getRandomRecordingName()` indexa
+  `recordingNames[Utilities.random.Next(recordingNames.Count)]`; con `Count == 0` eso lanzaría
+  `ArgumentOutOfRangeException`, y nuestros cues mudos emiten precisamente `recordingNames: []`. El
+  auditor **no pudo trazar** si la ruta de reproducción filtra las entradas sin audio antes de esa
+  llamada, así que **no está confirmado** que el crash se alcance; solo se manifestaría en pista.
+  Arreglo propuesto si se confirma: WAV silencioso en vez de lista vacía. Deuda con el detalle en
+  `ROADMAP.md` (ítem "Nadie ha verificado que CrewChief acepte una entrada de `metadata.json` sin
+  audio").
 - **El cambio de marcha sonoro es una feature de `fantasma-live`, no de este repo.** Un cue de
   marcha que suene en el momento correcto exige leer las RPM del piloto en tiempo real, lo que
   requiere el listener UDP que vive fuera de este repositorio
