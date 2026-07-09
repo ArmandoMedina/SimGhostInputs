@@ -171,7 +171,9 @@ def _checkbox_is_checked(box, timeout_ms: int = 0) -> bool:
         box.page.wait_for_timeout(100)
 
 
-def _set_hud_scale(page, target: float, min_v: float = _HUD_SCALE_MIN, max_v: float = _HUD_SCALE_MAX):
+def _set_hud_scale(
+    page, target: float, min_v: float = _HUD_SCALE_MIN, max_v: float = _HUD_SCALE_MAX
+):
     """Fija el slider "Tamaño" del HUD (Paso 4, ng_step4.py:425) por clic real.
 
     El q-slider de Quasar/NiceGUI no es un <input type=range>: es un div con
