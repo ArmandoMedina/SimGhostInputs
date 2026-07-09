@@ -39,3 +39,4 @@ bifurcación equivocada.
 | [0027](0027-cues-catalogo-configurable-perfiles-coast-subtitulos.md) | Cues como catálogo configurable con prioridad, perfiles compartibles, coast y subtítulos quemados (enmienda ADR 0024, 0025 y 0026) | Aceptada · enmend. 2026-07-08 | 2026-07-08 |
 | [0028](0028-cues-reencuadre-prioridades-countdown-frecuencias-gear.md) | Reencuadre de prioridades, countdown uniforme, frecuencias y cue `gear` solo-subtítulo (enmienda ADR 0025 y 0027) | Aceptada · enmend. 2026-07-08, 2026-07-09 | 2026-07-08 |
 | [0029](0029-lockfile-pip-compile.md) | Lockfile de dependencias con `pip-compile` | Aceptada | 2026-07-09 |
+| [0030](0030-modos-estudio-en-vivo-que-ancla-cada-cue.md) | Modos estudio y en vivo: qué ancla cada cue (posición → pack; estado del coche → en vivo; enmienda ADR 0028) | Aceptada | 2026-07-09 |
