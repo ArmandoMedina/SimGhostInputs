@@ -16,6 +16,18 @@
 > `docs/formato-datos.md` (sección "Cambios de marcha"). El resto de este ADR (prioridades,
 > countdown uniforme, frecuencias, `gear` acotado a subtítulo) sigue vigente sin cambio.
 
+> **Enmienda (2026-07-09) — deuda de `detect_gear_shifts` evaluada y cerrada, no se extrae.** La
+> línea 144-150 de abajo dejaba anotada la deuda de reusar el patrón de "ventana sostenida" de
+> `throttle_on`/`full_throttle` en `detect_gear_shifts`. Se reevaluó explícitamente al cerrar el
+> ciclo de deuda técnica del ROADMAP: la conclusión original de este ADR se **confirma y se
+> cierra**, no se relanza. Los dos patrones no son intercambiables — `throttle_on`/`full_throttle`
+> son un umbral continuo sostenido evaluado con ventana fija hacia adelante; `detect_gear_shifts`
+> es una transición discreta entre enteros de marcha con debounce de confirmación — forzar un
+> helper único por similitud superficial ("ambos sostienen una condición N muestras") arriesgaría
+> tocar código de producción reciente (el cue `gear`, en release) sin beneficio funcional real,
+> exactamente el antipatrón que este mismo ADR ya evitó al no ampliar el diff. Checkbox
+> correspondiente en `ROADMAP.md` marcado como resuelto (evaluado, no código).
+
 ## Contexto
 
 Con el catálogo configurable del [ADR 0027](0027-cues-catalogo-configurable-perfiles-coast-subtitulos.md)
