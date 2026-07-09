@@ -124,11 +124,10 @@ modelo) y la prueba en seco confirmó el comportamiento (3 pasan, el 4º se deni
 hecho verificado, no una promesa. Pero declarar el incidente "cerrado" sería sobreconfiado; quedan
 tres grietas reales, sin resolver, llevadas a `ROADMAP.md` como deuda explícita:
 
-1. **El campo `tool_input.isolation` nunca se verificó contra una llamada `Agent` real** — solo se
-   infirió del schema de la herramienta y se probó con stdin sintético. Si el nombre o la forma del
-   campo real no coincide, el `try/catch` del script hace *fail-open* (`exit 0`) sin ningún aviso:
-   el tope quedaría inerte y nadie se entera hasta que se repita el incidente. Se confirma (o se
-   corrige) en el primer uso real, no antes.
+1. ~~El campo `tool_input.isolation` nunca se verificó contra una llamada `Agent` real~~ —
+   **confirmado (2026-07-09):** se lanzó un `Agent` real con `isolation: "worktree"` (QA de PR #38)
+   y `~/.claude/.agent-heavy-window.txt` registró la entrada de inmediato. El campo coincide con lo
+   asumido; el hook no estaba en *fail-open* silencioso.
 2. **El "3" es el número que propuso el PO, no uno medido** contra la cuota real de la cuenta ni
    contra el consumo del propio hilo principal de Mau corriendo en paralelo. Puede seguir siendo
    insuficiente.
