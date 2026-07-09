@@ -294,6 +294,102 @@ def test_brake_start_no_lo_trunca_el_segmento_tras_un_kink():
     assert 515 <= braking["milestones"]["brake_start"]["d"] <= 525
 
 
+def test_brake_start_todas_las_fases_debiles_ancla_en_la_tardia():
+    # Piso de intensidad: dos fases separadas (> phase_gap), NINGUNA alcanza
+    # brake_strong (temprana 35%, tardia 20%). El hito debe anclar en la fase
+    # TARDIA (recencia: la que entra al apex), como hacia strong[-1] con los
+    # bloques viejos. HEAD elige la de pico maximo (la temprana, 35%) y adelanta
+    # el cue ~metros a un roce debil; este test lo atrapa.
+    lap = _lap_brake_blocks(0.05, [(60, 80, 35.0), (140, 165, 20.0)])
+    dist = lap.channels["dist"]
+    ms = extract_milestones(lap)[0]["milestones"]
+    assert ms["brake_start"]["d"] == round(dist[140])
+    assert ms["brake_start"]["d"] != round(dist[60])
+
+
+def test_brake_start_desempate_de_picos_iguales_gana_la_fase_mas_tardia():
+    # Dos fases FUERTES (pico 90%) separadas por el gap y con pico identico:
+    # gana la mas tardia (la que entra al apex). Regla documentada en
+    # formato-datos.md que ningun test cubria. (No discrimina contra HEAD: HEAD
+    # ya rompia el empate hacia la fase mas tardia; es blindaje de la regla.)
+    lap = _lap_brake_blocks(0.05, [(60, 80, 90.0), (140, 165, 90.0)])
+    dist = lap.channels["dist"]
+    ms = extract_milestones(lap)[0]["milestones"]
+    assert ms["brake_start"]["d"] == round(dist[140])
+    assert ms["brake_start"]["d"] != round(dist[60])
+
+
+def test_brake_release_cae_despues_de_una_reaplicacion_suave():
+    # Fase A fuerte (pico 60%) -> release -> fase B suave (pico 20%) separada
+    # por el gap. brake_release debe caer DESPUES de B (el piloto solto el freno
+    # de verdad al final de la ultima aplicacion), no en el hueco entre A y B.
+    # HEAD ancla el release al final de la fase GANADORA (A, la de pico maximo)
+    # y lo marca en el hueco, borrando B del analisis.
+    lap = _lap_brake_blocks(0.05, [(60, 90, 60.0), (130, 150, 20.0)])
+    dist = lap.channels["dist"]
+    ms = extract_milestones(lap)[0]["milestones"]
+    assert "brake_release" in ms
+    assert ms["brake_release"]["d"] > round(dist[149])
+
+
+def _lap_encadenada_mismo_sentido():
+    """Dos curvas del MISMO sentido (derecha) con volante residual alto a la
+    salida de la primera que entra a `pre` de la segunda por encima del umbral,
+    una breve enderezada y el giro real hacia la segunda. Freno de la segunda
+    arranca antes del punto medio del segmento (brake_start precede a `pre`)."""
+    valleys = [
+        {"center": 300.0, "vmin": 90.0, "half_width": 120.0, "direction": "right"},
+        {"center": 900.0, "vmin": 80.0, "half_width": 120.0, "direction": "right"},
+    ]
+    lap = make_lap(length_m=1300.0, base_speed=180.0, valleys=valleys)
+    dist = lap.channels["dist"]
+    steering, brake, throttle = [], [], []
+    for d in dist:
+        if d < 300:
+            st = 20.0
+        elif d < 620:
+            st = 15.0  # residual > turn_in_deg al entrar a `pre` (lo = 600)
+        elif d < 700:
+            st = 0.0  # enderezada breve entre las dos curvas
+        elif d <= 900:
+            st = 25.0 * (d - 700) / 200.0  # giro real: cruza 8 grados en ~764 m
+        else:
+            st = 25.0 * max(0.0, (1100 - d) / 200.0)
+        b = 90.0 if 500.0 <= d <= 890.0 else 0.0
+        steering.append(st)
+        brake.append(b)
+        throttle.append(0.0 if b > 0 else 100.0)
+    lap.channels["steering"] = steering
+    lap.channels["brake"] = brake
+    lap.channels["throttle"] = throttle
+    return lap
+
+
+def test_turn_in_no_se_adelanta_con_volante_residual_encadenado():
+    # El volante residual de la salida de C1 entra a `pre` de C2 ya por encima
+    # de turn_in_deg. Con brake_start anclando antes de `pre`, HEAD aceptaba la
+    # PRIMERA muestra de `pre` como turn_in (~600 m, cientos de metros antes).
+    # Exigir CRUCE ASCENDENTE del umbral lo evita: el residual no cruza.
+    lap = _lap_encadenada_mismo_sentido()
+    corners = extract_milestones(lap)
+    ms = corners[1]["milestones"]
+    assert ms["brake_start"]["d"] < 600  # frena antes del punto medio del segmento
+    assert "turn_in" in ms
+    assert ms["turn_in"]["d"] > 700  # el giro real, no el volante residual (~600)
+
+
+def test_turn_in_normal_con_volante_en_cero_se_detecta():
+    # No-regresion: con el volante en cero antes de girar, el cruce ascendente
+    # normal detecta el turn_in (el nuevo filtro no rompe el caso comun).
+    lap = make_lap(
+        length_m=900.0,
+        valleys=[{"center": 400.0, "vmin": 80.0, "half_width": 150.0, "direction": "right"}],
+    )
+    ms = extract_milestones(lap)[0]["milestones"]
+    assert "turn_in" in ms
+    assert ms["turn_in"]["d"] < ms["apex"]["d"]
+
+
 # ── detect_gear_shifts: cambio de marcha lap-wide (cue "gear", solo subtitulo) ─
 
 
