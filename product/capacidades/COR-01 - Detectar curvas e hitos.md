@@ -33,6 +33,8 @@ Sistema (ejecutado sobre la vuelta remuestreada, antes de la comparación por cu
 - Se detecta un evento V-Min por cada mínimo local de velocidad significativo.
 - La dirección de la curva (left / right) se toma del canal `glat` si está disponible.
 - Sin canal `glat`, no se calcula `g_lat_max` en los hitos, pero las curvas V-Min siguen detectándose.
+- `brake_start` ancla en la **primera muestra de la fase de frenada de pico máximo** anterior al ápex, no en la última pisada ni en un blip débil previo: cuando el piloto modula una sola frenada en dos pisadas fuertes seguidas, el cue debe sonar donde empieza a cargar el pedal hacia el máximo freno (el algoritmo de fases y el filtro `brake_strong` son SSOT de [`formato-datos.md`](../../docs/formato-datos.md#detección-de-curvas-resumen-del-algoritmo); la semántica la fija el [ADR 0031](../../docs/decisions/0031-propiedad-de-la-frenada-y-contrato-de-segment-m.md)).
+- Cada curva es dueña de toda fase de frenada posterior al ápex de su vecina previa; la frenada real puede empezar antes de `segment_m[0]` (p. ej. tras un kink rápido) sin que se trunque en el borde del segmento ([ADR 0031](../../docs/decisions/0031-propiedad-de-la-frenada-y-contrato-de-segment-m.md), Opción A).
 
 ## Criterios de aceptación
 - Dado una vuelta con N valles de velocidad conocidos, cuando se ejecuta `detect_corners`, entonces se identifican exactamente N curvas con evento de tipo `vmin`.
@@ -40,6 +42,8 @@ Sistema (ejecutado sobre la vuelta remuestreada, antes de la comparación por cu
 - Dado que la vuelta no tiene canal `dist`, cuando se ejecuta `detect_corners`, entonces se lanza `ValueError` (no un `KeyError` desnudo).
 - Dado una vuelta con valles de velocidad, cuando se extraen los hitos con `extract_milestones`, entonces cada curva incluye al menos `apex` y `brake_start` en sus milestones.
 - Dado una vuelta sin canal `glat`, cuando se detectan las curvas, entonces se encuentran las curvas V-Min pero ninguna incluye el campo `g_lat_max` en sus hitos.
+- Dado una curva cuya frenada tiene dos pisadas fuertes seguidas (una modulación, no dos frenazos), cuando se extraen los hitos, entonces `brake_start` ancla en la primera muestra de la fase de mayor pico de freno, no en la segunda pisada.
+- Dado una curva precedida por un kink sin frenada, cuando se extraen los hitos, entonces `brake_start` puede caer antes de `segment_m[0]` (la frenada no se trunca en el borde del segmento).
 
 ## Dependencias funcionales
 - [[NRM-03 - Remuestrear por distancia]]

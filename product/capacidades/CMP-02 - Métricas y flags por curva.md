@@ -34,6 +34,7 @@ Sistema (parte de `compare()`, ejecutada por curva tras el delta continuo).
 - Si no hay canal `glat` o `glong`, los campos dependientes de ellos no aparecen.
 - El pipeline no crashea con ninguna combinación de los 32 subconjuntos de canales opcionales (glat, glong, gear, abs, tcs).
 - El coaching por curva debe priorizar acciones concretas, sin LLM ni red: frenar antes/después, aumentar o suavizar el pico de freno, subir V-Min, adelantar gas 100%, revisar G lateral o marcha/RPM si los canales existen.
+- `d_brake_m` mide al piloto y a la referencia con la **misma vara**: la frenada del piloto se detecta sobre la **misma ventana ampliada** que usó la referencia, **reconstruida** a partir de los hitos de la curva (ápex propio y de la vecina previa), no de un campo publicado ni del `segment_m` ([ADR 0031](../../docs/decisions/0031-propiedad-de-la-frenada-y-contrato-de-segment-m.md), Opción A — se descarta exponer `brake_window_m`). Como consecuencia, cuando piloto y referencia son la **misma vuelta**, `d_brake_m == 0` (invariante): medir al piloto con el segmento en vez de con esta ventana levantaba banderas `"frenada"` espurias aunque frenara en el mismo metro.
 
 ## Criterios de aceptación
 - Dado que el piloto pasa el ápex más rápido que la referencia, cuando se calculan las métricas por curva, entonces `d_vmin` es positivo para esa curva.
@@ -41,6 +42,7 @@ Sistema (parte de `compare()`, ejecutada por curva tras el delta continuo).
 - Dado que las vueltas carecen de un canal opcional (glat, glong, gear, abs o tcs), cuando se comparan, entonces los campos dependientes de ese canal no aparecen en la salida y el resto de métricas sí están presentes.
 - Dado que una curva concentra pérdida de tiempo, cuando se calcula `corner_coaching(row, trace)`, entonces el dict contiene una síntesis y acciones derivadas de los deltas de frenada, V-Min, gas o G lateral disponibles.
 - Dado que el piloto gana tiempo en una curva, cuando se calcula `corner_coaching(row, trace)`, entonces el estado de la curva es positivo y la síntesis no la presenta como problema prioritario.
+- Dado que la vuelta del piloto y la de referencia son la misma, cuando se comparan, entonces `d_brake_m == 0` en toda curva con frenada y no se levanta ninguna bandera `"frenada"` espuria.
 
 ## Dependencias funcionales
 - [[CMP-01 - Comparar dos vueltas por distancia]]
