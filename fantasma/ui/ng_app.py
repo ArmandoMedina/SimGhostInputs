@@ -145,7 +145,10 @@ async def main_page():
 
       /* Analysis cols */
       .analysis-cols { display: grid; grid-template-columns: 1fr 320px; gap: 20px; align-items: start; }
-      .panel { background: var(--card-bg); border: 1px solid var(--border); }
+      /* width:100% -> el panel llena la columna aunque el flex-column padre sea
+         align-items:flex-start (default de NiceGUI): sin esto ①/③ del Paso 4 se
+         encogen a su contenido y los inputs de ruta truncan (QA Mariana 2026-07-06). */
+      .panel { background: var(--card-bg); border: 1px solid var(--border); width: 100%; }
       .panel-header { padding: 12px 16px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
       .panel-title { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
       .panel-body { padding: 16px; }
@@ -183,6 +186,16 @@ async def main_page():
       .btn-ghost { background: transparent; color: var(--muted); border: none; padding: 8px 16px; font-size: 13px; cursor: pointer; font-family: inherit; }
       .btn-mini { font-size: 10px; padding: 4px 10px; background: transparent; border: 1px solid var(--border); color: var(--muted); cursor: pointer; font-family: inherit; border-radius: 0; }
       .btn-featured { background: var(--highlight) !important; color: white !important; border: none; padding: 8px 20px; font-size: 13px; font-weight: 600; cursor: pointer; border-radius: 0; width: 100%; font-family: inherit; margin-top: 12px; }
+      /* Fix "botones apagados": el `flat` de Quasar inyecta text-primary (azul) que
+         gana a `color:white` por ORDEN DE CARGA (misma especificidad 0,1,0, su hoja
+         va después) -> texto azul sobre fondo azul, ~1.4:1, ilegible; y habilitado
+         (opacity 1) casi no se distingue del deshabilitado. Subir la especificidad a
+         .q-btn.<clase> (0,2,0) le gana sin depender del orden (QA Mariana 2026-07-06). */
+      .q-btn.btn-primary, .q-btn.btn-primary .q-btn__content, .q-btn.btn-primary .q-btn__content span,
+      .q-btn.btn-featured, .q-btn.btn-featured .q-btn__content, .q-btn.btn-featured .q-btn__content span { color: #fff !important; }
+      .q-btn.btn-secondary, .q-btn.btn-secondary .q-btn__content, .q-btn.btn-secondary .q-btn__content span { color: var(--muted) !important; }
+      .q-btn.btn-primary.disabled, .q-btn.btn-primary:disabled,
+      .q-btn.btn-featured.disabled, .q-btn.btn-featured:disabled { opacity: 0.4 !important; }
 
       /* Scanline overlay */
       .scanline { position: fixed; top: 0; left: 0; right: 0; bottom: 0; pointer-events: none; z-index: 9999; background: repeating-linear-gradient(0deg, rgba(0,0,0,0.015) 0px, rgba(0,0,0,0.015) 1px, transparent 1px, transparent 2px); }

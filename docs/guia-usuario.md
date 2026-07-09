@@ -48,6 +48,8 @@ La pantalla inicial muestra los tres insumos del flujo: **referencia**, **piloto
 
 El **sidebar izquierdo** muestra el progreso: ✅ paso completado, ▶️ paso actual, ○ paso pendiente en tu flujo, · paso opcional fuera del flujo elegido. El botón **🔄 Nueva sesión** al pie del sidebar borra todo el estado y vuelve al Paso 0 sin recargar la pestaña del navegador — útil para analizar otra tanda sin cerrar la app. En la esquina inferior izquierda hay un **badge de versión** (p. ej. «v2.2 · AMS2 · MoTeC») que muestra la versión instalada; cítalo al [reportar un bug](../CONTRIBUTING.md) (CONTRIBUTING §1 lo pide).
 
+Los **botones de acción** (Empezar, Componer video, Generar overlay, etc.) se ven en **azul sólido con texto blanco cuando están listos** para pulsarse; cuando les falta algún requisito se ven **atenuados** y —en los pasos que lo indican— un texto debajo dice exactamente qué falta.
+
 El **Paso 1** muestra dos paneles de carga, uno para la vuelta de referencia y otro para la tuya. En cada panel aparece una zona de carga integrada en el browser: haz clic en ella para abrir el selector de archivos del sistema operativo, o arrastra el `.csv` (o `.xlsx`) directamente sobre la zona. La app detecta las vueltas del archivo automáticamente; si hay más de una, aparece un desplegable para elegir cuál usar (por defecto se pre-selecciona la más rápida). Una vez subidos ambos archivos, pulsa el botón de avance para continuar.
 
 ## 4. Compara
@@ -107,7 +109,7 @@ El Paso 5 tiene **dos paneles independientes**:
 5. El **directorio de salida** se pre-rellena automáticamente con la ruta de CrewChief detectada para el circuito. Si no se detecta, escribe el nombre exacto que CrewChief/AMS2 espera o usa «Explorar…» para navegar.
 6. Pulsa **«Generar Pace Notes»**: un spinner indica el progreso; al terminar verás cuántas entradas se generaron y el sidebar marca el Paso 5 como completado (✅). El pack usa la selección y prioridad de cues configuradas arriba.
 
-**② Aplicar sonido a un video existente** (panel derecho): siempre visible, sin importar si hay análisis disponible. Si ya tienes el video compuesto (por el flujo habitual u otro programa) y quieres añadirle el audio del pack, este panel lo hace sin re-encodear el video (ffmpeg `-c:v copy`). Requiere la vuelta del piloto cargada (Paso 1) para sincronizar los cues; el botón «Aplicar sonido» se habilita cuando están el video, la carpeta del pack y la vuelta del piloto — y cuando algo falta, un texto bajo el botón dice exactamente qué.
+**② Aplicar sonido a un video existente** (panel derecho): siempre visible, sin importar si hay análisis disponible. Si ya tienes el video compuesto (por el flujo habitual u otro programa) y quieres añadirle el audio del pack, este panel lo hace sin re-encodear el video (ffmpeg `-c:v copy`). Requiere la vuelta del piloto cargada (Paso 1) para sincronizar los cues; ajusta el **volumen** del pack antes de aplicar. El botón «Aplicar sonido» se habilita cuando están el video, la carpeta del pack y la vuelta del piloto — y cuando algo falta, un texto bajo el botón dice exactamente qué.
 
 > **Verificación video↔vuelta:** los videos compuestos por el Paso 4 llevan al lado un archivo `*.sync.json` con la identidad de la vuelta ([ADR 0024](decisions/0024-sincronia-pace-notes.md)). Al elegir uno, el panel avisa si la vuelta cargada no corresponde (✓ verde si coincide, ⚠ si no), y el mux se niega a mezclar con la vuelta equivocada — era la causa de cues corridos por segundos. Videos externos sin `.sync.json` se procesan como siempre.
 

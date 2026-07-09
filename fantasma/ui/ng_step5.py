@@ -776,6 +776,12 @@ async def render(state, navigate):
                         _base, _ext = os.path.splitext(_video)
                         _out = _base + "_pacenotes" + (_ext or ".mp4")
                     _vol = float(mux_vol_state["value"])
+                    # drv_name se lee AQUI, en contexto UI: state es un proxy sobre
+                    # app.storage.user, que revienta ("can only be used within a UI
+                    # context") si se lee dentro del hilo de run.io_bound. _drv_lap
+                    # ya se captura arriba por la misma razon; drv_name se quedo
+                    # colgado leyendose tarde y tumbaba el mux entero (QA E2E 2026-07-06).
+                    _source_name = state.drv_name
 
                     _mux_state["running"] = True
                     apply_btn.disable()
@@ -793,7 +799,7 @@ async def render(state, navigate):
                             _drv_lap,
                             _out,
                             volume=_vol,
-                            source_name=state.drv_name,
+                            source_name=_source_name,
                         )
 
                     try:
