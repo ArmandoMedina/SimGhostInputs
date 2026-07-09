@@ -66,6 +66,18 @@ pip install -e ".[full]"
 fantasma --help
 ```
 
+**Lockfile (`requirements-lock.txt`):** el repo trae un lockfile en la raíz —versiones exactas
+resueltas desde `pyproject.toml` (extras `full`, `test` y `dev`), pensado para auditar contra
+CVEs y para builds reproducibles ([ADR 0029](docs/decisions/0029-lockfile-pip-compile.md)). **No
+reemplaza** el flujo normal de instalación: `pip install -e ".[full]"` (arriba) sigue siendo el
+comando de siempre para desarrollar. El lockfile se regenera a mano, como paso del proceso de
+release, cuando cambian los extras de `pyproject.toml`:
+
+```powershell
+pip install -e ".[dev]"   # trae pip-tools
+pip-compile --extra=full --extra=test --extra=dev --output-file=requirements-lock.txt pyproject.toml
+```
+
 Para la UI NiceGUI:
 
 ```powershell
