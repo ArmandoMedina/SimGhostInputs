@@ -206,6 +206,218 @@ def _make_wav_bytes(samples_int16, sample_rate=24000) -> bytes:
     return buf.getvalue()
 
 
+# ── Perfiles de sonido de los cues (QA 2026-07-09) ────────────────────────────
+# El PO reporto que todos los cues suenan igual: hoy un cue solo cambia de
+# FRECUENCIA (seno puro de generate_tone). "seno" es ese comportamiento de HOY
+# (byte-identico); los otros tres dan a cada familia una FORMA DE ONDA / DURACION
+# / ENVOLVENTE distinta para que se distingan de oido, SIN tocar DEFAULT_FREQS.
+# La sintesis de las variantes viene de la evidencia de
+# qa_runs/2026-07-09-sonidos/ (Mariana). El PO todavia NO eligio cual adoptar.
+#
+#   seno   -> comportamiento actual: seno puro, solo cambia la frecuencia.
+#   timbre -> (A) una forma de onda por familia: freno=cuadrada band-limited,
+#             tics=seno limpio, gas=triangular, turn_in/apex=pulso percusivo.
+#   ritmo  -> (B) mismo seno de hoy, separado por DURACION/PATRON: freno del
+#             doble de largo, gas doble-blip, turn_in pulso unico, tics iguales.
+#   chirp  -> (C) barridos: el freno baja de frecuencia, el gas sube.
+#
+# NO se coloca en DEFAULT_CONFIG: ese dict es un catalogo POR TIPO DE CUE
+# (cada valor es {enabled, priority, ...}) que cue_profiles.config_to_profile
+# recorre con `for cue_type in DEFAULT_CONFIG` y resuelve con _cue_cfg (que hace
+# dict(DEFAULT_CONFIG[cue])); una clave escalar "sound_profile" reventaria esa
+# serializacion. El perfil es GLOBAL al pack, no por cue: viaja como parametro
+# `sound_profile` de build_tone_pack/build_pack (ver docstrings).
+DEFAULT_SOUND_PROFILE = "seno"
+SOUND_PROFILES = ("seno", "timbre", "ritmo", "chirp")
+# Solo se suman armonicos por debajo de 0.45*SR (~10.8 kHz a 24 kHz): ninguna
+# componente pasa de Nyquist, asi no hay alias audible. Nunca se muestrea una
+# discontinuidad (cuadrada/sierra por formula directa) — todo timbre no senoidal
+# es SINTESIS ADITIVA de armonicos band-limited (QA 2026-07-09).
+_NYQ_MARGIN = 0.45
+
+
+def _tone_time(duration_s, sample_rate):
+    import numpy as np
+
+    return np.arange(int(sample_rate * duration_s)) / sample_rate
+
+
+def _tone_fade(sig, sample_rate, fade_s=0.008):
+    """Fade-in/out lineal para no meter un clic de discontinuidad en los bordes."""
+    import numpy as np
+
+    n = len(sig)
+    f = min(int(sample_rate * fade_s), n // 2)
+    if f > 0:
+        env = np.ones(n)
+        env[:f] = np.linspace(0, 1, f)
+        env[-f:] = np.linspace(1, 0, f)
+        sig = sig * env
+    return sig
+
+
+def _tone_norm(sig):
+    import numpy as np
+
+    peak = np.max(np.abs(sig))
+    return sig / peak if peak > 0 else sig
+
+
+def _odd_harmonics(freq, sample_rate):
+    """Armonicos IMPARES de `freq` estrictamente por debajo de _NYQ_MARGIN*SR.
+
+    Fuente unica del limite de banda de la cuadrada y la triangular: el armonico
+    mas alto que devuelve cumple n*freq < 0.45*SR, garantia anti-alias.
+    """
+    harmonics = []
+    n = 1
+    while n * freq < _NYQ_MARGIN * sample_rate:
+        harmonics.append(n)
+        n += 2
+    return harmonics
+
+
+def _wave_sine(freq, dur, sample_rate, fade_s=0.008):
+    import numpy as np
+
+    return _tone_fade(np.sin(2 * np.pi * freq * _tone_time(dur, sample_rate)), sample_rate, fade_s)
+
+
+def _wave_band_square(freq, dur, sample_rate, fade_s=0.008):
+    """Cuadrada band-limited: suma de armonicos impares con amplitud 1/n."""
+    import numpy as np
+
+    t = _tone_time(dur, sample_rate)
+    sig = np.zeros_like(t)
+    for n in _odd_harmonics(freq, sample_rate):
+        sig += np.sin(2 * np.pi * n * freq * t) / n
+    return _tone_fade(_tone_norm(sig), sample_rate, fade_s)
+
+
+def _wave_band_triangle(freq, dur, sample_rate, fade_s=0.008):
+    """Triangular band-limited: armonicos impares con amplitud 1/n^2 y signo alterno."""
+    import numpy as np
+
+    t = _tone_time(dur, sample_rate)
+    sig = np.zeros_like(t)
+    for k, n in enumerate(_odd_harmonics(freq, sample_rate)):
+        sig += ((-1) ** k) * np.sin(2 * np.pi * n * freq * t) / (n * n)
+    return _tone_fade(_tone_norm(sig), sample_rate, fade_s)
+
+
+def _wave_pulse(freq, dur, sample_rate):
+    """Pulso percusivo: seno con decaimiento exponencial (se lee como 'golpe')."""
+    import numpy as np
+
+    t = _tone_time(dur, sample_rate)
+    sig = np.sin(2 * np.pi * freq * t) * np.exp(-t / (dur * 0.35))
+    fin = min(int(sample_rate * 0.002), len(sig) // 2)
+    if fin > 0:
+        sig[:fin] *= np.linspace(0, 1, fin)
+    return _tone_norm(sig)
+
+
+def _wave_chirp(f0, f1, dur, sample_rate, fade_s=0.01):
+    """Barrido lineal f0->f1. Frecuencia instantanea siempre < Nyquist: no aliasa."""
+    import numpy as np
+
+    t = _tone_time(dur, sample_rate)
+    phase = 2 * np.pi * (f0 * t + (f1 - f0) / (2 * dur) * t**2)
+    return _tone_fade(np.sin(phase), sample_rate, fade_s)
+
+
+def _wave_double_blip(freq, sample_rate, blip_s=0.05, gap_s=0.05):
+    """Dos pulsos de seno separados por un silencio corto: patron 'ta-ta'."""
+    import numpy as np
+
+    b = _wave_sine(freq, blip_s, sample_rate, fade_s=0.006)
+    g = np.zeros(int(sample_rate * gap_s))
+    return np.concatenate([b, g, b])
+
+
+def _float_to_wav(sig, volume, sample_rate) -> bytes:
+    import numpy as np
+
+    samples = (np.clip(sig, -1.0, 1.0) * volume * 32767).astype(np.int16)
+    return _make_wav_bytes(samples, sample_rate=sample_rate)
+
+
+def _tic_freq(freqs, step):
+    """Frecuencia del tic `step` del countdown: brake_countdown * COUNTDOWN_SCALE.
+
+    Misma fuente que el perfil seno (_render_cue) — el perfil solo cambia la
+    FORMA de onda, no la frecuencia base.
+    """
+    return freqs.get("brake_countdown", 800) * COUNTDOWN_SCALE[step]
+
+
+def _signal_timbre(cue, step, freqs, sample_rate):
+    if cue == "brake_tic":
+        return _wave_sine(_tic_freq(freqs, step), 0.07, sample_rate)
+    if cue == "brake":
+        return _wave_band_square(freqs.get("brake", 1000), 0.14, sample_rate)
+    if cue in ("turn_in", "apex"):
+        return _wave_pulse(freqs.get(cue, 440), 0.09 if cue == "turn_in" else 0.10, sample_rate)
+    triangle_dur = {
+        "throttle_on": 0.12,
+        "gas": 0.12,
+        "full_throttle": 0.12,
+        "brake_release": 0.10,
+        "coast": 0.14,
+    }
+    if cue in triangle_dur:
+        return _wave_band_triangle(freqs.get(cue, 440), triangle_dur[cue], sample_rate)
+    return _wave_sine(freqs.get(cue, 440), 0.12, sample_rate)
+
+
+def _signal_ritmo(cue, step, freqs, sample_rate):
+    if cue == "brake_tic":
+        # Los dos tics IGUALES entre si (misma freq y duracion): leen 'aviso, aviso'.
+        return _wave_sine(_tic_freq(freqs, 1), 0.08, sample_rate)
+    if cue == "brake":
+        return _wave_sine(freqs.get("brake", 1000), 0.24, sample_rate)
+    if cue in ("throttle_on", "gas", "full_throttle"):
+        return _wave_double_blip(freqs.get(cue, 440), sample_rate)
+    ritmo_dur = {"turn_in": 0.05, "brake_release": 0.12, "coast": 0.18, "apex": 0.10}
+    return _wave_sine(freqs.get(cue, 440), ritmo_dur.get(cue, 0.12), sample_rate)
+
+
+def _signal_chirp(cue, step, freqs, sample_rate):
+    if cue == "brake_tic":
+        f0, f1 = ((520, 640), (600, 760))[step]
+        return _wave_chirp(f0, f1, 0.07, sample_rate)
+    if cue == "brake":
+        return _wave_chirp(1200, 550, 0.16, sample_rate)
+    sweeps = {
+        "throttle_on": (220, 460, 0.14),
+        "gas": (200, 420, 0.14),
+        "full_throttle": (300, 560, 0.14),
+        "turn_in": (560, 470, 0.09),
+        "brake_release": (700, 900, 0.12),
+        "coast": (180, 150, 0.16),
+    }
+    if cue in sweeps:
+        f0, f1, dur = sweeps[cue]
+        return _wave_chirp(f0, f1, dur, sample_rate)
+    # apex y cualquier cue sin barrido definido: referencia estable (seno).
+    return _wave_sine(freqs.get(cue, 440), 0.10, sample_rate)
+
+
+_PROFILE_SIGNALS = {
+    "timbre": _signal_timbre,
+    "ritmo": _signal_ritmo,
+    "chirp": _signal_chirp,
+}
+
+
+def _validate_sound_profile(sound_profile):
+    if sound_profile not in SOUND_PROFILES:
+        raise ValueError(
+            "perfil de sonido desconocido: %r (validos: %s)"
+            % (sound_profile, ", ".join(SOUND_PROFILES))
+        )
+
+
 def build_tone_pack(
     rows,
     corners,
@@ -220,7 +432,9 @@ def build_tone_pack(
     countdown_gap_s=DEFAULT_COUNTDOWN_GAP_S,
     cue_config=None,
     gear_shifts=None,
+    sound_profile=DEFAULT_SOUND_PROFILE,
 ) -> dict:
+    _validate_sound_profile(sound_profile)
     out = Path(outdir)
     out.mkdir(parents=True, exist_ok=True)
     milestones = milestones or DEFAULT_MILESTONES
@@ -246,7 +460,7 @@ def build_tone_pack(
         cue = event["cue"]
         filename = None
         if _cue_sound_enabled(cue_config, cue):
-            data = _render_cue(event, freqs, duration, volume)
+            data = _render_cue(event, freqs, duration, volume, sound_profile=sound_profile)
             variant = variants.get(distance, 0)
             variants[distance] = variant + 1
             filename = "%d_%d.wav" % (distance, variant)
@@ -1118,22 +1332,31 @@ def _metadata_entry(name, milestone, distance, filename):
     }
 
 
-def _render_cue(event, freqs, duration, volume):
-    """Sintetiza el WAV de un evento del plan segun su cue.
+def _render_cue(event, freqs, duration, volume, sound_profile=DEFAULT_SOUND_PROFILE):
+    """Sintetiza el WAV de un evento del plan segun su cue y el perfil de sonido.
 
     Cada evento del plan ya trae su distancia final (los tics del countdown y
     el tono de frenada son eventos independientes, colocados en plan_tone_events).
     El tic asciende en frecuencia por su `step` (COUNTDOWN_SCALE); el tono de
     frenada suena mas largo y a otra frecuencia para no confundirlo con el tic.
+
+    `sound_profile` cambia SOLO la forma de onda / duracion / envolvente, nunca
+    las frecuencias base (DEFAULT_FREQS). "seno" (default) es el comportamiento
+    de HOY, byte-identico; timbre/ritmo/chirp son las variantes de la evidencia
+    de qa_runs/2026-07-09-sonidos/ (ver SOUND_PROFILES).
     """
     cue = event["cue"]
-    if cue == "brake_tic":
-        base = freqs.get("brake_countdown", 880)
-        scale = COUNTDOWN_SCALE[event.get("step", 0)]
-        return generate_tone(base * scale, 0.08, volume=volume)
-    if cue == "brake":
-        return generate_tone(freqs.get("brake", 1000), duration, volume=volume)
-    return generate_tone(freqs.get(cue, 440), duration, volume=volume)
+    if sound_profile == "seno":
+        if cue == "brake_tic":
+            base = freqs.get("brake_countdown", 880)
+            scale = COUNTDOWN_SCALE[event.get("step", 0)]
+            return generate_tone(base * scale, 0.08, volume=volume)
+        if cue == "brake":
+            return generate_tone(freqs.get("brake", 1000), duration, volume=volume)
+        return generate_tone(freqs.get(cue, 440), duration, volume=volume)
+    _validate_sound_profile(sound_profile)
+    sig = _PROFILE_SIGNALS[sound_profile](cue, event.get("step", 0), freqs, 24000)
+    return _float_to_wav(sig, volume, 24000)
 
 
 def _write_metadata(outdir, entries, track_name=None):

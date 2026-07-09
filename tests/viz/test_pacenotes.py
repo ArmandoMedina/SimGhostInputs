@@ -1567,3 +1567,185 @@ def test_build_pack_mode_tones_ignora_kwargs_solo_de_voz(tmp_path):
         rows, corners, str(tmp_path), mode="tones", top=1, min_gap_m=99, voice_lead_s=2.5
     )
     assert result["entries"] >= 1
+
+
+# ── Perfiles de sonido de los cues (QA 2026-07-09) ────────────────────────────
+
+
+def _decode_wav(data):
+    """(muestras float [-1,1], sample_rate) de un WAV mono 16-bit en bytes."""
+    import io
+    import wave
+
+    import numpy as np
+
+    with wave.open(io.BytesIO(data)) as w:
+        rate = w.getframerate()
+        raw = w.readframes(w.getnframes())
+    return np.frombuffer(raw, dtype=np.int16).astype(np.float32) / 32767.0, rate
+
+
+_PROFILE_ROWS = [{"id": "C01", "name": "C01", "time_lost": 0.6, "flags": "vmin+frenada"}]
+_PROFILE_CORNERS = [
+    {
+        "id": "C01",
+        "name": "C01",
+        "milestones": {
+            "brake_start": {"d": 1000, "v": 216},
+            "brake_release": {"d": 1200},
+            "turn_in": {"d": 1400},
+            "throttle_on": {"d": 1800},
+            "full_throttle": {"d": 2000},
+        },
+    }
+]
+
+
+def test_sound_profile_default_es_seno_byte_identico(tmp_path):
+    """Requisito duro: sin `sound_profile` (o con 'seno') el pack es
+    BYTE-IDENTICO. Se compara muestra por muestra el WAV de cada cue, no solo
+    que 'no reviente'."""
+    from fantasma.viz.pacenotes import DEFAULT_SOUND_PROFILE, build_tone_pack
+
+    assert DEFAULT_SOUND_PROFILE == "seno"
+    d_def = tmp_path / "default"
+    d_seno = tmp_path / "seno"
+    build_tone_pack(_PROFILE_ROWS, _PROFILE_CORNERS, str(d_def), top=1)
+    build_tone_pack(_PROFILE_ROWS, _PROFILE_CORNERS, str(d_seno), top=1, sound_profile="seno")
+
+    wavs_def = {p.name: p.read_bytes() for p in sorted(d_def.glob("*.wav"))}
+    wavs_seno = {p.name: p.read_bytes() for p in sorted(d_seno.glob("*.wav"))}
+    assert wavs_def and set(wavs_def) == set(wavs_seno)
+    for name in wavs_def:
+        assert wavs_def[name] == wavs_seno[name], (
+            "el default no es byte-identico a 'seno': %s" % name
+        )
+
+
+def test_sound_profile_seno_reproduce_generate_tone_exacto():
+    """El perfil 'seno' de _render_cue es exactamente generate_tone con la misma
+    frecuencia/duracion de hoy (freno 0.12 s a brake, tic 0.08 s a
+    brake_countdown*scale) — la evidencia byte a byte de que el default no cambio."""
+    from fantasma.viz.pacenotes import (
+        COUNTDOWN_SCALE,
+        DEFAULT_FREQS,
+        _render_cue,
+        generate_tone,
+    )
+
+    freqs = dict(DEFAULT_FREQS)
+    brake = _render_cue({"cue": "brake"}, freqs, 0.12, 0.8, sound_profile="seno")
+    assert brake == generate_tone(DEFAULT_FREQS["brake"], 0.12, volume=0.8)
+
+    tic = _render_cue({"cue": "brake_tic", "step": 1}, freqs, 0.12, 0.8, sound_profile="seno")
+    assert tic == generate_tone(
+        DEFAULT_FREQS["brake_countdown"] * COUNTDOWN_SCALE[1], 0.08, volume=0.8
+    )
+
+
+def test_cada_perfil_genera_wav_valido_sin_clipping(tmp_path):
+    """timbre/ritmo/chirp generan un pack de WAVs validos y sin clipping (pico
+    <= 1.0) para todos los cues que suenan."""
+    import numpy as np
+
+    from fantasma.viz.pacenotes import build_tone_pack
+
+    for profile in ("timbre", "ritmo", "chirp"):
+        outdir = tmp_path / profile
+        result = build_tone_pack(
+            _PROFILE_ROWS, _PROFILE_CORNERS, str(outdir), top=1, sound_profile=profile
+        )
+        assert result["entries"] >= 1
+        wavs = list(outdir.glob("*.wav"))
+        assert wavs, "el perfil %s no genero ningun WAV" % profile
+        for wav in wavs:
+            samples, rate = _decode_wav(wav.read_bytes())
+            assert rate == 24000
+            assert len(samples) > 0
+            peak = float(np.max(np.abs(samples)))
+            assert peak <= 1.0, "clipping en %s (%s): pico=%.3f" % (profile, wav.name, peak)
+
+
+def test_cada_perfil_respeta_la_duracion_disenada():
+    """Cada cue del catalogo de cada perfil produce un WAV con la duracion de
+    diseno (la misma evidencia de qa_runs/2026-07-09-sonidos/)."""
+    from fantasma.viz.pacenotes import DEFAULT_FREQS, _render_cue
+
+    freqs = dict(DEFAULT_FREQS)
+    esperado = {
+        "timbre": {"brake": 0.14, "brake_release": 0.10, "turn_in": 0.09, "throttle_on": 0.12},
+        "ritmo": {"brake": 0.24, "turn_in": 0.05, "throttle_on": 0.15, "coast": 0.18},
+        "chirp": {"brake": 0.16, "turn_in": 0.09, "throttle_on": 0.14, "brake_release": 0.12},
+    }
+    for profile, cues in esperado.items():
+        for cue, dur in cues.items():
+            data = _render_cue({"cue": cue}, freqs, 0.12, 0.8, sound_profile=profile)
+            samples, rate = _decode_wav(data)
+            assert abs(len(samples) / rate - dur) < 0.005, (profile, cue, len(samples) / rate)
+
+
+def test_perfil_timbre_freno_band_limited_sin_alias():
+    """Anti-aliasing del perfil A: el freno es cuadrada band-limited por SUMA de
+    armonicos IMPARES; el mas alto sintetizado queda por debajo de 0.45*SR (no
+    hay energia sobre Nyquist reflejada). Comprobado por el catalogo de
+    armonicos Y por FFT (sin energia significativa sobre 0.47*SR)."""
+    import numpy as np
+
+    from fantasma.viz.pacenotes import (
+        _NYQ_MARGIN,
+        DEFAULT_FREQS,
+        _odd_harmonics,
+        _render_cue,
+    )
+
+    sr = 24000
+    f0 = DEFAULT_FREQS["brake"]  # 1000 Hz
+    harmonics = _odd_harmonics(f0, sr)
+    # solo impares, estrictamente por debajo del limite de banda
+    assert harmonics == [1, 3, 5, 7, 9]
+    assert all(n % 2 == 1 for n in harmonics)
+    assert max(harmonics) * f0 < _NYQ_MARGIN * sr
+
+    data = _render_cue({"cue": "brake"}, dict(DEFAULT_FREQS), 0.12, 0.8, sound_profile="timbre")
+    samples, rate = _decode_wav(data)
+    spectrum = np.abs(np.fft.rfft(samples))
+    freqs = np.fft.rfftfreq(len(samples), 1.0 / rate)
+    total = float(np.sum(spectrum))
+    above = float(np.sum(spectrum[freqs > _NYQ_MARGIN * sr + 500]))
+    assert above / total < 0.01, "energia sobre el limite de banda: %.4f" % (above / total)
+
+
+def test_sound_profile_desconocido_levanta_error_accionable(tmp_path):
+    """Un perfil desconocido levanta ValueError con un mensaje accionable (lista
+    los validos), tanto en build_tone_pack como en _render_cue — nunca falla en
+    silencio ni cae a un fallback mudo."""
+    import pytest
+
+    from fantasma.viz.pacenotes import DEFAULT_FREQS, _render_cue, build_tone_pack
+
+    with pytest.raises(ValueError) as exc:
+        build_tone_pack(
+            _PROFILE_ROWS, _PROFILE_CORNERS, str(tmp_path), top=1, sound_profile="bombo"
+        )
+    assert "bombo" in str(exc.value)
+    assert "seno" in str(exc.value) and "timbre" in str(exc.value)
+
+    with pytest.raises(ValueError):
+        _render_cue({"cue": "brake"}, dict(DEFAULT_FREQS), 0.12, 0.8, sound_profile="bombo")
+
+
+def test_build_pack_propaga_sound_profile_a_los_tonos(tmp_path):
+    """build_pack reenvia `sound_profile` hasta build_tone_pack: el pack en
+    'timbre' difiere byte a byte del default 'seno' (el e2e puede pedir un
+    perfil concreto por el punto de entrada publico)."""
+    from fantasma.viz.pacenotes import build_pack
+
+    d_seno = tmp_path / "seno"
+    d_timbre = tmp_path / "timbre"
+    build_pack(_PROFILE_ROWS, _PROFILE_CORNERS, str(d_seno), mode="tones", top=1)
+    build_pack(
+        _PROFILE_ROWS, _PROFILE_CORNERS, str(d_timbre), mode="tones", top=1, sound_profile="timbre"
+    )
+    brake_seno = next(d_seno.glob("1000_*.wav")).read_bytes()
+    brake_timbre = next(d_timbre.glob("1000_*.wav")).read_bytes()
+    assert brake_seno != brake_timbre
