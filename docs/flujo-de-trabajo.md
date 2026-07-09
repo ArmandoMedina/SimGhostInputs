@@ -377,6 +377,15 @@ subagente pero luego corrió `git push` **en sesión** — incongruente. La dele
 cubre la **ejecución mecánica de git**. Corregido en la *regla dura* de arriba: si el commit va por
 agente, el push también.
 
+**Lección del cuarto caso real (cerrar deuda técnica, 2026-07-09):** el orquestador lanzó **5 subagentes
+worktree pesados** (skill Ahiram, cada uno explora+codea+testea+abre PR) en paralelo, más su propio
+trabajo en el hilo principal — agotó la cuota de sesión de la cuenta de golpe; los 5 fallaron a mitad de
+tarea (nada se perdió: cada worktree conserva su diff en disco). **Regla dura, ahora mecánica, no de
+juicio:** un hook global (`~/.claude/hooks/agent-concurrency-gate.ps1`, fuera del repo — ver
+[`docs/recursos-del-proyecto.md`](recursos-del-proyecto.md)) topa a **3 los agentes con `isolation:
+"worktree"` corriendo en los últimos 20 minutos**; el 4º se deniega solo, sin que el orquestador tenga
+que "acordarse" de contar. Detalle completo en [ADR 0019, enmienda 2026-07-09](decisions/0019-adopcion-homologacion-starter-v0.5.0.md).
+
 ### La frontera de versión (de vez en cuando)
 
 Muchos commits se acumulan; al cerrar un hito, la skill **`release-helper`** corta una **versión**

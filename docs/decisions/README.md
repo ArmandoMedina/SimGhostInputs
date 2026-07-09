@@ -28,7 +28,7 @@ bifurcación equivocada.
 | [0016](0016-gate-grafo-documentacion.md) | Gate determinista del grafo de docs (`auditar.ps1`), sin auto-firma | Aceptada | 2026-06-30 |
 | [0017](0017-distancia-canal-requerido.md) | La distancia es un canal requerido; no se sintetiza desde la velocidad | Aceptada | 2026-06-30 |
 | [0018](0018-framework-ui-nicegui.md) | Framework de UI v2.0: NiceGUI + nicegui-pack + Inno Setup (enmienda ADR 0010) | Aceptada · enmend. 2026-07-03 | 2026-06-30 |
-| [0019](0019-adopcion-homologacion-starter-v0.5.0.md) | Adopción de la homologación con project-starter v0.5.0: audit en CI, evidencia de QA, no-memorias, recursos (cierra la Fase 4 del 0016) | Aceptada · enmend. 2026-07-03 | 2026-07-01 |
+| [0019](0019-adopcion-homologacion-starter-v0.5.0.md) | Adopción de la homologación con project-starter v0.5.0: audit en CI, evidencia de QA, no-memorias, recursos (cierra la Fase 4 del 0016) | Aceptada · enmend. 2026-07-03, 2026-07-09 | 2026-07-01 |
 | [0020](0020-blast-radius-viz-hud-reference-avisa.md) | Blast-radius de `viz`: `hud-reference` AVISA (no BLOQUEA); el gate pregunta si el cambio es visual | Aceptada | 2026-07-03 |
 | [0021](0021-flujo-solo-pacenotes.md) | Flujo "Solo Pace Notes": ruta directa Importar→Análisis→Pace Notes (Paso 0 nuevo flujo) | Aceptada | 2026-07-05 |
 | [0022](0022-ci-release-installer.md) | CI que genera y adjunta el instalador Windows en cada release (versión parametrizada, job muerto eliminado) | Aceptada | 2026-07-05 |
@@ -37,5 +37,5 @@ bifurcación equivocada.
 | [0025](0025-countdown-ancla-en-la-frenada.md) | El último tono del countdown ES el punto de frenada (enmienda ADR 0024) | Aceptada · enmend. 2026-07-06 | 2026-07-06 |
 | [0026](0026-cues-frenada-universal-countdown-oportunista.md) | Cues de frenada universales: tono protegido, countdown oportunista y fuera el tono de apex (enmienda ADR 0024 y 0025) | Aceptada · enmend. 2026-07-08 | 2026-07-06 |
 | [0027](0027-cues-catalogo-configurable-perfiles-coast-subtitulos.md) | Cues como catálogo configurable con prioridad, perfiles compartibles, coast y subtítulos quemados (enmienda ADR 0024, 0025 y 0026) | Aceptada · enmend. 2026-07-08 | 2026-07-08 |
-| [0028](0028-cues-reencuadre-prioridades-countdown-frecuencias-gear.md) | Reencuadre de prioridades, countdown uniforme, frecuencias y cue `gear` solo-subtítulo (enmienda ADR 0025 y 0027) | Aceptada · enmend. 2026-07-08 (mismo día) | 2026-07-08 |
+| [0028](0028-cues-reencuadre-prioridades-countdown-frecuencias-gear.md) | Reencuadre de prioridades, countdown uniforme, frecuencias y cue `gear` solo-subtítulo (enmienda ADR 0025 y 0027) | Aceptada · enmend. 2026-07-08, 2026-07-09 | 2026-07-08 |
 | [0029](0029-lockfile-pip-compile.md) | Lockfile de dependencias con `pip-compile` | Aceptada | 2026-07-09 |
