@@ -4,6 +4,9 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/). Versionado
 
 ## [Unreleased]
 
+### Corregido
+- **`throttle_on`/`full_throttle` calibraban su ventana de sostenimiento en muestras fijas, no en tiempo** (`fantasma/core/corners.py::extract_milestones`; deuda técnica del ROADMAP): la ventana quedaba mal calibrada en telemetría con frecuencia distinta de 50 Hz — a menor Hz exigía de más (más segundos de sostenimiento que los 0.3s pretendidos), a mayor Hz exigía de menos. `full_throttle` además tenía su **propio** hardcode de `15` independiente (`post[j:j+15]`), que ni siquiera reusaba el parámetro `throttle_on_window` — mismo bug de fondo, corregido junto. Ahora ambos usan `throttle_on_window_s=0.3` convertido a muestras vía el `dt` real de la vuelta (mismo idioma que ya usa `detect_corners` para `vmin_window_s`/`kink`). **Invariante verificado:** a 50Hz el resultado es bit a bit idéntico al comportamiento anterior — antes/después sobre telemetría real en `qa_runs/charbel-20260709-corners-window-sample-rate/`; tests nuevos en `tests/core/test_corners.py` cubren el límite exacto (14 vs. 15 muestras a 50Hz, 5 vs. 6 a 20Hz). `tests/conftest.py::make_lap` gana el parámetro `dt_s` para fijar Hz explícito en vueltas sintéticas.
+
 ### Cambiado
 - **Versión de ruff pineada en `pyproject.toml`** (extra `dev`; deuda del ROADMAP): `ruff>=0.15,<1` reemplazado por `ruff==0.15.20` — el rango abierto dejaba que CI instalara el último release disponible en cada corrida mientras el entorno local se quedaba con lo que tuviera instalado, y ya había divergido una vez (regla `I001` solo en CI, no en local, PR #15). CI y local corren ahora exactamente la misma versión; ver `docs/benchmark-linter.md` para cómo subirla.
 

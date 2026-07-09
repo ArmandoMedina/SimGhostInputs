@@ -69,13 +69,20 @@ def _active_valley(d, valleys):
 
 
 def make_lap(
-    length_m=1500.0, step_m=1.0, base_speed=180.0, valleys=None, channels=OPTIONAL, meta=None
+    length_m=1500.0,
+    step_m=1.0,
+    base_speed=180.0,
+    valleys=None,
+    channels=OPTIONAL,
+    meta=None,
+    dt_s=None,
 ):
     """Construye una `Lap` sintética.
 
     Args:
         length_m:   longitud de la vuelta en metros.
-        step_m:     separación entre muestras (en distancia).
+        step_m:     separación entre muestras (en distancia). Ignorado si se
+                    da `dt_s`.
         base_speed: velocidad en recta (km/h).
         valleys:    lista de dicts {center, vmin, half_width, direction} — cada
                     uno es una "curva" (un valle de velocidad con frenada/ápex/gas).
@@ -83,6 +90,11 @@ def make_lap(
         channels:   qué canales OPCIONALES incluir. Quitar uno prueba la
                     degradación graceful (p. ej. channels sin "gear").
         meta:       dict de metadatos a fusionar.
+        dt_s:       si se da, muestrea a intervalo de TIEMPO fijo (Hz = 1/dt_s,
+                    como loguea un data logger real) en vez de a intervalo de
+                    distancia fijo (`step_m`). Para probar código calibrado
+                    por tasa de muestreo real a un Hz distinto del que produce
+                    el muestreo por distancia por defecto.
 
     Returns:
         Lap con time/dist/speed + los canales opcionales pedidos.
@@ -94,21 +106,35 @@ def make_lap(
         ]
     chans = set(channels)
 
-    dist, speed = [], []
-    d = 0.0
-    while d <= length_m:
-        dist.append(d)
-        speed.append(_speed_at(d, base_speed, valleys))
-        d += step_m
+    if dt_s is not None:
+        # muestreo por tiempo fijo: se integra la distancia hacia adelante con
+        # la velocidad del perfil (Euler), al reves de la rama de abajo (que
+        # integra el tiempo a partir de una distancia fija).
+        dist, speed, time = [], [], []
+        d, t_acc = 0.0, 0.0
+        while d <= length_m:
+            dist.append(d)
+            v = _speed_at(d, base_speed, valleys)
+            speed.append(v)
+            time.append(t_acc)
+            d += max(v / 3.6, 0.5) * dt_s
+            t_acc += dt_s
+    else:
+        dist, speed = [], []
+        d = 0.0
+        while d <= length_m:
+            dist.append(d)
+            speed.append(_speed_at(d, base_speed, valleys))
+            d += step_m
+
+        # tiempo integrado a partir de distancia / velocidad media del tramo
+        time = [0.0]
+        for i in range(1, len(dist)):
+            dd = dist[i] - dist[i - 1]
+            v_avg = (speed[i] + speed[i - 1]) / 2.0 / 3.6  # km/h -> m/s
+            time.append(time[-1] + dd / max(v_avg, 0.5))
 
     n = len(dist)
-
-    # tiempo integrado a partir de distancia / velocidad media del tramo
-    time = [0.0]
-    for i in range(1, n):
-        dd = dist[i] - dist[i - 1]
-        v_avg = (speed[i] + speed[i - 1]) / 2.0 / 3.6  # km/h -> m/s
-        time.append(time[-1] + dd / max(v_avg, 0.5))
 
     lap = Lap(meta=dict(meta or {}))
     lap.channels["time"] = time

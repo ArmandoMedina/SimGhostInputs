@@ -1,0 +1,873 @@
+{
+ "corners": [
+  {
+   "id": "C01",
+   "kind": "vmin",
+   "milestones": {
+    "brake_start": {
+     "d": 551,
+     "t": 7.52,
+     "v": 281,
+     "gear": 6,
+     "brake_pct": 100
+    },
+    "brake_release": {
+     "d": 695,
+     "t": 10.24,
+     "v": 116,
+     "gear": 3
+    },
+    "turn_in": {
+     "d": 674,
+     "t": 9.64,
+     "v": 143,
+     "gear": 0
+    },
+    "throttle_on": {
+     "d": 701,
+     "t": 10.42,
+     "v": 113,
+     "gear": 3,
+     "throttle_pct": 13
+    },
+    "coast_start": {
+     "d": 696,
+     "t": 10.26,
+     "v": 115,
+     "gear": 3
+    },
+    "coast_end": {
+     "d": 700,
+     "t": 10.38,
+     "v": 113,
+     "gear": 3
+    },
+    "apex": {
+     "d": 708,
+     "t": 10.64,
+     "v": 111,
+     "gear": 3,
+     "g_lat": -1.83
+    },
+    "g_lat_max": {
+     "d": 698,
+     "g_lat": -1.99
+    }
+   },
+   "no_brake": false,
+   "segment_m": [
+    258,
+    853
+   ],
+   "delta_s": 11.04,
+   "max_steering_deg": 22.4,
+   "direction": "right",
+   "slope_pct": 0.2,
+   "slope": "plano"
+  },
+  {
+   "id": "C02",
+   "kind": "vmin",
+   "milestones": {
+    "lift": {
+     "d": 983,
+     "t": 17.62,
+     "v": 155,
+     "gear": 3,
+     "throttle_pct": 0
+    },
+    "turn_in": {
+     "d": 890,
+     "t": 15.56,
+     "v": 159,
+     "gear": 3
+    },
+    "throttle_on": {
+     "d": 994,
+     "t": 17.88,
+     "v": 151,
+     "gear": 3,
+     "throttle_pct": 7
+    },
+    "coast_start": {
+     "d": 984,
+     "t": 17.64,
+     "v": 155,
+     "gear": 3
+    },
+    "coast_end": {
+     "d": 993,
+     "t": 17.84,
+     "v": 152,
+     "gear": 3
+    },
+    "apex": {
+     "d": 998,
+     "t": 17.98,
+     "v": 150,
+     "gear": 3,
+     "g_lat": -1.86
+    },
+    "full_throttle": {
+     "d": 1162,
+     "t": 21.62,
+     "v": 176,
+     "gear": 4
+    },
+    "g_lat_max": {
+     "d": 937,
+     "g_lat": -2.09
+    }
+   },
+   "no_brake": true,
+   "segment_m": [
+    853,
+    1294
+   ],
+   "delta_s": 9.4,
+   "max_steering_deg": 19.6,
+   "direction": "right",
+   "slope_pct": 3.9,
+   "slope": "subida"
+  },
+  {
+   "id": "C03",
+   "kind": "vmin",
+   "milestones": {
+    "brake_start": {
+     "d": 1458,
+     "t": 26.82,
+     "v": 229,
+     "gear": 5,
+     "brake_pct": 100
+    },
+    "brake_release": {
+     "d": 1546,
+     "t": 28.68,
+     "v": 128,
+     "gear": 3
+    },
+    "turn_in": {
+     "d": 1533,
+     "t": 28.32,
+     "v": 137,
+     "gear": 3
+    },
+    "throttle_on": {
+     "d": 1589,
+     "t": 29.96,
+     "v": 109,
+     "gear": 3,
+     "throttle_pct": 6
+    },
+    "coast_start": {
+     "d": 1567,
+     "t": 29.26,
+     "v": 119,
+     "gear": 3
+    },
+    "coast_end": {
+     "d": 1588,
+     "t": 29.94,
+     "v": 110,
+     "gear": 3
+    },
+    "apex": {
+     "d": 1589,
+     "t": 29.96,
+     "v": 109,
+     "gear": 3,
+     "g_lat": -1.72
+    },
+    "full_throttle": {
+     "d": 1746,
+     "t": 34.28,
+     "v": 160,
+     "gear": 3
+    },
+    "g_lat_max": {
+     "d": 1553,
+     "g_lat": -2.16
+    }
+   },
+   "no_brake": false,
+   "segment_m": [
+    1294,
+    1782
+   ],
+   "delta_s": 10.92,
+   "max_steering_deg": 22.7,
+   "direction": "right",
+   "slope_pct": 1.2,
+   "slope": "subida"
+  },
+  {
+   "id": "C04",
+   "kind": "vmin",
+   "milestones": {
+    "brake_start": {
+     "d": 1871,
+     "t": 36.8,
+     "v": 196,
+     "gear": 4,
+     "brake_pct": 100
+    },
+    "brake_release": {
+     "d": 1955,
+     "t": 39.04,
+     "v": 95,
+     "gear": 2
+    },
+    "turn_in": {
+     "d": 1916,
+     "t": 37.78,
+     "v": 138,
+     "gear": 2
+    },
+    "throttle_on": {
+     "d": 1973,
+     "t": 39.74,
+     "v": 83,
+     "gear": 2,
+     "throttle_pct": 12
+    },
+    "coast_start": {
+     "d": 1956,
+     "t": 39.06,
+     "v": 95,
+     "gear": 2
+    },
+    "coast_end": {
+     "d": 1972,
+     "t": 39.72,
+     "v": 84,
+     "gear": 2
+    },
+    "apex": {
+     "d": 1974,
+     "t": 39.78,
+     "v": 82,
+     "gear": 2,
+     "g_lat": 1.66
+    },
+    "full_throttle": {
+     "d": 2049,
+     "t": 42.54,
+     "v": 127,
+     "gear": 2
+    },
+    "g_lat_max": {
+     "d": 1964,
+     "g_lat": 1.76
+    }
+   },
+   "no_brake": false,
+   "segment_m": [
+    1782,
+    2176
+   ],
+   "delta_s": 10.36,
+   "max_steering_deg": 20.5,
+   "direction": "left",
+   "slope_pct": -4.7,
+   "slope": "bajada"
+  },
+  {
+   "id": "C05",
+   "kind": "vmin",
+   "milestones": {
+    "brake_start": {
+     "d": 2292,
+     "t": 47.56,
+     "v": 210,
+     "gear": 4,
+     "brake_pct": 100
+    },
+    "brake_release": {
+     "d": 2352,
+     "t": 48.84,
+     "v": 131,
+     "gear": 3
+    },
+    "turn_in": {
+     "d": 2341,
+     "t": 48.54,
+     "v": 145,
+     "gear": 3
+    },
+    "throttle_on": {
+     "d": 2376,
+     "t": 49.52,
+     "v": 119,
+     "gear": 3,
+     "throttle_pct": 10
+    },
+    "coast_start": {
+     "d": 2353,
+     "t": 48.86,
+     "v": 131,
+     "gear": 3
+    },
+    "coast_end": {
+     "d": 2369,
+     "t": 49.32,
+     "v": 124,
+     "gear": 3
+    },
+    "apex": {
+     "d": 2377,
+     "t": 49.54,
+     "v": 118,
+     "gear": 3,
+     "g_lat": 1.97
+    },
+    "g_lat_max": {
+     "d": 2409,
+     "g_lat": 2.39
+    }
+   },
+   "no_brake": false,
+   "segment_m": [
+    2176,
+    2434
+   ],
+   "delta_s": 5.76,
+   "max_steering_deg": 22.5,
+   "direction": "left",
+   "slope_pct": 1.7,
+   "slope": "subida"
+  },
+  {
+   "id": "C06",
+   "kind": "kink",
+   "milestones": {
+    "lift": {
+     "d": 2434,
+     "t": 51.22,
+     "v": 129,
+     "gear": 3,
+     "throttle_pct": 78
+    },
+    "throttle_on": {
+     "d": 2452,
+     "t": 51.7,
+     "v": 137,
+     "gear": 3,
+     "throttle_pct": 95
+    },
+    "apex": {
+     "d": 2475,
+     "t": 52.28,
+     "v": 147,
+     "gear": 3,
+     "g_lat": -0.57
+    },
+    "full_throttle": {
+     "d": 2491,
+     "t": 52.68,
+     "v": 152,
+     "gear": 3
+    },
+    "g_lat_max": {
+     "d": 2490,
+     "g_lat": -2.26
+    }
+   },
+   "no_brake": true,
+   "segment_m": [
+    2434,
+    2612
+   ],
+   "delta_s": 4.02,
+   "max_steering_deg": 4.6,
+   "direction": "right",
+   "slope_pct": 4.6,
+   "slope": "subida"
+  },
+  {
+   "id": "C07",
+   "kind": "vmin",
+   "milestones": {
+    "brake_start": {
+     "d": 2646,
+     "t": 55.88,
+     "v": 194,
+     "gear": 4,
+     "brake_pct": 100
+    },
+    "brake_release": {
+     "d": 2664,
+     "t": 56.22,
+     "v": 176,
+     "gear": 4
+    },
+    "turn_in": {
+     "d": 2652,
+     "t": 55.98,
+     "v": 189,
+     "gear": 4
+    },
+    "throttle_on": {
+     "d": 2728,
+     "t": 57.58,
+     "v": 159,
+     "gear": 4,
+     "throttle_pct": 18
+    },
+    "coast_start": {
+     "d": 2691,
+     "t": 56.78,
+     "v": 171,
+     "gear": 4
+    },
+    "coast_end": {
+     "d": 2726,
+     "t": 57.54,
+     "v": 160,
+     "gear": 4
+    },
+    "apex": {
+     "d": 2734,
+     "t": 57.72,
+     "v": 158,
+     "gear": 4,
+     "g_lat": -1.77
+    },
+    "full_throttle": {
+     "d": 2830,
+     "t": 59.84,
+     "v": 172,
+     "gear": 4
+    },
+    "g_lat_max": {
+     "d": 2725,
+     "g_lat": -2.04
+    }
+   },
+   "no_brake": false,
+   "segment_m": [
+    2612,
+    3032
+   ],
+   "delta_s": 8.32,
+   "max_steering_deg": 19.1,
+   "direction": "right",
+   "slope_pct": 3.6,
+   "slope": "subida"
+  },
+  {
+   "id": "C08",
+   "kind": "vmin",
+   "milestones": {
+    "brake_start": {
+     "d": 3196,
+     "t": 66.12,
+     "v": 241,
+     "gear": 5,
+     "brake_pct": 100
+    },
+    "brake_release": {
+     "d": 3308,
+     "t": 68.62,
+     "v": 94,
+     "gear": 2
+    },
+    "turn_in": {
+     "d": 3297,
+     "t": 68.24,
+     "v": 109,
+     "gear": 2
+    },
+    "throttle_on": {
+     "d": 3329,
+     "t": 69.48,
+     "v": 80,
+     "gear": 2,
+     "throttle_pct": 16
+    },
+    "coast_start": {
+     "d": 3311,
+     "t": 68.76,
+     "v": 93,
+     "gear": 2
+    },
+    "coast_end": {
+     "d": 3323,
+     "t": 69.24,
+     "v": 85,
+     "gear": 2
+    },
+    "apex": {
+     "d": 3331,
+     "t": 69.56,
+     "v": 79,
+     "gear": 2,
+     "g_lat": 1.36
+    },
+    "g_lat_max": {
+     "d": 3328,
+     "g_lat": 1.72
+    }
+   },
+   "no_brake": false,
+   "segment_m": [
+    3032,
+    3468
+   ],
+   "delta_s": 10.68,
+   "max_steering_deg": 23.1,
+   "direction": "left",
+   "slope_pct": 0.1,
+   "slope": "plano"
+  },
+  {
+   "id": "C09",
+   "kind": "vmin",
+   "milestones": {
+    "brake_start": {
+     "d": 3523,
+     "t": 75.56,
+     "v": 160,
+     "gear": 3,
+     "brake_pct": 100
+    },
+    "brake_release": {
+     "d": 3571,
+     "t": 76.94,
+     "v": 107,
+     "gear": 2
+    },
+    "turn_in": {
+     "d": 3532,
+     "t": 75.78,
+     "v": 149,
+     "gear": 2
+    },
+    "throttle_on": {
+     "d": 3607,
+     "t": 78.18,
+     "v": 97,
+     "gear": 2,
+     "throttle_pct": 18
+    },
+    "coast_start": {
+     "d": 3597,
+     "t": 77.82,
+     "v": 102,
+     "gear": 2
+    },
+    "coast_end": {
+     "d": 3606,
+     "t": 78.16,
+     "v": 97,
+     "gear": 2
+    },
+    "apex": {
+     "d": 3606,
+     "t": 78.16,
+     "v": 97,
+     "gear": 2,
+     "g_lat": -1.65
+    },
+    "full_throttle": {
+     "d": 3719,
+     "t": 81.66,
+     "v": 141,
+     "gear": 3
+    },
+    "g_lat_max": {
+     "d": 3558,
+     "g_lat": -1.87
+    }
+   },
+   "no_brake": false,
+   "segment_m": [
+    3468,
+    3755
+   ],
+   "delta_s": 8.26,
+   "max_steering_deg": 25.0,
+   "direction": "right",
+   "slope_pct": 3.0,
+   "slope": "subida"
+  },
+  {
+   "id": "C10",
+   "kind": "kink",
+   "milestones": {
+    "lift": {
+     "d": 3780,
+     "t": 83.08,
+     "v": 168,
+     "gear": 0,
+     "throttle_pct": 0
+    },
+    "turn_in": {
+     "d": 3791,
+     "t": 83.32,
+     "v": 171,
+     "gear": 4
+    },
+    "throttle_on": {
+     "d": 3856,
+     "t": 84.64,
+     "v": 178,
+     "gear": 4,
+     "throttle_pct": 38
+    },
+    "coast_start": {
+     "d": 3780,
+     "t": 83.08,
+     "v": 168,
+     "gear": 0
+    },
+    "coast_end": {
+     "d": 3782,
+     "t": 83.12,
+     "v": 168,
+     "gear": 0
+    },
+    "apex": {
+     "d": 3885,
+     "t": 85.24,
+     "v": 179,
+     "gear": 4,
+     "g_lat": -1.8
+    },
+    "full_throttle": {
+     "d": 3964,
+     "t": 86.78,
+     "v": 188,
+     "gear": 4
+    },
+    "g_lat_max": {
+     "d": 3904,
+     "g_lat": -2.86
+    }
+   },
+   "no_brake": true,
+   "segment_m": [
+    3755,
+    4026
+   ],
+   "delta_s": 5.38,
+   "max_steering_deg": 20.6,
+   "direction": "right",
+   "slope_pct": -4.8,
+   "slope": "bajada"
+  },
+  {
+   "id": "C11",
+   "kind": "vmin",
+   "milestones": {
+    "brake_start": {
+     "d": 4041,
+     "t": 88.2,
+     "v": 206,
+     "gear": 4,
+     "brake_pct": 100
+    },
+    "brake_release": {
+     "d": 4068,
+     "t": 88.7,
+     "v": 179,
+     "gear": 4
+    },
+    "turn_in": {
+     "d": 4061,
+     "t": 88.56,
+     "v": 185,
+     "gear": 4
+    },
+    "throttle_on": {
+     "d": 4121,
+     "t": 89.78,
+     "v": 172,
+     "gear": 4,
+     "throttle_pct": 19
+    },
+    "coast_start": {
+     "d": 4068,
+     "t": 88.7,
+     "v": 179,
+     "gear": 4
+    },
+    "coast_end": {
+     "d": 4099,
+     "t": 89.32,
+     "v": 174,
+     "gear": 4
+    },
+    "apex": {
+     "d": 4149,
+     "t": 90.38,
+     "v": 168,
+     "gear": 4,
+     "g_lat": -1.88
+    },
+    "full_throttle": {
+     "d": 4246,
+     "t": 92.42,
+     "v": 179,
+     "gear": 4
+    },
+    "g_lat_max": {
+     "d": 4211,
+     "g_lat": -2.16
+    }
+   },
+   "no_brake": false,
+   "segment_m": [
+    4026,
+    4499
+   ],
+   "delta_s": 8.9,
+   "max_steering_deg": 17.2,
+   "direction": "right",
+   "slope_pct": -2.9,
+   "slope": "bajada"
+  }
+ ],
+ "gear_shifts": [
+  {
+   "distance": 92,
+   "gear_from": 5,
+   "gear_to": 6
+  },
+  {
+   "distance": 565,
+   "gear_from": 6,
+   "gear_to": 5
+  },
+  {
+   "distance": 616,
+   "gear_from": 5,
+   "gear_to": 4
+  },
+  {
+   "distance": 632,
+   "gear_from": 4,
+   "gear_to": 3
+  },
+  {
+   "distance": 661,
+   "gear_from": 3,
+   "gear_to": 2
+  },
+  {
+   "distance": 675,
+   "gear_from": 2,
+   "gear_to": 3
+  },
+  {
+   "distance": 1109,
+   "gear_from": 3,
+   "gear_to": 4
+  },
+  {
+   "distance": 1356,
+   "gear_from": 4,
+   "gear_to": 5
+  },
+  {
+   "distance": 1469,
+   "gear_from": 5,
+   "gear_to": 4
+  },
+  {
+   "distance": 1492,
+   "gear_from": 4,
+   "gear_to": 3
+  },
+  {
+   "distance": 1520,
+   "gear_from": 3,
+   "gear_to": 2
+  },
+  {
+   "distance": 1533,
+   "gear_from": 2,
+   "gear_to": 3
+  },
+  {
+   "distance": 1787,
+   "gear_from": 3,
+   "gear_to": 4
+  },
+  {
+   "distance": 1884,
+   "gear_from": 4,
+   "gear_to": 3
+  },
+  {
+   "distance": 1907,
+   "gear_from": 3,
+   "gear_to": 2
+  },
+  {
+   "distance": 2072,
+   "gear_from": 2,
+   "gear_to": 3
+  },
+  {
+   "distance": 2148,
+   "gear_from": 3,
+   "gear_to": 4
+  },
+  {
+   "distance": 2307,
+   "gear_from": 4,
+   "gear_to": 3
+  },
+  {
+   "distance": 2559,
+   "gear_from": 3,
+   "gear_to": 4
+  },
+  {
+   "distance": 3009,
+   "gear_from": 4,
+   "gear_to": 5
+  },
+  {
+   "distance": 3209,
+   "gear_from": 5,
+   "gear_to": 4
+  },
+  {
+   "distance": 3233,
+   "gear_from": 4,
+   "gear_to": 3
+  },
+  {
+   "distance": 3275,
+   "gear_from": 3,
+   "gear_to": 2
+  },
+  {
+   "distance": 3456,
+   "gear_from": 2,
+   "gear_to": 3
+  },
+  {
+   "distance": 3532,
+   "gear_from": 3,
+   "gear_to": 2
+  },
+  {
+   "distance": 3628,
+   "gear_from": 2,
+   "gear_to": 3
+  },
+  {
+   "distance": 3783,
+   "gear_from": 3,
+   "gear_to": 4
+  },
+  {
+   "distance": 4391,
+   "gear_from": 4,
+   "gear_to": 5
+  }
+ ]
+}

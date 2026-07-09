@@ -133,6 +133,78 @@ def test_throttle_on_ignores_blip_at_tail_of_segment():
     assert "throttle_on" not in ms
 
 
+def _lap_with_sustained_pedal_dt(dt_s, onset_idx, sustain_count, threshold=40.0, tail=0):
+    """Vuelta con `dt_s` (Hz explícito) y el pedal en `threshold` durante
+    EXACTAMENTE `sustain_count` muestras desde `onset_idx` -- control por
+    ÍNDICE (no por distancia) para probar el límite exacto de la ventana de
+    sostenimiento (`throttle_on_window_s`) ya calibrada por tasa de muestreo
+    real, no por conteo de muestras fijo.
+    """
+    lap = make_lap(
+        dt_s=dt_s,
+        length_m=900.0,
+        valleys=[{"center": 310.0, "vmin": 80.0, "half_width": 250.0, "direction": "right"}],
+        channels=("throttle", "brake"),
+    )
+    dist = lap.channels["dist"]
+    n = len(dist)
+    throttle = [0.0] * n
+    brake = [90.0 if 150.0 <= d <= 270.0 else 0.0 for d in dist]
+    end = min(onset_idx + sustain_count, n)
+    for i in range(onset_idx, end):
+        throttle[i] = threshold
+    for i in range(end, min(end + tail, n)):
+        throttle[i] = 0.0
+    lap.channels["throttle"] = throttle
+    lap.channels["brake"] = brake
+    return lap
+
+
+def test_throttle_on_window_matches_historical_15_samples_at_50hz():
+    # Invariante no negociable: a 50Hz (dt=0.02s) la ventana calibrada por
+    # tiempo (0.3s) debe dar exactamente 15 muestras, igual que el hardcode
+    # historico -- 14 muestras sostenidas NO alcanzan, 15 SI.
+    lap_14 = _lap_with_sustained_pedal_dt(dt_s=0.02, onset_idx=580, sustain_count=14)
+    lap_15 = _lap_with_sustained_pedal_dt(dt_s=0.02, onset_idx=580, sustain_count=15)
+
+    ms_14 = extract_milestones(lap_14)[0]["milestones"]
+    ms_15 = extract_milestones(lap_15)[0]["milestones"]
+
+    assert "throttle_on" not in ms_14
+    assert ms_15["throttle_on"]["d"] == 392
+
+
+def test_full_throttle_window_matches_historical_15_samples_at_50hz():
+    # Mismo invariante que arriba, pero para full_throttle -- que hasta este
+    # fix tenia su PROPIO hardcode de 15 independiente de throttle_on_window.
+    lap_14 = _lap_with_sustained_pedal_dt(
+        dt_s=0.02, onset_idx=580, sustain_count=14, threshold=100.0, tail=60
+    )
+    lap_15 = _lap_with_sustained_pedal_dt(
+        dt_s=0.02, onset_idx=580, sustain_count=15, threshold=100.0, tail=60
+    )
+
+    ms_14 = extract_milestones(lap_14)[0]["milestones"]
+    ms_15 = extract_milestones(lap_15)[0]["milestones"]
+
+    assert "full_throttle" not in ms_14
+    assert ms_15["full_throttle"]["d"] == 392
+
+
+def test_throttle_on_window_calibrates_to_sample_rate_at_20hz():
+    # A 20Hz (dt=0.05s) la misma ventana de 0.3s exige 6 muestras (no 15):
+    # el bug de fondo era exigir 0.75s de sostenimiento a esta tasa en vez de
+    # los 0.3s reales. 5 muestras NO alcanzan, 6 SI.
+    lap_5 = _lap_with_sustained_pedal_dt(dt_s=0.05, onset_idx=232, sustain_count=5)
+    lap_6 = _lap_with_sustained_pedal_dt(dt_s=0.05, onset_idx=232, sustain_count=6)
+
+    ms_5 = extract_milestones(lap_5)[0]["milestones"]
+    ms_6 = extract_milestones(lap_6)[0]["milestones"]
+
+    assert "throttle_on" not in ms_5
+    assert ms_6["throttle_on"]["d"] == 393
+
+
 def test_no_coast_when_gas_overlaps_brake():
     # gas pegado al freno (overlap, dentro de la ventana de busqueda de 0.6s
     # antes del apex): no hay hueco, no hay coast.
