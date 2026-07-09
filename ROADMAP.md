@@ -10,6 +10,8 @@
 
 ## Estado actual
 
+**v2.3.0** (2026-07-09) — estable. 381 tests. Cues configurables completo (catálogo, prioridad, perfiles, coast, subtítulos adaptativos, cue `gear`; ADR 0024-0028) + cierre de 8 ítems de deuda técnica Media del ROADMAP (normalización por Hz, anti-saturación de voz, job de render en `state`, lockfile, pin de ruff, hooks endurecidos, cobertura E2E; ver [CHANGELOG](CHANGELOG.md)).
+
 **v2.2.0** (2026-07-05) — estable. 234 tests. Flujo "Solo Pace Notes" (entrada directa Importar→Análisis→Pace Notes saltando overlay/compose, [ADR 0021](docs/decisions/0021-flujo-solo-pacenotes.md)) + guía del Paso 5 (tooltips, panel② siempre visible, fix del estado disabled del botón «Aplicar sonido»).
 
 **v2.1.1** (2026-07-05) — estable. 226 tests. Patch: corrige el badge de versión del footer (mostraba «v2.0»).
