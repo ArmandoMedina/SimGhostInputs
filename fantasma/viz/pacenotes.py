@@ -396,6 +396,7 @@ def plan_tone_events(
     # (own_idx sigue siendo la unica exclusion, sin tocar).
     countdown_cfg = _cue_cfg(cue_config, "brake_countdown")
     tics = []
+    countdown_skipped = []
     if countdown_cfg["enabled"]:
         # Igual que en la resolucion de cabida global de arriba: un tic de
         # countdown SI suena, asi que solo debe medirse contra otros eventos
@@ -414,28 +415,52 @@ def plan_tone_events(
                     d = int(round(e["distance"] - e["lead_m"] * frac))
                     tic_candidates.append((d, step, idx, e))
         for d, step, own_idx, e in sorted(tic_candidates, key=lambda x: x[0]):
+            tic = {
+                "corner_id": e["corner_id"],
+                "corner_name": e["corner_name"],
+                "cue": "brake_tic",
+                "distance": d,
+                "priority": countdown_cfg["priority"],
+                "reason": "aviso de frenada",
+                "step": step,
+            }
+            # Trazabilidad: un tic descartado deja rastro en skipped_global (antes
+            # se perdia con un `continue` mudo y plan.json mentia por omision).
+            # NO entra en plan["events"], que sigue siendo la fuente de verdad de
+            # lo que se renderiza.
             if d <= 0:
+                countdown_skipped.append({**tic, "reason": "antes_de_la_meta"})
                 continue
-            if any(abs(d - t) < min_gap_m for t_idx, t in timeline if t_idx != own_idx):
+            # Estorbo mas cercano que viola el gap: se registra contra que evento
+            # choco (cue, curva, distancia) para que el PO pueda auditar.
+            clash = None
+            for t_idx, t in timeline:
+                if t_idx == own_idx:
+                    continue
+                if abs(d - t) < min_gap_m and (clash is None or abs(d - t) < abs(d - clash[1])):
+                    clash = (t_idx, t)
+            if clash is not None:
+                against = kept[clash[0]]
+                countdown_skipped.append(
+                    {
+                        **tic,
+                        "reason": "tic_sin_espacio",
+                        "against": {
+                            "corner_id": against["corner_id"],
+                            "cue": against["cue"],
+                            "distance": against["distance"],
+                        },
+                    }
+                )
                 continue
             timeline.append((own_idx, d))
-            tics.append(
-                {
-                    "corner_id": e["corner_id"],
-                    "corner_name": e["corner_name"],
-                    "cue": "brake_tic",
-                    "distance": d,
-                    "priority": countdown_cfg["priority"],
-                    "reason": "aviso de frenada",
-                    "step": step,
-                }
-            )
+            tics.append(tic)
 
     all_events = sorted(kept + tics, key=lambda c: c["distance"])
     return {
         "events": [_plan_public(e) for e in all_events],
         "corners": corners_plan,
-        "skipped_global": [_plan_public(e) for e in skipped_global],
+        "skipped_global": [_plan_public(e) for e in skipped_global + countdown_skipped],
     }
 
 
@@ -1027,6 +1052,7 @@ def _plan_public(event):
         "lead_m",
         "protected",
         "step",
+        "against",
     )
     return {k: event[k] for k in keys if k in event}
 

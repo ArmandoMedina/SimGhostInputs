@@ -283,6 +283,10 @@ def test_countdown_antes_de_la_meta_omite_tic_pero_conserva_la_frenada():
     # solo el tic que cabe (40) se coloca; el que caeria antes de la meta se omite
     tics = [e for e in plan["events"] if e["cue"] == "brake_tic"]
     assert [e["distance"] for e in tics] == [40]
+    # trazabilidad (D1): el tic omitido antes de la meta deja rastro en
+    # skipped_global (antes se perdia con un `continue` mudo y plan.json mentia).
+    skipped_tics = [s for s in plan["skipped_global"] if s["cue"] == "brake_tic"]
+    assert any(s["reason"] == "antes_de_la_meta" and s["distance"] <= 0 for s in skipped_tics)
 
 
 def test_frenada_protegida_sobrevive_vecino_de_mayor_prioridad():
@@ -407,6 +411,36 @@ def test_countdown_tic_de_otra_curva_si_se_descarta_por_cabida():
     plan = plan_tone_events(rows, corners, top=2, min_gap_m=50)
     tics = sorted(e["distance"] for e in plan["events"] if e["cue"] == "brake_tic")
     assert tics == [1955]
+
+
+def test_countdown_tic_sin_espacio_deja_rastro_con_el_evento_que_lo_choco():
+    """Trazabilidad (D1): un tic descartado por cabida no desaparece en silencio
+    — aparece en skipped_global con reason 'tic_sin_espacio' y CONTRA que evento
+    choco (cue, corner_id, distancia), para que el PO pueda auditarlo. NO entra
+    en plan['events'] (la fuente de verdad de lo que se renderiza)."""
+    from fantasma.viz.pacenotes import plan_tone_events
+
+    rows = [
+        {"id": "C01", "name": "C01", "time_lost": 0.5, "flags": "frenada"},
+        {"id": "C00", "name": "C00", "time_lost": 0.5, "flags": ""},
+    ]
+    corners = [
+        {"id": "C01", "name": "C01", "milestones": {"brake_start": {"d": 2000, "v": 216}}},
+        # throttle_on de C00 a 10 m del tic step=0 de C01 (1910): lo descarta.
+        {"id": "C00", "name": "C00", "milestones": {"throttle_on": {"d": 1900}}},
+    ]
+    plan = plan_tone_events(rows, corners, top=2, min_gap_m=50)
+    assert not any(e["cue"] == "brake_tic" and e["distance"] == 1910 for e in plan["events"])
+    skipped = [
+        s for s in plan["skipped_global"] if s["cue"] == "brake_tic" and s["distance"] == 1910
+    ]
+    assert len(skipped) == 1
+    assert skipped[0]["reason"] == "tic_sin_espacio"
+    assert skipped[0]["against"] == {
+        "corner_id": "C00",
+        "cue": "throttle_on",
+        "distance": 1900,
+    }
 
 
 def test_plan_legacy_tiene_mismo_esquema():
