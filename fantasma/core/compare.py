@@ -1,7 +1,16 @@
 """Comparacion piloto vs referencia, por distancia (no por tiempo)."""
 
 from . import wear
-from .corners import detect_corners, extract_milestones, samples, select_brake_phase
+from .corners import (
+    BRAKE_LOOKBACK_M,
+    BRAKE_ON,
+    BRAKE_STRONG,
+    PHASE_GAP_S,
+    detect_corners,
+    extract_milestones,
+    samples,
+    select_brake_phase,
+)
 from .normalize import resample
 
 
@@ -317,18 +326,30 @@ def _segment(corner):
     return corner.get("segment_m") or corner.get("range_m")
 
 
-def _corner_metrics(corner, lap_data):
+def _corner_metrics(
+    corner,
+    lap_data,
+    prev_apex_d=None,
+    brake_on=BRAKE_ON,
+    brake_strong=BRAKE_STRONG,
+    phase_gap_s=PHASE_GAP_S,
+):
     """Metricas del piloto en una curva de la referencia.
 
     La frenada se detecta con el helper compartido `select_brake_phase` sobre la
-    MISMA ventana ampliada que uso la referencia (`brake_window_m`, publicada por
-    `extract_milestones`) -- no con el segmento por punto medio. Ese es el
-    arreglo: antes este metodo tenia su propia copia del algoritmo de frenada y
-    su propia ventana (el segmento), asi que `d_brake_m` salia asimetrico y
-    levantaba banderas `"frenada"` espurias aunque el piloto frenara en el mismo
-    metro que la referencia. Si la curva no trae `brake_window_m` (corners.json
-    antiguo o curvas escritas a mano), se cae al segmento como respaldo. El resto
-    de metricas (vmin, gas100) sigue acotado al segmento.
+    MISMA ventana ampliada que uso la referencia -- no con el segmento por punto
+    medio. La ventana se RECONSTRUYE aqui a partir de los hitos que la curva ya
+    trae (su `apex` y el de la curva previa), no de un campo publicado: el
+    ADR 0031 descarta exponer `brake_window_m` (Opcion C) y adopta la Opcion A,
+    "cada consumidor deriva la ventana de frenada del contexto que ya tiene".
+    Reproduce la formula de `corners.extract_milestones`:
+    `brake_lo = max(apex_prev, apex - BRAKE_LOOKBACK_M)`, ventana
+    `(brake_lo, apex]`, con los limites redondeados igual que la referencia para
+    que `d_brake_m == 0` cuando piloto y referencia son la misma vuelta. Antes
+    este metodo tenia su propia copia del algoritmo y su propia ventana (el
+    segmento), asi que `d_brake_m` salia asimetrico y levantaba banderas
+    `"frenada"` espurias aunque el piloto frenara en el mismo metro. El resto de
+    metricas (vmin, gas100) sigue acotado al segmento.
     """
     lo, hi = _segment(corner)
     seg = [s for s in lap_data if lo <= s["dist"] <= hi]
@@ -340,8 +361,13 @@ def _corner_metrics(corner, lap_data):
     out["vmin_d"] = round(vmin["dist"])
     if "gear" in vmin:
         out["vmin_gear"] = int(vmin["gear"])
-    brake_window = corner.get("brake_window_m") or [lo, hi]
-    phase, _ = select_brake_phase(lap_data, brake_window)
+    apex_d = corner["milestones"]["apex"]["d"]
+    if prev_apex_d is not None:
+        brake_lo = max(prev_apex_d, apex_d - BRAKE_LOOKBACK_M)
+    else:
+        brake_lo = apex_d - BRAKE_LOOKBACK_M
+    brake_window = [round(brake_lo), round(apex_d)]
+    phase, _ = select_brake_phase(lap_data, brake_window, brake_on, brake_strong, phase_gap_s)
     if phase:
         out["brake_d"] = round(phase[0]["dist"])
         out["brake_pct"] = round(max(s["brake"] for s in phase))
@@ -351,13 +377,30 @@ def _corner_metrics(corner, lap_data):
     return out
 
 
-def compare(ref, drv, step=5.0, corners=None):
+def compare(
+    ref,
+    drv,
+    step=5.0,
+    corners=None,
+    brake_on=BRAKE_ON,
+    brake_strong=BRAKE_STRONG,
+    phase_gap_s=PHASE_GAP_S,
+):
     """Comparacion completa. corners: lista estilo corners.json (si no, se detectan
-    en la referencia). Devuelve (trace, corner_rows, summary)."""
+    en la referencia). Devuelve (trace, corner_rows, summary).
+
+    Los umbrales de frenada (`brake_on`, `brake_strong`, `phase_gap_s`) fluyen
+    desde una unica fuente hacia AMBOS lados: cuando `corners is None` se pasan a
+    `extract_milestones` (referencia) y siempre se pasan a `_corner_metrics`
+    (piloto). Asi la referencia y el piloto se miden con la MISMA vara y el
+    invariante `d_brake_m == 0` se mantiene aunque se cambien los umbrales.
+    """
     trace = delta_trace(ref, drv, step)
     if corners is None:
         events, _ = detect_corners(ref)
-        corners = extract_milestones(ref, events)
+        corners = extract_milestones(
+            ref, events, brake_on=brake_on, brake_strong=brake_strong, phase_gap_s=phase_gap_s
+        )
     drv_data, _ = samples(drv)
 
     def delta_at(dist):
@@ -370,9 +413,15 @@ def compare(ref, drv, step=5.0, corners=None):
     drv_slip = wear.slip_series(drv, drv_ratios) if drv_ratios else None
 
     rows = []
+    # `prev_apex_d` reconstruye la ventana de frenada del piloto igual que la
+    # referencia (frontera de propiedad = apice de la curva previa; ADR 0031).
+    # Se actualiza para CADA curva de la lista, incluso si el piloto no tiene
+    # datos en su segmento, para no desalinear el apice previo de la siguiente.
+    prev_apex_d = None
     for c in corners:
         m = c["milestones"]
-        drv_m = _corner_metrics(c, drv_data)
+        drv_m = _corner_metrics(c, drv_data, prev_apex_d, brake_on, brake_strong, phase_gap_s)
+        prev_apex_d = m["apex"]["d"]
         if drv_m is None:
             continue
         lo, hi = _segment(c)

@@ -33,6 +33,16 @@ Metodologia (validada contra telemetria real del Nordschleife):
   freno, no hay coast).
 """
 
+# Umbrales de frenada, fuente unica compartida por `extract_milestones` (mide la
+# referencia) y `compare._corner_metrics` (mide al piloto). Estan aqui, en un solo
+# sitio, para que ambos lados se midan con la MISMA vara: si un lado usara otros
+# valores, `d_brake_m` saldria asimetrico (ver ADR 0031). `BRAKE_LOOKBACK_M` es el
+# tope de look-back de la ventana de frenada (y de la propiedad por apice previo).
+BRAKE_ON = 10
+BRAKE_STRONG = 50
+PHASE_GAP_S = 0.5
+BRAKE_LOOKBACK_M = 450
+
 
 def samples(lap):
     keys = [
@@ -110,7 +120,9 @@ def detect_corners(lap, vmin_window_s=1.2, vmin_prominence_kmh=3.0, kink_glat=2.
     return events, data
 
 
-def select_brake_phase(lap_samples, window_m, brake_on=10, brake_strong=50, phase_gap_s=0.5):
+def select_brake_phase(
+    lap_samples, window_m, brake_on=BRAKE_ON, brake_strong=BRAKE_STRONG, phase_gap_s=PHASE_GAP_S
+):
     """Elige la fase de frenada dentro de una ventana de busqueda.
 
     Helper COMPARTIDO por `extract_milestones` (mide la referencia) y
@@ -168,13 +180,13 @@ def select_brake_phase(lap_samples, window_m, brake_on=10, brake_strong=50, phas
 def extract_milestones(
     lap,
     events=None,
-    brake_on=10,
-    brake_strong=50,
+    brake_on=BRAKE_ON,
+    brake_strong=BRAKE_STRONG,
     throttle_on=5,
     full_throttle=98,
     turn_in_deg=8,
     throttle_on_window_s=0.3,
-    phase_gap_s=0.5,
+    phase_gap_s=PHASE_GAP_S,
 ):
     """Extrae los hitos de cada curva, con segmentacion por curva. Devuelve
     lista de dicts estilo corners.json.
@@ -239,13 +251,19 @@ def extract_milestones(
         # mismo tope de look-back que `lo`; la frontera de propiedad es el apice
         # previo (no se roba la frenada de la vecina anterior).
         prev_apex = apex_ds[n - 1] if n > 0 else None
-        brake_lo = max(prev_apex, ad - 450) if prev_apex is not None else ad - 450
-        # Ventana de frenada publicada en el dict de la curva (`brake_window_m`)
-        # para que `compare._corner_metrics` mida al piloto con esta MISMA vara.
-        # Se redondea a enteros (igual que `segment_m`) y se usa ya redondeada
-        # aqui, de modo que la referencia y el piloto filtren por limites
-        # byte-identicos: esa es la condicion para que d_brake_m == 0 cuando son
-        # la misma vuelta.
+        brake_lo = (
+            max(prev_apex, ad - BRAKE_LOOKBACK_M)
+            if prev_apex is not None
+            else ad - BRAKE_LOOKBACK_M
+        )
+        # Ventana de frenada INTERNA: NO se publica en el dict de la curva. El
+        # ADR 0031 descarta la Opcion C (exponer `brake_window_m`) y adopta la
+        # Opcion A: cada consumidor deriva la ventana del contexto que ya tiene.
+        # `compare._corner_metrics` la reconstruye con esta MISMA formula (apice
+        # de la curva previa y apice propio) para medir al piloto con la MISMA
+        # vara. Se redondea a enteros antes de filtrar, de modo que referencia y
+        # piloto usen limites byte-identicos: esa es la condicion para que
+        # d_brake_m == 0 cuando son la misma vuelta.
         brake_window = [round(brake_lo), round(ad)]
         phase, phases = select_brake_phase(data, brake_window, brake_on, brake_strong, phase_gap_s)
         no_brake = phase is None
@@ -350,7 +368,6 @@ def extract_milestones(
             "milestones": ms,
             "no_brake": no_brake,
             "segment_m": [round(lo), round(hi)],
-            "brake_window_m": brake_window,
             "delta_s": round(seg[-1]["time"] - seg[0]["time"], 2),
         }
         if "steering" in ap and near:

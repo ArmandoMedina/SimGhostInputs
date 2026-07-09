@@ -251,3 +251,38 @@ def test_driver_brake_anchors_on_first_of_double_pedal():
         "drv_brake_d debe anclar en la primera pisada (~200), no en la segunda (~300); valor: %r"
         % braked[0]["drv_brake_d"]
     )
+
+
+def test_compare_umbrales_no_default_fluyen_a_ambos_lados():
+    """Los umbrales de frenada salen de UNA fuente (los parametros de `compare`)
+    y llegan por igual a la referencia (`extract_milestones`) y al piloto
+    (`_corner_metrics`). Con la asimetria latente de antes -- la referencia
+    tomaba el umbral del config y el piloto usaba el default del helper -- pasar
+    un `brake_strong` no-default rompia el invariante `d_brake_m == 0` de la
+    vuelta contra si misma. Este test lo cubre: `test_compare_same_lap...` usa
+    defaults en ambos lados y por eso no probaba su propia premisa.
+
+    Diseno: dos fases fuertes, la temprana (~150, pico 60) mayor que la tardia
+    (~280, pico 45). Con `brake_strong=50` ambos lados eligen la de pico maximo
+    (150). Con `brake_strong=70` (por ENCIMA de los dos picos) ninguna fase
+    supera el filtro y ambos lados caen a la ultima fase cronologica (280). Que
+    el metro elegido cambie de 150 a 280 prueba que el umbral llega al lado de la
+    REFERENCIA; que `d_brake_m` siga en 0 prueba que llega identico al del
+    PILOTO. Si fluyera a un solo lado, con 70 un lado quedaria en 150 y el otro
+    en 280 y el invariante se romperia."""
+    lap = _single_corner_lap([(150.0, 200.0, 60.0), (280.0, 340.0, 45.0)])
+
+    _, rows_def, _ = compare(lap, lap, step=5.0, brake_strong=50)
+    braked_def = [r for r in rows_def if "d_brake_m" in r]
+    assert braked_def, "se esperaba una curva con frenada"
+    assert all(r["d_brake_m"] == 0 for r in braked_def)
+    assert braked_def[0]["ref_brake_d"] == braked_def[0]["drv_brake_d"] == 150
+
+    _, rows_hi, _ = compare(lap, lap, step=5.0, brake_strong=70)
+    braked_hi = [r for r in rows_hi if "d_brake_m" in r]
+    assert braked_hi, "se esperaba una curva con frenada"
+    assert all(r["d_brake_m"] == 0 for r in braked_hi), (
+        "umbral no-default debe llegar identico a referencia y piloto; filas: %r"
+        % [(r["id"], r["ref_brake_d"], r["drv_brake_d"], r["d_brake_m"]) for r in braked_hi]
+    )
+    assert braked_hi[0]["ref_brake_d"] == braked_hi[0]["drv_brake_d"] == 280
