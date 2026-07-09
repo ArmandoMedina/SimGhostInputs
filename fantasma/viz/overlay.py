@@ -736,7 +736,12 @@ def render_overlay(
     def _seg(c):
         return c.get("segment_m") or c.get("range_m") or [0.0, 0.0]
 
-    corners_by_seg = [((_seg(c)[0], _seg(c)[1]), c) for c in corners]
+    # El desempate "ULTIMA gana" de _corner_at (ADR 0031) solo es correcto si los
+    # corners llegan ordenados ascendente por pista: la curva mas tardia que solapa
+    # es la que debe ganar los metros de frenada. Auto-detect (detect_corners) y la
+    # UI ya entregan ese orden, pero --corners fichero.json hace json.load SIN
+    # reordenar; se blinda aqui. Es no-op para el input ya ordenado.
+    corners_by_seg = sorted([((_seg(c)[0], _seg(c)[1]), c) for c in corners], key=lambda t: t[0][0])
 
     # ── render paralelo de frames ─────────────────────────────────────────────
     frames_dir = os.path.join(outdir, "frames")
