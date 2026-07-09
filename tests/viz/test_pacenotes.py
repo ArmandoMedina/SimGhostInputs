@@ -391,10 +391,13 @@ def test_countdown_tics_no_se_autorrechazan_contra_su_propia_frenada():
     assert tics == [1962, 1981]
 
 
-def test_countdown_tic_de_otra_curva_si_se_descarta_por_cabida():
-    """La exclusion del propio grupo no exime a un tic de respetar la cabida
-    contra OTRAS curvas — eso reabriria el bug 4463 (ADR 0026): un tic que
-    caeria a <min_gap_m de un evento ajeno se sigue descartando."""
+def test_countdown_cue_no_protegido_cede_el_hueco_al_tic():
+    """D2 (ADR 0032), caso (a): un cue NO protegido de OTRA curva (throttle_on)
+    que cae en el hueco de un tic del countdown YA NO lo bloquea — CEDE su
+    hueco. El tic SE COLOCA y el throttle_on desplazado deja rastro en
+    skipped_global con razon 'cedio_al_countdown' apuntando al tic que lo
+    desplazo (nada de descartes silenciosos). Antes (bug D2) el tic de frenada
+    se descartaba por un cue informativo de la curva previa."""
     from fantasma.viz.pacenotes import plan_tone_events
 
     rows = [
@@ -403,33 +406,48 @@ def test_countdown_tic_de_otra_curva_si_se_descarta_por_cabida():
     ]
     corners = [
         {"id": "C01", "name": "C01", "milestones": {"brake_start": {"d": 2000, "v": 216}}},
-        # throttle_on de C00 a 10 m del tic step=0 de C01 (1910): se descarta
-        # por cabida contra OTRA curva; el step=1 (1955), a 55 m, si cabe y
-        # sobrevive.
+        # throttle_on de C00 a 10 m del tic step=0 de C01 (1910): cede su hueco.
         {"id": "C00", "name": "C00", "milestones": {"throttle_on": {"d": 1900}}},
     ]
     plan = plan_tone_events(rows, corners, top=2, min_gap_m=50)
+    # ambos tics del countdown se colocan; ninguno se pierde por el cue cedible
     tics = sorted(e["distance"] for e in plan["events"] if e["cue"] == "brake_tic")
-    assert tics == [1955]
+    assert tics == [1910, 1955]
+    # el throttle_on desplazado no se renderiza
+    assert not any(e["cue"] == "throttle_on" for e in plan["events"])
+    # deja rastro explicito con la razon del cese y contra que tic cedio
+    ceded = [
+        s for s in plan["skipped_global"] if s["cue"] == "throttle_on" and s["distance"] == 1900
+    ]
+    assert len(ceded) == 1
+    assert ceded[0]["reason"] == "cedio_al_countdown"
+    assert ceded[0]["against"] == {"corner_id": "C01", "cue": "brake_tic", "distance": 1910}
 
 
-def test_countdown_tic_sin_espacio_deja_rastro_con_el_evento_que_lo_choco():
-    """Trazabilidad (D1): un tic descartado por cabida no desaparece en silencio
-    — aparece en skipped_global con reason 'tic_sin_espacio' y CONTRA que evento
-    choco (cue, corner_id, distancia), para que el PO pueda auditarlo. NO entra
-    en plan['events'] (la fuente de verdad de lo que se renderiza)."""
+def test_countdown_tic_cede_ante_frenada_protegida_invariante_seguridad():
+    """D2 (ADR 0032), caso (b) — INVARIANTE DE SEGURIDAD: un tic NUNCA desplaza
+    una frenada protegida. Si el hueco del tic lo ocupa un `brake` (prio 100,
+    protected) de OTRA curva, el tic SE DESCARTA (comportamiento de siempre) y
+    deja rastro en skipped_global con reason 'tic_sin_espacio' y contra que
+    frenada choco. La frenada protegida sigue intacta; el tic no la mueve.
+
+    Trazabilidad (D1): el descarte no desaparece en silencio, aparece con el
+    evento que lo choco (cue, corner_id, distancia). NO entra en plan['events'].
+    """
     from fantasma.viz.pacenotes import plan_tone_events
 
     rows = [
         {"id": "C01", "name": "C01", "time_lost": 0.5, "flags": "frenada"},
-        {"id": "C00", "name": "C00", "time_lost": 0.5, "flags": ""},
+        {"id": "C_block", "name": "C_block", "time_lost": 0.5, "flags": "frenada"},
     ]
     corners = [
         {"id": "C01", "name": "C01", "milestones": {"brake_start": {"d": 2000, "v": 216}}},
-        # throttle_on de C00 a 10 m del tic step=0 de C01 (1910): lo descarta.
-        {"id": "C00", "name": "C00", "milestones": {"throttle_on": {"d": 1900}}},
+        # frenada PROTEGIDA de C_block a 5 m del tic step=0 de C01 (1910): el tic
+        # no la desplaza, se descarta. El step=1 (1955), a 50 m, si cabe.
+        {"id": "C_block", "name": "C_block", "milestones": {"brake_start": {"d": 1905}}},
     ]
     plan = plan_tone_events(rows, corners, top=2, min_gap_m=50)
+    # el tic de C01 en 1910 se descarta (no desplaza la frenada protegida)
     assert not any(e["cue"] == "brake_tic" and e["distance"] == 1910 for e in plan["events"])
     skipped = [
         s for s in plan["skipped_global"] if s["cue"] == "brake_tic" and s["distance"] == 1910
@@ -437,10 +455,13 @@ def test_countdown_tic_sin_espacio_deja_rastro_con_el_evento_que_lo_choco():
     assert len(skipped) == 1
     assert skipped[0]["reason"] == "tic_sin_espacio"
     assert skipped[0]["against"] == {
-        "corner_id": "C00",
-        "cue": "throttle_on",
-        "distance": 1900,
+        "corner_id": "C_block",
+        "cue": "brake",
+        "distance": 1905,
     }
+    # las dos frenadas protegidas siguen sonando: ninguna la desplazo un tic
+    brakes = sorted(e["distance"] for e in plan["events"] if e["cue"] == "brake")
+    assert brakes == [1905, 2000]
 
 
 def test_countdown_tic_vs_tic_reporta_el_tic_que_lo_choco_no_la_frenada():
@@ -536,10 +557,12 @@ def test_pack_expande_countdown_y_el_tercer_bip_es_el_ya(tmp_path):
         assert (tmp_path / ("%d_0.wav" % d)).exists()
 
 
-def test_pack_omite_tic_encimado_pero_nunca_el_ya(tmp_path):
-    """Un tic de aviso que caeria a <50 m de un cue de otra curva se omite (en
-    encadenadas queda "2-ya" o solo "ya"), pero el "¡ya!" en la frenada nunca
-    se pierde."""
+def test_pack_cue_cedible_cede_su_hueco_al_tic(tmp_path):
+    """D2 (ADR 0032) end-to-end en el pack: un cue no protegido (throttle_on) de
+    otra curva que cae en el hueco de un tic CEDE — el tic se sintetiza a WAV y
+    entra en metadata, y el cue cedido desaparece del pack. El "¡ya!" de la
+    frenada nunca se pierde. (Antes, bug D2, el tic de seguridad se omitia por
+    el cue informativo de la curva previa.)"""
     import json
 
     from fantasma.viz.pacenotes import build_tone_pack
@@ -550,13 +573,16 @@ def test_pack_omite_tic_encimado_pero_nunca_el_ya(tmp_path):
     ]
     corners = [
         {"id": "C01", "name": "C01", "milestones": {"brake_start": {"d": 2000, "v": 216}}},
-        # throttle_on de C00 a 30 m del tic 0 de C01 (1910): el tic se omite
+        # throttle_on de C00 a 30 m del tic 0 de C01 (1910): cede su hueco
         {"id": "C00", "name": "C00", "milestones": {"throttle_on": {"d": 1880}}},
     ]
     build_tone_pack(rows, corners, str(tmp_path), top=0)
     entries = json.loads((tmp_path / "metadata.json").read_text(encoding="utf-8"))["entries"]
     dists = {e["distanceRoundTrack"]: e["description"] for e in entries}
-    assert 1910 not in dists
+    # el tic SE COLOCA (WAV + entry); el throttle_on cedido no queda en el pack
+    assert "contador de frenada" in dists[1910]
+    assert (tmp_path / "1910_0.wav").exists()
+    assert 1880 not in dists
     assert "contador de frenada" in dists[1955]
     assert "punto de frenada" in dists[2000]
 
@@ -1042,10 +1068,13 @@ def test_turn_in_gana_a_brake_release_en_saturacion_por_prioridad():
     )
 
 
-def test_turn_in_ya_colocado_bloquea_los_tics_del_countdown_cercano():
-    """Un turn_in de otra curva, ya asentado en 'kept', bloquea AMBOS tics del
-    countdown de una frenada vecina si caen a <min_gap_m -- el freno protegido
-    (el "ya") no se ve afectado."""
+def test_turn_in_cercano_cede_ante_los_tics_del_countdown():
+    """D2 (ADR 0032), caso (a) con turn_in: un turn_in de otra curva ya asentado
+    en 'kept' que cae en el hueco de los tics del countdown de una frenada
+    vecina YA NO los bloquea — CEDE su hueco. Los tics SE COLOCAN, la frenada
+    protegida (el "ya") sigue intacta y el turn_in desplazado queda en
+    skipped_global con razon 'cedio_al_countdown'. (Antes, bug D2, el turn_in
+    informativo tiraba el tic de seguridad.)"""
     from fantasma.viz.pacenotes import plan_tone_events
 
     rows = [
@@ -1055,13 +1084,75 @@ def test_turn_in_ya_colocado_bloquea_los_tics_del_countdown_cercano():
     corners = [
         {"id": "C_brake", "name": "C_brake", "milestones": {"brake_start": {"d": 2000, "v": 216}}},
         # lead_m=90 -> tics candidatos en 1910 y 1955; turn_in en 1950 cae a
-        # <50 m de AMBOS.
+        # <50 m del tic step=1: cede su hueco.
         {"id": "C_turn", "name": "C_turn", "milestones": {"turn_in": {"d": 1950}}},
     ]
     plan = plan_tone_events(rows, corners, top=2, min_gap_m=50)
-    assert any(e["cue"] == "turn_in" and e["distance"] == 1950 for e in plan["events"])
+    # el turn_in cede: no se renderiza
+    assert not any(e["cue"] == "turn_in" for e in plan["events"])
+    # los dos tics se colocan y la frenada protegida sigue
     assert any(e["cue"] == "brake" and e["distance"] == 2000 for e in plan["events"])
-    assert not any(e["cue"] == "brake_tic" for e in plan["events"])
+    tics = sorted(e["distance"] for e in plan["events"] if e["cue"] == "brake_tic")
+    assert tics == [1910, 1955]
+    # rastro del cese
+    ceded = [s for s in plan["skipped_global"] if s["cue"] == "turn_in" and s["distance"] == 1950]
+    assert len(ceded) == 1
+    assert ceded[0]["reason"] == "cedio_al_countdown"
+
+
+def test_countdown_tic_de_otra_curva_no_lo_desplaza_el_segundo_cede():
+    """D2 (ADR 0032), caso (c): un tic del countdown de OTRA curva en el hueco es
+    NO-CEDIBLE — un tic no desplaza a otro tic. El segundo cede como siempre
+    (invariante: los countdowns no se pisan entre curvas), no como un cue no
+    protegido. Dos curvas cuyos tics NO chocan sobreviven ambas."""
+    from fantasma.viz.pacenotes import plan_tone_events
+
+    # (c.1) tics que chocan: el segundo cede (no desplaza al primero).
+    rows = [
+        {"id": "C01", "name": "C01", "time_lost": 0.5, "flags": "frenada"},
+        {"id": "C02", "name": "C02", "time_lost": 0.5, "flags": "frenada"},
+    ]
+    corners = [
+        {"id": "C01", "name": "C01", "milestones": {"brake_start": {"d": 3000, "v": 216}}},
+        {"id": "C02", "name": "C02", "milestones": {"brake_start": {"d": 2995, "v": 216}}},
+    ]
+    plan = plan_tone_events(rows, corners, top=2, min_gap_m=50)
+    # el tic de C01 en 2910 choca a 5 m contra el tic YA aceptado de C02 en 2905:
+    # cede (se descarta), no lo desplaza. Ambas frenadas protegidas sobreviven.
+    assert not any(e["cue"] == "brake_tic" and e["distance"] == 2910 for e in plan["events"])
+    skipped = [
+        s for s in plan["skipped_global"] if s["cue"] == "brake_tic" and s["distance"] == 2910
+    ]
+    assert skipped and skipped[0]["reason"] == "tic_sin_espacio"
+    assert skipped[0]["against"]["cue"] == "brake_tic"
+    assert sorted(e["distance"] for e in plan["events"] if e["cue"] == "brake") == [2995, 3000]
+
+    # (c.2) tics lejanos: ambos countdowns sobreviven completos, ninguno cede.
+    corners_lejos = [
+        {"id": "C01", "name": "C01", "milestones": {"brake_start": {"d": 3000, "v": 216}}},
+        {"id": "C02", "name": "C02", "milestones": {"brake_start": {"d": 2500, "v": 216}}},
+    ]
+    plan2 = plan_tone_events(rows, corners_lejos, top=2, min_gap_m=50)
+    tics2 = sorted(e["distance"] for e in plan2["events"] if e["cue"] == "brake_tic")
+    assert tics2 == [2410, 2455, 2910, 2955]
+
+
+def test_countdown_tic_con_espacio_libre_se_emite_igual_no_regresion():
+    """D2 (ADR 0032), caso (d) — NO-REGRESION: un tic con espacio libre (sin
+    ningun cue cercano, cedible o no) se emite exactamente igual que antes del
+    cambio. La nueva regla solo actua cuando hay algo en el hueco; sin estorbo
+    el resultado no cambia."""
+    from fantasma.viz.pacenotes import plan_tone_events
+
+    rows = [{"id": "C01", "name": "C01", "time_lost": 0.5, "flags": "frenada"}]
+    corners = [{"id": "C01", "name": "C01", "milestones": {"brake_start": {"d": 2000, "v": 216}}}]
+    plan = plan_tone_events(rows, corners, top=1, min_gap_m=50)
+    tics = sorted(e["distance"] for e in plan["events"] if e["cue"] == "brake_tic")
+    assert tics == [1910, 1955]
+    # nada cedio ni se descarto: no hay rastros de countdown en skipped_global
+    assert not any(
+        s["reason"] in ("cedio_al_countdown", "tic_sin_espacio") for s in plan["skipped_global"]
+    )
 
 
 def test_countdown_gap_uniforme_en_dos_velocidades():

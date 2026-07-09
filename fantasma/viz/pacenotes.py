@@ -724,23 +724,37 @@ def plan_tone_events(
         corner_plan["selected"] = still
 
     # Countdown OPORTUNISTA: por cada frenada protegida con lead_m, 2 tics de
-    # aviso antes de la frenada (en brake_d - lead_m y brake_d - lead_m/2). Cada
-    # tic entra SOLO si cabe a >=min_gap de TODO sonido de OTRO grupo ya en la
-    # linea de tiempo (frenadas y tics de OTRAS curvas). El tono de frenada de
-    # SU MISMA curva y su tic hermano quedan fuera de la comparacion: son un
-    # solo grupo cohesivo (2 tics + el "ya" en brake_d, ADR 0026) y un tic no
-    # puede auto-rechazarse contra el evento que anuncia. Sin esta exclusion,
-    # lead_m < 2*min_gap_m (curvas por debajo de ~103 km/h con el default de
-    # 3.5 s) tiraba el tic step=1 contra su propia frenada. Se recorren en
-    # orden de distancia (greedy) para resolver tic-vs-tic entre curvas.
-    # brake_countdown.enabled gatea este bloque completo: si esta apagado no
-    # se genera ningun tic, pero la frenada protegida (ya en "kept") sigue
-    # sonando intacta. brake_countdown.priority reemplaza el 100 que antes
-    # vivia hardcodeado aqui; no participa en la regla de cabida de arriba
-    # (own_idx sigue siendo la unica exclusion, sin tocar).
+    # aviso antes de la frenada (en brake_d - lead_m y brake_d - lead_m/2). El
+    # tono de frenada de SU MISMA curva y su tic hermano quedan fuera de la
+    # comparacion: son un solo grupo cohesivo (2 tics + el "ya" en brake_d, ADR
+    # 0026) y un tic no puede auto-rechazarse contra el evento que anuncia. Sin
+    # esta exclusion, lead_m < 2*min_gap_m (curvas por debajo de ~103 km/h con
+    # el default de 3.5 s) tiraba el tic step=1 contra su propia frenada. Se
+    # recorren en orden de distancia (greedy) para resolver tic-vs-tic entre
+    # curvas. brake_countdown.enabled gatea este bloque completo: si esta
+    # apagado no se genera ningun tic, pero la frenada protegida (ya en "kept")
+    # sigue sonando intacta. brake_countdown.priority reemplaza el 100 que antes
+    # vivia hardcodeado aqui.
+    #
+    # D2 (ADR 0032) — "solo cede lo que puede ceder". La prueba de cabida del
+    # tic INVIERTE la jerarquia: "espacio ocupado" (que bloquea un tic) pasa a
+    # significar SOLO cues NO-CEDIBLES en su hueco:
+    #   (i)  una frenada PROTEGIDA (el "ya" de seguridad, R1), y
+    #   (ii) un tic del countdown de OTRA curva.
+    # Contra esos el tic se descarta (invariante de seguridad: un tic NUNCA
+    # desplaza una frenada protegida ni a otro tic). Un cue NO protegido cercano
+    # (turn_in, throttle_on, full_throttle, brake_release...) YA NO bloquea: CEDE
+    # su hueco -> el tic se coloca y el cue cedido se descarta con rastro
+    # explicito ("cedio_al_countdown") en skipped_global. Antes cualquier cue
+    # cercano, incluso uno informativo de baja prioridad de la curva ANTERIOR,
+    # tiraba el tic de frenada (el que existe para que el piloto no se pase).
     countdown_cfg = _cue_cfg(cue_config, "brake_countdown")
     tics = []
     countdown_skipped = []
+    # Cues NO protegidos desplazados por un tic (D2): CEDEN su hueco. Se recogen
+    # aqui para sacarlos de `kept` (no se renderizan) y reconciliar su curva
+    # DESPUES del bucle. Nada de descartes silenciosos.
+    ceded_events = []
     if countdown_cfg["enabled"]:
         # Igual que en la resolucion de cabida global de arriba: un tic de
         # countdown SI suena, asi que solo debe medirse contra otros eventos
@@ -752,8 +766,8 @@ def plan_tone_events(
         # evento normal de kept, su propio indice; para un tic aceptado, el
         # own_idx de su curva). Se guarda el EVENTO REAL que ocupa ese metro
         # -- no un indice a kept -- para que `against` reporte el cue y la
-        # distancia del sonido que de verdad estorbo (un tic ya aceptado
-        # reporta brake_tic + su distancia, no la frenada de su curva).
+        # distancia del sonido que de verdad estorbo, y para poder distinguir
+        # un estorbo NO-CEDIBLE (protegido / brake_tic) de uno CEDIBLE.
         timeline = [
             (idx, e["distance"], e)
             for idx, e in enumerate(kept)
@@ -782,19 +796,28 @@ def plan_tone_events(
             if d <= 0:
                 countdown_skipped.append({**tic, "reason": "antes_de_la_meta"})
                 continue
-            # Estorbo mas cercano que viola el gap: se registra contra que evento
-            # choco (cue, curva, distancia) para que el PO pueda auditar.
-            clash = None
+            # Particion del hueco (D2): el estorbo NO-CEDIBLE mas cercano veta el
+            # tic; los cues CEDIBLES en el hueco ceden si el tic se coloca.
+            blocker = None  # (distancia, evento) no-cedible mas cercano
+            cede = []  # eventos cedibles que ocupan el hueco
             for group_idx, t, ev in timeline:
-                # Un tic no choca contra el grupo cohesivo de SU MISMA curva
-                # (su frenada y su tic hermano comparten own_idx): se salta por
-                # group_idx, no por la identidad del evento.
+                # El grupo cohesivo de SU MISMA curva (su frenada y su tic
+                # hermano comparten own_idx) no cuenta ni como estorbo ni como
+                # cesion: se salta por group_idx, no por la identidad del evento.
                 if group_idx == own_idx:
                     continue
-                if abs(d - t) < min_gap_m and (clash is None or abs(d - t) < abs(d - clash[0])):
-                    clash = (t, ev)
-            if clash is not None:
-                against = clash[1]
+                if abs(d - t) >= min_gap_m:
+                    continue
+                if ev.get("protected") or ev["cue"] == "brake_tic":
+                    if blocker is None or abs(d - t) < abs(d - blocker[0]):
+                        blocker = (t, ev)
+                else:
+                    cede.append(ev)
+            if blocker is not None:
+                # Invariante de seguridad: el tic se descarta (no desplaza la
+                # frenada protegida ni el tic de otra curva) y deja rastro
+                # contra que evento choco (cue, curva, distancia).
+                against = blocker[1]
                 countdown_skipped.append(
                     {
                         **tic,
@@ -807,8 +830,44 @@ def plan_tone_events(
                     }
                 )
                 continue
+            # Sin estorbo no-cedible: el tic SE COLOCA y los cues cedibles del
+            # hueco CEDEN. Cada uno sale del timeline (para no reevaluarse contra
+            # tics posteriores) y deja rastro explicito apuntando al tic que lo
+            # desplazo.
+            for ev in cede:
+                ceded_events.append(ev)
+                countdown_skipped.append(
+                    {
+                        **ev,
+                        "reason": "cedio_al_countdown",
+                        "against": {
+                            "corner_id": tic["corner_id"],
+                            "cue": "brake_tic",
+                            "distance": d,
+                        },
+                    }
+                )
+            if cede:
+                ceded_now = {id(ev) for ev in cede}
+                timeline = [item for item in timeline if id(item[2]) not in ceded_now]
             timeline.append((own_idx, d, tic))
             tics.append(tic)
+
+    # D2: los cues cedibles desplazados salen de `kept` (no se renderizan) y se
+    # reconcilian en su curva (de "selected" a "skipped" con la razon del cese),
+    # igual que la reconciliacion de too_close_global de arriba.
+    if ceded_events:
+        ceded_obj_ids = {id(ev) for ev in ceded_events}
+        kept = [e for e in kept if id(e) not in ceded_obj_ids]
+        ceded_keys = {(ev["corner_id"], ev["cue"], ev["distance"]) for ev in ceded_events}
+        for corner_plan in corners_plan:
+            still = []
+            for sel in corner_plan["selected"]:
+                if (sel["corner_id"], sel["cue"], sel["distance"]) in ceded_keys:
+                    corner_plan["skipped"].append({**sel, "reason": "cedio_al_countdown"})
+                else:
+                    still.append(sel)
+            corner_plan["selected"] = still
 
     all_events = sorted(kept + tics, key=lambda c: c["distance"])
     return {
