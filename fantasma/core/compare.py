@@ -421,7 +421,13 @@ def compare(
     for c in corners:
         m = c["milestones"]
         drv_m = _corner_metrics(c, drv_data, prev_apex_d, brake_on, brake_strong, phase_gap_s)
-        prev_apex_d = m["apex"]["d"]
+        # `.get(...).get(...)`: un corner armado a mano puede traer `apex` sin `d`
+        # (o sin `apex`). Antes esto era `m["apex"]["d"]` y, al evaluarse ANTES del
+        # `continue`, tumbaba TODA la comparacion con KeyError aunque el piloto no
+        # tuviera muestras en ese segmento. `None` se propaga como "sin tope
+        # previo": `_corner_metrics` ya trata `prev_apex_d is None` como la primera
+        # curva (sin `max`), asi que la ventana de la siguiente no revienta.
+        prev_apex_d = m.get("apex", {}).get("d")
         if drv_m is None:
             continue
         lo, hi = _segment(c)

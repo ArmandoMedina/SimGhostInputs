@@ -247,6 +247,12 @@ _FADE_S = 0.01
 # quedan exactamente en su duracion de diseno (evidencia qa_runs/2026-07-09).
 _PROFILE_REF_DURATION = 0.12
 
+# Piso de duracion efectiva de un cue (s). `build_tone_pack` acota `duration` a
+# este minimo positivo: un `duration <= 0` reventaba `timbre` (`_tone_norm` sobre
+# array vacio) y `chirp` (division por cero en `_wave_chirp`). 0.02 s sigue
+# produciendo un WAV audible corto en cualquier perfil.
+_MIN_TONE_DURATION = 0.02
+
 
 def _tone_time(duration_s, sample_rate):
     import numpy as np
@@ -472,24 +478,46 @@ def _validate_sound_profile(sound_profile):
         )
 
 
-def _validate_freqs(freqs, sample_rate=24000):
-    """Toda frecuencia base debe ser positiva y por debajo de Nyquist (SR/2).
+# Perfiles cuya sintesis es ADITIVA band-limited (suma de armonicos impares via
+# `_odd_harmonics`): 'timbre' usa `_wave_band_square`/`_wave_band_triangle`. Para
+# ellos el limite REAL no es Nyquist (SR/2) sino `_NYQ_MARGIN*SR`: por encima, el
+# primer armonico ya supera la cota anti-alias y `_odd_harmonics` devuelve lista
+# vacia -> ValueError en plena sintesis (cue mudo). 'seno'/'ritmo'/'chirp' NO
+# pasan por `_odd_harmonics` (seno puro o barrido directo), asi que para ellos la
+# cota correcta sigue siendo Nyquist.
+_BAND_LIMITED_PROFILES = {"timbre"}
+
+
+def _validate_freqs(freqs, sample_rate=24000, sound_profile=DEFAULT_SOUND_PROFILE):
+    """Toda frecuencia base debe ser positiva y por debajo de la cota del perfil.
 
     build_tone_pack fusiona ``{**DEFAULT_FREQS, **freqs}`` con overrides del
     usuario (la CLI expone --brake-freq/--apex-freq/--gas-freq): sin este guard,
     un ``freq <= 0`` colgaba la sintesis aditiva de las paletas (bucle infinito
-    en ``_odd_harmonics``) en vez de fallar, y un ``freq >= SR/2`` produce alias.
-    Falla temprano y accionable, nombrando la clave y el valor infractores.
+    en ``_odd_harmonics``) en vez de fallar.
+
+    La cota SUPERIOR depende del perfil: para los perfiles aditivos band-limited
+    (``_BAND_LIMITED_PROFILES``) es ``_NYQ_MARGIN*SR`` (10800 Hz a 24 kHz), el
+    MISMO limite que exige ``_odd_harmonics``; asi ``--brake-freq 11000
+    --sound-profile timbre`` falla temprano y accionable en la validacion en vez
+    de reventar cripticamente dentro de la sintesis. Para 'seno'/'ritmo'/'chirp'
+    la cota sigue siendo Nyquist (SR/2 = 12000 Hz): NO usan armonicos, asi que
+    11000 Hz ahi es legitimo (seno puro < Nyquist) y aplicarles la cota estricta
+    seria una regresion de comportamiento que rechazaria una frecuencia valida.
     """
-    nyquist = sample_rate / 2
-    malas = {
-        k: v for k, v in freqs.items() if not (isinstance(v, (int, float)) and 0 < v < nyquist)
-    }
+    if sound_profile in _BAND_LIMITED_PROFILES:
+        cota = _NYQ_MARGIN * sample_rate
+        cota_desc = "%g*SR = %g" % (_NYQ_MARGIN, cota)
+    else:
+        cota = sample_rate / 2
+        cota_desc = "SR/2 = %g" % cota
+    malas = {k: v for k, v in freqs.items() if not (isinstance(v, (int, float)) and 0 < v < cota)}
     if malas:
         detalle = ", ".join("%s=%r" % (k, v) for k, v in sorted(malas.items()))
         raise ValueError(
-            "frecuencia(s) fuera de rango (0, %g) Hz: %s — revisa --brake-freq/"
-            "--apex-freq/--gas-freq o el dict `freqs`" % (nyquist, detalle)
+            "frecuencia(s) fuera de rango (0, %s) Hz para el perfil %r: %s — revisa "
+            "--brake-freq/--apex-freq/--gas-freq o el dict `freqs`"
+            % (cota_desc, sound_profile, detalle)
         )
 
 
@@ -510,11 +538,19 @@ def build_tone_pack(
     sound_profile=DEFAULT_SOUND_PROFILE,
 ) -> dict:
     _validate_sound_profile(sound_profile)
+    # Piso de duracion: `duration <= 0` (campo de UI vacio, negativo por accidente)
+    # reventaba las paletas aditivas -- `_dur_scale(0)` volvia 0 todas las
+    # duraciones de diseno y `timbre` fallaba en `_tone_norm` (max de array vacio)
+    # y `chirp` en `_wave_chirp` (division por cero). Se acota AQUI, el unico
+    # choke-point por el que pasan TODOS los callers (CLI y UI), no solo argparse:
+    # asi ningun perfil crashea con 0 ni negativo. 0.02 s sigue siendo un cue
+    # audible corto (mejor un cue breve que un cue mudo en un sistema de aviso).
+    duration = max(duration, _MIN_TONE_DURATION)
     out = Path(outdir)
     out.mkdir(parents=True, exist_ok=True)
     milestones = milestones or DEFAULT_MILESTONES
     freqs = {**DEFAULT_FREQS, **(freqs or {})}
-    _validate_freqs(freqs)
+    _validate_freqs(freqs, sound_profile=sound_profile)
     entries = []
     files = []
     plan = (

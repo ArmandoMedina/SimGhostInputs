@@ -1903,3 +1903,90 @@ def test_g_seno_y_paletas_comparten_un_unico_fade():
 
     f, dur, vol, sr = 1000, 0.12, 0.8, 24000
     assert generate_tone(f, dur, vol) == _float_to_wav(_wave_sine(f, dur, sr), vol, sr)
+
+
+def _tone_pack_inputs():
+    rows = [
+        {
+            "name": "C01",
+            "apex_d": 500,
+            "time_lost": 0.4,
+            "milestones": {"brake": {"d": 450}, "apex": {"d": 500}, "gas": {"d": 550}},
+        },
+    ]
+    corners = [
+        {
+            "id": "C01",
+            "name": "C01",
+            "milestones": {"brake": {"d": 450}, "apex": {"d": 500}, "gas": {"d": 550}},
+        },
+    ]
+    return rows, corners
+
+
+def test_validate_freqs_rechaza_11000_solo_en_timbre():
+    """A2: 11000 Hz supera la cota anti-alias de la sintesis aditiva band-limited
+    (`_NYQ_MARGIN*SR = 10800`) que usa `timbre`, pero es legitima para
+    `seno`/`ritmo`/`chirp` (seno puro / barrido, < Nyquist 12000). El guard debe
+    fallar TEMPRANO y accionable en `timbre` sin regresionar a los demas."""
+    import pytest
+
+    from fantasma.viz.pacenotes import _validate_freqs
+
+    with pytest.raises(ValueError) as exc:
+        _validate_freqs({"brake": 11000.0}, sound_profile="timbre")
+    msg = str(exc.value)
+    # mensaje accionable: nombra el valor infractor y la bandera a revisar
+    assert "11000" in msg
+    assert "timbre" in msg
+    assert "--brake-freq" in msg
+    # sin regresion: seno/ritmo/chirp aceptan 11000 (no usan armonicos)
+    for prof in ("seno", "ritmo", "chirp"):
+        _validate_freqs({"brake": 11000.0}, sound_profile=prof)
+
+
+def test_build_tone_pack_timbre_11000_falla_temprano(tmp_path):
+    """A2 (end-to-end): `build_tone_pack` con timbre + brake 11000 revienta en la
+    VALIDACION (ValueError accionable), no cripticamente dentro de la sintesis."""
+    import pytest
+
+    from fantasma.viz.pacenotes import build_tone_pack
+
+    rows, corners = _tone_pack_inputs()
+    with pytest.raises(ValueError) as exc:
+        build_tone_pack(
+            rows, corners, str(tmp_path), top=1, freqs={"brake": 11000.0}, sound_profile="timbre"
+        )
+    assert "11000" in str(exc.value)
+
+
+def test_build_tone_pack_seno_11000_ok(tmp_path):
+    """A2 (no-regresion): seno con 11000 Hz sigue generando WAVs (seno puro < Nyquist)."""
+    from fantasma.viz.pacenotes import build_tone_pack
+
+    rows, corners = _tone_pack_inputs()
+    result = build_tone_pack(
+        rows, corners, str(tmp_path), top=1, freqs={"brake": 11000.0}, sound_profile="seno"
+    )
+    assert result["entries"] >= 1
+    assert list(tmp_path.glob("*.wav"))
+
+
+def test_build_tone_pack_duration_cero_no_crashea_ningun_perfil(tmp_path):
+    """A3: `--tone-duration 0` (o negativo) reventaba `timbre` (`_tone_norm` sobre
+    array vacio) y `chirp` (division por cero). Con el piso `_MIN_TONE_DURATION`
+    en `build_tone_pack`, NINGUN perfil crashea y todos generan WAVs audibles."""
+    from fantasma.viz.pacenotes import build_tone_pack
+
+    rows, corners = _tone_pack_inputs()
+    for prof in ("seno", "timbre", "ritmo", "chirp"):
+        for dur in (0, -0.5):
+            out = tmp_path / ("%s_%s" % (prof, dur))
+            result = build_tone_pack(
+                rows, corners, str(out), top=1, duration=dur, sound_profile=prof
+            )
+            assert result["entries"] >= 1, "%s dur=%s" % (prof, dur)
+            wavs = list(out.glob("*.wav"))
+            assert wavs, "%s dur=%s no genero WAV" % (prof, dur)
+            # WAV con muestras reales (no el mudo de 44 bytes que daba duration 0)
+            assert all(w.stat().st_size > 44 for w in wavs), "%s dur=%s WAV mudo" % (prof, dur)

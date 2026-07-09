@@ -286,3 +286,52 @@ def test_compare_umbrales_no_default_fluyen_a_ambos_lados():
         % [(r["id"], r["ref_brake_d"], r["drv_brake_d"], r["d_brake_m"]) for r in braked_hi]
     )
     assert braked_hi[0]["ref_brake_d"] == braked_hi[0]["drv_brake_d"] == 280
+
+
+def test_compare_tolera_apex_sin_d_y_piloto_sin_muestras():
+    """Regresion A1: `compare` no debe tumbar TODA la comparacion cuando un corner
+    trae `apex` sin `d` y el piloto no tiene muestras en ese segmento.
+
+    Antes `prev_apex_d = m["apex"]["d"]` se evaluaba ANTES del `continue`, asi que
+    un corner armado a mano sin `apex["d"]` + piloto sin datos en el segmento
+    levantaba KeyError('d') y abortaba la comparacion entera. Ahora se usa
+    `m.get("apex", {}).get("d")`, que propaga None sin reventar."""
+    ref = make_lap()
+    drv = make_lap()
+    # segmento fuera de la vuelta (1500 m): el piloto NO tiene muestras ahi ->
+    # _corner_metrics devuelve None. El apex NO trae "d".
+    bad_corner = {
+        "id": "T1",
+        "name": "Curva 1",
+        "segment_m": [5000, 5100],
+        "milestones": {"apex": {"v": 80}},
+    }
+    _, rows, _ = compare(ref, drv, step=5.0, corners=[bad_corner])
+    # no crashea; el corner sin muestras simplemente no produce fila
+    assert rows == []
+
+
+def test_compare_apex_sin_d_no_desalinea_curva_siguiente():
+    """A1 (borde): tras un corner con apex sin `d` (prev_apex_d = None), la curva
+    siguiente debe tratarse como 'sin tope previo' (igual que la primera), sin
+    que un `max(None, ...)` reviente."""
+    ref = make_lap(
+        valleys=[{"center": 700.0, "vmin": 70.0, "half_width": 150.0, "direction": "right"}],
+        length_m=1500.0,
+    )
+    drv = make_lap(
+        valleys=[{"center": 700.0, "vmin": 70.0, "half_width": 150.0, "direction": "right"}],
+        length_m=1500.0,
+    )
+    corners = [
+        {"id": "T0", "name": "sin d", "segment_m": [5000, 5100], "milestones": {"apex": {"v": 80}}},
+        {
+            "id": "T1",
+            "name": "real",
+            "segment_m": [550, 850],
+            "milestones": {"apex": {"d": 700, "v": 70}, "brake": {"d": 560}},
+        },
+    ]
+    # no debe crashear al reconstruir la ventana de la segunda curva con prev=None
+    _, rows, _ = compare(ref, drv, step=5.0, corners=corners)
+    assert any(r["id"] == "T1" for r in rows)
