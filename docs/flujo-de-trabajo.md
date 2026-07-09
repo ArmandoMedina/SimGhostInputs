@@ -252,6 +252,14 @@ depender de que invoques nada. La mueven los **hooks de sesión** (`Stop`) en `.
   rastro. El marcador `.claude/.mariana-marker` queda como respaldo para el caso raro de aprobar
   sin artefacto. Ver [ADR 0011](decisions/0011-cablear-mariana-no-charbel.md).
 
+**Si git falla de verdad, el hook avisa, no calla.** Los tres hooks de sesión revisan sus llamadas
+reales a `git status`/`git diff` (no solo interpretan "sin salida" como "sin cambios"): si git falla
+de verdad (no instalado, repo corrupto, permisos — no el caso normal de "nada que revisar"), el hook
+deja un `additionalContext` de aviso y sigue **sin bloquear** (corrección de auditoría, `fase3-hooks.md`
+ALTO-04; el resto de hallazgos de esa auditoría —hooks ciegos ante código ya commiteado, markers
+seteables a mano, evidencia de Mariana sin validar relevancia— se mitigan por disciplina de proceso,
+no por código: ver [ADR 0019](decisions/0019-adopcion-homologacion-starter-v0.5.0.md)).
+
 Ambos son **auto-terminantes**: bloquean solo mientras falte el paso. Es poka-yoke: *el sistema no te
 deja olvidar; y si algo se cuela, el bloqueo del push (doc-gate §8) + git (todo reversible) te dejan corregir.*
 
