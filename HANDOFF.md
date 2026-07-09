@@ -12,56 +12,58 @@
 
 ## Estado actual
 
-**2026-07-09 — en curso: cierre de la deuda técnica "Media" del ROADMAP (8 ítems), con
-autonomía del usuario para ejecutar y subir PRs. Ninguno se mergea a `master` sin revisión
-conjunta.** Plan de sesión (efímero, no versionado — ADR 0019): `~/.claude/plans/memoized-percolating-sundae.md`.
+**2026-07-09 — ciclo de deuda técnica "Media" del ROADMAP CERRADO y FUNDIDO a `master`
+(squash `dd65f9b`, [PR #45](https://github.com/ArmandoMedina/SimGhostInputs/pull/45)).** Las 8 PRs
+independientes del ciclo (#37–#44) se consolidaron en una rama de integración
+(`integration/deuda-tecnica-media-2026-07`), se mergearon una por una con `--no-ff`, y la rama
+resultante se squash-mergeó a `master` con CI 7/7 verde. Autorizado explícitamente por el usuario
+(merge automático al pasar la suite completa, sin revisión humana adicional).
 
-**Hecho y ya en PR/commit:**
-- **Ítem 2** (duplicación `detect_gear_shifts`) — cerrado por documentación: enmienda a
-  [ADR 0028](docs/decisions/0028-cues-reencuadre-prioridades-countdown-frecuencias-gear.md) +
-  checkbox en ROADMAP. No era código, los dos patrones no son intercambiables.
-- **Ítem 7** (lockfile) — [ADR 0029](docs/decisions/0029-lockfile-pip-compile.md) decide
-  `pip-compile`; parte mecánica en **PR #38** (`chore/dependency-lockfile`).
-- **Ítem 6** (pin de ruff) — **PR #37** (`chore/pin-ruff-version`).
-- **PR #39** (`docs/cierre-deuda-documental`) agrupa los ítems 2 y 7 (ADR) más la
-  documentación del hook nuevo (ver abajo) — incluye su propia autocrítica sin sesgo.
-- **Nuevo:** tope determinista de agentes "pesados" concurrentes
-  (`~/.claude/hooks/agent-concurrency-gate.ps1`, fuera del repo — ver
-  [docs/recursos-del-proyecto.md](docs/recursos-del-proyecto.md) y la enmienda 2026-07-09 del
-  [ADR 0019](docs/decisions/0019-adopcion-homologacion-starter-v0.5.0.md)). Nace de un incidente
-  real (ver abajo). **Solo probado con stdin sintético, no con una llamada `Agent` real** — 3
-  ítems de deuda de seguimiento anotados en ROADMAP (verificar el campo real, el "3" no está
-  medido, el hook topa concurrencia no cupo acumulado).
+**Qué entró (8 ítems Media, un PR cada uno, todos absorbidos en `dd65f9b`):**
+- **#37** `chore/pin-ruff-version` — `ruff==0.15.20` pineado (CI y local misma versión).
+- **#38** `chore/dependency-lockfile` — `requirements-lock.txt` con `pip-compile` ([ADR 0029](docs/decisions/0029-lockfile-pip-compile.md)).
+- **#39** `docs/cierre-deuda-documental` — cierre de deuda documental (enmiendas ADR 0028/0019, hook de concurrencia).
+- **#40** `fix/corners-window-sample-rate` — ventanas de sostenimiento (`throttle_on`/`full_throttle`) normalizadas por `dt` real, no muestras fijas.
+- **#41** `fix/hooks-error-handling` — quitado el `SilentlyContinue` ciego de los 3 hooks de sesión (ALTO-04).
+- **#42** `fix/voice-pack-anti-saturacion` — `build_voice_pack` reusa el plan anti-saturación ([ADR 0024](docs/decisions/0024-sincronia-pace-notes.md), enmienda "notas de voz").
+- **#43** `test/step5-mux-storage-user-real` — E2E que ejerce `app.storage.user` real en `run.io_bound`.
+- **#44** `fix/step3-render-job-in-state` — job de render del Paso 3 vive en `state.active_overlay_job`.
 
-**Bloqueado — cupo de cuenta agotado, NO es pérdida de trabajo:** al lanzar 5 subagentes worktree
-en paralelo (skill Ahiram) más el trabajo del hilo principal, la cuenta API alcanzó su
-"session limit · resets 12pm (America/Mexico_City)" y los 5 fallaron a mitad de tarea. Verificado
-con `git status` de solo lectura: **el diff de cada worktree sigue intacto en disco**, nada se
-perdió. Pendiente retomar cada uno vía `SendMessage` a su `agentId` cuando el cupo se restablezca,
-respetando el hook nuevo (máx. 3 lanzamientos "pesados" por ventana de 20 min):
+**Resolución de conflictos (por unión, nunca "ours"/"theirs" a ciegas):** cada rama tocaba
+`CHANGELOG.md` y `ROADMAP.md`; varias también `docs/decisions/README.md`, `pyproject.toml`,
+`docs/flujo-de-trabajo.md`. Se conservaron TODAS las adiciones de ambos lados (checkboxes, entradas,
+filas de ADR) — verificado archivo por archivo contra cada rama fuente antes de commitear.
+Conflicto semántico notable en `pyproject.toml`: #37 pineaba ruff y #38 sumaba `pip-tools` —
+la unión mantiene ambos.
 
-| Worktree | PR (ítem ROADMAP) | Rama | Último estado conocido |
-|---|---|---|---|
-| `agent-a0a28563e63af334b` | PR-1 (ítem 1: `throttle_on_window`/`full_throttle` no normalizado por Hz) | `fix/corners-window-sample-rate` | Código+test+QA (`qa_runs/charbel-20260709-corners-window-sample-rate/`) listos; falta confirmar y abrir PR. |
-| `agent-a8f9f011dc7cacabb` | PR-2 (ítem 3: `build_voice_pack` no reusa `plan_tone_events`) | `fix/voice-pack-anti-saturacion` | A medio fix: detectó que `build_pack` no pasa `min_gap_m`/`voice_lead_s` a `build_voice_pack`; falta terminar. |
-| `agent-a392926305ba7eed5` | PR-3 (ítem 4: job de render Paso 3 fuera de `state`) | (worktree default, sin renombrar) | Código+tests listos; a medio escribir la entrada de CHANGELOG. |
-| `agent-aaf8382b3bca3ae86` | PR-4 (ítem 5: test E2E `app.storage.user` real) | (worktree default, sin renombrar) | Test nuevo escrito; corriendo pytest completo al momento del corte. |
-| `agent-ac86234f93ff486bf` | PR-7 (ítem 8: solo ALTO-04, quitar `SilentlyContinue` ciego en hooks) | `fix/hooks-error-handling` | Cambios en los 3 hooks hechos; reintentando un commit que no se había aplicado. |
+**Fix extra destapado al consolidar (`ci: instalar extra [voice] en el job pytest`):** la CI de #42
+estaba en ROJO (no "verde" como se creía) — sus tests de `build_voice_pack` importan `edge_tts` para
+monkeypatchear `Communicate`, pero el job pytest instalaba `.[test,ui-ng,sync]` sin `[voice]`
+(`ModuleNotFoundError` en CI; local sí lo tenía instalado, por eso pasaba). El código de producción
+mantiene edge-tts opcional (`find_spec` + RuntimeError accionable); el fix solo lo agrega al entorno
+de test, como ya asumía el comentario del propio test. Con eso, CI 7/7 verde.
 
-**PRs abiertos, pendientes de revisión conjunta (no mergear sin el usuario):** #37, #38, #39.
+**Verificación:** `ruff check` + `ruff format --check` limpios; `pytest` completo **381 passed, 11
+skipped**; `tools/verificar.ps1` con grafo de docs íntegro (solo AVISOs no bloqueantes de
+blast-radius); CI de GitHub **7/7 verde** (audit, docs-graph, lint, pytest 3.10/3.11/3.12,
+visual-smoke) sobre la PR de integración antes del squash.
 
 ## Siguiente acción
 
-1. **Retomar los 5 worktrees de la tabla arriba** una vez pase el reset de cupo (12pm
-   2026-07-09) — de 3 en 3 máximo (hook nuevo), verificar en el primero si el contador del hook
-   realmente se mueve (confirma o refuta la deuda "campo no verificado" del ROADMAP).
-2. **Abrir los PRs faltantes** (PR-1, PR-3, PR-4, PR-7) en cuanto cada worktree termine su
-   verificación local (`pytest`, `ruff check`, `ruff format --check`).
-3. **Revisión conjunta de los 7 PRs** con el usuario — ninguno se mergea antes de esa revisión.
+Nada bloqueante del ciclo Media queda abierto. Deuda nueva anotada en `ROADMAP.md` durante el ciclo
+(no bloquea): modo `"both"` sin gap cruzado tono↔voz (#42), y los 3 ítems del hook de concurrencia
+(campo `tool_input.isolation`, el "3" sin medir, concurrencia vs. cupo acumulado — enmienda
+2026-07-09 del [ADR 0019](docs/decisions/0019-adopcion-homologacion-starter-v0.5.0.md)).
+
+**Limpieza pendiente (no la pude cerrar yo):** las 9 ramas remotas (8 + integración) quedaron
+**borradas en remoto** y la rama de integración local también. Las 8 ramas **locales** originales
+siguen existiendo porque están checked-out en worktrees de otras sesiones de agente
+(`.claude/worktrees/agent-*` y, en el caso de `docs/cierre-deuda-documental`, el checkout principal
+del repo); borrarlas exige desmontar esos worktrees y el clasificador de permisos lo bloqueó (podrían
+tener trabajo sin commitear de otras sesiones, y no estaban nombrados en la tarea). Están 100%
+absorbidas en `dd65f9b` — sin riesgo de perder nada; se pueden borrar cuando esas sesiones cierren
+sus worktrees.
 
 ## Backlog
 
-Deuda y pulido viven en [ROADMAP](ROADMAP.md), no bloquean. Ítems Media aún sin PR: ver tabla
-arriba (PR-1/2/3/4/7). Nuevo desde hoy: los 3 ítems de deuda sobre el hook de concurrencia
-(campo `tool_input.isolation` sin verificar contra un caso real, tope de 3 sin medir, concurrencia
-vs. cupo acumulado — detalle en la enmienda 2026-07-09 del ADR 0019).
+Deuda y pulido viven en [ROADMAP](ROADMAP.md), no bloquean.
