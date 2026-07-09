@@ -11,7 +11,7 @@ bifurcación equivocada.
 | # | Título | Estado | Fecha |
 |---|---|---|---|
 | [0001](0001-sync-offset.md) | Auto-detección del offset de sincronía | Aceptada | 2026-06 |
-| [0002](0002-crewchief-pacenotes.md) | Integración con CrewChief vía Pace Notes | Propuesta (diferida post-v1.0) | 2026-06-14 |
+| [0002](0002-crewchief-pacenotes.md) | Integración con CrewChief vía Pace Notes | Aceptada · implem. (v2.0) | 2026-06-14 |
 | [0003](0003-testing.md) | Estrategia de pruebas automatizadas | Aceptada | 2026-06-17 |
 | [0004](0004-desgaste-acumulable.md) | Desgaste de llanta acumulable (medidor tipo gasolina) | Aceptada · enmend. 2026-06-22 | 2026-06-21 |
 | [0005](0005-indicadores-instantaneos.md) | Indicadores de estado del HUD se leen en el cursor, no por ventana | Aceptada · enmend. 2026-06-22 | 2026-06-21 |
