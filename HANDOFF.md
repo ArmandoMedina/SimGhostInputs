@@ -12,28 +12,30 @@
 
 ## Estado actual
 
-**2026-07-08 tarde/noche — fix `gear` vs `coast` cerrado y pusheado, cinta E2E pendiente de rerun.**
+**2026-07-08 noche — fix `gear` vs `coast` cerrado, pusheado y cinta E2E verde. Listo para el PO.**
 El PO reportó 5 problemas de audio/subtítulos sobre `2_estudio_coast_ADR0027.mp4` (plan
 `~/.claude/plans/squishy-herding-pearl.md`): prioridades reordenadas, countdown a 0.75s uniforme,
 tabla de frecuencias nueva, cue `gear` (cambio de marcha, solo subtítulo) implementado end-to-end —
 todo eso ya commiteado en sesiones previas (`8b5b8cc`..`bfaee58`). Al probar con la UI real, activar
 `gear` desalojaba **todos** los `coast` de la vuelta (mismo pool de cabida global) — bug real, no de
-test. Fix en `3eb6688`: `plan_tone_events` resuelve la cabida en dos pools independientes
-(sonoro/mudo); mismo fix aplicado al timeline de `brake_tic`. Code review (8 ángulos) + pytest
-completo verde. ADR 0028 enmendado, `formato-datos.md` corregido.
+test. Fix en `3eb6688` + `32b4d2b` (pusheados a origin): `plan_tone_events` resuelve la cabida en dos
+pools independientes (sonoro/mudo); mismo fix aplicado al timeline de `brake_tic`. Code review
+(8 ángulos) + pytest completo verde. ADR 0028 enmendado, `formato-datos.md` corregido.
 
-**Pendiente para la próxima sesión:** la cinta E2E de verificación (Playwright, Flujo A+B) se corrió
-5 veces; la última (con el fix completo) **pasó el Flujo A** (pack con `coast_entries` y
-`gear_entries` presentes — el fix está confirmado con datos reales) pero **el Flujo B murió en un
-timeout de Playwright** haciendo clic en "Ir al Paso 4" tras generar el overlay (30s excedidos,
-`tests/ui/visual/test_e2e_cinta_estudio_subtitulada.py:384`) — no hubo tiempo de re-lanzar otra
-corrida de ~12 min antes del límite que pidió el PO. Parece timing/UI (Nordschleife es larga, el
-overlay puede tardar y el botón no estaba listo o el estado tardó en propagar), no una regresión de
-datos, pero falta confirmarlo. **Próximo paso: re-correr ese test, y si vuelve a fallar en el mismo
-punto, investigar el timing del Paso 3→4 (¿aumentar `_T_RENDER`? ¿el botón queda deshabilitado un
-tick extra tras "Overlay generado:"?).** Cuando pase, el entregable es
-`2_estudio_reencuadre_ADR0028.mp4` (overlay a 0.5x) + evidencia en `qa_runs/cinta-adr0028/`, y toca
-subirlo a Drive/OneDrive y avisar al PO (pedido explícito, no descartar el paso).
+La cinta E2E (Playwright, Flujo A+B) se corrió 6 veces; la 5ª murió en un timeout de UI ajeno al fix
+(clic en "Ir al Paso 4" tras generar overlay, `test_e2e_cinta_estudio_subtitulada.py:384` — no se
+repitió en el rerun, probable flake de timing con Nordschleife/máquina cargada, no bloquea). La
+**6ª (`1 passed in 825.87s`) pasó completa**: `coast_entries` y `gear_entries` confirmados en
+`metadata.json`, subtítulo "cambio de marcha" capturado en el frame del metro **1754** (el reclamo
+original del PO era ~1745). Entregable: **`2_estudio_reencuadre_ADR0028.mp4`** (~974 MB, overlay a
+0.5x) en `C:\Users\jose_\Downloads\Pruebas finales\` y copiado a
+`C:\Users\jose_\OneDrive\Videos\2_estudio_reencuadre_ADR0028.mp4`. Evidencia en
+`qa_runs/cinta-adr0028/` (8 capturas: pasos del wizard + 3 frames de subtítulo — inercia m950,
+acelerador m1425, cambio de marcha m1754).
+
+**Siguiente paso real: el PO mira/oye la cinta nueva** y da el veredicto de oído/ojo sobre countdown
+más rápido, turn_in en más curvas, tonos ya no confundibles, overlay 0.5x y el subtítulo de cambio de
+marcha — es juicio subjetivo, no lo cierra la IA sola (mismo patrón que con la cinta ADR0027).
 
 **Release "cues configurables" — PR #35 abierto, en revisión del PO.** El rediseño completo (WS-1 a
 WS-6 del plan) está hecho, pusheado y con **PR paraguas abierto**: [#35](https://github.com/ArmandoMedina/SimGhostInputs/pull/35)
@@ -73,8 +75,9 @@ oído.
 
 **El código y las docs del release están cerrados. Lo que falta es de proceso/revisión, no desarrollo:**
 
-1. **PO: mirar/oír `2_estudio_coast_ADR0027.mp4`** (ruta arriba) — el checkpoint de Mariana capturó
-   screenshots pero el veredicto final sobre el audio/video es del PO, no de la IA.
+1. **PO: mirar/oír `2_estudio_reencuadre_ADR0028.mp4`** (en OneDrive/Videos y en `Pruebas finales`,
+   ver arriba) — reemplaza a `2_estudio_coast_ADR0027.mp4` como la cinta vigente. El checkpoint de
+   Mariana capturó screenshots pero el veredicto final sobre el audio/video es del PO, no de la IA.
 2. **PR #35 tiene conflicto de merge con `master`** (`mergeStateStatus: DIRTY`, `mergeable: CONFLICTING`)
    — `master` avanzó con 2 PRs fundidos después de que esta rama arrancó (#31 botones legibles, #34
    cobertura report/charts). Conflictan: `CHANGELOG.md`, `ROADMAP.md`, `docs/guia-usuario.md`,
