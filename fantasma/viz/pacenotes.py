@@ -253,6 +253,12 @@ _PROFILE_REF_DURATION = 0.12
 # produciendo un WAV audible corto en cualquier perfil.
 _MIN_TONE_DURATION = 0.02
 
+# Nombre del UNICO WAV silencioso que reutilizan TODOS los cues mudos del pack
+# (sound=False, hoy solo `gear`). Ver `_write_silent_wav`: un cue mudo debe
+# seguir en metadata.json para el subtitulo, pero su entry NO puede llevar
+# recordingNames/fileNames vacias -- eso revienta CrewChief en pista (issue #9).
+_SILENT_WAV_NAME = "silent.wav"
+
 
 def _tone_time(duration_s, sample_rate):
     import numpy as np
@@ -566,11 +572,11 @@ def build_tone_pack(
         else _legacy_tone_events(rows, corners, top, milestones)
     )
     variants = {}
+    silent_filename = None  # WAV silencioso compartido, emitido bajo demanda
 
     for event in plan["events"]:
         distance = int(event["distance"])
         cue = event["cue"]
-        filename = None
         if _cue_sound_enabled(cue_config, cue):
             data = _render_cue(event, freqs, duration, volume, sound_profile=sound_profile)
             variant = variants.get(distance, 0)
@@ -579,6 +585,18 @@ def build_tone_pack(
             path = out / filename
             path.write_bytes(data)
             files.append(str(path))
+        else:
+            # Cue MUDO (sound=False, hoy solo `gear`): NO puede quedar con
+            # recordingNames/fileNames vacias -- CrewChief revienta al cruzar
+            # su distancia (getRandomRecordingName indexa recordingNames[0]
+            # sobre la lista vacia -> ArgumentOutOfRangeException, mata el hilo;
+            # issue #9). Referencia el UNICO silent.wav real (amplitud cero,
+            # inaudible): CrewChief carga y "reproduce" silencio, el subtitulo
+            # conserva su entry y el video sigue mudo en ese cue.
+            if silent_filename is None:
+                silent_filename = _write_silent_wav(out)
+                files.append(str(out / silent_filename))
+            filename = silent_filename
         entries.append(_metadata_entry(event["corner_name"], cue, distance, filename))
 
     metadata_path = _write_metadata(out, entries, track_name=track_name)
@@ -1420,13 +1438,38 @@ def _milestone(corner, name):
     return None
 
 
+def _write_silent_wav(outdir):
+    """Emite (una sola vez) el WAV silencioso compartido por los cues mudos.
+
+    Un cue mudo (sound=False, hoy solo `gear`) debe seguir en metadata.json para
+    que build_cue_ass lo subtitule, pero su entry NO puede llevar
+    recordingNames/fileNames vacias: CrewChief revienta al reproducirlo en pista
+    (getRandomRecordingName indexa recordingNames[Random.Next(0)] == [0] sobre la
+    lista vacia -> ArgumentOutOfRangeException, mata el hilo principal la primera
+    vez que el coche cruza esa distancia; issue #9). Por eso todos los cues mudos
+    del pack referencian este UNICO silent.wav real (amplitud cero, inaudible):
+    CrewChief lo carga y "reproduce" silencio sin crashear.
+
+    Se sintetiza con generate_tone a volumen 0 -> PCM de ceros, un WAV mono
+    16-bit valido, misma tuberia (_float_to_wav/_make_wav_bytes) que los cues
+    con sonido; solo el contenido es nulo. Idempotente: si ya existe no lo
+    reescribe. Devuelve el NOMBRE de archivo (relativo, como los cues sonoros).
+    """
+    path = outdir / _SILENT_WAV_NAME
+    if not path.exists():
+        path.write_bytes(generate_tone(440.0, _MIN_TONE_DURATION, volume=0.0))
+    return _SILENT_WAV_NAME
+
+
 def _metadata_entry(name, milestone, distance, filename):
     """Entrada de metadata.json para un cue.
 
-    filename=None (cue con sound=False, p.ej. gear): sin WAV que reproducir,
-    pero la entrada se conserva igual con listas vacias -- build_cue_ass
-    solo lee "description"/"distanceRoundTrack", asi el cue se sigue
-    subtitulando aunque no suene.
+    filename referencia el WAV a reproducir. Los cues mudos (sound=False, p.ej.
+    gear) ya NO llegan con filename=None desde build_tone_pack: reciben el
+    silent.wav compartido (ver _write_silent_wav) para no dejar
+    recordingNames/fileNames vacias, que revientan CrewChief (issue #9). Se
+    conserva el ramal filename=None por robustez (build_cue_ass, que solo lee
+    "description"/"distanceRoundTrack", subtitula el cue igual sin WAV).
     """
     label = MILESTONE_LABELS.get(milestone, milestone)
     names = [filename] if filename else []

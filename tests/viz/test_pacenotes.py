@@ -1284,8 +1284,10 @@ def test_plan_tone_events_gear_no_bloquea_tic_de_countdown():
 
 
 def test_build_tone_pack_gear_sin_audio_pero_en_metadata(tmp_path):
-    """gear (sound=False) no genera WAV pero si queda en metadata.json para
-    que build_cue_ass lo subtitule igual."""
+    """gear (sound=False) no genera un WAV propio pero si queda en metadata.json
+    para que build_cue_ass lo subtitule. Su entry referencia el silent.wav
+    compartido (inaudible) en vez de listas vacias, que revientan CrewChief
+    (issue #9)."""
     import json
 
     from fantasma.viz.pacenotes import DEFAULT_CONFIG, build_tone_pack
@@ -1298,11 +1300,62 @@ def test_build_tone_pack_gear_sin_audio_pero_en_metadata(tmp_path):
     entries = json.loads((tmp_path / "metadata.json").read_text(encoding="utf-8"))["entries"]
     gear_entries = [e for e in entries if "cambio de marcha" in e["description"]]
     assert len(gear_entries) == 1
-    assert gear_entries[0]["distanceRoundTrack"] == 500
-    assert gear_entries[0]["fileNames"] == []
-    assert gear_entries[0]["recordingNames"] == []
+    entry = gear_entries[0]
+    assert entry["distanceRoundTrack"] == 500
+    # NO listas vacias: alineadas, largo >= 1, y el WAV referenciado existe.
+    assert entry["fileNames"] == entry["recordingNames"]
+    assert len(entry["fileNames"]) >= 1
+    for fname in entry["fileNames"]:
+        assert (tmp_path / fname).exists()
+    # gear no sintetiza un WAV propio (no hay 500_*.wav); usa el silent compartido.
     assert not list(tmp_path.glob("500_*.wav"))
+    assert (tmp_path / "silent.wav").exists()
     assert result["entries"] == 1
+
+
+def test_build_tone_pack_ningun_entry_con_listas_vacias(tmp_path):
+    """Ningun entry del metadata.json puede quedar con recordingNames/fileNames
+    vacias: getRandomRecordingName de CrewChief indexa recordingNames[0] sobre la
+    lista vacia y mata el hilo (issue #9). Se cubre un pack MIXTO con cue sonoro
+    (frenada) + cue mudo (gear)."""
+    import json
+
+    from fantasma.viz.pacenotes import DEFAULT_CONFIG, build_tone_pack
+
+    rows = [{"name": "Curva 1", "apex_d": 500.0}]
+    corners = [{"id": 1, "name": "Curva 1", "milestones": {"apex": {"d": 500.0}}}]
+    gear_shifts = [{"distance": 500, "gear_from": 2, "gear_to": 3}]
+    cue_config = {**DEFAULT_CONFIG, "gear": {"enabled": True, "priority": 75, "sound": False}}
+    build_tone_pack(
+        rows, corners, str(tmp_path), top=5, cue_config=cue_config, gear_shifts=gear_shifts
+    )
+    entries = json.loads((tmp_path / "metadata.json").read_text(encoding="utf-8"))["entries"]
+    assert entries, "el pack de prueba deberia producir al menos un entry"
+    for entry in entries:
+        assert len(entry["recordingNames"]) == len(entry["fileNames"]) >= 1, entry
+        for fname in entry["fileNames"]:
+            assert (tmp_path / fname).exists(), fname
+
+
+def test_build_tone_pack_silent_wav_es_inaudible_y_valido(tmp_path):
+    """El silent.wav que embarcan los cues mudos es un WAV mono 16-bit valido
+    (cargable por CrewChief) y de amplitud CERO (inaudible): el video de estudio
+    no debe sonar en el cue mudo."""
+    import wave
+
+    from fantasma.viz.pacenotes import DEFAULT_CONFIG, build_tone_pack
+
+    gear_shifts = [{"distance": 500, "gear_from": 2, "gear_to": 3}]
+    cue_config = {**DEFAULT_CONFIG, "gear": {"enabled": True, "priority": 75, "sound": False}}
+    build_tone_pack([], [], str(tmp_path), top=5, cue_config=cue_config, gear_shifts=gear_shifts)
+    silent = tmp_path / "silent.wav"
+    assert silent.exists()
+    with wave.open(str(silent), "rb") as wav:
+        assert wav.getnchannels() == 1
+        assert wav.getsampwidth() == 2
+        frames = wav.readframes(wav.getnframes())
+    assert wav.getnframes() > 0
+    assert set(frames) == {0}, "el silent.wav debe ser todo ceros (inaudible)"
 
 
 def test_build_cue_ass_gear_rotula_cambio_de_marcha(tmp_path, lap_factory):
