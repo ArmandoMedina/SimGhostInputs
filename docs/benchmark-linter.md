@@ -82,3 +82,20 @@ derrota el propósito.
 - Config: `pyproject.toml` (`[tool.ruff]`, `[tool.ruff.lint]`, extra `[dev]`).
 - CI: job `lint` en `.github/workflows/tests.yml` (corre `ruff check` y `ruff format --check`).
 - Local (modo aviso): `tools/verificar.ps1` (lint + formato + tests + doc-gate).
+
+## Versión pineada (2026-07-09)
+
+El extra `dev` fijaba `ruff>=0.15,<1` — rango abierto. El CI instala con
+`pip install -e ".[dev]"` sin pin propio, así que tomaba el último release disponible en
+cada corrida mientras el entorno local se quedaba con lo que tuviera instalado. Ya
+divergió una vez: la regla `I001` (orden de imports) apareció solo en CI, no en local
+(ver PR #15). Para eliminar esa clase de sorpresa, `pyproject.toml` fija
+`ruff==0.15.20` (la versión instalada en el entorno de desarrollo al momento del pin,
+que coincide con el último release verificado en la tabla de arriba). CI y local
+ejecutan ahora exactamente la misma versión.
+
+**Cómo subir de versión:** editar a mano el pin en `pyproject.toml`
+(`dev = ["ruff==X.Y.Z", ...]`), reinstalar (`pip install -e ".[dev]"`), correr
+`ruff check .` y `ruff format --check .` y revisar el diff si aparecen reglas nuevas
+antes de subir. No se automatiza a propósito: un pin exacto solo protege si sube por
+decisión explícita, no por Dependabot en piloto automático.

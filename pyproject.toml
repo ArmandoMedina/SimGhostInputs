@@ -29,7 +29,7 @@ full    = ["openpyxl>=3,<4", "Pillow>=10,<12", "matplotlib>=3.7,<4", "numpy>=1.2
 # pip install -e ".[test]"      -> suite de pruebas automatizadas (solo desarrollo)
 test    = ["pytest>=8,<9", "pytest-asyncio>=0.21,<1"]
 # pip install -e ".[dev]"       -> herramientas de desarrollo: linter + formatter + smoke visual (solo desarrollo)
-dev     = ["ruff>=0.15,<1", "playwright>=1.40,<2", "Pillow>=10,<12"]
+dev     = ["ruff==0.15.20", "playwright>=1.40,<2", "Pillow>=10,<12"]
 
 [project.scripts]
 fantasma = "fantasma.cli:main"
