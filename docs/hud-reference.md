@@ -150,6 +150,47 @@ la telemetría del piloto (`--driver`) y mezcla los WAVs como una pista de audio
 
 ---
 
+## Subtítulos de cues (Pace Notes quemados)
+
+Cuando compones video con `burn_cue_subs=True` (checkbox «Quemar subtítulos de cues» del
+Paso 4, o `compose_video(..., burn_cue_subs=True)` por código), Fantasma quema sobre el video
+un rótulo por cada cue del pack que suena: la etiqueta del tipo de sonido (color por tipo, ver
+tabla abajo) más el nombre de la curva, sincronizado con el tono. Es un elemento visual
+**distinto** del overlay HUD-A (que sigue transparente y sin cambios): se agrega en el propio
+paso de compose, sobre el video final — no en el render del overlay.
+
+El pack ya viene filtrado por la configuración de cues del Paso 5, así que solo se rotulan los
+cues **habilitados** (coast incluido, con la etiqueta «inercia»). La duración de cada rótulo es
+**adaptativa**: dura hasta que entra el siguiente cue (menos un respiro), acotada entre un
+mínimo legible y un máximo — en vez de una ventana de tiempo fija, que se apagaba antes de
+tiempo o dejaba un rótulo viejo colgado en una recta larga.
+
+Una **leyenda de colores** fija arriba a la izquierda del video muestra solo las etiquetas que
+de verdad suenan en esa vuelta.
+
+### Código de colores de los subtítulos de cues
+
+Fuente única: `CUE_SUB_COLORS` en `fantasma/viz/pacenotes.py`.
+
+| Etiqueta | Color | Cue |
+| :-- | :-- | :-- |
+| punto de frenada | rojo | `brake` |
+| contador de frenada | naranja | `brake_countdown` |
+| inicio de acelerador | verde | `throttle_on` |
+| gas completo | verde claro | `full_throttle` |
+| soltar freno | amarillo | `brake_release` |
+| turn-in | blanco | `turn_in` |
+| apex | ámbar | `apex` |
+| inercia | cian | `coast` (ni freno ni gas) |
+| cambio de marcha | magenta | `gear` (solo subtítulo — no genera audio, [ADR 0028](decisions/0028-cues-reencuadre-prioridades-countdown-frecuencias-gear.md)) |
+
+Diseño completo (catálogo configurable, coast, perfiles, ventana adaptativa) en el
+[ADR 0027](decisions/0027-cues-catalogo-configurable-perfiles-coast-subtitulos.md), reencuadrado
+(prioridades, countdown, frecuencias, cue `gear`) en el
+[ADR 0028](decisions/0028-cues-reencuadre-prioridades-countdown-frecuencias-gear.md).
+
+---
+
 ## Avisos en el reporte de comparación
 
 `report.md` (generado por `fantasma compare`) incluye un bloque de **Avisos** cuando `compare()` detecta condiciones anómalas. Actualmente:

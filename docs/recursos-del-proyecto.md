@@ -6,7 +6,7 @@
 
 | Qué | Dónde | Notas |
 |---|---|---|
-| Material de telemetría real (MoTeC, videos, vueltas) | `C:\Repositorio personal\Paterial para test (no es un repo)` | La ruta lleva espacios y el typo "Paterial" es literal — va entre comillas. Usarlo para QA con casos reales (no solo sintéticos). |
+| Material de telemetría real (MoTeC, videos, vueltas) | `C:\Repositorio personal\Paterial para test (no es un repo)` (PC original) · `C:\Users\jose_\Downloads\Pruebas finales` (PC de jose_) | La ruta lleva espacios — va entre comillas. Es **por máquina**: la ruta cambia según la PC. Usarlo para QA con casos reales (no solo sintéticos). |
 | Datos sintéticos de la suite | `tests/` (fixtures) | Para tests deterministas; el material real es para QA/validación de Charbel y Mariana. |
 
 ## Cuentas e identidades

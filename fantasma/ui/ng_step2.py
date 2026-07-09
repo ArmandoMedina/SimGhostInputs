@@ -118,14 +118,24 @@ async def render(state, navigate):
 
         def _do_compare():
             from fantasma.core.compare import compare
-            from fantasma.core.corners import detect_corners, extract_milestones
+            from fantasma.core.corners import detect_corners, detect_gear_shifts, extract_milestones
 
             _corners = corners
+            _gear_shifts = None
             if not _corners:
                 _evs, _ = detect_corners(ref_lap)
                 _corners = extract_milestones(ref_lap, _evs)
+                # Cambio de marcha (subtitulo, sound=False): sale de la
+                # vuelta de REFERENCIA (ROADMAP: modo estudio = referencia).
+                _gear_shifts = detect_gear_shifts(ref_lap)
             t, r, s = compare(ref_lap, drv_lap, step=1.0, corners=_corners)
-            return {"trace": t, "rows": r, "summary": s, "corners": _corners}
+            return {
+                "trace": t,
+                "rows": r,
+                "summary": s,
+                "corners": _corners,
+                "gear_shifts": _gear_shifts,
+            }
 
         try:
             result = await run.io_bound(_do_compare)
@@ -134,6 +144,8 @@ async def render(state, navigate):
             state.summary = result["summary"]
             if not state.corners:
                 state.corners = result["corners"]
+            if result["gear_shifts"] is not None and not state.gear_shifts:
+                state.gear_shifts = result["gear_shifts"]
             state.charts_paths = None
             spinner.delete()
             status_lbl.delete()

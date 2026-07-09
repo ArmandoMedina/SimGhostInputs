@@ -36,6 +36,7 @@ class _SimpleState:
         # paso 3
         self.corners = None
         self.corners_editable = False
+        self.gear_shifts = None
         self.last_overlay = None
         self.last_pacenotes = None
 

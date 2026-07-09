@@ -130,6 +130,17 @@ class AppState:
     def corners_editable(self, v):
         self._set("corners_editable", v)
 
+    @property
+    def gear_shifts(self):
+        """Cambios de marcha detectados sobre la vuelta de REFERENCIA
+        (detect_gear_shifts, core/corners.py) -- mismo patron que `corners`.
+        None hasta que algun flujo de deteccion (Paso 1/2/3) los calcula."""
+        return self._get("gear_shifts")
+
+    @gear_shifts.setter
+    def gear_shifts(self, v):
+        self._set("gear_shifts", v)
+
     # ── análisis ──────────────────────────────────────────────────────────────
 
     @property
@@ -206,6 +217,17 @@ class AppState:
     def compose_offset(self, v):
         self._set("compose_offset", v)
 
+    # ── pace notes / cues (Paso 5) ───────────────────────────────────────────
+
+    @property
+    def cue_config(self):
+        """Overrides de cue_config del Paso 5 (WS-4); None = usa DEFAULT_CONFIG."""
+        return self._get("cue_config")
+
+    @cue_config.setter
+    def cue_config(self, v):
+        self._set("cue_config", v)
+
     # ── preferencias de flujo ─────────────────────────────────────────────────
 
     @property
@@ -245,6 +267,7 @@ class AppState:
             "last_overlay",
             "corners",
             "corners_editable",
+            "gear_shifts",
             "compose_offset",
         ):
             _ng_app.storage.user.pop(k, None)

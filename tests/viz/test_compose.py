@@ -38,6 +38,28 @@ def test_build_filter_unknown_position_falls_back_to_bottom_right():
     assert "overlay=x=%s:y=%s" % (px, py) in fc
 
 
+def test_build_filter_sin_subs_no_ass_step():
+    fc = compose._build_filter("bottom-right", scale=1.0)
+    assert "ass=" not in fc
+    assert fc.endswith("[out]")
+
+
+def test_build_filter_con_subs_encadena_ass_despues_del_overlay():
+    # con subs_file el overlay va a [ovl] y el ass consume [ovl] -> [out],
+    # referenciando el .ass por nombre RELATIVO (ffmpeg corre con cwd alli).
+    fc = compose._build_filter("bottom-right", scale=1.0, subs_file="cue_subs.ass")
+    assert "[ovl]" in fc
+    assert "[ovl]ass=cue_subs.ass[out]" in fc
+
+
+def test_caption_margin_v_sube_sobre_el_hud_abajo():
+    # HUD abajo: el subtitulo debe quedar por encima de su alto (overlay_h*scale).
+    m_bottom = compose._caption_margin_v("bottom-right", 1080, overlay_h=300, scale=1.0)
+    m_top = compose._caption_margin_v("top-left", 1080, overlay_h=300, scale=1.0)
+    assert m_bottom > m_top
+    assert m_bottom >= 300
+
+
 def test_audio_mix_filter_with_video_audio():
     assert "amix=inputs=2" in compose._audio_mix_filter(video_has_audio=True)
 

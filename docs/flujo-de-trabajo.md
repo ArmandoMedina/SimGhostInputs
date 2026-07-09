@@ -467,7 +467,7 @@ git push --no-verify
 
 | Pieza | ¿Local o nube? | Cómo se activa |
 |---|---|---|
-| `ruff`, `pytest` | **Local** (instalados) | `pip install -e ".[dev,test,ui,sync]"` |
+| `ruff`, `pytest` | **Local** (instalados) | `pip install -e ".[full,test,dev]"` (el extra real de la UI es `ui-ng`, no `ui`; `full` ya lo incluye) |
 | Hook `pre-push` | **Local** | `git config core.hooksPath .githooks` (una vez por clon) |
 | `tools/verificar.ps1` | **Local** | se corre a mano o lo dispara el hook |
 | **CI / pipeline** | **Nube** | automático en cada push/PR; no se activa ni se salta |
@@ -490,7 +490,7 @@ git push --no-verify
 | **Git** | versionar (commits, push, ramas) y disparar el hook |
 | **Python ≥ 3.10** | correr el motor, ruff y pytest |
 | **ruff** | linter + formatter — `pip install -e ".[dev]"` |
-| **pytest** (+ extras) | suite de tests — `pip install -e ".[test,ui,sync]"` |
+| **pytest** (+ extras) | suite de tests — `pip install -e ".[full,test,dev]"` (instalación completa de dev; el extra de UI es `ui-ng`) |
 | **playwright + Pillow** | smoke visual del Paso 0 — `pip install -e ".[dev]"` + `playwright install chromium` (solo para los tests visuales; skipean si no está) |
 | **Windows PowerShell 5.1** | correr `tools/verificar.ps1` |
 | **ffmpeg** (sistema) | solo para el QA manual de overlay/compose; los tests NO lo invocan |

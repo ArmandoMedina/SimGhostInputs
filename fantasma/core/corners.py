@@ -8,6 +8,12 @@ Metodologia (validada contra telemetria real del Nordschleife):
   las curvas vecinas) para no contaminarse con la frenada de la curva siguiente.
 - La frenada real es el ultimo bloque de freno con pico >= 50%; los blips de
   trail-braking no cuentan como inicio de frenada.
+- El gas real (`throttle_on`) exige throttle sostenido, igual que `full_throttle`;
+  un roce fugaz de pedal no cuenta como inicio de aceleracion.
+- Entre el fin de la frenada (o el lift) y el gas sostenido puede existir un
+  tramo de coast (freno y gas ambos por debajo de su umbral): se marca con
+  `coast_start`/`coast_end` cuando existe hueco (si el gas se solapa con el
+  freno, no hay coast).
 """
 
 
@@ -83,7 +89,14 @@ def detect_corners(
 
 
 def extract_milestones(
-    lap, events=None, brake_on=10, brake_strong=50, throttle_on=5, full_throttle=98, turn_in_deg=8
+    lap,
+    events=None,
+    brake_on=10,
+    brake_strong=50,
+    throttle_on=5,
+    full_throttle=98,
+    turn_in_deg=8,
+    throttle_on_window=15,
 ):
     """Extrae los hitos de cada curva, con segmentacion por curva.
     Devuelve lista de dicts estilo corners.json."""
@@ -140,19 +153,42 @@ def extract_milestones(
             )
             if ti and ti["time"] < ap["time"]:
                 ms["turn_in"] = _pt(ti)
-        # gas
-        g0 = next(
-            (
-                s
-                for s in seg
-                if s["time"] >= ap["time"] - 0.6 and s.get("throttle", 0) > throttle_on
-            ),
-            None,
-        )
+        # gas: ancla en el throttle SOSTENIDO, no en el primer cruce del umbral
+        # (mismo criterio que full_throttle: umbral + N muestras seguidas). Un
+        # roce fugaz de pedal (freno-motor, ruido) cruza el umbral un instante
+        # pero no se sostiene y no debe ganar el hito. throttle_on_window=15
+        # reusa la ventana que ya usa full_throttle (~0.3s a 50Hz, coherente
+        # con el gap de 0.3s que funde bloques de frenada en este mismo modulo).
+        g0 = None
+        for j, s in enumerate(seg):
+            if s["time"] < ap["time"] - 0.6 or s.get("throttle", 0) <= throttle_on:
+                continue
+            window = seg[j : j + throttle_on_window]
+            if len(window) == throttle_on_window and all(
+                x.get("throttle", 0) > throttle_on for x in window
+            ):
+                g0 = s
+                break
         if g0:
             ms["throttle_on"] = _pt(g0, throttle_pct=round(g0["throttle"]))
             if "brake_release" in ms and g0["dist"] < ms["brake_release"]["d"]:
                 overlap = round(ms["brake_release"]["d"] - g0["dist"])
+            # coast: freno y gas ambos por debajo de su umbral, entre el fin de
+            # la frenada (o el lift, en curvas sin freno) y el gas sostenido. Si
+            # el gas se solapa con el freno (overlap) no hay hueco y no se
+            # emite coast.
+            end_ref = ms.get("brake_release") or ms.get("lift")
+            if end_ref and end_ref["t"] < g0["time"]:
+                coast = [
+                    s
+                    for s in seg
+                    if end_ref["t"] < s["time"] < g0["time"]
+                    and s.get("brake", 0) < brake_on
+                    and s.get("throttle", 0) < throttle_on
+                ]
+                if coast:
+                    ms["coast_start"] = _pt(coast[0])
+                    ms["coast_end"] = _pt(coast[-1])
         ms["apex"] = _pt(ap, g_lat=ap.get("glat"))
         g100 = None
         for j, s in enumerate(post):
@@ -195,6 +231,62 @@ def extract_milestones(
             c["overlap_m"] = overlap
         corners.append(c)
     return corners
+
+
+def detect_gear_shifts(lap, min_hold_s=0.15):
+    """Detecta cambios de marcha a lo largo de TODA la vuelta (no por curva).
+
+    Diff entre muestras consecutivas del canal `gear`. Un cambio candidato en
+    la muestra i solo se confirma si la marcha nueva se sostiene al menos
+    `min_hold_s` antes de volver a cambiar -- descarta blips de una sola
+    muestra (ruido de sensor durante el propio cambio de marcha). Un blip
+    descartado NO mueve la marcha "actual": el siguiente cambio real se sigue
+    comparando contra la marcha previa al ruido.
+
+    Confirmacion: se recorren las muestras SIGUIENTES a la candidata (i+1,
+    i+2, ...) -- nunca la propia candidata, que siempre "coincide consigo
+    misma" y no prueba nada. Se confirma en cuanto una muestra coincide con
+    la marcha nueva Y su tiempo ya alcanzo min_hold_s; se rechaza en cuanto
+    una muestra difiere. Si la vuelta se acaba antes de alcanzar min_hold_s
+    sin haber visto ninguna muestra que contradiga, el candidato se
+    RECHAZA igual (evidencia insuficiente): mejor perder un cambio real
+    pegado al final de la vuelta que aceptar un blip sin verificar -- este
+    modulo prioriza no generar un cue erroneo. Esto tambien cubre, sin caso
+    especial, el muestreo mas lento que min_hold_s (dt >= min_hold_s): la
+    primera muestra siguiente decide sola, revierta o confirme.
+    """
+    if not (lap.has("gear") and lap.has("dist") and lap.has("time")):
+        return []
+    gear = lap.col("gear")
+    dist = lap.col("dist")
+    time = lap.col("time")
+    n = len(gear)
+    shifts = []
+    prev_gear = gear[0] if n else None
+    i = 1
+    while i < n:
+        g = gear[i]
+        if g == prev_gear:
+            i += 1
+            continue
+        hold_until = time[i] + min_hold_s
+        j = i + 1
+        held = False
+        while j < n:
+            if gear[j] != g:
+                held = False
+                break
+            held = time[j] >= hold_until
+            if held:
+                break
+            j += 1
+        if held:
+            shifts.append(
+                {"distance": round(dist[i]), "gear_from": int(prev_gear), "gear_to": int(g)}
+            )
+            prev_gear = g
+        i += 1
+    return shifts
 
 
 def _pt(s, **extra):

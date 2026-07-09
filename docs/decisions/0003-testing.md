@@ -205,6 +205,13 @@ Chromium headless real.
   El módulo se skip automáticamente si los archivos no existen en disco.
 - Screenshots guardados en `qa_runs/playwright_e2e/` como evidencia para QA.
 
+> **Regla del PO (método).** Todo entregable que el PO vaya a evaluar tiene que salir de la
+> **UI real**, en modo **E2E clic-por-clic con Playwright** (Tier 6) — nunca de un script
+> externo que reproduzca el resultado por otra vía. Un script que llama directo a `core`/`viz`
+> y arma el video o el reporte por su cuenta no prueba que la UI lo genere igual; esas no son
+> pruebas confiables para una decisión de aceptación. La automatización de Tier 1-5 sigue
+> siendo el gate de regresión; la evidencia que revisa el PO es Tier 6 sobre la app real.
+
 ---
 
 ## Tests de regresión de los bugs ya encontrados

@@ -8,7 +8,7 @@ import sys
 
 from . import importers
 from .core.compare import compare
-from .core.corners import detect_corners, extract_milestones
+from .core.corners import detect_corners, detect_gear_shifts, extract_milestones
 from .core.normalize import fastest_lap
 from .viz.report import write_outputs
 
@@ -75,6 +75,7 @@ def cmd_detect(args):
     _, lap = _load_lap(args.file, _parse_map(args.map), args.lap)
     events, _ = detect_corners(lap)
     corners = extract_milestones(lap, events)
+    gear_shifts = detect_gear_shifts(lap)
     print("Vuelta: %.2fs, %.0fm — %d curvas detectadas" % (lap.laptime, lap.length, len(corners)))
     for c in corners:
         ap = c["milestones"]["apex"]
@@ -89,13 +90,17 @@ def cmd_detect(args):
                 "  overlap %dm" % c["overlap_m"] if c.get("overlap_m") else "",
             )
         )
+    if gear_shifts:
+        print("  %d cambios de marcha detectados" % len(gear_shifts))
     if args.output:
         import os
 
         os.makedirs(args.output, exist_ok=True)
         path = os.path.join(args.output, "corners_detected.json")
         with open(path, "w", encoding="utf-8") as f:
-            json.dump({"corners": corners}, f, indent=1, ensure_ascii=False)
+            json.dump(
+                {"corners": corners, "gear_shifts": gear_shifts}, f, indent=1, ensure_ascii=False
+            )
         print("-> %s" % path)
 
 
@@ -337,6 +342,10 @@ def cmd_pacenotes(args):
 
     data = _load_corners_json(args.corners)
     corners = data["corners"]
+    # Vuelta de REFERENCIA (ROADMAP.md: en modo estudio el cambio de marcha
+    # sale de la referencia, no del piloto) -- ya viene resuelto en
+    # cmd_detect, que corre sobre la vuelta que se le pasa a `fantasma detect`.
+    gear_shifts = data.get("gear_shifts") or []
     rows = _load_compare_csv(args.compare)
     track_name, outdir = _resolve_pacenotes_outdir(data, args.output_dir)
     freqs = {"brake": args.brake_freq, "apex": args.apex_freq, "gas": args.gas_freq}
@@ -352,6 +361,7 @@ def cmd_pacenotes(args):
         volume=args.volume,
         smart=not args.legacy_all_tones,
         track_name=track_name,
+        gear_shifts=gear_shifts,
     )
     curves = _count_lost_curves(rows, args.top)
     print("✓ %d curvas, %d archivos en %s" % (curves, len(result["files"]), result["outdir"]))
@@ -361,10 +371,11 @@ def _load_corners_json(path):
     with open(path, encoding="utf-8") as f:
         data = json.load(f)
     if isinstance(data, list):
-        return {"corners": data}
+        return {"corners": data, "gear_shifts": []}
     corners = data.get("corners")
     if corners is None:
         raise ValueError("el archivo de corners no contiene la clave 'corners'")
+    data.setdefault("gear_shifts", [])
     return data
 
 

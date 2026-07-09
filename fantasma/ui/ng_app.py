@@ -173,6 +173,13 @@ async def main_page():
       .btn-primary { background: var(--accent) !important; color: white !important; border: none; padding: 8px 20px; font-size: 13px; font-weight: 600; cursor: pointer; border-radius: 0; font-family: inherit; transition: background 0.15s; }
       .btn-primary:hover { background: var(--highlight); }
       .btn-primary.disabled, .btn-primary:disabled { opacity: 0.4 !important; cursor: default; }
+      /* Quasar solo baja opacity:.75 en un checkbox deshabilitado; un check
+         ACTIVADO sigue pintando su relleno con --q-primary (azul vivo) y no
+         se distingue de uno activo-habilitado (Mariana, sub-checkbox "Solo
+         curvas sin frenada" bajo Coast). Fuerza el mismo gris que ya usan
+         los demas controles deshabilitados del wizard. */
+      .q-checkbox.disabled .q-checkbox__inner--truthy,
+      .q-checkbox.disabled .q-checkbox__inner--indet { color: var(--muted) !important; }
       /* I3: !important supera la especificidad de Quasar en botones secundarios */
       .btn-secondary { background: transparent !important; color: var(--muted) !important; border: 1px solid var(--border) !important; padding: 8px 20px; font-size: 13px; font-weight: 600; cursor: pointer; border-radius: 0; font-family: inherit; transition: color 0.15s, border-color 0.15s; }
       .btn-secondary:hover { color: var(--text) !important; border-color: rgba(255,255,255,0.2) !important; }

@@ -136,6 +136,32 @@ La UI principal de v2.0 migró de Streamlit a **NiceGUI** ([ADR 0018](decisions/
 
 Historial de decisiones de UX que alteraron el layout o el flujo de la UI — para que el baseline visual tenga contexto al regenerarse.
 
+### feat/cues-configurables (Unreleased)
+
+**Sección «Cues: selección y prioridad» + perfiles en el Paso 5 (WS-4) — patrón «checkbox + número, no drag-sort»:**
+- Cada tipo de cue del catálogo (`DEFAULT_CONFIG` de `pacenotes.py`) se expone como una fila `ui.checkbox` (encendido) + `ui.number` (prioridad), con `bind_enabled_from` para que el número solo sea editable si el checkbox está activo — mismo patrón que «Top N curvas» (§4, "Curvas a cubrir"), sin reordenar por arrastre (over-engineering para una lista de 8 filas).
+- Cargar/guardar perfil sigue el patrón de diálogo ya usado en `ng_step0.py` (`ui.dialog()` + `ui.card()` con inputs y botones Guardar/Cancelar) y el de `ui.select` reactivo de `lang_select` (aplica al elegir, sin botón «Cargar» aparte).
+- Heurística cubierta: **Reconocer en vez de recordar** (§1.4) — el estado de cada cue se ve de un vistazo, sin flags de CLI. **Prevención de errores** (§1.3) — el perfil inválido o de versión no soportada avisa con `ui.notify` en vez de crashear el paso.
+- Patrón reusable: para un catálogo pequeño y fijo de opciones con on/off + un número asociado, una fila por ítem con `bind_enabled_from` es más simple y auditable que una tabla editable o un componente de terceros.
+
+**Casilla «Quemar subtítulos de cues» en el Paso 4 (WS-5) — patrón «checkbox + caption descriptivo»:**
+- `ui.checkbox("Quemar subtítulos de cues (nombra cada sonido + leyenda)")` vive dentro de la sección plegable «Pace Notes en el video compuesto», con el mismo patrón que el resto de opciones de esa sección: checkbox seguido de un `ui.label` en clase `text-xs text-gray-400 ml-8` a modo de caption explicativo, sin diálogo aparte.
+- El valor se pasa como `burn_cue_subs=True` a `compose_video`; el color de cada etiqueta sale de `CUE_SUB_COLORS` (`fantasma/viz/pacenotes.py`), fuente única compartida con la tabla de colores de `hud-reference.md`.
+- Heurística cubierta: **Ayuda y documentación en contexto** (§1.9) — el subtítulo enseña el pack sin salir del video. **Reconocer en vez de recordar** (§1.4) — la leyenda de colores queda quemada en el propio video, no hay que memorizar la tabla.
+- Patrón reusable: opción avanzada de compose = checkbox + caption `text-xs text-gray-400 ml-8` sin controles adicionales, consistente con el resto de la sección.
+
+**Cue `gear` cierra el ciclo "fila deshabilitada" → "fila activa del mismo patrón" (ADR 0028):**
+- La fila «Cambio de marcha» dejó de ser un `ui.checkbox(...).disable()` suelto fuera del bucle (con la nota «en desarrollo») y pasó a ser una fila más del mismo bucle `for _cue_type in _CUE_TYPES` que genera Ápex/Coast/etc. — mismo patrón «checkbox + número», sin componente nuevo. Se distingue de las demás solo por un `tooltip()` que aclara "solo subtítulo, sin sonido todavía" en vez de deshabilitar el control.
+- Heurística cubierta: **Prevención de errores** (§1.3) — en vez de una fila muerta que invita a preguntarse "¿por qué no funciona?", la fila queda activable y el tooltip explica la limitación real (sin audio) en el momento en que el usuario la toca.
+- Patrón reusable: un cue "a medias" (sin una parte del mecanismo implementada todavía) se expone igual que uno completo — la limitación se comunica con un tooltip puntual, no ocultando o deshabilitando el control entero.
+- La leyenda del countdown (misma sección) cambió de fraseo ("arrancan ~X s antes" → "con N s parejos entre sí y hasta la frenada") para reflejar el gap uniforme del ADR 0028; sigue derivada de `COUNTDOWN_SCALE`/`DEFAULT_COUNTDOWN_GAP_S` del motor, mismo patrón DRY que ya tenía.
+
+### feat/cues-frenada-universal (Unreleased)
+
+**Leyenda de tonos del Paso 5 — el tono de ápex desaparece solo, sin tocar la UI:**
+- La leyenda (patrón ya documentado más abajo en "feat/pacenotes-ui-paso5") se deriva de `PLAN_CUES`/`DEFAULT_FREQS`; al retirarse `apex` de `PLAN_CUES` como cue sonoro ([ADR 0026](decisions/0026-cues-frenada-universal-countdown-oportunista.md)) la leyenda deja de listarlo sin cambiar una línea de `ng_step5.py` — el DRY de esa tabla paga solo.
+- El resto del rediseño (tono de frenada universal y protegido, countdown oportunista por cabida) vive entero en el motor (`fantasma/viz/pacenotes.py`); no hay cambio de layout ni de componentes en el Paso 5. Ver el ADR para el porqué.
+
 ### feat/flujo-solo-pacenotes (Unreleased)
 
 **Nuevo flujo "Solo Pace Notes" — 4ª tarjeta en el Paso 0:**

@@ -69,6 +69,7 @@ class _SharedState:
         "drv_name": None,
         "corners": None,
         "corners_editable": False,
+        "gear_shifts": None,
         "ref_col_map": None,
         "summary": None,
         "trace": None,
@@ -111,6 +112,7 @@ class _SharedState:
             "last_overlay",
             "corners",
             "corners_editable",
+            "gear_shifts",
             "compose_offset",
         ):
             type(self)._shared.pop(k, None)

@@ -220,6 +220,23 @@ async def render(state, navigate):
             raw_map = col_map_state["text"].strip()
             if raw_map:
                 ref_col_map = dict(p.partition("=")[::2] for p in raw_map.splitlines() if "=" in p)
+
+            # Cambio de marcha (subtitulo, sound=False): sale de la vuelta de
+            # REFERENCIA (ROADMAP: modo estudio = referencia). Se recalcula
+            # SIEMPRE aqui, sin importar si los corners vinieron del boton
+            # "Detectar curvas automaticamente" o de un corners.json subido a
+            # mano -- a diferencia de corners (editable por el usuario), esta
+            # deteccion no tiene edicion manual, asi que no hay razon para NO
+            # recalcularla contra el ref_lap que de verdad se va a guardar
+            # (evita quedar sin gear_shifts cuando el usuario nunca toco el
+            # boton de auto-deteccion).
+            def _detect_gear_shifts():
+                from fantasma.core.corners import detect_gear_shifts as _dgs
+
+                return _dgs(ref_lap)
+
+            gear_shifts = await run.io_bound(_detect_gear_shifts)
+
             state.ref_path = ref_state["path"]
             state.drv_path = drv_state["path"]
             state.ref_name = ref_state["name"]
@@ -229,6 +246,7 @@ async def render(state, navigate):
             state.ref_lap = ref_lap
             state.drv_lap = drv_lap
             state.corners = corners
+            state.gear_shifts = gear_shifts
             state.ref_col_map = ref_col_map
             if corners_state["data"]:
                 state.corners_editable = True
@@ -348,15 +366,32 @@ async def render(state, navigate):
                 ui.notify("Primero sube el archivo de referencia.", type="warning")
                 return
             try:
-                from fantasma.core.corners import detect_corners as _dc
-                from fantasma.core.corners import extract_milestones as _em
                 from fantasma.core.normalize import fastest_lap as _fl
 
-                _evs, _ = _dc(_fl(ref_state["laps"]))
-                cdet = _em(_fl(ref_state["laps"]), _evs)
+                _ref_lap = _fl(ref_state["laps"])
+
+                def _detect():
+                    # Todo el trabajo pesado (deteccion de curvas + cambios de
+                    # marcha) va aqui, delegado a run.io_bound: sin esto corre
+                    # sincrono sobre el hilo del event loop de NiceGUI (a
+                    # diferencia de ng_step2.py/ng_step3.py, que ya usan
+                    # run.io_bound para la misma deteccion). Sin state.* aqui
+                    # (C-02): solo variables locales capturadas.
+                    from fantasma.core.corners import detect_corners as _dc
+                    from fantasma.core.corners import detect_gear_shifts as _dgs
+                    from fantasma.core.corners import extract_milestones as _em
+
+                    _evs, _ = _dc(_ref_lap)
+                    _cdet = _em(_ref_lap, _evs)
+                    return _cdet, _dgs(_ref_lap)
+
+                cdet, gear_shifts = await run.io_bound(_detect)
                 corners_state["data"] = cdet
                 state.corners = cdet
                 state.corners_editable = True
+                # Cambio de marcha (subtitulo, sound=False): sale de la
+                # vuelta de REFERENCIA (ROADMAP: modo estudio = referencia).
+                state.gear_shifts = gear_shifts
                 ui.notify(f"{len(cdet)} curvas detectadas automaticamente.", type="positive")
             except Exception as ex:
                 ui.notify(f"Error: {ex}", type="negative")

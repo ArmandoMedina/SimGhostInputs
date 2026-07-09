@@ -41,9 +41,10 @@ Todo importador convierte a este modelo (`fantasma/core/lap.py`):
 2. **Kink**: pico de |G lateral| > 2.2 sostenido, sin V-Min en ±80m (curvas rápidas sin frenada).
 3. **Segmentación**: cada curva solo analiza su tramo (punto medio con las curvas vecinas, con tope de 450 m hacia atrás y 350 m hacia adelante) — evita contaminarse con la frenada de la curva siguiente.
 4. **Frenada real**: último bloque de freno con pico ≥50%; los blips del trail braking no cuentan como inicio de frenada.
-5. Hitos: `brake_start`, `turn_in` (|volante|>8° hacia el lado de la curva), `brake_release` (<2%), `throttle_on` (>5%), `apex` (V-Min), `full_throttle` (≥98% sostenido), `g_lat_max`, `lift` (en curvas sin freno). Cada hito lleva `d` (m), `t` (s), `v` (km/h).
-6. **Overlap**: si `throttle_on.d < brake_release.d`, se registra `overlap_m` (solape gas/freno).
-7. **Pendiente**: si hay canal `alt`, gradiente ±100m alrededor del ápex → `slope` (subida/bajada/plano) y `slope_pct`.
+5. Hitos: `brake_start`, `turn_in` (|volante|>8° hacia el lado de la curva), `brake_release` (<2%), `throttle_on` (>5% **sostenido**: ancla en el primer punto donde el throttle cruza el umbral y se mantiene por encima durante `throttle_on_window` muestras seguidas — igual criterio que `full_throttle`, para que un roce fugaz de pedal, ej. freno-motor o ruido, no gane el hito frente a la aceleración real), `apex` (V-Min), `full_throttle` (≥98% sostenido), `g_lat_max`, `lift` (en curvas sin freno), `coast_start`/`coast_end` (ver punto 6bis). Cada hito lleva `d` (m), `t` (s), `v` (km/h).
+6. **Overlap**: si `throttle_on.d < brake_release.d`, se registra `overlap_m` (solape gas/freno). El solape se mide contra el `throttle_on` sostenido (punto 5), no contra el primer roce de pedal, así que `overlap_m` puede variar si el gas real entra más tarde que un blip inicial.
+7. **Coast**: tramo entre el fin de la frenada (`brake_release`, o `lift` en curvas sin freno) y el `throttle_on` sostenido donde el piloto no toca ni freno ni gas (`throttle` y `brake` ambos por debajo de sus umbrales, `throttle_on` y `brake_on` respectivamente). Si existe hueco se marcan `coast_start` (primer punto del tramo) y `coast_end` (último). Si el gas se solapa con el freno (overlap, ver punto 6) no hay hueco y no se emite coast.
+8. **Pendiente**: si hay canal `alt`, gradiente ±100m alrededor del ápex → `slope` (subida/bajada/plano) y `slope_pct`.
 
 ## Esquema de corners JSON
 
@@ -71,6 +72,8 @@ Todo importador convierte a este modelo (`fantasma/core/lap.py`):
         "apex":        {"d": 7233, "t": 135.6, "v": 76, "gear": 1, "g_lat": 2.42},
         "full_throttle":{"d": 7349, "t": 139.1, "v": 118, "gear": 2},
         "g_lat_max":   {"d": 7230, "g_lat": 2.5}
+        // coast_start/coast_end: solo si hay hueco entre brake_release y
+        // throttle_on (no en este ejemplo, que tiene overlap_m)
       },
       "tolerances": {"brake_start_m": 10, "vmin_kmh": 4}   // opcional, para avisos
     }
@@ -79,6 +82,40 @@ Todo importador convierte a este modelo (`fantasma/core/lap.py`):
 ```
 
 Campos extra (`voice_name`, `description`, `coaching_priority`...) se conservan y son libres — otras herramientas pueden usarlos.
+
+## Cambios de marcha (`gear_shifts`)
+
+`fantasma detect` calcula, además de `corners`, los cambios de marcha de la vuelta que se le pasa: `detect_gear_shifts(lap, min_hold_s=0.15)` (`fantasma/core/corners.py`) recorre **toda la vuelta** (no por curva — un cambio de marcha puede caer en cualquier punto, dentro o fuera de una curva) comparando el canal `gear` muestra a muestra, con un debounce de `min_hold_s` segundos: un cambio candidato solo se confirma si la marcha nueva se sostiene ese tiempo antes de volver a cambiar, para descartar blips de una sola muestra. `corners_detected.json` agrega la clave `gear_shifts` junto a `corners`:
+
+```json
+{
+  "corners": [...],
+  "gear_shifts": [
+    {"distance": 1745, "gear_from": 3, "gear_to": 4}
+  ]
+}
+```
+
+- `distance` (m, entero redondeado) — punto de la vuelta donde se confirma el cambio.
+- `gear_from` / `gear_to` (entero) — marcha antes/después; `0` = neutro, negativo = reversa (mismo criterio que el canal `gear`).
+- Lista ordenada por `distance`.
+
+`fantasma pacenotes` (`cmd_pacenotes`) lee `gear_shifts` del JSON de curvas y lo pasa a `build_pack(..., gear_shifts=...)`; si el archivo no trae la clave (`corners_detected.json` de una versión anterior, o una lista plana de curvas sin envoltorio), se asume lista vacía — no revienta. En la UI (`fantasma-ng`), `AppState.gear_shifts` se calcula siempre sobre la vuelta de **referencia** (Pasos 1/2/3), coherente con la regla de producto "estudio = referencia; en vivo = RPM real del piloto" del `ROADMAP.md`. Alimenta el cue `gear` (ver esquema de configuración de cues abajo) — [ADR 0028](decisions/0028-cues-reencuadre-prioridades-countdown-frecuencias-gear.md).
+
+## Esquema de configuración de cues (perfiles)
+
+`DEFAULT_CONFIG` (`fantasma/viz/pacenotes.py`) y los perfiles JSON compartibles que consume `profile_to_config` (`fantasma/viz/cue_profiles.py`) describen cada tipo de cue de pace notes con:
+
+| Campo | Tipo | Significado |
+| :-- | :-- | :-- |
+| `enabled` | bool | si se generan candidatos de ese tipo en `plan_tone_events` |
+| `priority` | int | gana el hueco cuando dos cues compiten por el mismo espacio (gap mínimo global) |
+| `sound` | bool | si el candidato se sintetiza a WAV en `build_tone_pack` (campo nuevo, [ADR 0028](decisions/0028-cues-reencuadre-prioridades-countdown-frecuencias-gear.md)). `False` = el cue solo se subtitula (`build_cue_ass`): no genera audio ni entrada en `fileNames`/`recordingNames` de `metadata.json` (quedan `[]`). Default `True` para todo el catálogo salvo `gear` |
+| `solo_sin_frenada` | bool | solo aplica a `coast`: no compite en curvas que ya tienen frenada |
+
+El cue `gear` (cambio de marcha, `{"enabled": False, "priority": 75, "sound": False}`) es el primero del catálogo con `sound=False`: no se sintetiza a WAV, solo aparece en el subtítulo quemado con la etiqueta `"cambio a Nª"` (ver la tabla de colores en `docs/hud-reference.md`). Un perfil de terceros puede forzar `sound: true` en cualquier cue; `profile_to_config` coacciona el campo a `bool` igual que `enabled`/`solo_sin_frenada`.
+
+**Corrección 2026-07-08 (enmienda a ADR 0028):** un cue con `sound=False` **NO** participa en la resolución de cabida/prioridad (gap mínimo global) contra cues que sí suenan — `plan_tone_events` resuelve el gap mínimo en DOS grupos independientes (sonoros vs. mudos) y los recombina después. Motivo: `gear` es de vuelta completa (decenas de cambios de marcha por vuelta) y, al compartir pool con cues de audio esporádicos como `coast`, los desplazaba por completo en zonas sin relación alguna con un cambio de marcha (QA 2026-07-08, ver enmienda en el ADR). `brake` (protegido) siempre cuenta como sonoro para este corte, sin importar lo que diga su campo `sound` resuelto — es la única garantía cruzada que R1 no puede perder ante un perfil de terceros que fuerce `sound: false` en `brake`. Dos cues mudos cercanos entre sí (p. ej. una racha de reducciones) sí compiten por cabida entre ellos, para que sus subtítulos no se amontonen.
 
 ## API pública de `fantasma.core`
 
