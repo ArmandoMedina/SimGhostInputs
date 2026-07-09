@@ -10,6 +10,8 @@
 
 ## Estado actual
 
+**v2.3.1** (2026-07-09) — estable. 392 tests. Patch: repara el build del instalador Windows, que fallaba desde el [ADR 0022](docs/decisions/0022-ci-release-installer.md) sin que nadie lo notara porque `release.yml` solo corría al publicar un release (`v2.3.0` es el primer release que lo ejercitó, y falló 3 veces). `pyinstaller` pasa a vivir en el extra `pack`; nacen el workflow `installer-smoke` (ensaya el empaquetado en cada PR que lo toca) y el `workflow_dispatch` de rescate en `release.yml`. **Primer release con instalador adjunto desde v2.2.0.**
+
 **v2.3.0** (2026-07-09) — estable. 381 tests. Cues configurables completo (catálogo, prioridad, perfiles, coast, subtítulos adaptativos, cue `gear`; ADR 0024-0028) + cierre de 8 ítems de deuda técnica Media del ROADMAP (normalización por Hz, anti-saturación de voz, job de render en `state`, lockfile, pin de ruff, hooks endurecidos, cobertura E2E; ver [CHANGELOG](CHANGELOG.md)).
 
 **v2.2.0** (2026-07-05) — estable. 234 tests. Flujo "Solo Pace Notes" (entrada directa Importar→Análisis→Pace Notes saltando overlay/compose, [ADR 0021](docs/decisions/0021-flujo-solo-pacenotes.md)) + guía del Paso 5 (tooltips, panel② siempre visible, fix del estado disabled del botón «Aplicar sonido»).
