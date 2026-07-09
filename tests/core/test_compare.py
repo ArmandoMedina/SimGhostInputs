@@ -335,3 +335,65 @@ def test_compare_apex_sin_d_no_desalinea_curva_siguiente():
     # no debe crashear al reconstruir la ventana de la segunda curva con prev=None
     _, rows, _ = compare(ref, drv, step=5.0, corners=corners)
     assert any(r["id"] == "T1" for r in rows)
+
+
+def _build_lap_caso_c():
+    """Vuelta sintetica del 'caso C' del esceptico (qa 2026-07-09): trail-braking
+    CONTINUO (una sola fase) barriendo un kink rapido (pico de glat en 430) cuyo
+    V-Min publicado (~520) retrasa al pico, hasta una curva mas lenta. Geometria
+    cotidiana del Nordschleife, construida a mano porque make_lap no modela el
+    desfase kink/V-Min. Ver break_attempt.py caso C."""
+    from fantasma.core.lap import Lap
+
+    def seg_speed(d, segs):
+        for (d0, v0), (d1, v1) in zip(segs, segs[1:]):
+            if d0 <= d <= d1:
+                f = (d - d0) / (d1 - d0) if d1 > d0 else 0
+                return v0 + f * (v1 - v0)
+        return 220.0
+
+    pts = [(0, 220), (360, 220), (520, 95), (545, 100), (900, 220)]
+    dist, speed, throttle, brake, glat = [], [], [], [], []
+    d = 0.0
+    while d <= 900.0:
+        v = seg_speed(d, pts)
+        gl = max(0.0, 2.8 * (1.0 - abs(d - 430) / 90.0))
+        br = 90.0 if 360 <= d <= 515 else 0.0
+        th = 0.0 if (br > 0 or 360 <= d <= 515) else 100.0
+        dist.append(d); speed.append(v); throttle.append(th); brake.append(br); glat.append(gl)
+        d += 1.0
+    time = [0.0]
+    for i in range(1, len(dist)):
+        va = (speed[i] + speed[i - 1]) / 2.0 / 3.6
+        time.append(time[-1] + (dist[i] - dist[i - 1]) / max(va, 0.5))
+    lap = Lap(meta={"Vehicle": "SYNTH"})
+    lap.channels.update(
+        time=time, dist=dist, speed=speed, throttle=throttle, brake=brake, glat=glat,
+        steering=[g * 12.0 for g in glat], gear=[4.0] * len(dist),
+        rpm=[3000.0 + v * 30 for v in speed], glong=[0.0] * len(dist),
+    )
+    return lap
+
+
+def test_brake_window_autoconsistente_tras_kink_caso_c():
+    """Regresion (Parte B / ADR 0031 Opcion A): comparar una vuelta contra si
+    misma con un kink de V-Min retrasado debe dar d_brake_m == 0 en TODA curva.
+
+    Antes, `extract_milestones` calculaba su ventana de frenada con el apice de
+    EVENTO mientras publicaba el V-Min como apice; `_corner_metrics` reconstruia
+    la ventana desde el apice PUBLICADO. Tras el kink, ambas anclas divergian y
+    la MISMA frenada continua se atribuia empezando en metros distintos ->
+    d_brake_m espurio (20 m en el caso C, bandera 'frenada' falsa). Con la ventana
+    derivada del apice publicado en ambos lados, el invariante se mantiene."""
+    from fantasma.core.compare import compare
+    from fantasma.core.corners import extract_milestones
+
+    lap = _build_lap_caso_c()
+    corners = extract_milestones(lap)
+    _, rows, _ = compare(lap, lap, corners=corners)
+    braked = [r for r in rows if "d_brake_m" in r]
+    assert braked, "el caso C debe producir al menos una curva con frenada"
+    assert all(r["d_brake_m"] == 0 for r in braked), (
+        "d_brake_m debe ser 0 comparando la vuelta contra si misma; filas: %r"
+        % [(r["id"], r["ref_brake_d"], r["drv_brake_d"], r["d_brake_m"]) for r in braked]
+    )

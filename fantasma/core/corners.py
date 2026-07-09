@@ -231,6 +231,10 @@ def extract_milestones(
     throttle_on_window = _window_samples(dt, throttle_on_window_s)
     apex_ds = [data[i]["dist"] for _, i in events]
     corners = []
+    # Apice PUBLICADO (V-Min redondeado) del ultimo corner que se ANEXO: es la
+    # misma ancla del borde bajo de la ventana de frenada que `compare` encadena
+    # en `prev_apex_d`. Ver la nota extensa junto al calculo de `brake_window`.
+    prev_pub_apex = None
     for n, (kind, ai) in enumerate(events):
         ad = data[ai]["dist"]
         lo = (apex_ds[n - 1] + ad) / 2 if n > 0 else ad - 450
@@ -250,21 +254,32 @@ def extract_milestones(
         # (su punto medio caia en mitad de la zona de frenado). `ad - 450` es el
         # mismo tope de look-back que `lo`; la frontera de propiedad es el apice
         # previo (no se roba la frenada de la vecina anterior).
-        prev_apex = apex_ds[n - 1] if n > 0 else None
+        # Auto-consistencia (ADR 0031, Opcion A): la ventana de frenada se deriva
+        # del apice PUBLICADO (el V-Min `ap`, no el apice de EVENTO `ad`) y del
+        # apice publicado del corner previo ANEXADO -- exactamente las anclas que
+        # `compare._corner_metrics` reconstruye a partir del contexto publicado.
+        # Antes esta ventana usaba el apice de EVENTO (`ad` y `apex_ds[n-1]`),
+        # mientras se PUBLICABA el V-Min como apice: cuando el corner previo es un
+        # kink cuyo V-Min retrasa al pico de glat, ambas anclas divergian y una
+        # misma frenada continua se atribuia empezando en metros distintos entre
+        # referencia y piloto (d_brake_m espurio comparando una vuelta contra si
+        # misma). Al derivar de lo PUBLICADO, productor y consumidor usan la misma
+        # ancla por construccion.
+        apex_pub_d = round(ap["dist"])
         brake_lo = (
-            max(prev_apex, ad - BRAKE_LOOKBACK_M)
-            if prev_apex is not None
-            else ad - BRAKE_LOOKBACK_M
+            max(prev_pub_apex, apex_pub_d - BRAKE_LOOKBACK_M)
+            if prev_pub_apex is not None
+            else apex_pub_d - BRAKE_LOOKBACK_M
         )
         # Ventana de frenada INTERNA: NO se publica en el dict de la curva. El
         # ADR 0031 descarta la Opcion C (exponer `brake_window_m`) y adopta la
-        # Opcion A: cada consumidor deriva la ventana del contexto que ya tiene.
-        # `compare._corner_metrics` la reconstruye con esta MISMA formula (apice
-        # de la curva previa y apice propio) para medir al piloto con la MISMA
-        # vara. Se redondea a enteros antes de filtrar, de modo que referencia y
-        # piloto usen limites byte-identicos: esa es la condicion para que
+        # Opcion A. Se redondea a enteros antes de filtrar, de modo que referencia
+        # y piloto usen limites byte-identicos: esa es la condicion para que
         # d_brake_m == 0 cuando son la misma vuelta.
-        brake_window = [round(brake_lo), round(ad)]
+        brake_window = [round(brake_lo), round(apex_pub_d)]
+        # El corner ya no puede saltarse (el unico `continue` quedo arriba), asi
+        # que este apice publicado sera el `prev_pub_apex` del siguiente anexado.
+        prev_pub_apex = apex_pub_d
         phase, phases = select_brake_phase(data, brake_window, brake_on, brake_strong, phase_gap_s)
         no_brake = phase is None
         overlap = None
