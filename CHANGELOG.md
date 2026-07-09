@@ -4,6 +4,9 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/). Versionado
 
 ## [Unreleased]
 
+### Corregido
+- **El job `release.yml` (build del instalador Windows) fallaba en "Install deps"** (`.github/workflows/release.yml`): intentaba `pip install nicegui-pack` como paquete separado de PyPI, pero `nicegui-pack` no existe ahí — es un script (`nicegui-pack.exe`) que viene incluido dentro del propio paquete `nicegui` (ya instalado vía el extra `ui-ng`). El bug estaba desde el ADR 0022 (2026-07-05) pero nunca se había ejecutado porque no se cortó ningún release hasta v2.3.0. Destapado al cortar v2.3.0.
+
 ## [2.3.0] - 2026-07-09
 
 ### Corregido
