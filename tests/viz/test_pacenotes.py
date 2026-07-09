@@ -443,6 +443,39 @@ def test_countdown_tic_sin_espacio_deja_rastro_con_el_evento_que_lo_choco():
     }
 
 
+def test_countdown_tic_vs_tic_reporta_el_tic_que_lo_choco_no_la_frenada():
+    """Trazabilidad (D1) cuando el estorbo es OTRO tic, no una frenada de `kept`.
+
+    Dos curvas protegidas y pegadas (frenadas en 3000 y 2995, ambas a 216 km/h ->
+    lead_m=90) generan tics en 2905/2950 (C02) y 2910/2955 (C01). El tic de C01 en
+    2910 choca a 5 m contra el tic YA ACEPTADO de C02 en 2905. `against` debe
+    describir ESE tic (cue 'brake_tic', distancia 2905), no la frenada de C02 en
+    2995. Con el bug (indexar por own_idx a `kept`) reportaba brake@2995: un cue
+    equivocado a 90 m de la distancia real del estorbo."""
+    from fantasma.viz.pacenotes import plan_tone_events
+
+    rows = [
+        {"id": "C01", "name": "C01", "time_lost": 0.5, "flags": "frenada"},
+        {"id": "C02", "name": "C02", "time_lost": 0.5, "flags": "frenada"},
+    ]
+    corners = [
+        {"id": "C01", "name": "C01", "milestones": {"brake_start": {"d": 3000, "v": 216}}},
+        {"id": "C02", "name": "C02", "milestones": {"brake_start": {"d": 2995, "v": 216}}},
+    ]
+    plan = plan_tone_events(rows, corners, top=2, min_gap_m=50)
+    assert not any(e["cue"] == "brake_tic" and e["distance"] == 2910 for e in plan["events"])
+    skipped = [
+        s for s in plan["skipped_global"] if s["cue"] == "brake_tic" and s["distance"] == 2910
+    ]
+    assert len(skipped) == 1
+    assert skipped[0]["reason"] == "tic_sin_espacio"
+    assert skipped[0]["against"] == {
+        "corner_id": "C02",
+        "cue": "brake_tic",
+        "distance": 2905,
+    }
+
+
 def test_plan_legacy_tiene_mismo_esquema():
     """El plan legacy (smart=False) expone skipped_global vacio: mismo esquema."""
     from fantasma.viz.pacenotes import _legacy_tone_events

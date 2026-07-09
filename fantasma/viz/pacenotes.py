@@ -403,8 +403,15 @@ def plan_tone_events(
         # que TAMBIEN suenan. Sin este filtro, un cambio de marcha mudo cerca
         # de un tic candidato lo tira sin razon -- mismo bug que motivo el
         # split sound/silent, encontrado en el mismo diff (Reviewer 2026-07-08).
+        # Cada entrada lleva (group_idx, distancia, evento_real): el group_idx es
+        # el indice en `kept` de la FRENADA que ancla el grupo cohesivo (para un
+        # evento normal de kept, su propio indice; para un tic aceptado, el
+        # own_idx de su curva). Se guarda el EVENTO REAL que ocupa ese metro
+        # -- no un indice a kept -- para que `against` reporte el cue y la
+        # distancia del sonido que de verdad estorbo (un tic ya aceptado
+        # reporta brake_tic + su distancia, no la frenada de su curva).
         timeline = [
-            (idx, e["distance"])
+            (idx, e["distance"], e)
             for idx, e in enumerate(kept)
             if _cue_sound_enabled(cue_config, e["cue"])
         ]
@@ -434,13 +441,16 @@ def plan_tone_events(
             # Estorbo mas cercano que viola el gap: se registra contra que evento
             # choco (cue, curva, distancia) para que el PO pueda auditar.
             clash = None
-            for t_idx, t in timeline:
-                if t_idx == own_idx:
+            for group_idx, t, ev in timeline:
+                # Un tic no choca contra el grupo cohesivo de SU MISMA curva
+                # (su frenada y su tic hermano comparten own_idx): se salta por
+                # group_idx, no por la identidad del evento.
+                if group_idx == own_idx:
                     continue
-                if abs(d - t) < min_gap_m and (clash is None or abs(d - t) < abs(d - clash[1])):
-                    clash = (t_idx, t)
+                if abs(d - t) < min_gap_m and (clash is None or abs(d - t) < abs(d - clash[0])):
+                    clash = (t, ev)
             if clash is not None:
-                against = kept[clash[0]]
+                against = clash[1]
                 countdown_skipped.append(
                     {
                         **tic,
@@ -453,7 +463,7 @@ def plan_tone_events(
                     }
                 )
                 continue
-            timeline.append((own_idx, d))
+            timeline.append((own_idx, d, tic))
             tics.append(tic)
 
     all_events = sorted(kept + tics, key=lambda c: c["distance"])
