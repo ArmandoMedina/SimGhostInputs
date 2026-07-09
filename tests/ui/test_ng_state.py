@@ -26,8 +26,9 @@ def mock_state():
     y truena con AttributeError (visto en CI, run 28685571726).
     """
     m = MagicMock()
-    # ng_state.py accede a _ng_app.storage.user como dict; usamos uno real
+    # ng_state.py accede a _ng_app.storage.user/.tab como dict; usamos reales
     m.storage.user = {}
+    m.storage.tab = {}
     with patch.object(_ng_state_mod, "_ng_app", m):
         yield _ng_state_mod.AppState()
 
@@ -151,3 +152,30 @@ def test_auto_compose_survives_clear_drv(mock_state):
     mock_state.auto_compose = True
     mock_state.clear_drv()
     assert mock_state.auto_compose is True
+
+
+def test_active_overlay_job_default_none(mock_state):
+    """active_overlay_job es None hasta que el Paso 3 arranca un render."""
+    assert mock_state.active_overlay_job is None
+
+
+def test_active_overlay_job_setter_persists(mock_state):
+    """Asignar un objeto job y leerlo de vuelta devuelve la misma instancia."""
+    sentinel_job = object()
+    mock_state.active_overlay_job = sentinel_job
+    assert mock_state.active_overlay_job is sentinel_job
+
+
+def test_active_overlay_job_uses_tab_storage_not_user(mock_state):
+    """active_overlay_job vive en app.storage.tab, no en app.storage.user.
+
+    El job (RenderJob de ng_helpers.py) trae un threading.Event, no
+    serializable a JSON; app.storage.user se respalda a disco en JSON en
+    cada escritura y rompería. app.storage.tab es memoria de proceso ligada
+    a la pestaña del navegador (sobrevive a un F5, a diferencia de
+    app.storage.client), no se serializa.
+    """
+    sentinel_job = object()
+    mock_state.active_overlay_job = sentinel_job
+    assert "active_overlay_job" in _ng_state_mod._ng_app.storage.tab
+    assert "active_overlay_job" not in _ng_state_mod._ng_app.storage.user

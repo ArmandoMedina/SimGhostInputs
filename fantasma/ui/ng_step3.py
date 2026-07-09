@@ -148,13 +148,97 @@ async def render(state, navigate):
     result_area = ui.column().classes("w-full")
     render_area = ui.column().classes("w-full")
 
-    # Variable de estado del job activo (en closure)
-    job_holder = {"job": None, "timer": None}
+    # El job vive en state.active_overlay_job (app.storage.tab), no aquí:
+    # si el usuario navega fuera del Paso 3 y vuelve (o refresca la página),
+    # este closure se recrea desde cero, pero state.active_overlay_job sigue
+    # apuntando al mismo RenderJob en background -- así el guard de abajo lo
+    # detecta y reengancha el polling en vez de arrancar un segundo render
+    # sobre el mismo outdir.
     _gen_btn_ref = {"btn": None}
+
+    def _job_is_active(job):
+        return job is not None and not job.done
+
+    def _watch_job(job):
+        """Muestra progreso/cancelar para `job` y engancha el polling.
+
+        Se llama tanto al arrancar un render nuevo como al reencontrar uno
+        ya en curso (state.active_overlay_job) al reentrar al Paso 3.
+        """
+        timer = None
+
+        render_area.clear()
+        with render_area:
+            progress_bar = ui.linear_progress(value=0, show_value=False).classes("w-full")
+            status_label = ui.label("Iniciando...").classes("text-sm text-gray-400")
+
+            def cancel():
+                job.cancel()
+
+            cancel_btn = (
+                ui.button("Detener render", on_click=cancel).classes("btn-secondary").props("flat")
+            )
+
+        async def poll():
+            nonlocal timer
+            if job.done:
+                if timer:
+                    timer.cancel()
+                    timer = None
+                progress_bar.delete()
+                status_label.delete()
+                cancel_btn.delete()
+                if _gen_btn_ref["btn"] is not None:
+                    _gen_btn_ref["btn"].enable()
+                # Libera el job terminado: uno nuevo no debe quedar bloqueado
+                # por una referencia a un render que ya no está en curso.
+                if state.active_overlay_job is job:
+                    state.active_overlay_job = None
+                result_area.clear()
+                with result_area:
+                    if job.error == "__CANCELLED__":
+                        ui.label("Render cancelado.").classes("text-yellow-400")
+                    elif job.error:
+                        if "ImportError" in str(job.error) or "No module" in str(job.error):
+                            ui.label(
+                                'Faltan dependencias. Ejecuta: pip install "fantasma-inputs[overlay]"'
+                            ).classes("text-red-400")
+                        else:
+                            ui.label(f"Error en el render: {job.error}").classes("text-red-400")
+                    else:
+                        state.last_overlay = job.result
+                        ui.label("✓ Overlay generado: %s" % os.path.basename(job.result)).classes(
+                            "font-bold text-green-400"
+                        )
+                        _next = _FLOWS.get(state.flow_key, _FLOWS[_DEFAULT_FLOW])["next"].get(3)
+                        if state.auto_compose and _next == 4:
+                            state.pending_autocompose = True
+                            await navigate(4)
+                        else:
+                            _render_next_btn(state, 3, navigate)
+                return
+            pct = job.n / job.total if job.total > 0 else 0
+            progress_bar.set_value(pct)
+            status_label.set_text(
+                job.status or ("Frame %d / %d (%.0f%%)" % (job.n, job.total, pct * 100))
+            )
+
+        timer = ui.timer(0.5, poll)
+
+        def _cancel_on_nav():
+            nonlocal timer
+            if timer is not None:
+                try:
+                    timer.cancel()
+                except Exception:
+                    pass
+                timer = None
+
+        navigate._cancel_render = _cancel_on_nav
 
     def _start_render():
         # Guard: ignorar clicks mientras hay un render en curso
-        if job_holder["job"] is not None and not job_holder["job"].done:
+        if _job_is_active(state.active_overlay_job):
             return
         if _gen_btn_ref["btn"] is not None:
             _gen_btn_ref["btn"].disable()
@@ -186,78 +270,15 @@ async def render(state, navigate):
             fps=_fps,
             fmt=_fmt,
         )
-        job_holder["job"] = job
+        state.active_overlay_job = job
+        _watch_job(job)
 
-        render_area.clear()
-        with render_area:
-            progress_bar = ui.linear_progress(value=0, show_value=False).classes("w-full")
-            status_label = ui.label("Iniciando...").classes("text-sm text-gray-400")
-
-            def cancel():
-                if job_holder["job"]:
-                    job_holder["job"].cancel()
-
-            cancel_btn = (
-                ui.button("Detener render", on_click=cancel).classes("btn-secondary").props("flat")
-            )
-
-        async def poll():
-            _job = job_holder["job"]
-            if _job is None:
-                return
-            if _job.done:
-                if job_holder["timer"]:
-                    job_holder["timer"].cancel()
-                    job_holder["timer"] = None
-                progress_bar.delete()
-                status_label.delete()
-                cancel_btn.delete()
-                if _gen_btn_ref["btn"] is not None:
-                    _gen_btn_ref["btn"].enable()
-                result_area.clear()
-                with result_area:
-                    if _job.error == "__CANCELLED__":
-                        ui.label("Render cancelado.").classes("text-yellow-400")
-                    elif _job.error:
-                        if "ImportError" in str(_job.error) or "No module" in str(_job.error):
-                            ui.label(
-                                'Faltan dependencias. Ejecuta: pip install "fantasma-inputs[overlay]"'
-                            ).classes("text-red-400")
-                        else:
-                            ui.label(f"Error en el render: {_job.error}").classes("text-red-400")
-                    else:
-                        state.last_overlay = _job.result
-                        ui.label("✓ Overlay generado: %s" % os.path.basename(_job.result)).classes(
-                            "font-bold text-green-400"
-                        )
-                        _next = _FLOWS.get(state.flow_key, _FLOWS[_DEFAULT_FLOW])["next"].get(3)
-                        if state.auto_compose and _next == 4:
-                            state.pending_autocompose = True
-                            await navigate(4)
-                        else:
-                            _render_next_btn(state, 3, navigate)
-                return
-            pct = _job.n / _job.total if _job.total > 0 else 0
-            progress_bar.set_value(pct)
-            status_label.set_text(
-                _job.status or ("Frame %d / %d (%.0f%%)" % (_job.n, _job.total, pct * 100))
-            )
-
-        timer = ui.timer(0.5, poll)
-        job_holder["timer"] = timer
-
-        def _cancel_on_nav():
-            t = job_holder.get("timer")
-            if t is not None:
-                try:
-                    t.cancel()
-                except Exception:
-                    pass
-                job_holder["timer"] = None
-
-        navigate._cancel_render = _cancel_on_nav
-
-    if not job_holder["job"] or job_holder["job"].done:
+    # Reengancharse a un render que ya estaba en curso antes de navegar fuera
+    # del Paso 3 (o iniciar uno nuevo si no hay ninguno / ya terminó).
+    _active_job = state.active_overlay_job
+    if _job_is_active(_active_job):
+        _watch_job(_active_job)
+    else:
         _gen_btn_ref["btn"] = (
             ui.button(
                 "Generar overlay",
@@ -272,8 +293,10 @@ async def render(state, navigate):
     # "Generar overlay" (con hint "Analizando el trazado...") para no arrancar un overlay
     # sin milestones si el usuario pulsa antes de que termine; se rehabilita al terminar.
     # El Paso 2 pudo dejarlos listos (corners_editable, incluso lista vacía), en cuyo caso
-    # no se detecta.
-    if corners_holder["list"] is None:
+    # no se detecta. Si ya hay un render en curso (reenganchado arriba), tampoco: esas
+    # curvas solo se necesitan para ARRANCAR un render nuevo, y esta detección compite
+    # por CPU con el render (que ya usa todos los cores) sin ningún beneficio aquí.
+    if corners_holder["list"] is None and not _job_is_active(_active_job):
         _detect_hint = None
         if _gen_btn_ref["btn"] is not None:
             _gen_btn_ref["btn"].disable()
