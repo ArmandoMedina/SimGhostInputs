@@ -1,3 +1,3 @@
 """SimGhostInputs: compara tus inputs contra una vuelta de referencia, por distancia."""
 
-__version__ = "2.3.1"
+__version__ = "2.4.0"

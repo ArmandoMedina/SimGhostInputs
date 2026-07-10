@@ -10,6 +10,8 @@
 
 ## Estado actual
 
+**v2.4.0** (2026-07-10) — estable. 453 tests. Minor: cada frenada real de una curva ahora suena, no solo la primera ([ADR 0033](docs/decisions/0033-frenadas-multiples-por-curva.md)): `detect_brakings` publica toda frenada fuerte real en el campo nuevo `milestones.brake_starts` y `viz/pacenotes.py` emite un cue `brake` protegido por cada una. Incluye los fixes de `brake_start` (ventana propia tras el ápex vecino para que un kink no trunque el inicio, y anclaje en la fase de pico de una frenada partida; ADR 0031) y la trazabilidad de los tics de countdown descartados en `plan.json` (ADR 0032), más el [ADR 0030](docs/decisions/0030-modos-estudio-en-vivo-que-ancla-cada-cue.md) (modos estudio/en vivo: qué ancla cada cue).
+
 **v2.3.1** (2026-07-09) — estable. 392 tests. Patch: repara el build del instalador Windows, que fallaba desde el [ADR 0022](docs/decisions/0022-ci-release-installer.md) sin que nadie lo notara porque `release.yml` solo corría al publicar un release (`v2.3.0` es el primer release que lo ejercitó, y falló 3 veces). `pyinstaller` pasa a vivir en el extra `pack`; nacen el workflow `installer-smoke` (ensaya el empaquetado en cada PR que lo toca) y el `workflow_dispatch` de rescate en `release.yml`. **Primer release con instalador adjunto desde v2.2.0.**
 
 **v2.3.0** (2026-07-09) — estable. 381 tests. Cues configurables completo (catálogo, prioridad, perfiles, coast, subtítulos adaptativos, cue `gear`; ADR 0024-0028) + cierre de 8 ítems de deuda técnica Media del ROADMAP (normalización por Hz, anti-saturación de voz, job de render en `state`, lockfile, pin de ruff, hooks endurecidos, cobertura E2E; ver [CHANGELOG](CHANGELOG.md)).
