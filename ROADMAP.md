@@ -43,6 +43,15 @@ Requiere AMS2 en pista — no bloqueó el merge.
 
 ---
 
+### QA E2E desde el producto, no desde scripts «por fuera» (diferido)
+
+Regla del PO (2026-07-10): **todo el material de QA debe generarse desde el producto mismo — la UI / el pipeline nativo de `fantasma` — no desde scripts ad-hoc que viven «por fuera».** Hoy el QA E2E de Mariana quema subtítulos y compone con scripts sueltos en `qa_runs/` (`subs_burn.py` hace un **segundo** pase con un `.ass` propio del QA; `run_fantasma.py`, `verificar_sync.py`); el PO no quiere «subtítulos ni nada por fuera». La base nativa **ya existe**: `fantasma/viz/compose.py` acepta `burn_cue_subs=True` (con `pace_notes_dir` + `lap`), genera `cue_subs.ass` desde los pace notes y lo quema en el **mismo** pase de compose (filtro `ass=` en `_build_filter`) — no hace falta el script paralelo. **Meta: QA E2E 100% desde la UI/pipeline nativo, cero scripts por fuera.** Beneficio: reproducibilidad y que el QA sea **fiel a lo que el producto realmente hace**, no a un script paralelo que puede divergir. **Diferido:** el QA actual funciona; se migra después, no ahora.
+
+- [ ] **Exponer `burn_cue_subs` en la UI** (Paso 4 / compose): un control que pase `burn_cue_subs=True` + `pace_notes_dir`/`lap` al compose nativo, para que los rótulos de cue salgan del mismo pase — sin segundo pase ni `.ass` propio del QA. Base de subtítulos quemados en [ADR 0027](docs/decisions/0027-cues-catalogo-configurable-perfiles-coast-subtitulos.md); rótulo de cue en [ADR 0028](docs/decisions/0028-cues-reencuadre-prioridades-countdown-frecuencias-gear.md).
+- [ ] **Migrar el QA E2E de Mariana al pipeline del producto** y retirar los scripts ad-hoc de `qa_runs/` (`subs_burn.py`, `run_fantasma.py`, `verificar_sync.py`): todo el flujo (video, overlay HUD, subtítulos/rótulos de cue, extractos A/B) debe salir de la UI / del pipeline nativo, no de un script paralelo.
+
+---
+
 ### Histórico entre sesiones
 
 Comparar el rendimiento en una misma curva a lo largo de varias tandas (¿progreso, techo, retroceso?).
