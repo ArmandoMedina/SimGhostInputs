@@ -497,7 +497,8 @@ async def render(state, navigate):
                         .tooltip(
                             "Paleta de sintesis de los cues de tono: seno (actual, solo "
                             "cambia la frecuencia), timbre (una forma de onda por familia), "
-                            "ritmo (separa por duracion/patron) o chirp (barridos)."
+                            "ritmo (separa por duracion/patron), chirp (barridos) o mezcla "
+                            "(un sonido distinto por cue; freno y contador iguales al de seno)."
                         )
                     )
                     sound_select.on_value_change(

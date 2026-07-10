@@ -221,6 +221,12 @@ def _make_wav_bytes(samples_int16, sample_rate=24000) -> bytes:
 #   ritmo  -> (B) mismo seno de hoy, separado por DURACION/PATRON: freno del
 #             doble de largo, gas doble-blip, turn_in pulso unico, tics iguales.
 #   chirp  -> (C) barridos: el freno baja de frecuencia, el gas sube.
+#   mezcla -> MEZCLA por-cue (Mariana 2026-07-09): cada TIPO de cue con su propio
+#             idioma sonoro (no una familia global). brake/brake_tic quedan
+#             BYTE-IDENTICOS a 'seno' (ancla aprobada por el PO); brake_release
+#             baja (glide), turn_in es un pluck, throttle_on sube brillante,
+#             full_throttle es doble blip brillante. Ver
+#             qa_runs/mariana-20260709-mezcla/PROPUESTA.md.
 #
 # NO se coloca en DEFAULT_CONFIG: ese dict es un catalogo POR TIPO DE CUE
 # (cada valor es {enabled, priority, ...}) que cue_profiles.config_to_profile
@@ -229,7 +235,7 @@ def _make_wav_bytes(samples_int16, sample_rate=24000) -> bytes:
 # serializacion. El perfil es GLOBAL al pack, no por cue: viaja como parametro
 # `sound_profile` de build_tone_pack/build_pack (ver docstrings).
 DEFAULT_SOUND_PROFILE = "seno"
-SOUND_PROFILES = ("seno", "timbre", "ritmo", "chirp")
+SOUND_PROFILES = ("seno", "timbre", "ritmo", "chirp", "mezcla")
 # Solo se suman armonicos por debajo de 0.45*SR (~10.8 kHz a 24 kHz): ninguna
 # componente pasa de Nyquist, asi no hay alias audible. Nunca se muestrea una
 # discontinuidad (cuadrada/sierra por formula directa) — todo timbre no senoidal
@@ -376,6 +382,28 @@ def _wave_double_blip(freq, sample_rate, blip_s=0.05, gap_s=0.05):
     return np.concatenate([b, g, b])
 
 
+def _wave_bright_rising(f0, f1, dur, sample_rate, shape="triangle", fade_s=_FADE_S):
+    """Barrido ASCENDENTE f0->f1 con armonicos impares (brillante).
+
+    Un `_wave_chirp` es un barrido de seno PURO: su energia no pasa de f1, asi no
+    'brilla' por encima de la banda del motor. Aqui se suman los armonicos impares
+    del mismo barrido (misma sintesis aditiva band-limited de `_wave_band_triangle`,
+    acotada por `_odd_harmonics` al pico f1) para subir el centroide espectral fuera
+    de la banda del motor. La SUBIDA de tono = 'te subes al gas'. `shape` 'triangle'
+    (1/n^2, signo alterno) da brillo suave; 'square' (1/n) mas aspero.
+    """
+    import numpy as np
+
+    t = _tone_time(dur, sample_rate)
+    inst = f0 * t + (f1 - f0) / (2 * dur) * t**2  # fase del chirp base
+    sig = np.zeros_like(t)
+    for k, n in enumerate(_odd_harmonics(f1, sample_rate)):  # limite de banda al pico
+        amp = (1.0 / (n * n)) if shape == "triangle" else (1.0 / n)
+        sign = ((-1) ** k) if shape == "triangle" else 1.0
+        sig += sign * amp * np.sin(2 * np.pi * n * inst)
+    return _tone_fade(_tone_norm(sig), sample_rate, fade_s)
+
+
 def _float_to_wav(sig, volume, sample_rate) -> bytes:
     import numpy as np
 
@@ -469,10 +497,54 @@ def _signal_chirp(cue, step, freqs, sample_rate, duration):
     return _wave_sine(freqs.get(cue, 440), 0.10 * s, sample_rate)
 
 
+def _signal_mezcla(cue, step, freqs, sample_rate, duration):
+    """MEZCLA por-cue (Mariana 2026-07-09): un idioma sonoro por TIPO de cue.
+
+    A diferencia de timbre/ritmo/chirp (una familia global aplicada a casi todo),
+    aqui cada cue elige su propia forma de onda. brake y brake_tic quedan
+    BYTE-IDENTICOS a 'seno' (mismo seno, misma duracion, mismo fade): son el ancla
+    aprobada por el PO y no se reinventan — el resto se despacha por cue con las
+    primitivas existentes. Las frecuencias base salen de DEFAULT_FREQS; el perfil
+    solo cambia la FORMA de onda. Diseno y numeros en
+    qa_runs/mariana-20260709-mezcla/PROPUESTA.md.
+    """
+    import numpy as np
+
+    s = _dur_scale(duration)
+    # Ancla aprobada (byte-identica a 'seno': tic 0.08 s fijo, freno con `duration`).
+    if cue == "brake_tic":
+        return _wave_sine(_tic_freq(freqs, step), 0.08, sample_rate)
+    if cue == "brake":
+        return _wave_sine(freqs.get("brake", 1000), duration, sample_rate)
+    # UNICO cue que BAJA: glide descendente ~820->650 Hz.
+    if cue == "brake_release":
+        return _wave_chirp(freqs.get("brake_release", 820), 650, 0.12 * s, sample_rate)
+    # Pluck percusivo: un golpe seco (ataque + caida), no un tono sostenido.
+    if cue == "turn_in":
+        return _wave_pulse(freqs.get("turn_in", 500), 0.10 * s, sample_rate)
+    # Nota brillante ASCENDENTE: el brillo (armonicos) es lo que corta el motor.
+    if cue == "throttle_on":
+        return _wave_bright_rising(260, 520, 0.14 * s, sample_rate)
+    # Doble blip brillante 320->640 Hz x2 ('a fondo').
+    if cue == "full_throttle":
+        blip = _wave_bright_rising(320, 640, 0.07 * s, sample_rate)
+        gap = np.zeros(int(sample_rate * 0.04 * s))
+        return np.concatenate([blip, gap, blip])
+    # Apagados por defecto (DEFAULT_CONFIG enabled=False): solo suenan si el usuario
+    # los activa. Muestra fiel a la propuesta: apex = pip percusivo, coast = zumbido
+    # bajo neutro.
+    if cue == "apex":
+        return _wave_pulse(freqs.get("apex", 400), 0.09 * s, sample_rate)
+    if cue == "coast":
+        return _wave_sine(freqs.get("coast", 160), 0.18 * s, sample_rate)
+    return _wave_sine(freqs.get(cue, 440), 0.12 * s, sample_rate)
+
+
 _PROFILE_SIGNALS = {
     "timbre": _signal_timbre,
     "ritmo": _signal_ritmo,
     "chirp": _signal_chirp,
+    "mezcla": _signal_mezcla,
 }
 
 

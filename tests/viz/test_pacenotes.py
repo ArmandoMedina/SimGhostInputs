@@ -2158,3 +2158,223 @@ def test_build_tone_pack_duration_cero_no_crashea_ningun_perfil(tmp_path):
             assert wavs, "%s dur=%s no genero WAV" % (prof, dur)
             # WAV con muestras reales (no el mudo de 44 bytes que daba duration 0)
             assert all(w.stat().st_size > 44 for w in wavs), "%s dur=%s WAV mudo" % (prof, dur)
+
+
+# ── Perfil "mezcla": idioma por-cue (Mariana 2026-07-09) ──────────────────────
+# Aserciones sobre la SEÑAL generada (pendiente de frecuencia, envolvente, energia
+# en banda alta), no comparaciones fragiles de bytes salvo el ancla aprobada.
+
+
+def _dom_freq(samples, rate):
+    """Frecuencia dominante (bin de mayor magnitud) de un tramo de señal."""
+    import numpy as np
+
+    w = samples * np.hanning(len(samples))
+    mag = np.abs(np.fft.rfft(w))
+    fr = np.fft.rfftfreq(len(w), 1.0 / rate)
+    return float(fr[np.argmax(mag)])
+
+
+def _hf_fraction(samples, rate, cutoff=1500.0):
+    """Fraccion de la energia espectral por encima de `cutoff` Hz (brillo)."""
+    import numpy as np
+
+    w = samples * np.hanning(len(samples))
+    mag = np.abs(np.fft.rfft(w))
+    fr = np.fft.rfftfreq(len(w), 1.0 / rate)
+    total = float(mag.sum())
+    return float(mag[fr > cutoff].sum()) / total if total > 0 else 0.0
+
+
+def test_mezcla_brake_y_brake_tic_byte_identicos_a_seno():
+    """(1) El ancla aprobada por el PO NO cambia: en 'mezcla', brake y brake_tic
+    salen BYTE-IDENTICOS al perfil 'seno' — a la duracion default y a otra
+    duracion (el freno respeta `duration`, el tic es fijo a 0.08 s como en seno)."""
+    from fantasma.viz.pacenotes import DEFAULT_FREQS, _render_cue
+
+    freqs = dict(DEFAULT_FREQS)
+    for dur in (0.12, 0.30):
+        brake_mez = _render_cue({"cue": "brake"}, freqs, dur, 0.8, sound_profile="mezcla")
+        brake_seno = _render_cue({"cue": "brake"}, freqs, dur, 0.8, sound_profile="seno")
+        assert brake_mez == brake_seno, "brake no es byte-identico a seno (dur=%s)" % dur
+    for step in (0, 1):
+        tic_mez = _render_cue(
+            {"cue": "brake_tic", "step": step}, freqs, 0.12, 0.8, sound_profile="mezcla"
+        )
+        tic_seno = _render_cue(
+            {"cue": "brake_tic", "step": step}, freqs, 0.12, 0.8, sound_profile="seno"
+        )
+        assert tic_mez == tic_seno, "brake_tic step=%d no es byte-identico a seno" % step
+
+
+def test_mezcla_brake_y_tic_byte_identicos_end_to_end(tmp_path):
+    """(1 e2e) A nivel de pack, los WAV de brake y de los tics de countdown en
+    'mezcla' son byte-identicos a los de 'seno', mientras que los cues con idioma
+    propio (turn_in, full_throttle, ...) SI difieren. El nombre de archivo es por
+    DISTANCIA (mismo plan en ambos perfiles): se mapea distancia->cue via plan.json."""
+    import json
+
+    from fantasma.viz.pacenotes import build_tone_pack
+
+    d_seno = tmp_path / "seno"
+    d_mez = tmp_path / "mezcla"
+    build_tone_pack(_PROFILE_ROWS, _PROFILE_CORNERS, str(d_seno), top=1, sound_profile="seno")
+    build_tone_pack(_PROFILE_ROWS, _PROFILE_CORNERS, str(d_mez), top=1, sound_profile="mezcla")
+
+    plan = json.loads((d_mez / "plan.json").read_text(encoding="utf-8"))
+    cue_por_dist = {int(e["distance"]): e["cue"] for e in plan["events"]}
+
+    anclas = otros = 0
+    for wav in d_mez.glob("*.wav"):
+        dist = int(wav.name.split("_")[0])
+        cue = cue_por_dist.get(dist)
+        seno_bytes = (d_seno / wav.name).read_bytes()
+        mez_bytes = wav.read_bytes()
+        if cue in ("brake", "brake_tic"):
+            assert mez_bytes == seno_bytes, "%s (%s) no es byte-identico a seno" % (wav.name, cue)
+            anclas += 1
+        elif cue is not None:
+            assert mez_bytes != seno_bytes, "%s (%s) deberia diferir de seno" % (wav.name, cue)
+            otros += 1
+    assert anclas >= 2, "no se verificaron el freno y sus tics como ancla"
+    assert otros >= 1, "no se verifico ningun cue con idioma propio"
+
+
+def test_mezcla_brake_release_es_descendente():
+    """(2) brake_release en 'mezcla' es un glide DESCENDENTE: la frecuencia
+    instantanea baja de principio a fin. Se distingue de un tono plano (el
+    brake_release de 'seno' mantiene la frecuencia)."""
+    from fantasma.viz.pacenotes import DEFAULT_FREQS, _render_cue
+
+    freqs = dict(DEFAULT_FREQS)
+    samples, rate = _decode_wav(
+        _render_cue({"cue": "brake_release"}, freqs, 0.12, 0.8, sound_profile="mezcla")
+    )
+    n = len(samples) // 3
+    f_ini = _dom_freq(samples[:n], rate)
+    f_fin = _dom_freq(samples[2 * n :], rate)
+    assert f_ini > f_fin + 50, "brake_release no baja (ini=%.0f fin=%.0f)" % (f_ini, f_fin)
+
+    # Contraste: en 'seno' el mismo cue es un tono plano (ini ~= fin).
+    plano, r2 = _decode_wav(
+        _render_cue({"cue": "brake_release"}, freqs, 0.12, 0.8, sound_profile="seno")
+    )
+    m = len(plano) // 3
+    assert abs(_dom_freq(plano[:m], r2) - _dom_freq(plano[2 * m :], r2)) < 50
+
+
+def test_mezcla_turn_in_es_percusivo_y_corto():
+    """(3a) turn_in en 'mezcla' es un pluck percusivo: envolvente con caida (mucha
+    mas energia al inicio que al final) y mas corto que el tono de frenada."""
+    import numpy as np
+
+    from fantasma.viz.pacenotes import DEFAULT_FREQS, _render_cue
+
+    freqs = dict(DEFAULT_FREQS)
+    turn, rate = _decode_wav(
+        _render_cue({"cue": "turn_in"}, freqs, 0.12, 0.8, sound_profile="mezcla")
+    )
+    q = len(turn) // 4
+    rms_ini = float(np.sqrt(np.mean(turn[:q] ** 2)))
+    rms_fin = float(np.sqrt(np.mean(turn[-q:] ** 2)))
+    assert rms_ini > 3 * rms_fin, "turn_in no decae (ini=%.3f fin=%.3f)" % (rms_ini, rms_fin)
+
+    brake, _ = _decode_wav(_render_cue({"cue": "brake"}, freqs, 0.12, 0.8, sound_profile="mezcla"))
+    assert len(turn) < len(brake), "turn_in no es mas corto que la frenada"
+
+
+def test_mezcla_gas_tiene_brillo_de_alta_frecuencia():
+    """(3b) throttle_on y full_throttle en 'mezcla' tienen energia de alta
+    frecuencia (brillo por armonicos) que el seno puro NO tiene, y full_throttle
+    tiene DOS ataques (doble blip)."""
+    import numpy as np
+
+    from fantasma.viz.pacenotes import DEFAULT_FREQS, _render_cue
+
+    freqs = dict(DEFAULT_FREQS)
+    for cue in ("throttle_on", "full_throttle"):
+        mez, rate = _decode_wav(_render_cue({"cue": cue}, freqs, 0.12, 0.8, sound_profile="mezcla"))
+        seno, _ = _decode_wav(_render_cue({"cue": cue}, freqs, 0.12, 0.8, sound_profile="seno"))
+        hf_mez = _hf_fraction(mez, rate)
+        hf_seno = _hf_fraction(seno, rate)
+        assert hf_mez > 0.05, "%s sin brillo en 'mezcla' (hf=%.4f)" % (cue, hf_mez)
+        assert hf_mez > 10 * hf_seno, (
+            "%s: 'mezcla' no es mas brillante que el seno puro (%.4f vs %.4f)"
+            % (cue, hf_mez, hf_seno)
+        )
+        assert _dom_freq(mez[: len(mez) // 3], rate) < _dom_freq(mez[-len(mez) // 3 :], rate)
+
+    # full_throttle: doble blip -> dos ataques separados por un valle de silencio.
+    ft, rate = _decode_wav(
+        _render_cue({"cue": "full_throttle"}, freqs, 0.12, 0.8, sound_profile="mezcla")
+    )
+    env = np.abs(ft)
+    k = int(rate * 0.005)
+    env = np.convolve(env, np.ones(k) / k, mode="same")
+    above = env > 0.2 * env.max()
+    onsets = int(np.sum((~above[:-1]) & (above[1:])))
+    assert onsets == 2, "full_throttle no tiene dos ataques (onsets=%d)" % onsets
+
+
+def test_mezcla_apex_y_coast_siguen_apagados_por_defecto(tmp_path):
+    """(4) apex y coast siguen enabled=False por defecto: 'mezcla' no los enciende.
+    Un pack en 'mezcla' no emite ningun WAV de apex (400 Hz) ni coast (160 Hz)."""
+    import json
+
+    from fantasma.viz.pacenotes import DEFAULT_CONFIG, build_tone_pack
+
+    assert DEFAULT_CONFIG["apex"]["enabled"] is False
+    assert DEFAULT_CONFIG["coast"]["enabled"] is False
+
+    build_tone_pack(_PROFILE_ROWS, _PROFILE_CORNERS, str(tmp_path), top=1, sound_profile="mezcla")
+    plan = json.loads((tmp_path / "plan.json").read_text(encoding="utf-8"))
+    cues = {e["cue"] for e in plan["events"]}
+    assert "apex" not in cues, "apex sono sin activarse: %s" % cues
+    assert "coast" not in cues, "coast sono sin activarse: %s" % cues
+
+
+def test_mezcla_es_seleccionable_y_no_altera_perfiles_existentes(tmp_path):
+    """(5) 'mezcla' esta registrado (seleccionable via --sound-profile) y el
+    default sigue siendo 'seno'. Los perfiles existentes no cambian: cada uno
+    genera un pack valido y 'mezcla' difiere de todos ellos en un cue no-ancla."""
+    from fantasma.viz.pacenotes import (
+        DEFAULT_FREQS,
+        DEFAULT_SOUND_PROFILE,
+        SOUND_PROFILES,
+        _render_cue,
+        build_tone_pack,
+    )
+
+    assert "mezcla" in SOUND_PROFILES
+    assert DEFAULT_SOUND_PROFILE == "seno"
+
+    freqs = dict(DEFAULT_FREQS)
+    # throttle_on: 'mezcla' (brillante ascendente) difiere de los otros cuatro.
+    mez = _render_cue({"cue": "throttle_on"}, freqs, 0.12, 0.8, sound_profile="mezcla")
+    for prof in ("seno", "timbre", "ritmo", "chirp"):
+        otro = _render_cue({"cue": "throttle_on"}, freqs, 0.12, 0.8, sound_profile=prof)
+        assert mez != otro, "mezcla no difiere de %s en throttle_on" % prof
+        # y cada perfil existente sigue generando un pack valido (no-regresion).
+        out = tmp_path / prof
+        res = build_tone_pack(_PROFILE_ROWS, _PROFILE_CORNERS, str(out), top=1, sound_profile=prof)
+        assert res["entries"] >= 1
+
+
+def test_mezcla_genera_pack_valido_sin_clipping(tmp_path):
+    """'mezcla' genera un pack de WAVs validos (24 kHz) y sin clipping (pico<=1.0)
+    para todos los cues que suenan por defecto."""
+    import numpy as np
+
+    from fantasma.viz.pacenotes import build_tone_pack
+
+    result = build_tone_pack(
+        _PROFILE_ROWS, _PROFILE_CORNERS, str(tmp_path), top=1, sound_profile="mezcla"
+    )
+    assert result["entries"] >= 1
+    wavs = list(tmp_path.glob("*.wav"))
+    assert wavs
+    for wav in wavs:
+        samples, rate = _decode_wav(wav.read_bytes())
+        assert rate == 24000
+        assert len(samples) > 0
+        assert float(np.max(np.abs(samples))) <= 1.0, "clipping en %s" % wav.name
