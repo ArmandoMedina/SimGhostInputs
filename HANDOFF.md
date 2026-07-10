@@ -12,8 +12,39 @@
 
 ## Estado actual
 
-**2026-07-09 — rama `fix/pacenotes-frenada-y-countdown`, sesión CERRADA (sin push, `ahead` de
-`origin/master`).** El código de la rama está **completo, revisado y QA'd**; lo que queda es de
+**2026-07-10 — rama `fix/pacenotes-frenada-y-countdown`. Cerrada la tarea DOBLE FRENADA (ADR 0033).**
+El PO detectó, de oído, que cuando frena → suelta a fondo → vuelve a frenar dentro de una misma curva,
+la **segunda frenada no sonaba** (metros reales 803/C03 y 1119/C05). Diseño de mínimo blast-radius:
+`core/corners.py` gana una función nueva `detect_brakings` y expone un campo nuevo
+`milestones.brake_starts` (lista de todas las frenadas fuertes reales, criterio = **gas sostenido**
+`throttle≥15%` por ≥0.15 s en el hueco); `pacenotes.py` emite un cue `brake` protegido por cada una.
+**`select_brake_phase`, el escalar `brake_start` y `compare` NO se tocaron** — byte-idénticos en las
+55 curvas, `d_brake_m`=0 (simetría ADR 0031 intacta). El ADR 0033 **enmienda** el 0031 (no lo revierte:
+el aviso principal sigue en la fase de pico máximo; se AÑADE la segunda frenada). Suite **453 passed**,
+`ruff` limpio, grafo íntegro.
+
+- **Revisión adversarial** encontró y se arreglaron: gas sostenido (antes bastaba 1 muestra → frágil) y
+  un test que tapaba el countdown ausente. El countdown de la 2ª frenada es **oportunista** (ADR 0032):
+  cede con razón `tic_sin_espacio` si choca con la 1ª; el **cue** de la 2ª siempre suena (protegido).
+- **Validación de Charbel** (`qa_runs/charbel-20260710-doble-frenada-validacion/`): C03 y C05 emiten 2 en
+  los metros correctos. Destapó una TERCERA curva, **C21** (m7084/m7167). El PO confirmó que **C21 es
+  legítima — NO subir `THROTTLE_REAPPLY` para matarla: es gemela del 803** (mismo patrón, gas modesto +
+  velocidad plana). Fue trampa del PO para ver si se detectaba el acoplamiento; suenan las dos o ninguna.
+- **QA de audio Mariana** (`qa_runs/mariana-20260710-doble-frenada/` + OneDrive `2026-07-10-doble-frenada/`):
+  6 extractos A/B (C03/C05/C21 antes/después). Verificado que el 2º tono es NUEVO (silencio en el "antes",
+  RMS 0.0), no un desplazamiento. **Pendiente: la escucha final del PO** (sin preguntas abiertas ya).
+
+Commits de hoy: `ebd31ac` plan · `1cfecf9` ADR 0033 · `feaf660` reconcilia countdown · `bb41f5b` core
+`detect_brakings` · `6f1f7a5` pacenotes · `ec061c3` endurecido+tests · `b4237ee` docs.
+
+**Deuda que BLOQUEARÁ el push (doc-drift §8 preexistente, ajeno a hoy):** `fantasma/ui/ng_step5.py`
+(commit `2ad7499`, mezcla) sin `docs/guia-usuario.md`; `tools/blast-radius.json` (commit `b39881e`) sin
+`docs/flujo-de-trabajo.md`. Cerrarlas (o `--no-verify` consciente) antes del PR.
+
+---
+
+**2026-07-09 — sesión previa (sin push, `ahead` de `origin/master`).** El código de la rama está
+**completo, revisado y QA'd**; lo que queda es de
 OÍDO del PO y el paso a PR. Esta sesión cerró los tres frentes técnicos que quedaban abiertos —
 el crash de CrewChief (#9), la atribución de curva del HUD (ADR 0031) y la cabida del countdown
 (D2, ADR 0032) — y reconcilió la documentación con el fuente REAL de CrewChief V4.
@@ -80,9 +111,14 @@ orquestador al cerrar (todo `fantasma/` quedó revisado + QA'd).
 Ambas son juicio de OÍDO, reservadas al PO. El PO delegó todo lo demás esta sesión y avisó que no
 podría revisar.
 
-- **[PENDIENTE] Perfil de sonido por defecto — ÚNICO pendiente-PO real abierto.** Los 4 videos siguen
-  en OneDrive (`SimGhostInputs-QA/2026-07-09-sonidos/`). Default actual = **seno**. Recomendación de
-  Mariana: partir de **A** (timbre) y robar de **B** el freno más largo.
+- **[PENDIENTE] Perfil de sonido "mezcla" como default.** El PO YA lo aprobó de oído (2026-07-10: "el
+  tema de los sonidos ya me gustó"), pero pidió cerrar frenos primero. Falta: (a) decidir si se cambia
+  `DEFAULT_SOUND_PROFILE` de `"seno"` a `"mezcla"` (cambio de comportamiento audible → commit + revisión),
+  y (b) su único reparo de oído pendiente — el contraste `throttle_on` vs `full_throttle` (la pareja que
+  se puede confundir; ajuste de diseño de Ahiram si lo pide). Ver `qa_runs/mariana-20260709-mezcla-e2e/`.
+  *(Superada la vieja recomendación "partir de A y robar de B": el PO rechazó A/B/C y salió "mezcla".)*
+- **[PENDIENTE] Escucha final del PO de la doble frenada** (A/B en OneDrive `2026-07-10-doble-frenada/`).
+  Sin preguntas abiertas; C21 ya confirmada. Es solo el visto bueno de oído.
 - **[DECIDIDA-REVISABLE] Regla del countdown.** Implementada y verificada; A/B de audio entregado a
   OneDrive (`SimGhostInputs-QA/2026-07-09-countdown/`: extractos E2E C12/C20/C33 antes/después +
   LEEME + garantía de seguridad). El PO la valida/veta de oído; si no le gusta el "precio" (silenciar

@@ -91,7 +91,10 @@ presente solo con ≥2 fuertes. `compare` **no se toca** (usa solo `chosen`).
 ## Para retomar en frío
 
 - **Rama:** `fix/pacenotes-frenada-y-countdown`. **Diseño validado** por agente Plan (opus) el 2026-07-10.
-- **Estado:** paso 0 hecho (este commit). Siguiente: ADR 0033.
+- **Estado:** pasos 0–6 HECHOS + revisión adversarial atendida. Código, docs y QA commiteados; validado
+  por Charbel (C03/C05/C21 emiten 2, escalar/`d_brake_m` idénticos) y QA A/B de Mariana entregada.
+  **Solo falta la escucha final del PO.** El estado al día vive en `HANDOFF.md` (2026-07-10). C21 quedó
+  confirmada por el PO (NO subir `THROTTLE_REAPPLY`).
 - **Qué NO tocar:** `select_brake_phase` (corners.py:123-177), el escalar `brake_start`
   (corners.py:283-289 → `chosen`), y `compare._corner_metrics`. Romperlos viola ADR 0031 (simetría) y
   mueve el aviso principal. El plan de detalle vive en el plan-mode del orquestador.
