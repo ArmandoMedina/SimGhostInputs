@@ -12,14 +12,15 @@
 
 ## Estado actual
 
-**2026-07-09 — rama `fix/pacenotes-frenada-y-countdown`, en vuelo.** El ciclo de deuda técnica
-"Media" (PR #45, squash `dd65f9b`) quedó cerrado y fundido; nada de aquello bloquea. Lo que sigue
-es trabajo nuevo, abierto por 13 hallazgos del PO sobre un video de estudio con pace notes en
-Nordschleife.
+**2026-07-09 — rama `fix/pacenotes-frenada-y-countdown`, sesión CERRADA (sin push, `ahead` de
+`origin/master`).** El código de la rama está **completo, revisado y QA'd**; lo que queda es de
+OÍDO del PO y el paso a PR. Esta sesión cerró los tres frentes técnicos que quedaban abiertos —
+el crash de CrewChief (#9), la atribución de curva del HUD (ADR 0031) y la cabida del countdown
+(D2, ADR 0032) — y reconcilió la documentación con el fuente REAL de CrewChief V4.
 
 El plan persistido vive en `docs/planes/2026-07-09-pacenotes-frenada-y-countdown.md`. Los 13
-hallazgos se redujeron a **4 defectos** y **3 preguntas de producto**, con forense sobre la vuelta
-real (no sobre teoría).
+hallazgos del PO (video de estudio, Nordschleife) se redujeron a 4 defectos + 3 preguntas de
+producto; todos atendidos salvo el perfil de sonido, que es juicio del PO (ver decisiones abajo).
 
 **Norte del producto, dicho por el PO:** todos los sonidos se generan de la vuelta de
 **REFERENCIA**, para que el piloto haga imaginería mental con el video y, al llegar a pista con
@@ -29,121 +30,88 @@ aprovechando la transferencia de peso. Ese criterio manda sobre cualquier heurí
 
 ### Commits de la rama (ninguno pusheado)
 
+Bloque previo (documentado en handoffs anteriores, ya asentado): `cb2fdf8` plan · `faf6d2d`/`e2f1724`
+ADR 0030 · `0ebe1a8`/`534fdae`/`b853790`/`6908d7d` `brake_start` por fases + arreglos revisión 1 ·
+`fdee18f` trazabilidad de ticks · `38b2d5f` ADR 0031 · `2feacc2` helper `select_brake_phase` ·
+`759413f`/`b4068ca` perfil de sonido + `--sound-profile` · `7c520ae` quita `brake_window_m` ·
+`5eb5efc`/`2519513` escribano · `5670ff3` 3 deudas al ROADMAP · `4a0bb50`/`0eb08d7` 3 crashes de
+entrada + auto-consistencia de la ventana de frenada · `82895bd` estado ADR 0002 en el índice ·
+`b39881e` mapa de cues.
+
+Commits de ESTA sesión (encima del bloque previo):
+
 | Hash | Qué |
 | :-- | :-- |
-| `cb2fdf8` | plan persistido |
-| `faf6d2d` | ADR 0030 — modos estudio vs. en vivo |
-| `0ebe1a8` | `brake_start` por fases + ventana ampliada (`brake_lo` = ápex previo) |
-| `fdee18f` | trazabilidad de ticks de countdown descartados |
-| `534fdae` | **arreglo revisión 1**: restaura el piso `brake_strong` a nivel de FASE, cruce ascendente en `turn_in`, reancla `brake_release` a la última fase cronológica |
-| `b853790` | **arreglo revisión 1**: `against` reporta el evento real que estorbó, no el índice del padre |
-| `6908d7d` | **arreglo revisión 1**: `brake_start` en la fase de pico máximo (no la última); `turn_in` desde `brake_start` |
-| `38b2d5f` | ADR 0031 — propiedad de la frenada y contrato de `segment_m` (recomienda Opción A: derivar, no publicar) |
-| `e2f1724` | ADR 0030 — evidencia externa de CrewChief en vez de cita circular |
-| `2feacc2` | helper compartido `select_brake_phase`; cierra la asimetría ref/piloto de `compare.py` |
-| `759413f` | perfil de sonido configurable (seno, timbre, ritmo, chirp) — sólo en `pacenotes.py` |
-| `b4068ca` | cablea `--sound-profile` a CLI y UI + endurece la síntesis (7 arreglos); seno **byte-idéntico** a `759413f` (24 WAV, sha256) |
-| `7c520ae` | **quita `brake_window_m`**; `compare` reconstruye la ventana desde el ápex publicado (ADR 0031, Opción A); invariante `compare(REF,REF)→d_brake_m==0` verde en las 75 curvas con frenada |
-| `5eb5efc` | escribano: `formato-datos.md`, `COR-01`, `CMP-02` al día con la frenada derivada |
-| `2519513` | escribano: `--sound-profile` en la guía; corrige clamp del countdown `[60,350]`→`[30,250]` |
-| `5670ff3` | Armando: 3 deudas medidas al ROADMAP (steering en %, `brake_strong=50`, `turn_in`) |
+| `6d8cdf1` | fix(viz): overlay/charts derivan la ventana de curva del hito `brake_start` (ADR 0031, Opción A); "última coincidencia gana" para la curva dueña de la frenada |
+| `4062428` | fix(overlay): blinda el orden de `corners_by_seg` (`sorted`) para el desempate — hallazgo H1 de la revisión adversarial del HUD |
+| `0213730` | docs: ADR 0002 + `formato-datos` reconciliados con el fuente REAL de CrewChief V4 (`DriverTrainingService.cs`, commit `84fe63b`) |
+| `a37c097` | docs: sincroniza atribución de curva del HUD (`hud-reference.md`/`ux-patterns.md`) y cierra el "SIN verificar" del ADR 0030 |
+| `f8a85b8` | fix(pacenotes): **#9** — los cues mudos embarcan `silent.wav` en vez de listas vacías (Opción A) |
+| `9af94e6` | fix(pacenotes): hardening #9 — `_write_silent_wav` escribe siempre |
+| `a8728b7` | docs: **ADR 0032** — regla de cabida del countdown (enmienda 0025/0026/0028) |
+| `3d14d41` | fix(pacenotes): **D2** — cabida del countdown "solo cede lo que puede ceder" |
+| `9ef9e0e` + `f5360d7` | docs: `cues.md` reconciliado (sección pendiente-PO + mecánica del countdown) |
 
-Suite tras `b4068ca`: **413 passed, 11 skipped**. `ruff` limpio. Evidencias en `qa_runs/2026-07-09-*`.
+`pytest` verde toda la sesión, `ruff` limpio, doc-gate (`auditar.ps1`) con grafo íntegro en cada
+commit de docs. Evidencias de QA en `qa_runs/`. Los markers de review/mariana los escribe el
+orquestador al cerrar (todo `fantasma/` quedó revisado + QA'd).
 
-### La revisión adversarial (hecha, con hallazgos atendidos)
+### Lo que se logró esta sesión (revisado + QA'd, con evidencia)
 
-`/code-review high` sobre `faf6d2d..HEAD`: 5 ángulos buscadores → 8 candidatos deduplicados → 1
-escéptico independiente por candidato. **Ninguno refutado: 6 CONFIRMED, 2 PLAUSIBLE.**
+1. **CrewChief #9 — crash confirmado en el fuente REAL.** Un entry de `metadata.json` con
+   `recordingNames`/`fileNames` VACÍAS revienta el hilo principal de CrewChief V4
+   (`getRandomRecordingName` indexa una lista vacía, sin `catch`). Nuestro pack embarcaba justo eso
+   para el cue mudo `gear`. FIX Opción A: `silent.wav`. Review limpio + QA Mariana **PASA**
+   (`qa_runs/mariana-20260709-172727/`: pack real 225 entries, 0 vacías, 128/128 sonoros
+   byte-idénticos). Opción C (separar metadata del pack vs. subtítulo, no embarcar cues mudos/RPM)
+   **DIFERIDA** a ROADMAP / Fase 5.
+2. **HUD — atribución de curva (ADR 0031).** overlay/charts ya no tratan `segment_m` como
+   contención; la etiqueta de curva se ancla a `brake_start`. Review adversarial (1 hallazgo H1 de
+   orden, blindado en `4062428`) + QA Mariana **PASA** A/B real
+   (`qa_runs/mariana-20260709-170717/`: C54 pasa de `C53/292` a `C54/102`).
+3. **Countdown D2 — cabida (Fase 3, ADR 0032).** Regla "solo cede lo que puede ceder": un cue no
+   protegido cede su hueco al tic del countdown; **invariante: un tic NUNCA desplaza una frenada
+   protegida**. Charbel midió **24→35** curvas con 3-2-freno, **0 frenadas perdidas**. Review
+   adversarial LIMPIO (S1 de seguridad refutada empíricamente) + QA A/B auditiva Mariana **PASA**
+   (`qa_runs/mariana-20260709-countdown/`: 35==35 frenadas, mismo metro/energía).
 
-Lección que no debe perderse: `0ebe1a8` arregló los cuatro metros que el PO pidió, **y de paso
-rompió tres cosas que nadie pidió tocar**. Al ensanchar la ventana de frenada hasta el ápex previo,
-esa ventana se filtró a `turn_in`, a `brake_release` y a `compare.py`. Además retiró en silencio el
-piso de intensidad del 50 % (`brake_strong` quedó como parámetro muerto), con lo que un roce del
-20 % podía anclar el cue de máxima prioridad 132 m antes. Los tres se arreglaron en `534fdae`.
+## Decisiones del PO
 
-**Arreglado (`534fdae` + `b853790`):** piso de intensidad a nivel de fase; `turn_in` por cruce
-ascendente del umbral (mata el volante residual de la curva anterior); `brake_release` anclado a la
-última fase cronológica y buscado sobre `data` acotado por `hi`; `against` con el evento real.
+Ambas son juicio de OÍDO, reservadas al PO. El PO delegó todo lo demás esta sesión y avisó que no
+podría revisar.
 
-**Cerrado desde entonces:** la asimetría de `compare.py` (helper `select_brake_phase`, `2feacc2`) y
-el contrato de `segment_m` (ADR 0031 + `7c520ae` quita `brake_window_m`). El código de la rama está
-**completo**; lo que queda son dos decisiones del PO y el cierre (revisión → marker → rebase).
+- **[PENDIENTE] Perfil de sonido por defecto — ÚNICO pendiente-PO real abierto.** Los 4 videos siguen
+  en OneDrive (`SimGhostInputs-QA/2026-07-09-sonidos/`). Default actual = **seno**. Recomendación de
+  Mariana: partir de **A** (timbre) y robar de **B** el freno más largo.
+- **[DECIDIDA-REVISABLE] Regla del countdown.** Implementada y verificada; A/B de audio entregado a
+  OneDrive (`SimGhostInputs-QA/2026-07-09-countdown/`: extractos E2E C12/C20/C33 antes/después +
+  LEEME + garantía de seguridad). El PO la valida/veta de oído; si no le gusta el "precio" (silenciar
+  ~8 avisos de "ya a fondo" de salida), se revierte/ajusta.
 
-## Siguiente acción
+## Siguiente acción (para quien abra)
 
-**Lo que falta NO es código: son dos decisiones del PO y el cierre de la rama.**
-
-1. **Fase 3 — cabida del countdown, la decide el PO con números.** Medido sobre la vuelta real: con
-   la regla "solo cede lo que puede ceder", **35** curvas recuperan el 3-2-freno (hoy 24) y se
-   pierden **cero** frenadas protegidas. Posición argumentada de Mau: de acuerdo con "el contador
-   solo si hay espacio libre", **en desacuerdo** con que un cue no protegido (prioridad 75) cuente
-   como espacio ocupado frente a un tick de frenada (prioridad 100). **No se implementa hasta que el
-   PO elija.**
-
-2. **Fase 4 — el PO elige el sonido de oído.** Cuatro videos en
-   `OneDrive/SimGhostInputs-QA/2026-07-09-sonidos/`: `e2e_seno_actual.mp4` + `e2e_A_timbre.mp4` /
-   `e2e_B_ritmo.mp4` / `e2e_C_chirp.mp4`. **Vuelta completa, pipeline real, sin re-encode** (MD5 del
-   stream de vídeo idéntico en los cuatro; sólo cambia el audio). Sincronía **verificada** en
-   721/1042/3543/20065 (±0.15 s, medido sobre el audio del propio vídeo). Recomendación de Mariana:
-   partir de **A** y robar de **B** el freno más largo; **no C** (su freno se sale de 1000 Hz).
-   Evidencia en `qa_runs/mariana-20260709-audio-abc/`. Ahora sí valida la sincronía (a diferencia
-   del banco viejo de clips de 25 s, que se archivó).
-
-3. **Revisión adversarial del código nuevo (`b4068ca` + `7c520ae`) — CERRADA, 4 hallazgos
-   arreglados.** 3 ángulos + escépticos que reprodujeron ejecutando. Los cuatro CONFIRMED y ya
-   arreglados: (a) `KeyError` en `compare()` con `corners.json` a mano — `4a0bb50`; (b) hueco de
-   validación `--brake-freq 11000 --sound-profile timbre` — `4a0bb50`; (c) `--tone-duration 0`
-   crashea las paletas — `4a0bb50`; (d) **auto-consistencia de la ventana de frenada**, el defecto
-   profundo: `extract_milestones` calculaba su ventana con el ápex de EVENTO pero publicaba el V-Min,
-   así que `compare` no podía reproducir la referencia (auto-consistencia del ADR 0031). Arreglado en
-   `0eb08d7` **detrás de compuerta dura**: `brake_start` byte-idéntico en las 36 curvas con frenada
-   (los 4 metros del PO incluidos), invariante 0/36 intacto, y el caso sintético del escéptico pasó
-   de 20 m a 0. Dato corregido: la vuelta tiene **55 curvas, 36 con frenada** (los "75"/"108" de
-   escépticos aislados venían de copias con config distinta).
-
-4. **Cierre de la rama (mecánico):** escribir `.claude/.review-marker` con el hash del diff FINAL
-   (la revisión está hecha y los 4 hallazgos atendidos — el marker es legítimo). El rebase sobre
-   `origin/master` (`43f9ba8`) se hace **sólo al abrir el PR**; conflicto esperado en `CHANGELOG.md`
-   resuelto **por unión**; `[Unreleased]` vacío en master (v2.3.1 ya salió).
-
-   **OJO — la rama NO está lista para PR:** faltan las dos decisiones del PO (puntos 1 y 2), y cada
-   una **añade código** que reabrirá la revisión: la regla de cabida elegida se implementa en
-   `pacenotes.py`, y el perfil de sonido elegido cambia el default.
-
-6. **Diferido a propósito:** `docs/cues.md` (el mapa de un vistazo del sistema de cues) y la Fase 5
-   (frontera estudio/vivo en un ADR + guía). Los ADR 0030/0031 ya cubren lo esencial; el mapa
-   consolidado espera a que los arreglos asienten.
-
-**Sobre `.claude/.review-marker`:** la revisión adversarial está HECHA y los 4 hallazgos atendidos,
-así que escribirlo ahora es legítimo (no es callar la alarma: es certificar un diff realmente
-revisado). Se escribe con el hash del diff actual; cuando las decisiones del PO añadan código, ese
-código reabre la revisión y el marker se rehace. `corners.py` es el motor de detección: el marker
-nunca se escribe sin la revisión hecha, que es justo lo que el ADR 0019 protege.
+1. **La rama NO está en PR.** Al llevarla a PR: **rebase sobre `origin/master`** + **unión de
+   `CHANGELOG.md`** (no se tocó en la sesión; se une en PR). Verificar que sigue **ahead-only**.
+2. **Esperan las dos acciones de OÍDO del PO:** el perfil de sonido por defecto y el veto/acepta de
+   la regla del countdown.
+3. **En pista (no automatable):** confirmar que CrewChief ya no crashea con el pack — sesión AMS2 del
+   PO, Capa B.
 
 ## Backlog
 
-Deuda anotada durante esta rama (no bloquea, ya en [ROADMAP](ROADMAP.md)):
+Deuda anotada esta rama, NO curada (no bloquea; ya en [ROADMAP](ROADMAP.md), tareas #16–#18):
 
-- **`fileNames: []` revienta CrewChief (probable, severidad alta).** Auditoría externa del código de
-  CrewChief: `getRandomRecordingName()` hace `recordingNames[Utilities.random.Next(recordingNames.Count)]`;
-  con `Count == 0`, `Next(0)` devuelve 0 → `ArgumentOutOfRangeException`. Nuestros cues mudos
-  (`gear`) emiten `fileNames: []`. El auditor **no pudo trazar** que la llamada no filtre antes, así
-  que **no está verificado al 100 %**. Solo se manifiesta en pista. Arreglo propuesto: WAV silencioso
-  en vez de lista vacía.
-- **ADR 0030 cita circularmente al propio repo.** Sustituir por la evidencia externa ya recogida:
-  `DriverTrainingService.cs::checkDistanceAndPlayIfNeeded` dispara **solo por distancia**
-  (`previousDistanceRoundTrack < entry.distanceRoundTrack && currentDistanceRoundTrack > entry.distanceRoundTrack`);
-  `MetaDataEntry` tiene 4 campos; CrewChief **no** trae beep de cambio por RPM propio. La tesis del
-  ADR queda **CONFIRMADA**.
-- **`steering` en % vs. grados.** `Steering Pos` de MoTeC (%) y `STEERANGLE` (grados) caen en el
-  mismo canal (`importers/motec_csv.py:23,34`) y `turn_in_deg=8` los trata como grados. Según el
-  archivo, "8°" puede significar "8 % de recorrido".
-- **Doc-drift del ADR 0002:** el índice (`docs/decisions/README.md:14`) lo da como "Propuesta
-  (diferida post-v1.0)" y el propio ADR como "Aceptada · implementada (v2.0)".
-- **Eficiencia (menor):** `brake_pre` recorre la vuelta entera por cada una de las ~55 curvas; el
-  módulo ya tiene el patrón de bisección sobre `dist` ordenado (`core/normalize.py:66-79`).
+- **`turn_in`:** dos defectos reales que hoy no muerden.
+- **`steering` en POR-CIENTO tratado como grados (`turn_in_deg`).** `Steering Pos` de MoTeC (%) y
+  `STEERANGLE` (grados) caen en el mismo canal (`importers/motec_csv.py:23,34`).
+- **`brake_strong=50` demasiado alto** para frenadas flojas del piloto → banderas falsas.
+- **Menor (omisión, no contradicción):** la enumeración de razones de descarte en `cues.md` §
+  "Prioridades" (~línea 78) no lista `cedio_al_countdown`; la razón sí está documentada en la sección
+  del countdown.
 - Modo `"both"` sin gap cruzado tono↔voz; los 3 ítems del hook de concurrencia (enmienda 2026-07-09
   del [ADR 0019](docs/decisions/0019-adopcion-homologacion-starter-v0.5.0.md)).
+- **Eficiencia (menor):** `brake_pre` recorre la vuelta entera por cada una de las ~55 curvas; el
+  módulo ya tiene el patrón de bisección sobre `dist` ordenado (`core/normalize.py:66-79`).
 
 **Limpieza de ramas pendiente (heredada):** 8 ramas locales del ciclo Media siguen existiendo porque
 están checked-out en worktrees de otras sesiones. Están 100 % absorbidas en `dd65f9b` — sin riesgo.
