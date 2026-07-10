@@ -70,12 +70,14 @@ del 0031 no cambia; se le añade, al lado, un reductor nuevo para el audio.
      consumidor previo. **No se rompe nada.**
    - `brake_starts` (**lista**) = todas las frenadas que suenan. Solo audio de pacenotes.
 
-5. **Cada frenada de la lista lleva su propio countdown** (3-2-freno) en pacenotes. `brake_release`
-   sigue siendo **singular**, anclado al final de la última fase cronológica (como en el 0031). En
-   el audio, cada cue `brake` es **protegido**; la regla de cabida ya soporta protegido-vs-protegido
-   ("se quedan los dos", [`docs/cues.md`](../cues.md) §Prioridades;
-   [ADR 0032](0032-regla-de-cabida-del-countdown-solo-cede-lo-que-puede-ceder.md)), así que dos
-   frenadas pegadas suenan ambas sin que una desplace a la otra.
+5. **Cada frenada de la lista suena siempre:** su cue `brake` es protegido, y la regla de cabida ya
+   soporta protegido-vs-protegido ("se quedan los dos", [`docs/cues.md`](../cues.md) §Prioridades),
+   así que dos frenadas pegadas —como C05, ~75 m entre ellas— nunca se desplazan entre sí. Lo que
+   **sí es oportunista** es el countdown (3-2-freno) que anticipa cada una: entra si hay espacio y
+   cede (razón `tic_sin_espacio`) cuando la frenada previa de la misma curva lo satura, por la regla
+   de cabida "solo cede lo que puede ceder"
+   ([ADR 0032](0032-regla-de-cabida-del-countdown-solo-cede-lo-que-puede-ceder.md)). `brake_release`
+   sigue siendo **singular**, anclado al final de la última fase cronológica (como en el 0031).
 
 ## Razones
 
@@ -134,7 +136,9 @@ del 0031 no cambia; se le añade, al lado, un reductor nuevo para el audio.
 - **Pendiente de validar:**
   - **Charbel (telemetría):** que C03 (m803) y C05 (m1119) emitan exactamente **2** frenadas, y que
     **no aparezcan segundos avisos espurios** en las 55 curvas de la vuelta real.
-  - **Mariana (oído):** que el **doble countdown** de dos frenadas pegadas no sature la cinta.
+  - **Mariana (oído):** que el countdown de la segunda frenada —completo o recortado por
+    `tic_sin_espacio` según qué tan pegada esté a la primera— no deje la anticipación pobre al oído
+    en curvas con frenadas encadenadas.
 - **Enmienda al [ADR 0031](0031-propiedad-de-la-frenada-y-contrato-de-segment-m.md):** el 0031
   definió `brake_start` como el escalar de la fase de pico máximo y ese punto **sigue vigente sin
   cambio** para coaching y `compare`. Lo que este ADR añade es que "qué frenadas suenan" ya **no** es
