@@ -1,7 +1,15 @@
 # ADR 0031 — Propiedad de la frenada y contrato de `segment_m` (enmienda a ADR 0025, 0026 y 0028)
 
-- **Estado:** Aceptada
+- **Estado:** Aceptada · enmendada por [ADR 0033](0033-frenadas-multiples-por-curva.md) (2026-07-10)
 - **Fecha:** 2026-07-09
+
+> **Enmienda ([ADR 0033](0033-frenadas-multiples-por-curva.md), 2026-07-10):** la definición de
+> `brake_start` como escalar de la fase de pico máximo **sigue vigente sin cambio** para coaching y
+> `compare`. Lo que cambia: "qué frenadas deben SONAR" deja de ser la misma pregunta que "cuál es el
+> punto comparable". Cuando una curva tiene ≥2 frenadas fuertes separadas por gas readministrado
+> (frenar → soltar a fondo → acelerar → frenar), **cada una suena**; las alimenta una función nueva
+> `detect_brakings` y un campo nuevo `milestones.brake_starts` (lista), sin tocar el escalar
+> `brake_start` ni la simetría de `compare`.
 
 ## Contexto
 
