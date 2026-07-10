@@ -76,8 +76,8 @@ Detalles que conviene tener presentes:
   la prioridad de un cue cambia quién gana la colisión — salvo la frenada, que sigue
   protegida pase lo que pase ([ADR 0027](decisions/0027-cues-catalogo-configurable-perfiles-coast-subtitulos.md)).
 - Cada descarte queda registrado con su razón en `plan.json` (`too_close_global`,
-  `max_events_per_corner`, `antes_de_la_meta`, `tic_sin_espacio`): ese archivo es la
-  auditoría de qué suena y qué no.
+  `max_events_per_corner`, `antes_de_la_meta`, `tic_sin_espacio`, `cedio_al_countdown`):
+  ese archivo es la auditoría de qué suena y qué no.
 
 ---
 
