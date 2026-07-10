@@ -128,9 +128,11 @@ podría revisar.
 
 ## Siguiente acción (para quien abra)
 
-1. **La rama ya está rebasada sobre `origin/master` (v2.3.1)** y el `CHANGELOG.md` unido
-   (entradas de la rama en `[Unreleased]`, `[2.3.1]` byte-idéntico a lo liberado). Falta el
-   **push + abrir PR** (force-push tras rebase; `backup/pre-rebase-doble-frenada` guarda el pre-rebase).
+1. **PR abierto: [#52](https://github.com/ArmandoMedina/SimGhostInputs/pull/52)** contra `master`
+   (rama rebasada sobre v2.3.1, force-push hecho con OK del PO; `backup/pre-rebase-doble-frenada`
+   guarda el pre-rebase). Falta la **escucha final del PO** (doble frenada + perfil de sonido) — de
+   oído, no de código — y el **video E2E de la vuelta completa corregida** subiéndose a OneDrive
+   `2026-07-10-doble-frenada/`.
 2. **Esperan las dos acciones de OÍDO del PO:** el perfil de sonido por defecto y el veto/acepta de
    la regla del countdown.
 3. **En pista (no automatable):** confirmar que CrewChief ya no crashea con el pack — sesión AMS2 del
