@@ -150,20 +150,34 @@ cambio de marcha sonoro es una feature de `fantasma-live`.
 
 ## Pendiente de decisión del PO
 
-Dos aspectos del sistema están **medidos y cableados pero sin decisión final del PO**. No los
-tomes como cerrados.
+Queda **un** aspecto del sistema medido y cableado pero sin decisión final del PO: el **perfil
+de sonido por defecto** (§2). La **regla de cabida del countdown** (§1) ya se decidió e
+implementó esta sesión y solo espera la validación auditiva del PO; se deja aquí como cerrada
+en lo técnico pero **revisable** de oído.
 
-### 1. Regla de cabida del countdown
+### 1. Regla de cabida del countdown — decidida (revisable), implementada, pendiente de validación auditiva del PO
 
-Hoy «espacio ocupado» significa *cualquier cue a menos de 50 m*, incluido un cue informativo
-de menor prioridad. Está en discusión cambiarlo a **«solo cede lo que puede ceder»**: que un
-cue no protegido (turn-in, gas, soltar freno) ceda su hueco al tic de frenada, y que solo
-frenadas y tics de otras curvas cuenten como espacio ocupado.
+**«Solo cede lo que puede ceder».** Un cue **no protegido** (turn-in, gas, gas a fondo, soltar
+freno, coast) **cede su hueco al tic del countdown**: entra el tic y el cue no protegido se
+desplaza. Solo cuentan como «espacio ocupado» las **frenadas protegidas** y los **tics de otras
+curvas**. El cue desplazado se registra en `plan.json` con la razón `cedio_al_countdown` y el
+tic contra el que chocó (sin descartes silenciosos). **Invariante de seguridad:** un tic
+**nunca** desplaza una frenada — la frenada protegida es, por construcción, uno de los dos
+bloqueadores no-cedibles del tic.
 
-Está **medido** sobre la vuelta real: con la regla propuesta, **35** curvas recuperan el
-3-2-freno (hoy **24**) sin perder ninguna frenada protegida. **El PO no ha elegido.** El
-mecanismo descrito arriba es el vigente; la regla propuesta no se implementa hasta que el PO
-decida. Seguimiento en [`HANDOFF.md`](../HANDOFF.md) y en el plan de la rama.
+- **Estado:** **decidida por el orquestador bajo delegación explícita del PO, revisable** —
+  implementada en `plan_tone_events` (commit `3d14d41`) y documentada como el PORQUÉ en el
+  [ADR 0032](decisions/0032-regla-de-cabida-del-countdown-solo-cede-lo-que-puede-ceder.md).
+  **Pendiente solo del veto de oído del PO** sobre el «precio» (silenciar ~8 avisos de
+  `full_throttle` de salida por vuelta): se le entregó un **A/B de audio** para juzgarlo. No es
+  cerrada-inmutable: si de oído no convence, se afina o revierte sin tocar la invariante.
+- **Evidencia medida** sobre la vuelta real (BMW M4 GT3, Nordschleife): el countdown completo
+  (3-2-freno) pasa de **24 → 35** curvas, **11 recuperadas** (C12, C14, C17, C18, C20, C23,
+  C33, C38, C41, C43, C50), con **0 frenadas protegidas perdidas ni movidas** (35 == 35, mismo
+  metro, misma energía). El precio son 11 cues no protegidos de la curva anterior desplazados,
+  cada uno con su rastro. Corridas: `qa_runs/charbel-20260709-cabida/` (medición de cabida) y
+  `qa_runs/mariana-20260709-countdown/` (A/B auditivo E2E). Detalle y trade-offs en el
+  [ADR 0032](decisions/0032-regla-de-cabida-del-countdown-solo-cede-lo-que-puede-ceder.md).
 
 ### 2. Perfil de sonido por defecto
 
