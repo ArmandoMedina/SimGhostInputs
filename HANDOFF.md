@@ -12,6 +12,8 @@
 
 ## Estado actual
 
+> Rama rebasada sobre `origin/master` (`v2.3.1` ya liberada; detalle en [CHANGELOG](CHANGELOG.md) y [ROADMAP](ROADMAP.md)) — el "ahead-only de `origin/master`" de abajo ya lo asume.
+
 **2026-07-10 — rama `fix/pacenotes-frenada-y-countdown`. Cerrada la tarea DOBLE FRENADA (ADR 0033).**
 El PO detectó, de oído, que cuando frena → suelta a fondo → vuelve a frenar dentro de una misma curva,
 la **segunda frenada no sonaba** (metros reales 803/C03 y 1119/C05). Diseño de mínimo blast-radius:
