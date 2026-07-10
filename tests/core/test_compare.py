@@ -360,7 +360,11 @@ def _build_lap_caso_c():
         gl = max(0.0, 2.8 * (1.0 - abs(d - 430) / 90.0))
         br = 90.0 if 360 <= d <= 515 else 0.0
         th = 0.0 if (br > 0 or 360 <= d <= 515) else 100.0
-        dist.append(d); speed.append(v); throttle.append(th); brake.append(br); glat.append(gl)
+        dist.append(d)
+        speed.append(v)
+        throttle.append(th)
+        brake.append(br)
+        glat.append(gl)
         d += 1.0
     time = [0.0]
     for i in range(1, len(dist)):
@@ -368,9 +372,16 @@ def _build_lap_caso_c():
         time.append(time[-1] + (dist[i] - dist[i - 1]) / max(va, 0.5))
     lap = Lap(meta={"Vehicle": "SYNTH"})
     lap.channels.update(
-        time=time, dist=dist, speed=speed, throttle=throttle, brake=brake, glat=glat,
-        steering=[g * 12.0 for g in glat], gear=[4.0] * len(dist),
-        rpm=[3000.0 + v * 30 for v in speed], glong=[0.0] * len(dist),
+        time=time,
+        dist=dist,
+        speed=speed,
+        throttle=throttle,
+        brake=brake,
+        glat=glat,
+        steering=[g * 12.0 for g in glat],
+        gear=[4.0] * len(dist),
+        rpm=[3000.0 + v * 30 for v in speed],
+        glong=[0.0] * len(dist),
     )
     return lap
 
