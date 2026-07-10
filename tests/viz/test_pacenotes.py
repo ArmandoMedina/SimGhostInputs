@@ -334,6 +334,54 @@ def test_dos_frenadas_pegadas_ambas_suenan():
     assert brakes == [1000, 1030]
 
 
+def test_brake_starts_emite_dos_cues_de_frenada():
+    """ADR 0033: milestones.brake_starts (>=2 frenadas reales) hace que
+    pacenotes emita un cue "brake" protegido POR CADA frenada de la lista,
+    cada uno con su propio countdown -- no solo el escalar brake_start."""
+    from fantasma.viz.pacenotes import plan_tone_events
+
+    rows = [{"id": "C05", "name": "C05", "time_lost": 0.5, "flags": "frenada"}]
+    corners = [
+        {
+            "id": "C05",
+            "name": "C05",
+            "milestones": {
+                "brake_start": {"d": 1042, "v": 216},
+                "brake_starts": [
+                    {"d": 1042, "v": 216},
+                    {"d": 1117, "v": 180},
+                ],
+            },
+        }
+    ]
+    plan = plan_tone_events(rows, corners, top=1, min_gap_m=50)
+    brakes = [e for e in plan["events"] if e["cue"] == "brake"]
+    assert sorted(e["distance"] for e in brakes) == [1042, 1117]
+    assert all(e.get("protected") for e in brakes)
+    tics = [e for e in plan["events"] if e["cue"] == "brake_tic"]
+    assert tics, "cada frenada de la lista debe generar su propio countdown"
+
+
+def test_brake_start_simple_sigue_emitiendo_uno():
+    """No-regresion: una curva de frenada simple (sin brake_starts en el
+    milestone) sigue emitiendo exactamente un cue "brake"."""
+    from fantasma.viz.pacenotes import plan_tone_events
+
+    rows = [{"id": "C01", "name": "C01", "time_lost": 0.5, "flags": "frenada"}]
+    corners = [
+        {
+            "id": "C01",
+            "name": "C01",
+            "milestones": {"brake_start": {"d": 1000, "v": 200}},
+        }
+    ]
+    plan = plan_tone_events(rows, corners, top=1, min_gap_m=50)
+    brakes = [e for e in plan["events"] if e["cue"] == "brake"]
+    assert len(brakes) == 1
+    assert brakes[0]["distance"] == 1000
+    assert brakes[0].get("protected") is True
+
+
 def test_dos_countdowns_encadenados_no_amontonan_tics():
     """Regresion 4463 (tic-vs-tic): dos frenadas encadenadas no apilan sus tics.
     Cada tic entra solo si cabe a >=min_gap de TODO sonido ya colocado, incluidos

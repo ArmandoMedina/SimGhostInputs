@@ -1345,26 +1345,42 @@ def _corner_candidates(
     candidates = []
 
     brake_cfg = _cue_cfg(cue_config, "brake")
-    brake = _milestone(corner, "brake")
-    if brake_cfg["enabled"] and brake and brake.get("d") is not None:
-        brake_d = _as_float(brake["d"])
-        lead_m = _countdown_lead_m(brake, countdown_m, countdown_gap_s)
-        # Tono de frenada UNIVERSAL: toda curva con milestone de frenada suena,
-        # sin importar severidad. Es PROTEGIDO — ningun gap lo descarta (R1), sin
-        # importar su prioridad en config. El countdown (tics de aviso) se
-        # coloca aparte y de forma oportunista en plan_tone_events usando lead_m.
-        candidates.append(
-            _event(
-                row,
-                corner,
-                "brake",
-                brake_d,
-                brake_cfg["priority"],
-                "marca frenada",
-                lead_m=lead_m,
-                protected=True,
+    # ADR 0033: una curva puede traer VARIAS frenadas fuertes reales
+    # (milestones.brake_starts, lista cronologica, solo con >=2). Si no hay
+    # lista (curva de frenada simple), se cae al escalar de siempre
+    # (brake_start, via el alias de _milestone) -- no-regresion exacta. Cada
+    # frenada de la lista suena como un cue "brake" PROTEGIDO propio, con su
+    # propio lead_m: la cabida ya soporta protegido-vs-protegido (dos frenadas
+    # pegadas se quedan las dos, _resolve_min_gap) y su identidad
+    # (corner_id, cue, distance) las distingue una de otra.
+    brake_starts = (corner.get("milestones") or {}).get("brake_starts")
+    if brake_starts:
+        brakes = brake_starts
+    else:
+        brake = _milestone(corner, "brake")
+        brakes = [brake] if brake else []
+    if brake_cfg["enabled"]:
+        for b in brakes:
+            if b.get("d") is None:
+                continue
+            brake_d = _as_float(b["d"])
+            lead_m = _countdown_lead_m(b, countdown_m, countdown_gap_s)
+            # Tono de frenada UNIVERSAL: toda curva con milestone de frenada suena,
+            # sin importar severidad. Es PROTEGIDO — ningun gap lo descarta (R1), sin
+            # importar su prioridad en config. El countdown (tics de aviso) se
+            # coloca aparte y de forma oportunista en plan_tone_events usando lead_m.
+            candidates.append(
+                _event(
+                    row,
+                    corner,
+                    "brake",
+                    brake_d,
+                    brake_cfg["priority"],
+                    "marca frenada",
+                    lead_m=lead_m,
+                    protected=True,
+                )
             )
-        )
 
     release_cfg = _cue_cfg(cue_config, "brake_release")
     release = _milestone(corner, "brake_release")
