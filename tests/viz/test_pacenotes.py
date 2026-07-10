@@ -2144,10 +2144,12 @@ def test_build_tone_pack_duration_cero_no_crashea_ningun_perfil(tmp_path):
     """A3: `--tone-duration 0` (o negativo) reventaba `timbre` (`_tone_norm` sobre
     array vacio) y `chirp` (division por cero). Con el piso `_MIN_TONE_DURATION`
     en `build_tone_pack`, NINGUN perfil crashea y todos generan WAVs audibles."""
-    from fantasma.viz.pacenotes import build_tone_pack
+    from fantasma.viz.pacenotes import SOUND_PROFILES, build_tone_pack
 
     rows, corners = _tone_pack_inputs()
-    for prof in ("seno", "timbre", "ritmo", "chirp"):
+    # Itera la fuente unica de perfiles (incluye "mezcla" y cualquier futuro) para
+    # que el path duration<=0 quede cubierto para TODOS, no una tupla que se olvida.
+    for prof in SOUND_PROFILES:
         for dur in (0, -0.5):
             out = tmp_path / ("%s_%s" % (prof, dur))
             result = build_tone_pack(

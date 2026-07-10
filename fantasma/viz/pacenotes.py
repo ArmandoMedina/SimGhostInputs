@@ -504,9 +504,11 @@ def _signal_mezcla(cue, step, freqs, sample_rate, duration):
     aqui cada cue elige su propia forma de onda. brake y brake_tic quedan
     BYTE-IDENTICOS a 'seno' (mismo seno, misma duracion, mismo fade): son el ancla
     aprobada por el PO y no se reinventan — el resto se despacha por cue con las
-    primitivas existentes. Las frecuencias base salen de DEFAULT_FREQS; el perfil
-    solo cambia la FORMA de onda. Diseno y numeros en
-    qa_runs/mariana-20260709-mezcla/PROPUESTA.md.
+    primitivas existentes. Frecuencias: SOLO el ancla (brake/brake_tic) deriva de
+    DEFAULT_FREQS/_tic_freq (por eso es byte-identica a 'seno'); los timbres de
+    gas/turn_in/release usan las frecuencias FIJAS del idioma sonoro por diseno
+    (p.ej. throttle_on 260->520, full_throttle 320->640), NO DEFAULT_FREQS. Diseno
+    y numeros en qa_runs/mariana-20260709-mezcla/PROPUESTA.md.
     """
     import numpy as np
 
@@ -563,6 +565,12 @@ def _validate_sound_profile(sound_profile):
 # vacia -> ValueError en plena sintesis (cue mudo). 'seno'/'ritmo'/'chirp' NO
 # pasan por `_odd_harmonics` (seno puro o barrido directo), asi que para ellos la
 # cota correcta sigue siendo Nyquist.
+# OJO 'mezcla': tambien hace sintesis aditiva band-limited (`_wave_bright_rising`
+# -> `_odd_harmonics`), pero HOY es seguro fuera de este set porque sus targets de
+# barrido (520, 640) estan hardcodeados y ninguna freq de usuario llega a
+# `_odd_harmonics`. Si algun dia se cablean esos targets a DEFAULT_FREQS/freqs de
+# usuario, hay que anadir "mezcla" aqui (o subir la cota de `_validate_freqs` a
+# 0.45*SR) o reventara con un ValueError de Nyquist en plena sintesis.
 _BAND_LIMITED_PROFILES = {"timbre"}
 
 
