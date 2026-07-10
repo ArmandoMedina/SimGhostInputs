@@ -336,8 +336,11 @@ def test_dos_frenadas_pegadas_ambas_suenan():
 
 def test_brake_starts_emite_dos_cues_de_frenada():
     """ADR 0033: milestones.brake_starts (>=2 frenadas reales) hace que
-    pacenotes emita un cue "brake" protegido POR CADA frenada de la lista,
-    cada uno con su propio countdown -- no solo el escalar brake_start."""
+    pacenotes emita un cue "brake" protegido POR CADA frenada de la lista --
+    eso es lo GARANTIZADO (R1, nunca cede). El countdown (tics de aviso) es
+    oportunista (ADR 0032): aquí las dos frenadas están pegadas (75 m, C05
+    real) y el countdown de la segunda puede no caber -- ver
+    test_brake_starts_pegadas_segunda_cede_countdown para el caso separado."""
     from fantasma.viz.pacenotes import plan_tone_events
 
     rows = [{"id": "C05", "name": "C05", "time_lost": 0.5, "flags": "frenada"}]
@@ -358,8 +361,88 @@ def test_brake_starts_emite_dos_cues_de_frenada():
     brakes = [e for e in plan["events"] if e["cue"] == "brake"]
     assert sorted(e["distance"] for e in brakes) == [1042, 1117]
     assert all(e.get("protected") for e in brakes)
+
+
+def test_brake_starts_pegadas_segunda_cede_countdown():
+    """ADR 0033 + ADR 0032: dos frenadas reales pegadas (75 m, caso C05).
+    Ambos cues "brake" protegidos suenan SIEMPRE (R1) -- eso no es negociable.
+    El countdown de la SEGUNDA frenada, en cambio, es oportunista: su primer
+    tic cae a <50 m del cue "brake" de la PRIMERA (protegido, no-cedible) y se
+    descarta con razón "tic_sin_espacio" -- es el comportamiento ESPERADO por
+    diseño (D2, ADR 0032: un tic nunca desplaza una frenada protegida), no un
+    bug. No se fuerza doble countdown."""
+    from fantasma.viz.pacenotes import plan_tone_events
+
+    rows = [{"id": "C05", "name": "C05", "time_lost": 0.5, "flags": "frenada"}]
+    corners = [
+        {
+            "id": "C05",
+            "name": "C05",
+            "milestones": {
+                "brake_start": {"d": 1042, "v": 216},
+                "brake_starts": [
+                    {"d": 1042, "v": 216},
+                    {"d": 1117, "v": 180},
+                ],
+            },
+        }
+    ]
+    plan = plan_tone_events(rows, corners, top=1, min_gap_m=50)
+    brakes = [e for e in plan["events"] if e["cue"] == "brake"]
+    assert sorted(e["distance"] for e in brakes) == [1042, 1117]
+    assert all(e.get("protected") for e in brakes)
+
+    # La primera frenada SI consigue countdown (nada le disputa el hueco).
     tics = [e for e in plan["events"] if e["cue"] == "brake_tic"]
-    assert tics, "cada frenada de la lista debe generar su propio countdown"
+    assert tics, "la primera frenada debe conservar su countdown"
+
+    # La segunda cede su countdown ante la frenada protegida vecina: rastro
+    # explícito en skipped_global, no una perdida muda.
+    tic_sin_espacio = [
+        s
+        for s in plan["skipped_global"]
+        if s.get("cue") == "brake_tic" and s.get("reason") == "tic_sin_espacio"
+    ]
+    assert tic_sin_espacio, "el tic descartado debe quedar trazado, no perderse"
+
+
+def test_brake_starts_muy_separadas_ambas_reciben_countdown():
+    """ADR 0033 + ADR 0032: cuando las dos frenadas de brake_starts están MUY
+    separadas entre sí (300 m, >200 m) y lejos del inicio de vuelta, sobra
+    espacio: el countdown oportunista alcanza para AMBAS, ninguna cede su
+    hueco a la otra. Contraste con test_brake_starts_pegadas_segunda_cede_countdown,
+    donde 75 m de separación SI hace que la segunda ceda -- ambos son
+    correctos, la diferencia es la geometría de la curva, no un bug."""
+    from fantasma.viz.pacenotes import plan_tone_events
+
+    rows = [{"id": "C05", "name": "C05", "time_lost": 0.5, "flags": "frenada"}]
+    corners = [
+        {
+            "id": "C05",
+            "name": "C05",
+            "milestones": {
+                "brake_start": {"d": 1000, "v": 200},
+                "brake_starts": [
+                    {"d": 1000, "v": 200},
+                    {"d": 1300, "v": 200},
+                ],
+            },
+        }
+    ]
+    plan = plan_tone_events(rows, corners, top=1, min_gap_m=50)
+    brakes = [e for e in plan["events"] if e["cue"] == "brake"]
+    assert sorted(e["distance"] for e in brakes) == [1000, 1300]
+    assert all(e.get("protected") for e in brakes)
+
+    tics = [e for e in plan["events"] if e["cue"] == "brake_tic"]
+    assert len(tics) == 4, "con espacio de sobra, las 2+2 tics de ambas frenadas caben"
+
+    tic_sin_espacio = [
+        s
+        for s in plan["skipped_global"]
+        if s.get("cue") == "brake_tic" and s.get("reason") == "tic_sin_espacio"
+    ]
+    assert not tic_sin_espacio, "con las frenadas muy separadas ningun tic deberia ceder"
 
 
 def test_brake_start_simple_sigue_emitiendo_uno():

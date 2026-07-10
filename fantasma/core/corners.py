@@ -46,6 +46,12 @@ PHASE_GAP_S = 0.5
 # "volvi a acelerar y frene otra vez", no "solte un instante para rotar"
 # (trail-braking). Valor inicial afinable; solo lo consume `detect_brakings`.
 THROTTLE_REAPPLY = 15
+# El gas readministrado debe ser SOSTENIDO, no un blip de una sola muestra
+# (ruido de sensor de 1 frame no debe partir un trail-braking real en dos
+# frenadas). Mismo criterio que `throttle_on`/`full_throttle`: umbral + N
+# muestras seguidas, aqui ~0.15s convertidas via `_window_samples` (dt real de
+# la vuelta, floor=3 muestras minimo aunque el muestreo sea muy lento).
+THROTTLE_REAPPLY_WINDOW_S = 0.15
 BRAKE_LOOKBACK_M = 450
 
 
@@ -188,6 +194,7 @@ def detect_brakings(
     brake_on=BRAKE_ON,
     brake_strong=BRAKE_STRONG,
     throttle_reapply=THROTTLE_REAPPLY,
+    throttle_reapply_window_s=THROTTLE_REAPPLY_WINDOW_S,
 ):
     """Detecta TODA frenada fuerte real dentro de la ventana, para el audio de
     pacenotes (ADR 0033). Hermana de `select_brake_phase`, pero responde otra
@@ -197,10 +204,13 @@ def detect_brakings(
     Agrupa las muestras con `brake` > `brake_on` en BLOQUES (hueco temporal
     intra-bloque < 0.3 s), igual que `select_brake_phase`. Funde bloques
     consecutivos en una misma frenada SALVO que en el hueco entre ellos el
-    piloto readministre gas -- alguna muestra del hueco (tiempo entre el fin del
-    bloque previo y el inicio del siguiente, dentro de la ventana) con
-    `throttle` >= `throttle_reapply`: eso separa "volvi a acelerar y frene otra
-    vez" de "solte un instante para rotar" (trail-braking). Si el pedal nunca
+    piloto readministre gas de forma SOSTENIDA: al menos `throttle_reapply_window_s`
+    (~0.15s, convertidos a muestras via el `dt` real de la vuelta, floor=3) de
+    muestras SEGUIDAS del hueco con `throttle` >= `throttle_reapply`. Eso separa
+    "volvi a acelerar y frene otra vez" de "solte un instante para rotar"
+    (trail-braking); una unica muestra aislada por encima del umbral (blip de
+    ruido de 1 frame) ya NO parte la frenada -- mismo criterio de sostenido que
+    `throttle_on`/`full_throttle` en `extract_milestones`. Si el pedal nunca
     baja de `brake_on` es un solo bloque y la fusion ni se evalua, asi que el
     arrastre modulado jamas se parte en dos avisos.
 
@@ -221,11 +231,17 @@ def detect_brakings(
                 blocks.append(cur)
     if not blocks:
         return []
+    dt = (lap_samples[-1]["time"] - lap_samples[0]["time"]) / max(1, len(lap_samples) - 1)
+    reapply_window = _window_samples(dt, throttle_reapply_window_s)
     brakings = [list(blocks[0])]
     for b in blocks[1:]:
         prev_last = brakings[-1][-1]
         gap = [s for s in win if prev_last["time"] < s["time"] < b[0]["time"]]
-        reapplied = any(s.get("throttle", 0) >= throttle_reapply for s in gap)
+        reapplied = any(
+            len(gap[j : j + reapply_window]) == reapply_window
+            and all(x.get("throttle", 0) >= throttle_reapply for x in gap[j : j + reapply_window])
+            for j in range(len(gap))
+        )
         if reapplied:
             brakings.append(list(b))
         else:

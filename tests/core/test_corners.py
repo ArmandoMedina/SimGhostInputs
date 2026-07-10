@@ -358,7 +358,10 @@ def test_brake_release_cae_despues_de_una_reaplicacion_suave():
 
 def test_brake_starts_dos_frenadas_con_gas_en_hueco():
     # ADR 0033 (C05): dos bloques FUERTES separados, con el coche re-acelerando
-    # (~26%) en el hueco -> son DOS frenadas reales que deben sonar. El escalar
+    # (~26%) en el hueco -> son DOS frenadas reales que deben sonar. El gas
+    # ocupa 40 muestras SEGUIDAS (índices 95-134, 2s a 20Hz) -- muy por encima
+    # de la ventana sostenida (3 muestras, ~0.15s), sin ambigüedad con un blip
+    # de ruido (ver test_brake_starts_no_parte_por_blip_de_gas). El escalar
     # `brake_start` sigue anclado en la PRIMERA (pico máximo 100%), no salta a la
     # tardía; `brake_starts` lista AMBAS cronológicamente.
     lap = _lap_brake_blocks(
@@ -395,6 +398,25 @@ def test_brake_starts_ausente_en_trail_braking():
         0.05,
         [(60, 100, 90.0), (100, 150, 30.0)],
         throttle_blocks=[(100, 150, 26.0)],
+    )
+    ms = extract_milestones(lap)[0]["milestones"]
+    assert "brake_start" in ms
+    assert "brake_starts" not in ms
+
+
+def test_brake_starts_no_parte_por_blip_de_gas():
+    # Robustez (revisión adversarial post-ADR 0033): el gas readministrado debe
+    # ser SOSTENIDO para partir una frenada en dos. Aquí el hueco entre los dos
+    # bloques FUERTES tiene una única muestra de throttle >= THROTTLE_REAPPLY
+    # (dist[115], índice aislado dentro de [90, 140)) -- un blip de ruido de 1
+    # frame, no una readministración real de gas. Con dt=0.05s (20Hz) la ventana
+    # sostenida exige 3 muestras seguidas (0.15s); una sola muestra no basta:
+    # las dos frenadas deben seguir fundidas en UN solo bloque, sin
+    # `brake_starts`. Antes del fix, una sola muestra ya partía la frenada.
+    lap = _lap_brake_blocks(
+        0.05,
+        [(60, 90, 100.0), (140, 165, 90.0)],
+        throttle_blocks=[(115, 116, 20.0)],
     )
     ms = extract_milestones(lap)[0]["milestones"]
     assert "brake_start" in ms
