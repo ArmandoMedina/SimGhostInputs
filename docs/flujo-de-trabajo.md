@@ -243,6 +243,9 @@ depender de que invoques nada. La mueven los **hooks de sesión** (`Stop`) en `.
   `importers/`, `cli`, `barreras`, `orquestacion`, `setup`) sabe qué `doc_bloquea` debe estar presente. **Scope real del hook:**
   cubre los docs técnicos (`doc_bloquea`); los de `product/capacidades/` son AVISA, no bloquean el
   cierre — los sincroniza el Escribano si detecta que un criterio funcional cambió.
+  El `doc_avisa` por área también evoluciona con el manifiesto: p. ej. `viz` avisa además sobre
+  `docs/cues.md` desde que ese catálogo existe (si el cambio toca el catálogo/prioridad/countdown
+  de cues en `pacenotes.py`).
   **Nota sobre las dos ventanas:** este hook evalúa `git status --porcelain` (cambios sin commitear).
   Si committeas código sin sus docs, el working tree queda limpio y el hook ya no dispara; el drift
   lo atrapa `verificar.ps1` al hacer push. Para que nada se pierda: commitea código y docs juntos.
