@@ -99,12 +99,24 @@ podría revisar.
 
 ## Backlog
 
-Deuda anotada esta rama, NO curada (no bloquea; ya en [ROADMAP](ROADMAP.md), tareas #16–#18):
+Deuda de esta rama, ahora MEDIDA sobre la vuelta real (`qa_runs/charbel-20260709-deudas/`; ya en
+[ROADMAP](ROADMAP.md)): de las tres, **dos quedan cerradas por medición** y **una queda accionable
+pero diferida** (el fix de unidad del volante, bloqueado por falta de una vuelta en grados):
 
-- **`turn_in`:** dos defectos reales que hoy no muerden.
-- **`steering` en POR-CIENTO tratado como grados (`turn_in_deg`).** `Steering Pos` de MoTeC (%) y
-  `STEERANGLE` (grados) caen en el mismo canal (`importers/motec_csv.py:23,34`).
-- **`brake_strong=50` demasiado alto** para frenadas flojas del piloto → banderas falsas.
+- **`turn_in`:** MEDIDO (`qa_runs/charbel-20260709-deudas/`): no muerde en el par real. Veredicto:
+  dos defectos latentes inertes — ceguera de unidad de `turn_in_deg` (dormida con datos en %) y
+  `turn_in` unos metros antes de `segment_m[0]` (C14 y C15, −5 y −6 m, por diseño según ADR 0031);
+  tercer modo (volante residual) refutado, 0 casos. Sin acción propia.
+- **`steering` en POR-CIENTO tratado como grados (`turn_in_deg`).** MEDIDO
+  (`qa_runs/charbel-20260709-deudas/`): no muerde en el par real (REF y piloto ambos `Steering Pos`
+  %, absmax ~36; 0 de 55 curvas mal ubicadas). Veredicto: landmine LATENTE de código en
+  `importers/motec_csv.py:23,34` (mezcla `Steering Pos` % y `STEERANGLE` grados en el mismo canal).
+  **Único residuo accionable, DIFERIDO por falta de material:** canonizar la unidad del volante en el
+  importer (o `turn_in` relativo al pico); requiere una vuelta real con `STEERANGLE` para QA.
+- **`brake_strong=50`.** MEDIDO (`qa_runs/charbel-20260709-deudas/`): no muerde en el par real.
+  Veredicto: mantener en 50 — el barrido {50,45,40,35} mueve 0 `brake_start` (curvas de freno
+  monofásicas); de 15 banderas `frenada`, 13 legítimas y 2 marginales (C08 y C10) que no se quitan
+  bajando el piso. Sin acción de código.
 - **Menor (omisión, no contradicción):** la enumeración de razones de descarte en `cues.md` §
   "Prioridades" (~línea 78) no lista `cedio_al_countdown`; la razón sí está documentada en la sección
   del countdown.
