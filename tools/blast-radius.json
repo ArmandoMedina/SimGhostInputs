@@ -26,8 +26,8 @@
     "desc": "overlay HUD, graficas, reportes, composicion de video, sincronía audio, pacenotes",
     "fuente": ["fantasma/viz/*"],
     "doc_bloquea": [],
-    "doc_avisa": ["docs/hud-reference.md", "docs/ux-patterns.md"],
-    "mensaje": "el cambio es visual (color, panel, franja, layout del HUD)? entonces toca docs/hud-reference.md + README (tabla de colores) + docs/ux-patterns.md + ADR nuevo. Si es no-visual (perf, refactor, encoding), ninguno aplica (ADR 0020)",
+    "doc_avisa": ["docs/hud-reference.md", "docs/ux-patterns.md", "docs/cues.md"],
+    "mensaje": "el cambio es visual (color, panel, franja, layout del HUD)? entonces toca docs/hud-reference.md + README (tabla de colores) + docs/ux-patterns.md + ADR nuevo. Si es no-visual (perf, refactor, encoding), ninguno aplica (ADR 0020). Si toca el catalogo/prioridad/countdown de cues (pacenotes.py DEFAULT_CONFIG): actualiza docs/cues.md",
     "product_avisa": [
       "product/capacidades/OVL-*",
       "product/capacidades/CHT-*",

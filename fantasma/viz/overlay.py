@@ -112,16 +112,40 @@ def _slip_window(slip_grid, ds, lo, hi):
     return round(float(np.mean(excess)), 2) if excess.size else None
 
 
+def _corner_lo(corner, seg_lo):
+    """Borde inferior de la ventana de PROPIEDAD de la curva (ADR 0031, Opcion A).
+
+    `segment_m` NO es contrato de contencion: `brake_start` puede caer FUERA del
+    segmento que la curva declara suyo (curva cuya frenada empieza tras un kink,
+    antes de `segment_m[0]`). La curva es duena de su frenada desde `brake_start`,
+    asi que la frontera baja se deriva del HITO publicado, no de `segment_m` ni de
+    un pad fijo: se extiende hasta `brake_start` cuando este precede al segmento.
+    """
+    bs = (corner.get("milestones") or {}).get("brake_start") or {}
+    bd = bs.get("d")
+    return min(seg_lo, bd) if bd is not None else seg_lo
+
+
 def _corner_at(corners_by_seg, dist):
-    """Nombre y texto de V-Min de la curva que contiene dist."""
+    """Nombre y texto de V-Min de la curva que contiene dist.
+
+    Ante solape (una curva de frenada extendida cuya ventana de propiedad invade
+    la cola del segmento de la anterior), gana la curva MAS TARDIA: es la duena de
+    esos metros de frenada (ADR 0031). Por eso se conserva la ULTIMA coincidencia,
+    no la primera; asi el HUD deja de etiquetar la curva anterior mientras el pace
+    note ya pertenece a la siguiente.
+    """
+    found = None
     for (lo, hi), c in corners_by_seg:
-        if lo <= dist <= hi:
-            name = c.get("name", c.get("id", ""))
-            ap = (c.get("milestones") or {}).get("apex", {})
-            v = ap.get("v")
-            txt2 = "V-Min objetivo %d km/h" % v if v else ""
-            return name, txt2
-    return "", ""
+        if _corner_lo(c, lo) <= dist <= hi:
+            found = c
+    if found is None:
+        return "", ""
+    name = found.get("name", found.get("id", ""))
+    ap = (found.get("milestones") or {}).get("apex", {})
+    v = ap.get("v")
+    txt2 = "V-Min objetivo %d km/h" % v if v else ""
+    return name, txt2
 
 
 # ── figura matplotlib reutilizable ────────────────────────────────────────────
@@ -712,7 +736,12 @@ def render_overlay(
     def _seg(c):
         return c.get("segment_m") or c.get("range_m") or [0.0, 0.0]
 
-    corners_by_seg = [((_seg(c)[0], _seg(c)[1]), c) for c in corners]
+    # El desempate "ULTIMA gana" de _corner_at (ADR 0031) solo es correcto si los
+    # corners llegan ordenados ascendente por pista: la curva mas tardia que solapa
+    # es la que debe ganar los metros de frenada. Auto-detect (detect_corners) y la
+    # UI ya entregan ese orden, pero --corners fichero.json hace json.load SIN
+    # reordenar; se blinda aqui. Es no-op para el input ya ordenado.
+    corners_by_seg = sorted([((_seg(c)[0], _seg(c)[1]), c) for c in corners], key=lambda t: t[0][0])
 
     # ── render paralelo de frames ─────────────────────────────────────────────
     frames_dir = os.path.join(outdir, "frames")

@@ -184,16 +184,17 @@ DEFAULT_CONFIG = {
 
 
 def generate_tone(freq_hz, duration_s, volume=0.8, sample_rate=24000) -> bytes:
-    import numpy as np
+    """Seno puro con fade anti-clic — el sonido del perfil 'seno'.
 
-    t = np.linspace(0, duration_s, int(sample_rate * duration_s), endpoint=False)
-    fade = min(int(sample_rate * 0.01), len(t) // 2)
-    envelope = np.ones(len(t))
-    if fade > 0:
-        envelope[:fade] = np.linspace(0, 1, fade)
-        envelope[-fade:] = np.linspace(1, 0, fade)
-    samples = (np.sin(2 * np.pi * freq_hz * t) * envelope * volume * 32767).astype(np.int16)
-    return _make_wav_bytes(samples, sample_rate=sample_rate)
+    Se expresa sobre la MISMA tuberia que las variantes (``_wave_sine`` +
+    ``_float_to_wav``) para que compartan un unico fade (``_FADE_S``) y el clip
+    se aplique DESPUES del volumen. Antes esta funcion duplicaba la tuberia con
+    un fade de 0.01 s mientras ``_wave_sine`` usaba 0.008 s: esa divergencia
+    sesgaba la comparacion de oido entre 'seno' y las paletas. La unificacion es
+    byte-identica para 'seno' (mismo time-base, mismo fade de 0.01 s, mismo
+    orden de operaciones cuando no hay recorte).
+    """
+    return _float_to_wav(_wave_sine(freq_hz, duration_s, sample_rate), volume, sample_rate)
 
 
 def _make_wav_bytes(samples_int16, sample_rate=24000) -> bytes:
@@ -204,6 +205,406 @@ def _make_wav_bytes(samples_int16, sample_rate=24000) -> bytes:
         wav.setframerate(sample_rate)
         wav.writeframes(samples_int16.tobytes())
     return buf.getvalue()
+
+
+# ── Perfiles de sonido de los cues (QA 2026-07-09) ────────────────────────────
+# El PO reporto que todos los cues suenan igual: hoy un cue solo cambia de
+# FRECUENCIA (seno puro de generate_tone). "seno" es ese comportamiento de HOY
+# (byte-identico); los otros tres dan a cada familia una FORMA DE ONDA / DURACION
+# / ENVOLVENTE distinta para que se distingan de oido, SIN tocar DEFAULT_FREQS.
+# La sintesis de las variantes viene de la evidencia de
+# qa_runs/2026-07-09-sonidos/ (Mariana). El PO todavia NO eligio cual adoptar.
+#
+#   seno   -> comportamiento actual: seno puro, solo cambia la frecuencia.
+#   timbre -> (A) una forma de onda por familia: freno=cuadrada band-limited,
+#             tics=seno limpio, gas=triangular, turn_in/apex=pulso percusivo.
+#   ritmo  -> (B) mismo seno de hoy, separado por DURACION/PATRON: freno del
+#             doble de largo, gas doble-blip, turn_in pulso unico, tics iguales.
+#   chirp  -> (C) barridos: el freno baja de frecuencia, el gas sube.
+#   mezcla -> MEZCLA por-cue (Mariana 2026-07-09): cada TIPO de cue con su propio
+#             idioma sonoro (no una familia global). brake/brake_tic quedan
+#             BYTE-IDENTICOS a 'seno' (ancla aprobada por el PO); brake_release
+#             baja (glide), turn_in es un pluck, throttle_on sube brillante,
+#             full_throttle es doble blip brillante. Ver
+#             qa_runs/mariana-20260709-mezcla/PROPUESTA.md.
+#
+# NO se coloca en DEFAULT_CONFIG: ese dict es un catalogo POR TIPO DE CUE
+# (cada valor es {enabled, priority, ...}) que cue_profiles.config_to_profile
+# recorre con `for cue_type in DEFAULT_CONFIG` y resuelve con _cue_cfg (que hace
+# dict(DEFAULT_CONFIG[cue])); una clave escalar "sound_profile" reventaria esa
+# serializacion. El perfil es GLOBAL al pack, no por cue: viaja como parametro
+# `sound_profile` de build_tone_pack/build_pack (ver docstrings).
+DEFAULT_SOUND_PROFILE = "seno"
+SOUND_PROFILES = ("seno", "timbre", "ritmo", "chirp", "mezcla")
+# Solo se suman armonicos por debajo de 0.45*SR (~10.8 kHz a 24 kHz): ninguna
+# componente pasa de Nyquist, asi no hay alias audible. Nunca se muestrea una
+# discontinuidad (cuadrada/sierra por formula directa) — todo timbre no senoidal
+# es SINTESIS ADITIVA de armonicos band-limited (QA 2026-07-09).
+_NYQ_MARGIN = 0.45
+# Fade-in/out UNICO (s) de todo cue tonal: el seno de generate_tone y las tres
+# paletas comparten este anti-clic para que el unico contraste audible entre
+# ellas sea la forma de onda, no un fade distinto (antes 0.01 vs 0.008 s).
+_FADE_S = 0.01
+# Duracion de REFERENCIA (s) a la que estan expresadas las duraciones de diseno
+# de _PROFILE_SIGNALS. Con otra `duration`, cada cue de cada paleta se escala
+# proporcionalmente (dur_efectiva = dur_diseno * duration / _PROFILE_REF_DURATION),
+# asi `duration` MANDA en todas las paletas (no solo en 'seno') sin perder el
+# contraste relativo entre cues. A duration == _PROFILE_REF_DURATION las paletas
+# quedan exactamente en su duracion de diseno (evidencia qa_runs/2026-07-09).
+_PROFILE_REF_DURATION = 0.12
+
+# Piso de duracion efectiva de un cue (s). `build_tone_pack` acota `duration` a
+# este minimo positivo: un `duration <= 0` reventaba `timbre` (`_tone_norm` sobre
+# array vacio) y `chirp` (division por cero en `_wave_chirp`). 0.02 s sigue
+# produciendo un WAV audible corto en cualquier perfil.
+_MIN_TONE_DURATION = 0.02
+
+# Nombre del UNICO WAV silencioso que reutilizan TODOS los cues mudos del pack
+# (sound=False, hoy solo `gear`). Ver `_write_silent_wav`: un cue mudo debe
+# seguir en metadata.json para el subtitulo, pero su entry NO puede llevar
+# recordingNames/fileNames vacias -- eso revienta CrewChief en pista (issue #9).
+_SILENT_WAV_NAME = "silent.wav"
+
+
+def _tone_time(duration_s, sample_rate):
+    import numpy as np
+
+    # linspace (no arange) para casar EXACTO el time-base de generate_tone y
+    # garantizar que 'seno' sea byte-identico a antes de unificar la tuberia.
+    return np.linspace(0, duration_s, int(sample_rate * duration_s), endpoint=False)
+
+
+def _tone_fade(sig, sample_rate, fade_s=_FADE_S):
+    """Fade-in/out lineal para no meter un clic de discontinuidad en los bordes."""
+    import numpy as np
+
+    n = len(sig)
+    f = min(int(sample_rate * fade_s), n // 2)
+    if f > 0:
+        env = np.ones(n)
+        env[:f] = np.linspace(0, 1, f)
+        env[-f:] = np.linspace(1, 0, f)
+        sig = sig * env
+    return sig
+
+
+def _tone_norm(sig):
+    import numpy as np
+
+    peak = np.max(np.abs(sig))
+    return sig / peak if peak > 0 else sig
+
+
+def _odd_harmonics(freq, sample_rate):
+    """Armonicos IMPARES de `freq` estrictamente por debajo de _NYQ_MARGIN*SR.
+
+    Fuente unica del limite de banda de la cuadrada y la triangular: el armonico
+    mas alto que devuelve cumple n*freq < 0.45*SR, garantia anti-alias.
+
+    Falla RUIDOSAMENTE en los dos bordes que antes eran trampas silenciosas:
+      - ``freq <= 0`` colgaba el ``while`` para siempre (la lista crecia hasta
+        agotar memoria) — ahora ValueError inmediato.
+      - ``freq >= _NYQ_MARGIN*SR`` devolvia lista vacia y dejaba la onda en todo
+        ceros: un cue MUDO sin aviso. Un cue mudo en un sistema de seguridad es
+        inaceptable en silencio — ahora ValueError accionable.
+    """
+    if freq <= 0:
+        raise ValueError("frecuencia invalida para sintesis aditiva: %r (debe ser > 0)" % (freq,))
+    harmonics = []
+    n = 1
+    while n * freq < _NYQ_MARGIN * sample_rate:
+        harmonics.append(n)
+        n += 2
+    if not harmonics:
+        raise ValueError(
+            "frecuencia %r demasiado alta para una onda band-limited a %d Hz "
+            "(el primer armonico ya supera %g*SR = %g Hz): saldria un cue mudo"
+            % (freq, sample_rate, _NYQ_MARGIN, _NYQ_MARGIN * sample_rate)
+        )
+    return harmonics
+
+
+def _wave_sine(freq, dur, sample_rate, fade_s=_FADE_S):
+    import numpy as np
+
+    return _tone_fade(np.sin(2 * np.pi * freq * _tone_time(dur, sample_rate)), sample_rate, fade_s)
+
+
+def _wave_band_square(freq, dur, sample_rate, fade_s=_FADE_S):
+    """Cuadrada band-limited: suma de armonicos impares con amplitud 1/n."""
+    import numpy as np
+
+    t = _tone_time(dur, sample_rate)
+    sig = np.zeros_like(t)
+    for n in _odd_harmonics(freq, sample_rate):
+        sig += np.sin(2 * np.pi * n * freq * t) / n
+    return _tone_fade(_tone_norm(sig), sample_rate, fade_s)
+
+
+def _wave_band_triangle(freq, dur, sample_rate, fade_s=_FADE_S):
+    """Triangular band-limited: armonicos impares con amplitud 1/n^2 y signo alterno."""
+    import numpy as np
+
+    t = _tone_time(dur, sample_rate)
+    sig = np.zeros_like(t)
+    for k, n in enumerate(_odd_harmonics(freq, sample_rate)):
+        sig += ((-1) ** k) * np.sin(2 * np.pi * n * freq * t) / (n * n)
+    return _tone_fade(_tone_norm(sig), sample_rate, fade_s)
+
+
+def _wave_pulse(freq, dur, sample_rate):
+    """Pulso percusivo: seno con decaimiento exponencial (se lee como 'golpe')."""
+    import numpy as np
+
+    t = _tone_time(dur, sample_rate)
+    sig = np.sin(2 * np.pi * freq * t) * np.exp(-t / (dur * 0.35))
+    fin = min(int(sample_rate * 0.002), len(sig) // 2)
+    if fin > 0:
+        sig[:fin] *= np.linspace(0, 1, fin)
+    return _tone_norm(sig)
+
+
+def _wave_chirp(f0, f1, dur, sample_rate, fade_s=_FADE_S):
+    """Barrido lineal f0->f1. Frecuencia instantanea siempre < Nyquist: no aliasa."""
+    import numpy as np
+
+    t = _tone_time(dur, sample_rate)
+    phase = 2 * np.pi * (f0 * t + (f1 - f0) / (2 * dur) * t**2)
+    return _tone_fade(np.sin(phase), sample_rate, fade_s)
+
+
+def _wave_double_blip(freq, sample_rate, blip_s=0.05, gap_s=0.05):
+    """Dos pulsos de seno separados por un silencio corto: patron 'ta-ta'."""
+    import numpy as np
+
+    b = _wave_sine(freq, blip_s, sample_rate, fade_s=0.006)
+    g = np.zeros(int(sample_rate * gap_s))
+    return np.concatenate([b, g, b])
+
+
+def _wave_bright_rising(f0, f1, dur, sample_rate, shape="triangle", fade_s=_FADE_S):
+    """Barrido ASCENDENTE f0->f1 con armonicos impares (brillante).
+
+    Un `_wave_chirp` es un barrido de seno PURO: su energia no pasa de f1, asi no
+    'brilla' por encima de la banda del motor. Aqui se suman los armonicos impares
+    del mismo barrido (misma sintesis aditiva band-limited de `_wave_band_triangle`,
+    acotada por `_odd_harmonics` al pico f1) para subir el centroide espectral fuera
+    de la banda del motor. La SUBIDA de tono = 'te subes al gas'. `shape` 'triangle'
+    (1/n^2, signo alterno) da brillo suave; 'square' (1/n) mas aspero.
+    """
+    import numpy as np
+
+    t = _tone_time(dur, sample_rate)
+    inst = f0 * t + (f1 - f0) / (2 * dur) * t**2  # fase del chirp base
+    sig = np.zeros_like(t)
+    for k, n in enumerate(_odd_harmonics(f1, sample_rate)):  # limite de banda al pico
+        amp = (1.0 / (n * n)) if shape == "triangle" else (1.0 / n)
+        sign = ((-1) ** k) if shape == "triangle" else 1.0
+        sig += sign * amp * np.sin(2 * np.pi * n * inst)
+    return _tone_fade(_tone_norm(sig), sample_rate, fade_s)
+
+
+def _float_to_wav(sig, volume, sample_rate) -> bytes:
+    import numpy as np
+
+    # Recorte DESPUES de aplicar el volumen: con volume > 1 el clip previo a la
+    # multiplicacion no protegia nada (0.8*1.5 = 1.2 -> 39320 desbordaba int16 y
+    # daba la vuelta a negativo, un chasquido con el signo invertido). Ahora
+    # satura limpio a +/-1.0 sea cual sea el volumen.
+    samples = (np.clip(sig * volume, -1.0, 1.0) * 32767).astype(np.int16)
+    return _make_wav_bytes(samples, sample_rate=sample_rate)
+
+
+def _tic_freq(freqs, step):
+    """Frecuencia del tic `step` del countdown: brake_countdown * COUNTDOWN_SCALE.
+
+    Misma fuente que el perfil seno (_render_cue) — el perfil solo cambia la
+    FORMA de onda, no la frecuencia base. El fallback sale de DEFAULT_FREQS (no
+    de un literal suelto) para que seno y las paletas nunca discrepen en el tono
+    base del tic si `freqs` llegara sin "brake_countdown".
+    """
+    return freqs.get("brake_countdown", DEFAULT_FREQS["brake_countdown"]) * COUNTDOWN_SCALE[step]
+
+
+# Duraciones de DISENO de cada paleta (s), a _PROFILE_REF_DURATION. Cada una es
+# el MULTIPLICADOR implicito (valor / _PROFILE_REF_DURATION) que escala con la
+# `duration` pedida: p.ej. el freno de 'ritmo' (0.24) dura 2x la base y sus tics
+# (0.08) ~0.67x — el contraste relativo se conserva a cualquier `duration`.
+def _dur_scale(duration):
+    return duration / _PROFILE_REF_DURATION
+
+
+def _signal_timbre(cue, step, freqs, sample_rate, duration):
+    s = _dur_scale(duration)
+    if cue == "brake_tic":
+        return _wave_sine(_tic_freq(freqs, step), 0.07 * s, sample_rate)
+    if cue == "brake":
+        return _wave_band_square(freqs.get("brake", 1000), 0.14 * s, sample_rate)
+    if cue in ("turn_in", "apex"):
+        return _wave_pulse(
+            freqs.get(cue, 440), (0.09 if cue == "turn_in" else 0.10) * s, sample_rate
+        )
+    triangle_dur = {
+        "throttle_on": 0.12,
+        "gas": 0.12,
+        "full_throttle": 0.12,
+        "brake_release": 0.10,
+        "coast": 0.14,
+    }
+    if cue in triangle_dur:
+        return _wave_band_triangle(freqs.get(cue, 440), triangle_dur[cue] * s, sample_rate)
+    return _wave_sine(freqs.get(cue, 440), 0.12 * s, sample_rate)
+
+
+def _signal_ritmo(cue, step, freqs, sample_rate, duration):
+    s = _dur_scale(duration)
+    if cue == "brake_tic":
+        # Los dos tics IGUALES entre si (misma freq y duracion): leen 'aviso, aviso'.
+        return _wave_sine(_tic_freq(freqs, 1), 0.08 * s, sample_rate)
+    if cue == "brake":
+        return _wave_sine(freqs.get("brake", 1000), 0.24 * s, sample_rate)
+    if cue in ("throttle_on", "gas", "full_throttle"):
+        return _wave_double_blip(freqs.get(cue, 440), sample_rate, blip_s=0.05 * s, gap_s=0.05 * s)
+    ritmo_dur = {"turn_in": 0.05, "brake_release": 0.12, "coast": 0.18, "apex": 0.10}
+    return _wave_sine(freqs.get(cue, 440), ritmo_dur.get(cue, 0.12) * s, sample_rate)
+
+
+def _signal_chirp(cue, step, freqs, sample_rate, duration):
+    s = _dur_scale(duration)
+    if cue == "brake_tic":
+        # Barrido ascendente centrado en la MISMA frecuencia base del tic seno
+        # (_tic_freq -> brake_countdown*COUNTDOWN_SCALE[step]). Antes indexaba una
+        # tupla fija de longitud 2 con `step`, acoplada por convencion —no por
+        # codigo— a COUNTDOWN_SCALE: si el countdown creciera a 3 tics, 'chirp'
+        # reventaba con IndexError mientras las otras paletas seguian. Derivarlo
+        # de _tic_freq lo blinda para cualquier longitud de COUNTDOWN_SCALE.
+        f = _tic_freq(freqs, step)
+        return _wave_chirp(f * 0.88, f * 1.08, 0.07 * s, sample_rate)
+    if cue == "brake":
+        return _wave_chirp(1200, 550, 0.16 * s, sample_rate)
+    sweeps = {
+        "throttle_on": (220, 460, 0.14),
+        "gas": (200, 420, 0.14),
+        "full_throttle": (300, 560, 0.14),
+        "turn_in": (560, 470, 0.09),
+        "brake_release": (700, 900, 0.12),
+        "coast": (180, 150, 0.16),
+    }
+    if cue in sweeps:
+        f0, f1, dur = sweeps[cue]
+        return _wave_chirp(f0, f1, dur * s, sample_rate)
+    # apex y cualquier cue sin barrido definido: referencia estable (seno).
+    return _wave_sine(freqs.get(cue, 440), 0.10 * s, sample_rate)
+
+
+def _signal_mezcla(cue, step, freqs, sample_rate, duration):
+    """MEZCLA por-cue (Mariana 2026-07-09): un idioma sonoro por TIPO de cue.
+
+    A diferencia de timbre/ritmo/chirp (una familia global aplicada a casi todo),
+    aqui cada cue elige su propia forma de onda. brake y brake_tic quedan
+    BYTE-IDENTICOS a 'seno' (mismo seno, misma duracion, mismo fade): son el ancla
+    aprobada por el PO y no se reinventan — el resto se despacha por cue con las
+    primitivas existentes. Frecuencias: SOLO el ancla (brake/brake_tic) deriva de
+    DEFAULT_FREQS/_tic_freq (por eso es byte-identica a 'seno'); los timbres de
+    gas/turn_in/release usan las frecuencias FIJAS del idioma sonoro por diseno
+    (p.ej. throttle_on 260->520, full_throttle 320->640), NO DEFAULT_FREQS. Diseno
+    y numeros en qa_runs/mariana-20260709-mezcla/PROPUESTA.md.
+    """
+    import numpy as np
+
+    s = _dur_scale(duration)
+    # Ancla aprobada (byte-identica a 'seno': tic 0.08 s fijo, freno con `duration`).
+    if cue == "brake_tic":
+        return _wave_sine(_tic_freq(freqs, step), 0.08, sample_rate)
+    if cue == "brake":
+        return _wave_sine(freqs.get("brake", 1000), duration, sample_rate)
+    # UNICO cue que BAJA: glide descendente ~820->650 Hz.
+    if cue == "brake_release":
+        return _wave_chirp(freqs.get("brake_release", 820), 650, 0.12 * s, sample_rate)
+    # Pluck percusivo: un golpe seco (ataque + caida), no un tono sostenido.
+    if cue == "turn_in":
+        return _wave_pulse(freqs.get("turn_in", 500), 0.10 * s, sample_rate)
+    # Nota brillante ASCENDENTE: el brillo (armonicos) es lo que corta el motor.
+    if cue == "throttle_on":
+        return _wave_bright_rising(260, 520, 0.14 * s, sample_rate)
+    # Doble blip brillante 320->640 Hz x2 ('a fondo').
+    if cue == "full_throttle":
+        blip = _wave_bright_rising(320, 640, 0.07 * s, sample_rate)
+        gap = np.zeros(int(sample_rate * 0.04 * s))
+        return np.concatenate([blip, gap, blip])
+    # Apagados por defecto (DEFAULT_CONFIG enabled=False): solo suenan si el usuario
+    # los activa. Muestra fiel a la propuesta: apex = pip percusivo, coast = zumbido
+    # bajo neutro.
+    if cue == "apex":
+        return _wave_pulse(freqs.get("apex", 400), 0.09 * s, sample_rate)
+    if cue == "coast":
+        return _wave_sine(freqs.get("coast", 160), 0.18 * s, sample_rate)
+    return _wave_sine(freqs.get(cue, 440), 0.12 * s, sample_rate)
+
+
+_PROFILE_SIGNALS = {
+    "timbre": _signal_timbre,
+    "ritmo": _signal_ritmo,
+    "chirp": _signal_chirp,
+    "mezcla": _signal_mezcla,
+}
+
+
+def _validate_sound_profile(sound_profile):
+    if sound_profile not in SOUND_PROFILES:
+        raise ValueError(
+            "perfil de sonido desconocido: %r (validos: %s)"
+            % (sound_profile, ", ".join(SOUND_PROFILES))
+        )
+
+
+# Perfiles cuya sintesis es ADITIVA band-limited (suma de armonicos impares via
+# `_odd_harmonics`): 'timbre' usa `_wave_band_square`/`_wave_band_triangle`. Para
+# ellos el limite REAL no es Nyquist (SR/2) sino `_NYQ_MARGIN*SR`: por encima, el
+# primer armonico ya supera la cota anti-alias y `_odd_harmonics` devuelve lista
+# vacia -> ValueError en plena sintesis (cue mudo). 'seno'/'ritmo'/'chirp' NO
+# pasan por `_odd_harmonics` (seno puro o barrido directo), asi que para ellos la
+# cota correcta sigue siendo Nyquist.
+# OJO 'mezcla': tambien hace sintesis aditiva band-limited (`_wave_bright_rising`
+# -> `_odd_harmonics`), pero HOY es seguro fuera de este set porque sus targets de
+# barrido (520, 640) estan hardcodeados y ninguna freq de usuario llega a
+# `_odd_harmonics`. Si algun dia se cablean esos targets a DEFAULT_FREQS/freqs de
+# usuario, hay que anadir "mezcla" aqui (o subir la cota de `_validate_freqs` a
+# 0.45*SR) o reventara con un ValueError de Nyquist en plena sintesis.
+_BAND_LIMITED_PROFILES = {"timbre"}
+
+
+def _validate_freqs(freqs, sample_rate=24000, sound_profile=DEFAULT_SOUND_PROFILE):
+    """Toda frecuencia base debe ser positiva y por debajo de la cota del perfil.
+
+    build_tone_pack fusiona ``{**DEFAULT_FREQS, **freqs}`` con overrides del
+    usuario (la CLI expone --brake-freq/--apex-freq/--gas-freq): sin este guard,
+    un ``freq <= 0`` colgaba la sintesis aditiva de las paletas (bucle infinito
+    en ``_odd_harmonics``) en vez de fallar.
+
+    La cota SUPERIOR depende del perfil: para los perfiles aditivos band-limited
+    (``_BAND_LIMITED_PROFILES``) es ``_NYQ_MARGIN*SR`` (10800 Hz a 24 kHz), el
+    MISMO limite que exige ``_odd_harmonics``; asi ``--brake-freq 11000
+    --sound-profile timbre`` falla temprano y accionable en la validacion en vez
+    de reventar cripticamente dentro de la sintesis. Para 'seno'/'ritmo'/'chirp'
+    la cota sigue siendo Nyquist (SR/2 = 12000 Hz): NO usan armonicos, asi que
+    11000 Hz ahi es legitimo (seno puro < Nyquist) y aplicarles la cota estricta
+    seria una regresion de comportamiento que rechazaria una frecuencia valida.
+    """
+    if sound_profile in _BAND_LIMITED_PROFILES:
+        cota = _NYQ_MARGIN * sample_rate
+        cota_desc = "%g*SR = %g" % (_NYQ_MARGIN, cota)
+    else:
+        cota = sample_rate / 2
+        cota_desc = "SR/2 = %g" % cota
+    malas = {k: v for k, v in freqs.items() if not (isinstance(v, (int, float)) and 0 < v < cota)}
+    if malas:
+        detalle = ", ".join("%s=%r" % (k, v) for k, v in sorted(malas.items()))
+        raise ValueError(
+            "frecuencia(s) fuera de rango (0, %s) Hz para el perfil %r: %s — revisa "
+            "--brake-freq/--apex-freq/--gas-freq o el dict `freqs`"
+            % (cota_desc, sound_profile, detalle)
+        )
 
 
 def build_tone_pack(
@@ -220,11 +621,22 @@ def build_tone_pack(
     countdown_gap_s=DEFAULT_COUNTDOWN_GAP_S,
     cue_config=None,
     gear_shifts=None,
+    sound_profile=DEFAULT_SOUND_PROFILE,
 ) -> dict:
+    _validate_sound_profile(sound_profile)
+    # Piso de duracion: `duration <= 0` (campo de UI vacio, negativo por accidente)
+    # reventaba las paletas aditivas -- `_dur_scale(0)` volvia 0 todas las
+    # duraciones de diseno y `timbre` fallaba en `_tone_norm` (max de array vacio)
+    # y `chirp` en `_wave_chirp` (division por cero). Se acota AQUI, el unico
+    # choke-point por el que pasan TODOS los callers (CLI y UI), no solo argparse:
+    # asi ningun perfil crashea con 0 ni negativo. 0.02 s sigue siendo un cue
+    # audible corto (mejor un cue breve que un cue mudo en un sistema de aviso).
+    duration = max(duration, _MIN_TONE_DURATION)
     out = Path(outdir)
     out.mkdir(parents=True, exist_ok=True)
     milestones = milestones or DEFAULT_MILESTONES
     freqs = {**DEFAULT_FREQS, **(freqs or {})}
+    _validate_freqs(freqs, sound_profile=sound_profile)
     entries = []
     files = []
     plan = (
@@ -240,19 +652,31 @@ def build_tone_pack(
         else _legacy_tone_events(rows, corners, top, milestones)
     )
     variants = {}
+    silent_filename = None  # WAV silencioso compartido, emitido bajo demanda
 
     for event in plan["events"]:
         distance = int(event["distance"])
         cue = event["cue"]
-        filename = None
         if _cue_sound_enabled(cue_config, cue):
-            data = _render_cue(event, freqs, duration, volume)
+            data = _render_cue(event, freqs, duration, volume, sound_profile=sound_profile)
             variant = variants.get(distance, 0)
             variants[distance] = variant + 1
             filename = "%d_%d.wav" % (distance, variant)
             path = out / filename
             path.write_bytes(data)
             files.append(str(path))
+        else:
+            # Cue MUDO (sound=False, hoy solo `gear`): NO puede quedar con
+            # recordingNames/fileNames vacias -- CrewChief revienta al cruzar
+            # su distancia (getRandomRecordingName indexa recordingNames[0]
+            # sobre la lista vacia -> ArgumentOutOfRangeException, mata el hilo;
+            # issue #9). Referencia el UNICO silent.wav real (amplitud cero,
+            # inaudible): CrewChief carga y "reproduce" silencio, el subtitulo
+            # conserva su entry y el video sigue mudo en ese cue.
+            if silent_filename is None:
+                silent_filename = _write_silent_wav(out)
+                files.append(str(out / silent_filename))
+            filename = silent_filename
         entries.append(_metadata_entry(event["corner_name"], cue, distance, filename))
 
     metadata_path = _write_metadata(out, entries, track_name=track_name)
@@ -380,30 +804,52 @@ def plan_tone_events(
         corner_plan["selected"] = still
 
     # Countdown OPORTUNISTA: por cada frenada protegida con lead_m, 2 tics de
-    # aviso antes de la frenada (en brake_d - lead_m y brake_d - lead_m/2). Cada
-    # tic entra SOLO si cabe a >=min_gap de TODO sonido de OTRO grupo ya en la
-    # linea de tiempo (frenadas y tics de OTRAS curvas). El tono de frenada de
-    # SU MISMA curva y su tic hermano quedan fuera de la comparacion: son un
-    # solo grupo cohesivo (2 tics + el "ya" en brake_d, ADR 0026) y un tic no
-    # puede auto-rechazarse contra el evento que anuncia. Sin esta exclusion,
-    # lead_m < 2*min_gap_m (curvas por debajo de ~103 km/h con el default de
-    # 3.5 s) tiraba el tic step=1 contra su propia frenada. Se recorren en
-    # orden de distancia (greedy) para resolver tic-vs-tic entre curvas.
-    # brake_countdown.enabled gatea este bloque completo: si esta apagado no
-    # se genera ningun tic, pero la frenada protegida (ya en "kept") sigue
-    # sonando intacta. brake_countdown.priority reemplaza el 100 que antes
-    # vivia hardcodeado aqui; no participa en la regla de cabida de arriba
-    # (own_idx sigue siendo la unica exclusion, sin tocar).
+    # aviso antes de la frenada (en brake_d - lead_m y brake_d - lead_m/2). El
+    # tono de frenada de SU MISMA curva y su tic hermano quedan fuera de la
+    # comparacion: son un solo grupo cohesivo (2 tics + el "ya" en brake_d, ADR
+    # 0026) y un tic no puede auto-rechazarse contra el evento que anuncia. Sin
+    # esta exclusion, lead_m < 2*min_gap_m (curvas por debajo de ~103 km/h con
+    # el default de 3.5 s) tiraba el tic step=1 contra su propia frenada. Se
+    # recorren en orden de distancia (greedy) para resolver tic-vs-tic entre
+    # curvas. brake_countdown.enabled gatea este bloque completo: si esta
+    # apagado no se genera ningun tic, pero la frenada protegida (ya en "kept")
+    # sigue sonando intacta. brake_countdown.priority reemplaza el 100 que antes
+    # vivia hardcodeado aqui.
+    #
+    # D2 (ADR 0032) — "solo cede lo que puede ceder". La prueba de cabida del
+    # tic INVIERTE la jerarquia: "espacio ocupado" (que bloquea un tic) pasa a
+    # significar SOLO cues NO-CEDIBLES en su hueco:
+    #   (i)  una frenada PROTEGIDA (el "ya" de seguridad, R1), y
+    #   (ii) un tic del countdown de OTRA curva.
+    # Contra esos el tic se descarta (invariante de seguridad: un tic NUNCA
+    # desplaza una frenada protegida ni a otro tic). Un cue NO protegido cercano
+    # (turn_in, throttle_on, full_throttle, brake_release...) YA NO bloquea: CEDE
+    # su hueco -> el tic se coloca y el cue cedido se descarta con rastro
+    # explicito ("cedio_al_countdown") en skipped_global. Antes cualquier cue
+    # cercano, incluso uno informativo de baja prioridad de la curva ANTERIOR,
+    # tiraba el tic de frenada (el que existe para que el piloto no se pase).
     countdown_cfg = _cue_cfg(cue_config, "brake_countdown")
     tics = []
+    countdown_skipped = []
+    # Cues NO protegidos desplazados por un tic (D2): CEDEN su hueco. Se recogen
+    # aqui para sacarlos de `kept` (no se renderizan) y reconciliar su curva
+    # DESPUES del bucle. Nada de descartes silenciosos.
+    ceded_events = []
     if countdown_cfg["enabled"]:
         # Igual que en la resolucion de cabida global de arriba: un tic de
         # countdown SI suena, asi que solo debe medirse contra otros eventos
         # que TAMBIEN suenan. Sin este filtro, un cambio de marcha mudo cerca
         # de un tic candidato lo tira sin razon -- mismo bug que motivo el
         # split sound/silent, encontrado en el mismo diff (Reviewer 2026-07-08).
+        # Cada entrada lleva (group_idx, distancia, evento_real): el group_idx es
+        # el indice en `kept` de la FRENADA que ancla el grupo cohesivo (para un
+        # evento normal de kept, su propio indice; para un tic aceptado, el
+        # own_idx de su curva). Se guarda el EVENTO REAL que ocupa ese metro
+        # -- no un indice a kept -- para que `against` reporte el cue y la
+        # distancia del sonido que de verdad estorbo, y para poder distinguir
+        # un estorbo NO-CEDIBLE (protegido / brake_tic) de uno CEDIBLE.
         timeline = [
-            (idx, e["distance"])
+            (idx, e["distance"], e)
             for idx, e in enumerate(kept)
             if _cue_sound_enabled(cue_config, e["cue"])
         ]
@@ -414,28 +860,100 @@ def plan_tone_events(
                     d = int(round(e["distance"] - e["lead_m"] * frac))
                     tic_candidates.append((d, step, idx, e))
         for d, step, own_idx, e in sorted(tic_candidates, key=lambda x: x[0]):
+            tic = {
+                "corner_id": e["corner_id"],
+                "corner_name": e["corner_name"],
+                "cue": "brake_tic",
+                "distance": d,
+                "priority": countdown_cfg["priority"],
+                "reason": "aviso de frenada",
+                "step": step,
+            }
+            # Trazabilidad: un tic descartado deja rastro en skipped_global (antes
+            # se perdia con un `continue` mudo y plan.json mentia por omision).
+            # NO entra en plan["events"], que sigue siendo la fuente de verdad de
+            # lo que se renderiza.
             if d <= 0:
+                countdown_skipped.append({**tic, "reason": "antes_de_la_meta"})
                 continue
-            if any(abs(d - t) < min_gap_m for t_idx, t in timeline if t_idx != own_idx):
+            # Particion del hueco (D2): el estorbo NO-CEDIBLE mas cercano veta el
+            # tic; los cues CEDIBLES en el hueco ceden si el tic se coloca.
+            blocker = None  # (distancia, evento) no-cedible mas cercano
+            cede = []  # eventos cedibles que ocupan el hueco
+            for group_idx, t, ev in timeline:
+                # El grupo cohesivo de SU MISMA curva (su frenada y su tic
+                # hermano comparten own_idx) no cuenta ni como estorbo ni como
+                # cesion: se salta por group_idx, no por la identidad del evento.
+                if group_idx == own_idx:
+                    continue
+                if abs(d - t) >= min_gap_m:
+                    continue
+                if ev.get("protected") or ev["cue"] == "brake_tic":
+                    if blocker is None or abs(d - t) < abs(d - blocker[0]):
+                        blocker = (t, ev)
+                else:
+                    cede.append(ev)
+            if blocker is not None:
+                # Invariante de seguridad: el tic se descarta (no desplaza la
+                # frenada protegida ni el tic de otra curva) y deja rastro
+                # contra que evento choco (cue, curva, distancia).
+                against = blocker[1]
+                countdown_skipped.append(
+                    {
+                        **tic,
+                        "reason": "tic_sin_espacio",
+                        "against": {
+                            "corner_id": against["corner_id"],
+                            "cue": against["cue"],
+                            "distance": against["distance"],
+                        },
+                    }
+                )
                 continue
-            timeline.append((own_idx, d))
-            tics.append(
-                {
-                    "corner_id": e["corner_id"],
-                    "corner_name": e["corner_name"],
-                    "cue": "brake_tic",
-                    "distance": d,
-                    "priority": countdown_cfg["priority"],
-                    "reason": "aviso de frenada",
-                    "step": step,
-                }
-            )
+            # Sin estorbo no-cedible: el tic SE COLOCA y los cues cedibles del
+            # hueco CEDEN. Cada uno sale del timeline (para no reevaluarse contra
+            # tics posteriores) y deja rastro explicito apuntando al tic que lo
+            # desplazo.
+            for ev in cede:
+                ceded_events.append(ev)
+                countdown_skipped.append(
+                    {
+                        **ev,
+                        "reason": "cedio_al_countdown",
+                        "against": {
+                            "corner_id": tic["corner_id"],
+                            "cue": "brake_tic",
+                            "distance": d,
+                        },
+                    }
+                )
+            if cede:
+                ceded_now = {id(ev) for ev in cede}
+                timeline = [item for item in timeline if id(item[2]) not in ceded_now]
+            timeline.append((own_idx, d, tic))
+            tics.append(tic)
+
+    # D2: los cues cedibles desplazados salen de `kept` (no se renderizan) y se
+    # reconcilian en su curva (de "selected" a "skipped" con la razon del cese),
+    # igual que la reconciliacion de too_close_global de arriba.
+    if ceded_events:
+        ceded_obj_ids = {id(ev) for ev in ceded_events}
+        kept = [e for e in kept if id(e) not in ceded_obj_ids]
+        ceded_keys = {(ev["corner_id"], ev["cue"], ev["distance"]) for ev in ceded_events}
+        for corner_plan in corners_plan:
+            still = []
+            for sel in corner_plan["selected"]:
+                if (sel["corner_id"], sel["cue"], sel["distance"]) in ceded_keys:
+                    corner_plan["skipped"].append({**sel, "reason": "cedio_al_countdown"})
+                else:
+                    still.append(sel)
+            corner_plan["selected"] = still
 
     all_events = sorted(kept + tics, key=lambda c: c["distance"])
     return {
         "events": [_plan_public(e) for e in all_events],
         "corners": corners_plan,
-        "skipped_global": [_plan_public(e) for e in skipped_global],
+        "skipped_global": [_plan_public(e) for e in skipped_global + countdown_skipped],
     }
 
 
@@ -827,26 +1345,42 @@ def _corner_candidates(
     candidates = []
 
     brake_cfg = _cue_cfg(cue_config, "brake")
-    brake = _milestone(corner, "brake")
-    if brake_cfg["enabled"] and brake and brake.get("d") is not None:
-        brake_d = _as_float(brake["d"])
-        lead_m = _countdown_lead_m(brake, countdown_m, countdown_gap_s)
-        # Tono de frenada UNIVERSAL: toda curva con milestone de frenada suena,
-        # sin importar severidad. Es PROTEGIDO — ningun gap lo descarta (R1), sin
-        # importar su prioridad en config. El countdown (tics de aviso) se
-        # coloca aparte y de forma oportunista en plan_tone_events usando lead_m.
-        candidates.append(
-            _event(
-                row,
-                corner,
-                "brake",
-                brake_d,
-                brake_cfg["priority"],
-                "marca frenada",
-                lead_m=lead_m,
-                protected=True,
+    # ADR 0033: una curva puede traer VARIAS frenadas fuertes reales
+    # (milestones.brake_starts, lista cronologica, solo con >=2). Si no hay
+    # lista (curva de frenada simple), se cae al escalar de siempre
+    # (brake_start, via el alias de _milestone) -- no-regresion exacta. Cada
+    # frenada de la lista suena como un cue "brake" PROTEGIDO propio, con su
+    # propio lead_m: la cabida ya soporta protegido-vs-protegido (dos frenadas
+    # pegadas se quedan las dos, _resolve_min_gap) y su identidad
+    # (corner_id, cue, distance) las distingue una de otra.
+    brake_starts = (corner.get("milestones") or {}).get("brake_starts")
+    if brake_starts:
+        brakes = brake_starts
+    else:
+        brake = _milestone(corner, "brake")
+        brakes = [brake] if brake else []
+    if brake_cfg["enabled"]:
+        for b in brakes:
+            if b.get("d") is None:
+                continue
+            brake_d = _as_float(b["d"])
+            lead_m = _countdown_lead_m(b, countdown_m, countdown_gap_s)
+            # Tono de frenada UNIVERSAL: toda curva con milestone de frenada suena,
+            # sin importar severidad. Es PROTEGIDO — ningun gap lo descarta (R1), sin
+            # importar su prioridad en config. El countdown (tics de aviso) se
+            # coloca aparte y de forma oportunista en plan_tone_events usando lead_m.
+            candidates.append(
+                _event(
+                    row,
+                    corner,
+                    "brake",
+                    brake_d,
+                    brake_cfg["priority"],
+                    "marca frenada",
+                    lead_m=lead_m,
+                    protected=True,
+                )
             )
-        )
 
     release_cfg = _cue_cfg(cue_config, "brake_release")
     release = _milestone(corner, "brake_release")
@@ -1027,6 +1561,7 @@ def _plan_public(event):
         "lead_m",
         "protected",
         "step",
+        "against",
     )
     return {k: event[k] for k in keys if k in event}
 
@@ -1058,13 +1593,45 @@ def _milestone(corner, name):
     return None
 
 
+def _write_silent_wav(outdir):
+    """Emite (una sola vez) el WAV silencioso compartido por los cues mudos.
+
+    Un cue mudo (sound=False, hoy solo `gear`) debe seguir en metadata.json para
+    que build_cue_ass lo subtitule, pero su entry NO puede llevar
+    recordingNames/fileNames vacias: CrewChief revienta al reproducirlo en pista
+    (getRandomRecordingName indexa recordingNames[Random.Next(0)] == [0] sobre la
+    lista vacia -> ArgumentOutOfRangeException, mata el hilo principal la primera
+    vez que el coche cruza esa distancia; issue #9). Por eso todos los cues mudos
+    del pack referencian este UNICO silent.wav real (amplitud cero, inaudible):
+    CrewChief lo carga y "reproduce" silencio sin crashear.
+
+    Se sintetiza con generate_tone a volumen 0 -> PCM de ceros, un WAV mono
+    16-bit valido, misma tuberia (_float_to_wav/_make_wav_bytes) que los cues
+    con sonido; solo el contenido es nulo. Devuelve el NOMBRE de archivo
+    (relativo, como los cues sonoros).
+
+    Hardening #9: escribe SIEMPRE, igual que los WAV sonoros (que se
+    sobreescriben incondicionalmente), en vez del viejo guard `if not
+    path.exists()`. Un dir de salida reutilizado con un `silent.wav`
+    truncado/corrupto de una corrida interrumpida NO se regeneraba y quedaba
+    justo como el WAV-que-CrewChief-no-puede-cargar que #9 busca cerrar. El
+    contenido es determinista (~1 KB de ceros), asi que el resultado es
+    identico al de hoy en el caso sano y AUTO-REPARA el caso corrupto.
+    """
+    path = outdir / _SILENT_WAV_NAME
+    path.write_bytes(generate_tone(440.0, _MIN_TONE_DURATION, volume=0.0))
+    return _SILENT_WAV_NAME
+
+
 def _metadata_entry(name, milestone, distance, filename):
     """Entrada de metadata.json para un cue.
 
-    filename=None (cue con sound=False, p.ej. gear): sin WAV que reproducir,
-    pero la entrada se conserva igual con listas vacias -- build_cue_ass
-    solo lee "description"/"distanceRoundTrack", asi el cue se sigue
-    subtitulando aunque no suene.
+    filename referencia el WAV a reproducir. Los cues mudos (sound=False, p.ej.
+    gear) ya NO llegan con filename=None desde build_tone_pack: reciben el
+    silent.wav compartido (ver _write_silent_wav) para no dejar
+    recordingNames/fileNames vacias, que revientan CrewChief (issue #9). Se
+    conserva el ramal filename=None por robustez (build_cue_ass, que solo lee
+    "description"/"distanceRoundTrack", subtitula el cue igual sin WAV).
     """
     label = MILESTONE_LABELS.get(milestone, milestone)
     names = [filename] if filename else []
@@ -1082,22 +1649,31 @@ def _metadata_entry(name, milestone, distance, filename):
     }
 
 
-def _render_cue(event, freqs, duration, volume):
-    """Sintetiza el WAV de un evento del plan segun su cue.
+def _render_cue(event, freqs, duration, volume, sound_profile=DEFAULT_SOUND_PROFILE):
+    """Sintetiza el WAV de un evento del plan segun su cue y el perfil de sonido.
 
     Cada evento del plan ya trae su distancia final (los tics del countdown y
     el tono de frenada son eventos independientes, colocados en plan_tone_events).
     El tic asciende en frecuencia por su `step` (COUNTDOWN_SCALE); el tono de
     frenada suena mas largo y a otra frecuencia para no confundirlo con el tic.
+
+    `sound_profile` cambia SOLO la forma de onda / duracion / envolvente, nunca
+    las frecuencias base (DEFAULT_FREQS). "seno" (default) es el comportamiento
+    de HOY, byte-identico; timbre/ritmo/chirp son las variantes de la evidencia
+    de qa_runs/2026-07-09-sonidos/ (ver SOUND_PROFILES).
     """
     cue = event["cue"]
-    if cue == "brake_tic":
-        base = freqs.get("brake_countdown", 880)
-        scale = COUNTDOWN_SCALE[event.get("step", 0)]
-        return generate_tone(base * scale, 0.08, volume=volume)
-    if cue == "brake":
-        return generate_tone(freqs.get("brake", 1000), duration, volume=volume)
-    return generate_tone(freqs.get(cue, 440), duration, volume=volume)
+    if sound_profile == "seno":
+        if cue == "brake_tic":
+            base = freqs.get("brake_countdown", DEFAULT_FREQS["brake_countdown"])
+            scale = COUNTDOWN_SCALE[event.get("step", 0)]
+            return generate_tone(base * scale, 0.08, volume=volume)
+        if cue == "brake":
+            return generate_tone(freqs.get("brake", 1000), duration, volume=volume)
+        return generate_tone(freqs.get(cue, 440), duration, volume=volume)
+    _validate_sound_profile(sound_profile)
+    sig = _PROFILE_SIGNALS[sound_profile](cue, event.get("step", 0), freqs, 24000, duration)
+    return _float_to_wav(sig, volume, 24000)
 
 
 def _write_metadata(outdir, entries, track_name=None):

@@ -6,8 +6,25 @@ Metodologia (validada contra telemetria real del Nordschleife):
   'kink' (pico de G lateral sostenido sin caida de velocidad).
 - Los hitos de cada curva se extraen SOLO dentro de su segmento (punto medio con
   las curvas vecinas) para no contaminarse con la frenada de la curva siguiente.
-- La frenada real es el ultimo bloque de freno con pico >= 50%; los blips de
-  trail-braking no cuentan como inicio de frenada.
+- EXCEPCION (frenada): la deteccion de frenada usa una ventana propia, mas ancha,
+  que arranca justo despues del apice de la curva PREVIA (no en el punto medio
+  entre apices). El punto medio caia dentro de la zona de frenado cuando la curva
+  anterior es un kink sin frenada, y truncaba el inicio real de la frenada de esta
+  curva. Regla de propiedad: cada curva es DUENA de toda fase de frenada posterior
+  al apice de su vecina previa; nada antes de ese apice se le atribuye (no se roba
+  la frenada de la anterior), y un kink sin frenada nunca absorbe la frenada de la
+  curva siguiente (esa frenada cae despues del apice del kink, no antes).
+- Los bloques de freno se agrupan en FASES: bloques consecutivos separados por
+  menos de `phase_gap_s` y con el coche aun desacelerando en el hueco se funden
+  (una suelta breve para rotar, no una accion distinta). El piso de intensidad
+  `brake_strong` es un FILTRO: descarta las fases que no lo alcanzan (el freno
+  de verdad, el que evita pasarse de curva). Entre las fases que sobreviven al
+  filtro, el inicio ancla en la PRIMERA muestra de la de PICO MAXIMO -- el cue
+  marca donde empezar a cargar el pedal hacia el maximo freno aprovechando la
+  transferencia de peso; ante empate de pico, la mas tardia (la que entra al
+  apex). Si ninguna fase alcanza el piso, la ultima fase cronologica. Un blip
+  de trail-braking debil y previo queda en su propia fase, por debajo del piso,
+  y no adelanta el hito.
 - El gas real (`throttle_on`) exige throttle sostenido, igual que `full_throttle`;
   un roce fugaz de pedal no cuenta como inicio de aceleracion.
 - Entre el fin de la frenada (o el lift) y el gas sostenido puede existir un
@@ -15,6 +32,27 @@ Metodologia (validada contra telemetria real del Nordschleife):
   `coast_start`/`coast_end` cuando existe hueco (si el gas se solapa con el
   freno, no hay coast).
 """
+
+# Umbrales de frenada, fuente unica compartida por `extract_milestones` (mide la
+# referencia) y `compare._corner_metrics` (mide al piloto). Estan aqui, en un solo
+# sitio, para que ambos lados se midan con la MISMA vara: si un lado usara otros
+# valores, `d_brake_m` saldria asimetrico (ver ADR 0031). `BRAKE_LOOKBACK_M` es el
+# tope de look-back de la ventana de frenada (y de la propiedad por apice previo).
+BRAKE_ON = 10
+BRAKE_STRONG = 50
+PHASE_GAP_S = 0.5
+# Piso de gas readministrado que separa dos frenadas reales (ADR 0033): en el
+# hueco entre dos bloques de freno, un `throttle` por encima de este umbral es
+# "volvi a acelerar y frene otra vez", no "solte un instante para rotar"
+# (trail-braking). Valor inicial afinable; solo lo consume `detect_brakings`.
+THROTTLE_REAPPLY = 15
+# El gas readministrado debe ser SOSTENIDO, no un blip de una sola muestra
+# (ruido de sensor de 1 frame no debe partir un trail-braking real en dos
+# frenadas). Mismo criterio que `throttle_on`/`full_throttle`: umbral + N
+# muestras seguidas, aqui ~0.15s convertidas via `_window_samples` (dt real de
+# la vuelta, floor=3 muestras minimo aunque el muestreo sea muy lento).
+THROTTLE_REAPPLY_WINDOW_S = 0.15
+BRAKE_LOOKBACK_M = 450
 
 
 def samples(lap):
@@ -93,18 +131,167 @@ def detect_corners(lap, vmin_window_s=1.2, vmin_prominence_kmh=3.0, kink_glat=2.
     return events, data
 
 
+def select_brake_phase(
+    lap_samples, window_m, brake_on=BRAKE_ON, brake_strong=BRAKE_STRONG, phase_gap_s=PHASE_GAP_S
+):
+    """Elige la fase de frenada dentro de una ventana de busqueda.
+
+    Helper COMPARTIDO por `extract_milestones` (mide la referencia) y
+    `compare._corner_metrics` (mide al piloto). Vive aqui, en un solo sitio, a
+    proposito: cuando cada lado tenia su propia copia del algoritmo y su propia
+    ventana, `d_brake_m` salia asimetrico y levantaba banderas `"frenada"`
+    espurias incluso comparando una vuelta contra si misma. Con este helper
+    ambos lados se miden con la MISMA vara.
+
+    `window_m` = [lo, hi]: se consideran las muestras con `lo < dist <= hi`
+    (misma semantica excl-incl que la ventana de frenada ampliada
+    `brake_lo < dist <= apex`). Los puntos con `brake` > `brake_on` se agrupan
+    en bloques (hueco temporal intra-bloque < 0.3 s) y los bloques consecutivos
+    se funden en FASES cuando el hueco es < `phase_gap_s` y el coche sigue
+    desacelerando en el hueco (una suelta breve para rotar). El piso
+    `brake_strong` FILTRA las fases; entre las que quedan gana la de PICO
+    MAXIMO (desempate a la mas tardia); si ninguna alcanza el piso, la ultima
+    fase cronologica.
+
+    Devuelve `(chosen, phases)`: `chosen` es la fase elegida (lista de muestras)
+    o `None` si no hubo frenada; `phases` es la lista completa de fases -- la
+    necesita `brake_release`, que se ancla tras la ULTIMA fase cronologica.
+    """
+    lo, hi = window_m
+    win = [s for s in lap_samples if lo < s["dist"] <= hi]
+    blocks, cur = [], None
+    for s in win:
+        if s.get("brake", 0) > brake_on:
+            if cur and s["time"] - cur[-1]["time"] < 0.3:
+                cur.append(s)
+            else:
+                cur = [s]
+                blocks.append(cur)
+    if not blocks:
+        return None, []
+    phases = [list(blocks[0])]
+    for b in blocks[1:]:
+        prev_last = phases[-1][-1]
+        gap_s = b[0]["time"] - prev_last["time"]
+        still_braking = b[0]["speed"] <= prev_last["speed"] + 2.0
+        if gap_s < phase_gap_s and still_braking:
+            phases[-1].extend(b)
+        else:
+            phases.append(list(b))
+    peaks = [max(s["brake"] for s in ph) for ph in phases]
+    strong = [i for i, pk in enumerate(peaks) if pk >= brake_strong]
+    if strong:
+        top = max(peaks[i] for i in strong)
+        chosen = phases[max(i for i in strong if peaks[i] == top)]
+    else:
+        chosen = phases[-1]
+    return chosen, phases
+
+
+def detect_brakings(
+    lap_samples,
+    window_m,
+    brake_on=BRAKE_ON,
+    brake_strong=BRAKE_STRONG,
+    throttle_reapply=THROTTLE_REAPPLY,
+    throttle_reapply_window_s=THROTTLE_REAPPLY_WINDOW_S,
+):
+    """Detecta TODA frenada fuerte real dentro de la ventana, para el audio de
+    pacenotes (ADR 0033). Hermana de `select_brake_phase`, pero responde otra
+    pregunta: no "cual es EL punto de frenada comparable" (metrica de coaching)
+    sino "que frenadas deben SONAR" (audio del piloto).
+
+    Agrupa las muestras con `brake` > `brake_on` en BLOQUES (hueco temporal
+    intra-bloque < 0.3 s), igual que `select_brake_phase`. Funde bloques
+    consecutivos en una misma frenada SALVO que en el hueco entre ellos el
+    piloto readministre gas de forma SOSTENIDA: al menos `throttle_reapply_window_s`
+    (~0.15s, convertidos a muestras via el `dt` real de la vuelta, floor=3) de
+    muestras SEGUIDAS del hueco con `throttle` >= `throttle_reapply`. Eso separa
+    "volvi a acelerar y frene otra vez" de "solte un instante para rotar"
+    (trail-braking); una unica muestra aislada por encima del umbral (blip de
+    ruido de 1 frame) ya NO parte la frenada -- mismo criterio de sostenido que
+    `throttle_on`/`full_throttle` en `extract_milestones`. Si el pedal nunca
+    baja de `brake_on` es un solo bloque y la fusion ni se evalua, asi que el
+    arrastre modulado jamas se parte en dos avisos.
+
+    Devuelve la lista CRONOLOGICA de frenadas FUERTES (pico
+    `max(s["brake"]) >= brake_strong`), cada una lista de muestras. Sin canal
+    `throttle`, `.get` da 0, que nunca supera el umbral: todo se funde en una
+    frenada (el comportamiento previo al ADR 0033).
+    """
+    lo, hi = window_m
+    win = [s for s in lap_samples if lo < s["dist"] <= hi]
+    blocks, cur = [], None
+    for s in win:
+        if s.get("brake", 0) > brake_on:
+            if cur and s["time"] - cur[-1]["time"] < 0.3:
+                cur.append(s)
+            else:
+                cur = [s]
+                blocks.append(cur)
+    if not blocks:
+        return []
+    dt = (lap_samples[-1]["time"] - lap_samples[0]["time"]) / max(1, len(lap_samples) - 1)
+    reapply_window = _window_samples(dt, throttle_reapply_window_s)
+    brakings = [list(blocks[0])]
+    for b in blocks[1:]:
+        prev_last = brakings[-1][-1]
+        gap = [s for s in win if prev_last["time"] < s["time"] < b[0]["time"]]
+        reapplied = any(
+            len(gap[j : j + reapply_window]) == reapply_window
+            and all(x.get("throttle", 0) >= throttle_reapply for x in gap[j : j + reapply_window])
+            for j in range(len(gap))
+        )
+        if reapplied:
+            brakings.append(list(b))
+        else:
+            brakings[-1].extend(b)
+    return [fr for fr in brakings if max(s["brake"] for s in fr) >= brake_strong]
+
+
 def extract_milestones(
     lap,
     events=None,
-    brake_on=10,
-    brake_strong=50,
+    brake_on=BRAKE_ON,
+    brake_strong=BRAKE_STRONG,
     throttle_on=5,
     full_throttle=98,
     turn_in_deg=8,
     throttle_on_window_s=0.3,
+    phase_gap_s=PHASE_GAP_S,
 ):
-    """Extrae los hitos de cada curva, con segmentacion por curva.
-    Devuelve lista de dicts estilo corners.json."""
+    """Extrae los hitos de cada curva, con segmentacion por curva. Devuelve
+    lista de dicts estilo corners.json.
+
+    Frenada (`brake_start`): los puntos con `brake` > `brake_on` se agrupan en
+    bloques y los bloques se funden en FASES cuando el hueco temporal entre
+    ellos es menor que `phase_gap_s` y el coche sigue desacelerando (una suelta
+    breve para rotar). El piso `brake_strong` FILTRA las fases (solo cuentan las
+    que lo alcanzan); entre las que quedan, `brake_start` ancla en la primera
+    muestra de la de PICO MAXIMO -- el cue marca donde empezar a cargar el pedal
+    hacia el maximo freno. Ante empate de pico gana la mas tardia; si ninguna
+    fase alcanza el piso, la ultima fase cronologica. `brake_release` se ancla
+    al final de la ULTIMA fase cronologica (no la ganadora), para que una
+    reaplicacion suave de freno posterior a la fase fuerte no lo adelante al
+    hueco intermedio; como consecuencia fisica esperada del trail-braking, el
+    release puede caer pasado el apex (siempre dentro del segmento).
+
+    Turn-in (`turn_in`): primer CRUCE ASCENDENTE del umbral `turn_in_deg` sobre
+    las muestras de `data` con `time >= t0` (t0 = `brake_start`, o el inicio de
+    `pre` si la curva no frena) y `dist <= ad` (el apex). La ventana arranca en
+    la frenada, no en `segment_m[0]`: si la frenada precede al segmento (curva
+    tras un kink), el turn-in que la sigue tambien puede caer antes de
+    `segment_m[0]`, y acotarlo al segmento lo perderia. Ampliar la ventana hacia
+    atras no reabre la puerta al volante residual de la curva previa del mismo
+    sentido: ese volante entra ya POR ENCIMA del umbral y solo DECRECE, no
+    produce cruce ascendente.
+
+    Invariante de `segment_m`: `brake_start` PUEDE preceder a `segment_m[0]`
+    cuando la curva anterior es un kink sin frenada (la ventana de frenada
+    arranca tras el apex previo, mas atras que el punto medio del segmento). Los
+    consumidores de `segment_m` NO deben asumir que los hitos caen dentro del
+    segmento.
+    """
     if events is None:
         events, data = detect_corners(lap)
     else:
@@ -116,6 +303,10 @@ def extract_milestones(
     throttle_on_window = _window_samples(dt, throttle_on_window_s)
     apex_ds = [data[i]["dist"] for _, i in events]
     corners = []
+    # Apice PUBLICADO (V-Min redondeado) del ultimo corner que se ANEXO: es la
+    # misma ancla del borde bajo de la ventana de frenada que `compare` encadena
+    # en `prev_apex_d`. Ver la nota extensa junto al calculo de `brake_window`.
+    prev_pub_apex = None
     for n, (kind, ai) in enumerate(events):
         ad = data[ai]["dist"]
         lo = (apex_ds[n - 1] + ad) / 2 if n > 0 else ad - 450
@@ -128,39 +319,95 @@ def extract_milestones(
             continue
         ap = min(pre[-20:] + post[:20], key=lambda s: s["speed"])
         ms = {}
-        # bloques de frenada
-        blocks, cur = [], None
-        for s in pre:
-            if s.get("brake", 0) > brake_on:
-                if cur and s["time"] - cur[-1]["time"] < 0.3:
-                    cur.append(s)
-                else:
-                    cur = [s]
-                    blocks.append(cur)
-        no_brake = not blocks
+        # --- deteccion de frenada (ventana propia, ver docstring) --------
+        # Ventana de frenada mas ancha que el segmento: desde justo despues del
+        # apice de la curva previa hasta este apice. Asi no se trunca el inicio
+        # real de la frenada cuando la curva anterior es un kink sin frenada
+        # (su punto medio caia en mitad de la zona de frenado). `ad - 450` es el
+        # mismo tope de look-back que `lo`; la frontera de propiedad es el apice
+        # previo (no se roba la frenada de la vecina anterior).
+        # Auto-consistencia (ADR 0031, Opcion A): la ventana de frenada se deriva
+        # del apice PUBLICADO (el V-Min `ap`, no el apice de EVENTO `ad`) y del
+        # apice publicado del corner previo ANEXADO -- exactamente las anclas que
+        # `compare._corner_metrics` reconstruye a partir del contexto publicado.
+        # Antes esta ventana usaba el apice de EVENTO (`ad` y `apex_ds[n-1]`),
+        # mientras se PUBLICABA el V-Min como apice: cuando el corner previo es un
+        # kink cuyo V-Min retrasa al pico de glat, ambas anclas divergian y una
+        # misma frenada continua se atribuia empezando en metros distintos entre
+        # referencia y piloto (d_brake_m espurio comparando una vuelta contra si
+        # misma). Al derivar de lo PUBLICADO, productor y consumidor usan la misma
+        # ancla por construccion.
+        apex_pub_d = round(ap["dist"])
+        brake_lo = (
+            max(prev_pub_apex, apex_pub_d - BRAKE_LOOKBACK_M)
+            if prev_pub_apex is not None
+            else apex_pub_d - BRAKE_LOOKBACK_M
+        )
+        # Ventana de frenada INTERNA: NO se publica en el dict de la curva. El
+        # ADR 0031 descarta la Opcion C (exponer `brake_window_m`) y adopta la
+        # Opcion A. Se redondea a enteros antes de filtrar, de modo que referencia
+        # y piloto usen limites byte-identicos: esa es la condicion para que
+        # d_brake_m == 0 cuando son la misma vuelta.
+        brake_window = [round(brake_lo), round(apex_pub_d)]
+        # El corner ya no puede saltarse (el unico `continue` quedo arriba), asi
+        # que este apice publicado sera el `prev_pub_apex` del siguiente anexado.
+        prev_pub_apex = apex_pub_d
+        phase, phases = select_brake_phase(data, brake_window, brake_on, brake_strong, phase_gap_s)
+        no_brake = phase is None
         overlap = None
-        if blocks:
-            strong = [b for b in blocks if max(s["brake"] for s in b) >= brake_strong]
-            blk = strong[-1] if strong else blocks[-1]
-            bs, bmax = blk[0], max(blk, key=lambda s: s["brake"])
+        if phase is not None:
+            bs = phase[0]
+            bmax = max(phase, key=lambda s: s["brake"])
             ms["brake_start"] = _pt(bs, brake_pct=round(bmax["brake"]))
+            # brake_release: cuando el piloto solto el freno de verdad, tras la
+            # ULTIMA fase cronologica (no la ganadora). Si tras la fase fuerte
+            # hay una reaplicacion mas suave, el release cae despues de ella y no
+            # en el hueco intermedio. Se busca sobre `data` (no `seg`) acotado
+            # por `hi`, para no depender de donde arranca el segmento.
+            last_end_t = phases[-1][-1]["time"]
             rel = next(
-                (s for s in seg if s["time"] > blk[-1]["time"] - 0.02 and s.get("brake", 0) < 2),
+                (
+                    s
+                    for s in data
+                    if s["time"] > last_end_t - 0.02 and s["dist"] <= hi and s.get("brake", 0) < 2
+                ),
                 None,
             )
             if rel:
                 ms["brake_release"] = _pt(rel)
+            # brake_starts (ADR 0033): lista audible de TODA frenada fuerte real
+            # sobre la MISMA ventana que `select_brake_phase`. Aditiva y opcional
+            # -- solo aparece con >=2 frenadas fuertes; no toca el escalar
+            # `brake_start` ni a `compare`. Su unico consumidor es viz/pacenotes.
+            fuertes = detect_brakings(data, brake_window, brake_on, brake_strong)
+            if len(fuertes) >= 2:
+                ms["brake_starts"] = [
+                    _pt(fr[0], brake_pct=round(max(s["brake"] for s in fr))) for fr in fuertes
+                ]
         elif pre and "throttle" in pre[0]:
             lift = min(pre, key=lambda s: s["throttle"])
             if lift["throttle"] < 80:
                 ms["lift"] = _pt(lift, throttle_pct=round(lift["throttle"]))
-        # turn-in
+        # turn-in: exige CRUCE ASCENDENTE del umbral (muestra previa
+        # <= turn_in_deg, actual >). El volante residual de la curva anterior
+        # del mismo sentido entra ya por encima del umbral y solo decrece, asi
+        # que NO produce cruce y no dispara un turn-in espurio cientos de metros
+        # antes. Se busca sobre `data` desde t0 (brake_start, o el inicio de
+        # `pre` si no hay frenada) hasta el apex: cuando la frenada precede al
+        # segmento (curva tras un kink), el turn-in tambien puede caer antes de
+        # `segment_m[0]`, y acotarlo a `pre` lo perderia.
         if "steering" in ap:
             sign = 1 if ap["steering"] > 0 else -1
             t0 = ms["brake_start"]["t"] if "brake_start" in ms else pre[0]["time"]
-            ti = next(
-                (s for s in pre if s["time"] >= t0 and s["steering"] * sign > turn_in_deg), None
-            )
+            scan = [s for s in data if s["time"] >= t0 and s["dist"] <= ad]
+            ti = None
+            for k in range(1, len(scan)):
+                if (
+                    scan[k - 1]["steering"] * sign <= turn_in_deg
+                    and scan[k]["steering"] * sign > turn_in_deg
+                ):
+                    ti = scan[k]
+                    break
             if ti and ti["time"] < ap["time"]:
                 ms["turn_in"] = _pt(ti)
         # gas: ancla en el throttle SOSTENIDO, no en el primer cruce del umbral

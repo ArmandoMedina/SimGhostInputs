@@ -11,7 +11,7 @@ bifurcación equivocada.
 | # | Título | Estado | Fecha |
 |---|---|---|---|
 | [0001](0001-sync-offset.md) | Auto-detección del offset de sincronía | Aceptada | 2026-06 |
-| [0002](0002-crewchief-pacenotes.md) | Integración con CrewChief vía Pace Notes | Propuesta (diferida post-v1.0) | 2026-06-14 |
+| [0002](0002-crewchief-pacenotes.md) | Integración con CrewChief vía Pace Notes | Aceptada · implem. (v2.0) · enmend. 2026-07-09 | 2026-06-14 |
 | [0003](0003-testing.md) | Estrategia de pruebas automatizadas | Aceptada | 2026-06-17 |
 | [0004](0004-desgaste-acumulable.md) | Desgaste de llanta acumulable (medidor tipo gasolina) | Aceptada · enmend. 2026-06-22 | 2026-06-21 |
 | [0005](0005-indicadores-instantaneos.md) | Indicadores de estado del HUD se leen en el cursor, no por ventana | Aceptada · enmend. 2026-06-22 | 2026-06-21 |
@@ -34,8 +34,12 @@ bifurcación equivocada.
 | [0022](0022-ci-release-installer.md) | CI que genera y adjunta el instalador Windows en cada release (versión parametrizada, job muerto eliminado) | Aceptada | 2026-07-05 |
 | [0023](0023-fuente-unica-de-version.md) | Fuente única de verdad de la versión: literal `__version__` en `fantasma/__init__.py` | Aceptada | 2026-07-05 |
 | [0024](0024-sincronia-pace-notes.md) | Sincronía de pace notes: anticipación por tiempo, gap global y sidecar video↔vuelta | Aceptada · enmend. 2026-07-09 | 2026-07-05 |
-| [0025](0025-countdown-ancla-en-la-frenada.md) | El último tono del countdown ES el punto de frenada (enmienda ADR 0024) | Aceptada · enmend. 2026-07-06 | 2026-07-06 |
-| [0026](0026-cues-frenada-universal-countdown-oportunista.md) | Cues de frenada universales: tono protegido, countdown oportunista y fuera el tono de apex (enmienda ADR 0024 y 0025) | Aceptada · enmend. 2026-07-08 | 2026-07-06 |
+| [0025](0025-countdown-ancla-en-la-frenada.md) | El último tono del countdown ES el punto de frenada (enmienda ADR 0024) | Aceptada · enmend. 2026-07-06, 2026-07-09 | 2026-07-06 |
+| [0026](0026-cues-frenada-universal-countdown-oportunista.md) | Cues de frenada universales: tono protegido, countdown oportunista y fuera el tono de apex (enmienda ADR 0024 y 0025) | Aceptada · enmend. 2026-07-08, 2026-07-09 | 2026-07-06 |
 | [0027](0027-cues-catalogo-configurable-perfiles-coast-subtitulos.md) | Cues como catálogo configurable con prioridad, perfiles compartibles, coast y subtítulos quemados (enmienda ADR 0024, 0025 y 0026) | Aceptada · enmend. 2026-07-08 | 2026-07-08 |
 | [0028](0028-cues-reencuadre-prioridades-countdown-frecuencias-gear.md) | Reencuadre de prioridades, countdown uniforme, frecuencias y cue `gear` solo-subtítulo (enmienda ADR 0025 y 0027) | Aceptada · enmend. 2026-07-08, 2026-07-09 | 2026-07-08 |
 | [0029](0029-lockfile-pip-compile.md) | Lockfile de dependencias con `pip-compile` | Aceptada | 2026-07-09 |
+| [0030](0030-modos-estudio-en-vivo-que-ancla-cada-cue.md) | Modos estudio y en vivo: qué ancla cada cue (posición → pack; estado del coche → en vivo; enmienda ADR 0028) | Aceptada | 2026-07-09 |
+| [0031](0031-propiedad-de-la-frenada-y-contrato-de-segment-m.md) | Propiedad de la frenada y contrato de `segment_m`: los hitos mandan, `segment_m` no contiene; `brake_start` en la fase de pico máximo (enmienda ADR 0025, 0026 y 0028) | Aceptada · enmend. 2026-07-10 | 2026-07-09 |
+| [0032](0032-regla-de-cabida-del-countdown-solo-cede-lo-que-puede-ceder.md) | Regla de cabida del countdown: solo cede lo que puede ceder — el tic desplaza cues no protegidos, nunca una frenada protegida (enmienda ADR 0025, 0026 y 0028) | Aceptada (revisable) | 2026-07-09 |
+| [0033](0033-frenadas-multiples-por-curva.md) | Frenadas múltiples por curva: cada frenada real suena — `brake_start` escalar no cambia, `brake_starts` (lista) nuevo para el audio (enmienda ADR 0031) | Aceptada | 2026-07-10 |

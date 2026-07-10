@@ -283,6 +283,10 @@ def test_countdown_antes_de_la_meta_omite_tic_pero_conserva_la_frenada():
     # solo el tic que cabe (40) se coloca; el que caeria antes de la meta se omite
     tics = [e for e in plan["events"] if e["cue"] == "brake_tic"]
     assert [e["distance"] for e in tics] == [40]
+    # trazabilidad (D1): el tic omitido antes de la meta deja rastro en
+    # skipped_global (antes se perdia con un `continue` mudo y plan.json mentia).
+    skipped_tics = [s for s in plan["skipped_global"] if s["cue"] == "brake_tic"]
+    assert any(s["reason"] == "antes_de_la_meta" and s["distance"] <= 0 for s in skipped_tics)
 
 
 def test_frenada_protegida_sobrevive_vecino_de_mayor_prioridad():
@@ -328,6 +332,137 @@ def test_dos_frenadas_pegadas_ambas_suenan():
     plan = plan_tone_events(rows, corners, top=2, min_gap_m=50)
     brakes = sorted(e["distance"] for e in plan["events"] if e["cue"] == "brake")
     assert brakes == [1000, 1030]
+
+
+def test_brake_starts_emite_dos_cues_de_frenada():
+    """ADR 0033: milestones.brake_starts (>=2 frenadas reales) hace que
+    pacenotes emita un cue "brake" protegido POR CADA frenada de la lista --
+    eso es lo GARANTIZADO (R1, nunca cede). El countdown (tics de aviso) es
+    oportunista (ADR 0032): aquí las dos frenadas están pegadas (75 m, C05
+    real) y el countdown de la segunda puede no caber -- ver
+    test_brake_starts_pegadas_segunda_cede_countdown para el caso separado."""
+    from fantasma.viz.pacenotes import plan_tone_events
+
+    rows = [{"id": "C05", "name": "C05", "time_lost": 0.5, "flags": "frenada"}]
+    corners = [
+        {
+            "id": "C05",
+            "name": "C05",
+            "milestones": {
+                "brake_start": {"d": 1042, "v": 216},
+                "brake_starts": [
+                    {"d": 1042, "v": 216},
+                    {"d": 1117, "v": 180},
+                ],
+            },
+        }
+    ]
+    plan = plan_tone_events(rows, corners, top=1, min_gap_m=50)
+    brakes = [e for e in plan["events"] if e["cue"] == "brake"]
+    assert sorted(e["distance"] for e in brakes) == [1042, 1117]
+    assert all(e.get("protected") for e in brakes)
+
+
+def test_brake_starts_pegadas_segunda_cede_countdown():
+    """ADR 0033 + ADR 0032: dos frenadas reales pegadas (75 m, caso C05).
+    Ambos cues "brake" protegidos suenan SIEMPRE (R1) -- eso no es negociable.
+    El countdown de la SEGUNDA frenada, en cambio, es oportunista: su primer
+    tic cae a <50 m del cue "brake" de la PRIMERA (protegido, no-cedible) y se
+    descarta con razón "tic_sin_espacio" -- es el comportamiento ESPERADO por
+    diseño (D2, ADR 0032: un tic nunca desplaza una frenada protegida), no un
+    bug. No se fuerza doble countdown."""
+    from fantasma.viz.pacenotes import plan_tone_events
+
+    rows = [{"id": "C05", "name": "C05", "time_lost": 0.5, "flags": "frenada"}]
+    corners = [
+        {
+            "id": "C05",
+            "name": "C05",
+            "milestones": {
+                "brake_start": {"d": 1042, "v": 216},
+                "brake_starts": [
+                    {"d": 1042, "v": 216},
+                    {"d": 1117, "v": 180},
+                ],
+            },
+        }
+    ]
+    plan = plan_tone_events(rows, corners, top=1, min_gap_m=50)
+    brakes = [e for e in plan["events"] if e["cue"] == "brake"]
+    assert sorted(e["distance"] for e in brakes) == [1042, 1117]
+    assert all(e.get("protected") for e in brakes)
+
+    # La primera frenada SI consigue countdown (nada le disputa el hueco).
+    tics = [e for e in plan["events"] if e["cue"] == "brake_tic"]
+    assert tics, "la primera frenada debe conservar su countdown"
+
+    # La segunda cede su countdown ante la frenada protegida vecina: rastro
+    # explícito en skipped_global, no una perdida muda.
+    tic_sin_espacio = [
+        s
+        for s in plan["skipped_global"]
+        if s.get("cue") == "brake_tic" and s.get("reason") == "tic_sin_espacio"
+    ]
+    assert tic_sin_espacio, "el tic descartado debe quedar trazado, no perderse"
+
+
+def test_brake_starts_muy_separadas_ambas_reciben_countdown():
+    """ADR 0033 + ADR 0032: cuando las dos frenadas de brake_starts están MUY
+    separadas entre sí (300 m, >200 m) y lejos del inicio de vuelta, sobra
+    espacio: el countdown oportunista alcanza para AMBAS, ninguna cede su
+    hueco a la otra. Contraste con test_brake_starts_pegadas_segunda_cede_countdown,
+    donde 75 m de separación SI hace que la segunda ceda -- ambos son
+    correctos, la diferencia es la geometría de la curva, no un bug."""
+    from fantasma.viz.pacenotes import plan_tone_events
+
+    rows = [{"id": "C05", "name": "C05", "time_lost": 0.5, "flags": "frenada"}]
+    corners = [
+        {
+            "id": "C05",
+            "name": "C05",
+            "milestones": {
+                "brake_start": {"d": 1000, "v": 200},
+                "brake_starts": [
+                    {"d": 1000, "v": 200},
+                    {"d": 1300, "v": 200},
+                ],
+            },
+        }
+    ]
+    plan = plan_tone_events(rows, corners, top=1, min_gap_m=50)
+    brakes = [e for e in plan["events"] if e["cue"] == "brake"]
+    assert sorted(e["distance"] for e in brakes) == [1000, 1300]
+    assert all(e.get("protected") for e in brakes)
+
+    tics = [e for e in plan["events"] if e["cue"] == "brake_tic"]
+    assert len(tics) == 4, "con espacio de sobra, las 2+2 tics de ambas frenadas caben"
+
+    tic_sin_espacio = [
+        s
+        for s in plan["skipped_global"]
+        if s.get("cue") == "brake_tic" and s.get("reason") == "tic_sin_espacio"
+    ]
+    assert not tic_sin_espacio, "con las frenadas muy separadas ningun tic deberia ceder"
+
+
+def test_brake_start_simple_sigue_emitiendo_uno():
+    """No-regresion: una curva de frenada simple (sin brake_starts en el
+    milestone) sigue emitiendo exactamente un cue "brake"."""
+    from fantasma.viz.pacenotes import plan_tone_events
+
+    rows = [{"id": "C01", "name": "C01", "time_lost": 0.5, "flags": "frenada"}]
+    corners = [
+        {
+            "id": "C01",
+            "name": "C01",
+            "milestones": {"brake_start": {"d": 1000, "v": 200}},
+        }
+    ]
+    plan = plan_tone_events(rows, corners, top=1, min_gap_m=50)
+    brakes = [e for e in plan["events"] if e["cue"] == "brake"]
+    assert len(brakes) == 1
+    assert brakes[0]["distance"] == 1000
+    assert brakes[0].get("protected") is True
 
 
 def test_dos_countdowns_encadenados_no_amontonan_tics():
@@ -387,10 +522,13 @@ def test_countdown_tics_no_se_autorrechazan_contra_su_propia_frenada():
     assert tics == [1962, 1981]
 
 
-def test_countdown_tic_de_otra_curva_si_se_descarta_por_cabida():
-    """La exclusion del propio grupo no exime a un tic de respetar la cabida
-    contra OTRAS curvas — eso reabriria el bug 4463 (ADR 0026): un tic que
-    caeria a <min_gap_m de un evento ajeno se sigue descartando."""
+def test_countdown_cue_no_protegido_cede_el_hueco_al_tic():
+    """D2 (ADR 0032), caso (a): un cue NO protegido de OTRA curva (throttle_on)
+    que cae en el hueco de un tic del countdown YA NO lo bloquea — CEDE su
+    hueco. El tic SE COLOCA y el throttle_on desplazado deja rastro en
+    skipped_global con razon 'cedio_al_countdown' apuntando al tic que lo
+    desplazo (nada de descartes silenciosos). Antes (bug D2) el tic de frenada
+    se descartaba por un cue informativo de la curva previa."""
     from fantasma.viz.pacenotes import plan_tone_events
 
     rows = [
@@ -399,14 +537,95 @@ def test_countdown_tic_de_otra_curva_si_se_descarta_por_cabida():
     ]
     corners = [
         {"id": "C01", "name": "C01", "milestones": {"brake_start": {"d": 2000, "v": 216}}},
-        # throttle_on de C00 a 10 m del tic step=0 de C01 (1910): se descarta
-        # por cabida contra OTRA curva; el step=1 (1955), a 55 m, si cabe y
-        # sobrevive.
+        # throttle_on de C00 a 10 m del tic step=0 de C01 (1910): cede su hueco.
         {"id": "C00", "name": "C00", "milestones": {"throttle_on": {"d": 1900}}},
     ]
     plan = plan_tone_events(rows, corners, top=2, min_gap_m=50)
+    # ambos tics del countdown se colocan; ninguno se pierde por el cue cedible
     tics = sorted(e["distance"] for e in plan["events"] if e["cue"] == "brake_tic")
-    assert tics == [1955]
+    assert tics == [1910, 1955]
+    # el throttle_on desplazado no se renderiza
+    assert not any(e["cue"] == "throttle_on" for e in plan["events"])
+    # deja rastro explicito con la razon del cese y contra que tic cedio
+    ceded = [
+        s for s in plan["skipped_global"] if s["cue"] == "throttle_on" and s["distance"] == 1900
+    ]
+    assert len(ceded) == 1
+    assert ceded[0]["reason"] == "cedio_al_countdown"
+    assert ceded[0]["against"] == {"corner_id": "C01", "cue": "brake_tic", "distance": 1910}
+
+
+def test_countdown_tic_cede_ante_frenada_protegida_invariante_seguridad():
+    """D2 (ADR 0032), caso (b) — INVARIANTE DE SEGURIDAD: un tic NUNCA desplaza
+    una frenada protegida. Si el hueco del tic lo ocupa un `brake` (prio 100,
+    protected) de OTRA curva, el tic SE DESCARTA (comportamiento de siempre) y
+    deja rastro en skipped_global con reason 'tic_sin_espacio' y contra que
+    frenada choco. La frenada protegida sigue intacta; el tic no la mueve.
+
+    Trazabilidad (D1): el descarte no desaparece en silencio, aparece con el
+    evento que lo choco (cue, corner_id, distancia). NO entra en plan['events'].
+    """
+    from fantasma.viz.pacenotes import plan_tone_events
+
+    rows = [
+        {"id": "C01", "name": "C01", "time_lost": 0.5, "flags": "frenada"},
+        {"id": "C_block", "name": "C_block", "time_lost": 0.5, "flags": "frenada"},
+    ]
+    corners = [
+        {"id": "C01", "name": "C01", "milestones": {"brake_start": {"d": 2000, "v": 216}}},
+        # frenada PROTEGIDA de C_block a 5 m del tic step=0 de C01 (1910): el tic
+        # no la desplaza, se descarta. El step=1 (1955), a 50 m, si cabe.
+        {"id": "C_block", "name": "C_block", "milestones": {"brake_start": {"d": 1905}}},
+    ]
+    plan = plan_tone_events(rows, corners, top=2, min_gap_m=50)
+    # el tic de C01 en 1910 se descarta (no desplaza la frenada protegida)
+    assert not any(e["cue"] == "brake_tic" and e["distance"] == 1910 for e in plan["events"])
+    skipped = [
+        s for s in plan["skipped_global"] if s["cue"] == "brake_tic" and s["distance"] == 1910
+    ]
+    assert len(skipped) == 1
+    assert skipped[0]["reason"] == "tic_sin_espacio"
+    assert skipped[0]["against"] == {
+        "corner_id": "C_block",
+        "cue": "brake",
+        "distance": 1905,
+    }
+    # las dos frenadas protegidas siguen sonando: ninguna la desplazo un tic
+    brakes = sorted(e["distance"] for e in plan["events"] if e["cue"] == "brake")
+    assert brakes == [1905, 2000]
+
+
+def test_countdown_tic_vs_tic_reporta_el_tic_que_lo_choco_no_la_frenada():
+    """Trazabilidad (D1) cuando el estorbo es OTRO tic, no una frenada de `kept`.
+
+    Dos curvas protegidas y pegadas (frenadas en 3000 y 2995, ambas a 216 km/h ->
+    lead_m=90) generan tics en 2905/2950 (C02) y 2910/2955 (C01). El tic de C01 en
+    2910 choca a 5 m contra el tic YA ACEPTADO de C02 en 2905. `against` debe
+    describir ESE tic (cue 'brake_tic', distancia 2905), no la frenada de C02 en
+    2995. Con el bug (indexar por own_idx a `kept`) reportaba brake@2995: un cue
+    equivocado a 90 m de la distancia real del estorbo."""
+    from fantasma.viz.pacenotes import plan_tone_events
+
+    rows = [
+        {"id": "C01", "name": "C01", "time_lost": 0.5, "flags": "frenada"},
+        {"id": "C02", "name": "C02", "time_lost": 0.5, "flags": "frenada"},
+    ]
+    corners = [
+        {"id": "C01", "name": "C01", "milestones": {"brake_start": {"d": 3000, "v": 216}}},
+        {"id": "C02", "name": "C02", "milestones": {"brake_start": {"d": 2995, "v": 216}}},
+    ]
+    plan = plan_tone_events(rows, corners, top=2, min_gap_m=50)
+    assert not any(e["cue"] == "brake_tic" and e["distance"] == 2910 for e in plan["events"])
+    skipped = [
+        s for s in plan["skipped_global"] if s["cue"] == "brake_tic" and s["distance"] == 2910
+    ]
+    assert len(skipped) == 1
+    assert skipped[0]["reason"] == "tic_sin_espacio"
+    assert skipped[0]["against"] == {
+        "corner_id": "C02",
+        "cue": "brake_tic",
+        "distance": 2905,
+    }
 
 
 def test_plan_legacy_tiene_mismo_esquema():
@@ -469,10 +688,12 @@ def test_pack_expande_countdown_y_el_tercer_bip_es_el_ya(tmp_path):
         assert (tmp_path / ("%d_0.wav" % d)).exists()
 
 
-def test_pack_omite_tic_encimado_pero_nunca_el_ya(tmp_path):
-    """Un tic de aviso que caeria a <50 m de un cue de otra curva se omite (en
-    encadenadas queda "2-ya" o solo "ya"), pero el "¡ya!" en la frenada nunca
-    se pierde."""
+def test_pack_cue_cedible_cede_su_hueco_al_tic(tmp_path):
+    """D2 (ADR 0032) end-to-end en el pack: un cue no protegido (throttle_on) de
+    otra curva que cae en el hueco de un tic CEDE — el tic se sintetiza a WAV y
+    entra en metadata, y el cue cedido desaparece del pack. El "¡ya!" de la
+    frenada nunca se pierde. (Antes, bug D2, el tic de seguridad se omitia por
+    el cue informativo de la curva previa.)"""
     import json
 
     from fantasma.viz.pacenotes import build_tone_pack
@@ -483,13 +704,16 @@ def test_pack_omite_tic_encimado_pero_nunca_el_ya(tmp_path):
     ]
     corners = [
         {"id": "C01", "name": "C01", "milestones": {"brake_start": {"d": 2000, "v": 216}}},
-        # throttle_on de C00 a 30 m del tic 0 de C01 (1910): el tic se omite
+        # throttle_on de C00 a 30 m del tic 0 de C01 (1910): cede su hueco
         {"id": "C00", "name": "C00", "milestones": {"throttle_on": {"d": 1880}}},
     ]
     build_tone_pack(rows, corners, str(tmp_path), top=0)
     entries = json.loads((tmp_path / "metadata.json").read_text(encoding="utf-8"))["entries"]
     dists = {e["distanceRoundTrack"]: e["description"] for e in entries}
-    assert 1910 not in dists
+    # el tic SE COLOCA (WAV + entry); el throttle_on cedido no queda en el pack
+    assert "contador de frenada" in dists[1910]
+    assert (tmp_path / "1910_0.wav").exists()
+    assert 1880 not in dists
     assert "contador de frenada" in dists[1955]
     assert "punto de frenada" in dists[2000]
 
@@ -975,10 +1199,13 @@ def test_turn_in_gana_a_brake_release_en_saturacion_por_prioridad():
     )
 
 
-def test_turn_in_ya_colocado_bloquea_los_tics_del_countdown_cercano():
-    """Un turn_in de otra curva, ya asentado en 'kept', bloquea AMBOS tics del
-    countdown de una frenada vecina si caen a <min_gap_m -- el freno protegido
-    (el "ya") no se ve afectado."""
+def test_turn_in_cercano_cede_ante_los_tics_del_countdown():
+    """D2 (ADR 0032), caso (a) con turn_in: un turn_in de otra curva ya asentado
+    en 'kept' que cae en el hueco de los tics del countdown de una frenada
+    vecina YA NO los bloquea — CEDE su hueco. Los tics SE COLOCAN, la frenada
+    protegida (el "ya") sigue intacta y el turn_in desplazado queda en
+    skipped_global con razon 'cedio_al_countdown'. (Antes, bug D2, el turn_in
+    informativo tiraba el tic de seguridad.)"""
     from fantasma.viz.pacenotes import plan_tone_events
 
     rows = [
@@ -988,13 +1215,75 @@ def test_turn_in_ya_colocado_bloquea_los_tics_del_countdown_cercano():
     corners = [
         {"id": "C_brake", "name": "C_brake", "milestones": {"brake_start": {"d": 2000, "v": 216}}},
         # lead_m=90 -> tics candidatos en 1910 y 1955; turn_in en 1950 cae a
-        # <50 m de AMBOS.
+        # <50 m del tic step=1: cede su hueco.
         {"id": "C_turn", "name": "C_turn", "milestones": {"turn_in": {"d": 1950}}},
     ]
     plan = plan_tone_events(rows, corners, top=2, min_gap_m=50)
-    assert any(e["cue"] == "turn_in" and e["distance"] == 1950 for e in plan["events"])
+    # el turn_in cede: no se renderiza
+    assert not any(e["cue"] == "turn_in" for e in plan["events"])
+    # los dos tics se colocan y la frenada protegida sigue
     assert any(e["cue"] == "brake" and e["distance"] == 2000 for e in plan["events"])
-    assert not any(e["cue"] == "brake_tic" for e in plan["events"])
+    tics = sorted(e["distance"] for e in plan["events"] if e["cue"] == "brake_tic")
+    assert tics == [1910, 1955]
+    # rastro del cese
+    ceded = [s for s in plan["skipped_global"] if s["cue"] == "turn_in" and s["distance"] == 1950]
+    assert len(ceded) == 1
+    assert ceded[0]["reason"] == "cedio_al_countdown"
+
+
+def test_countdown_tic_de_otra_curva_no_lo_desplaza_el_segundo_cede():
+    """D2 (ADR 0032), caso (c): un tic del countdown de OTRA curva en el hueco es
+    NO-CEDIBLE — un tic no desplaza a otro tic. El segundo cede como siempre
+    (invariante: los countdowns no se pisan entre curvas), no como un cue no
+    protegido. Dos curvas cuyos tics NO chocan sobreviven ambas."""
+    from fantasma.viz.pacenotes import plan_tone_events
+
+    # (c.1) tics que chocan: el segundo cede (no desplaza al primero).
+    rows = [
+        {"id": "C01", "name": "C01", "time_lost": 0.5, "flags": "frenada"},
+        {"id": "C02", "name": "C02", "time_lost": 0.5, "flags": "frenada"},
+    ]
+    corners = [
+        {"id": "C01", "name": "C01", "milestones": {"brake_start": {"d": 3000, "v": 216}}},
+        {"id": "C02", "name": "C02", "milestones": {"brake_start": {"d": 2995, "v": 216}}},
+    ]
+    plan = plan_tone_events(rows, corners, top=2, min_gap_m=50)
+    # el tic de C01 en 2910 choca a 5 m contra el tic YA aceptado de C02 en 2905:
+    # cede (se descarta), no lo desplaza. Ambas frenadas protegidas sobreviven.
+    assert not any(e["cue"] == "brake_tic" and e["distance"] == 2910 for e in plan["events"])
+    skipped = [
+        s for s in plan["skipped_global"] if s["cue"] == "brake_tic" and s["distance"] == 2910
+    ]
+    assert skipped and skipped[0]["reason"] == "tic_sin_espacio"
+    assert skipped[0]["against"]["cue"] == "brake_tic"
+    assert sorted(e["distance"] for e in plan["events"] if e["cue"] == "brake") == [2995, 3000]
+
+    # (c.2) tics lejanos: ambos countdowns sobreviven completos, ninguno cede.
+    corners_lejos = [
+        {"id": "C01", "name": "C01", "milestones": {"brake_start": {"d": 3000, "v": 216}}},
+        {"id": "C02", "name": "C02", "milestones": {"brake_start": {"d": 2500, "v": 216}}},
+    ]
+    plan2 = plan_tone_events(rows, corners_lejos, top=2, min_gap_m=50)
+    tics2 = sorted(e["distance"] for e in plan2["events"] if e["cue"] == "brake_tic")
+    assert tics2 == [2410, 2455, 2910, 2955]
+
+
+def test_countdown_tic_con_espacio_libre_se_emite_igual_no_regresion():
+    """D2 (ADR 0032), caso (d) — NO-REGRESION: un tic con espacio libre (sin
+    ningun cue cercano, cedible o no) se emite exactamente igual que antes del
+    cambio. La nueva regla solo actua cuando hay algo en el hueco; sin estorbo
+    el resultado no cambia."""
+    from fantasma.viz.pacenotes import plan_tone_events
+
+    rows = [{"id": "C01", "name": "C01", "time_lost": 0.5, "flags": "frenada"}]
+    corners = [{"id": "C01", "name": "C01", "milestones": {"brake_start": {"d": 2000, "v": 216}}}]
+    plan = plan_tone_events(rows, corners, top=1, min_gap_m=50)
+    tics = sorted(e["distance"] for e in plan["events"] if e["cue"] == "brake_tic")
+    assert tics == [1910, 1955]
+    # nada cedio ni se descarto: no hay rastros de countdown en skipped_global
+    assert not any(
+        s["reason"] in ("cedio_al_countdown", "tic_sin_espacio") for s in plan["skipped_global"]
+    )
 
 
 def test_countdown_gap_uniforme_en_dos_velocidades():
@@ -1217,8 +1506,10 @@ def test_plan_tone_events_gear_no_bloquea_tic_de_countdown():
 
 
 def test_build_tone_pack_gear_sin_audio_pero_en_metadata(tmp_path):
-    """gear (sound=False) no genera WAV pero si queda en metadata.json para
-    que build_cue_ass lo subtitule igual."""
+    """gear (sound=False) no genera un WAV propio pero si queda en metadata.json
+    para que build_cue_ass lo subtitule. Su entry referencia el silent.wav
+    compartido (inaudible) en vez de listas vacias, que revientan CrewChief
+    (issue #9)."""
     import json
 
     from fantasma.viz.pacenotes import DEFAULT_CONFIG, build_tone_pack
@@ -1231,11 +1522,86 @@ def test_build_tone_pack_gear_sin_audio_pero_en_metadata(tmp_path):
     entries = json.loads((tmp_path / "metadata.json").read_text(encoding="utf-8"))["entries"]
     gear_entries = [e for e in entries if "cambio de marcha" in e["description"]]
     assert len(gear_entries) == 1
-    assert gear_entries[0]["distanceRoundTrack"] == 500
-    assert gear_entries[0]["fileNames"] == []
-    assert gear_entries[0]["recordingNames"] == []
+    entry = gear_entries[0]
+    assert entry["distanceRoundTrack"] == 500
+    # NO listas vacias: alineadas, largo >= 1, y el WAV referenciado existe.
+    assert entry["fileNames"] == entry["recordingNames"]
+    assert len(entry["fileNames"]) >= 1
+    for fname in entry["fileNames"]:
+        assert (tmp_path / fname).exists()
+    # gear no sintetiza un WAV propio (no hay 500_*.wav); usa el silent compartido.
     assert not list(tmp_path.glob("500_*.wav"))
+    assert (tmp_path / "silent.wav").exists()
     assert result["entries"] == 1
+
+
+def test_build_tone_pack_ningun_entry_con_listas_vacias(tmp_path):
+    """Ningun entry del metadata.json puede quedar con recordingNames/fileNames
+    vacias: getRandomRecordingName de CrewChief indexa recordingNames[0] sobre la
+    lista vacia y mata el hilo (issue #9). Se cubre un pack MIXTO con cue sonoro
+    (frenada) + cue mudo (gear)."""
+    import json
+
+    from fantasma.viz.pacenotes import DEFAULT_CONFIG, build_tone_pack
+
+    rows = [{"name": "Curva 1", "apex_d": 500.0}]
+    corners = [{"id": 1, "name": "Curva 1", "milestones": {"apex": {"d": 500.0}}}]
+    gear_shifts = [{"distance": 500, "gear_from": 2, "gear_to": 3}]
+    cue_config = {**DEFAULT_CONFIG, "gear": {"enabled": True, "priority": 75, "sound": False}}
+    build_tone_pack(
+        rows, corners, str(tmp_path), top=5, cue_config=cue_config, gear_shifts=gear_shifts
+    )
+    entries = json.loads((tmp_path / "metadata.json").read_text(encoding="utf-8"))["entries"]
+    assert entries, "el pack de prueba deberia producir al menos un entry"
+    for entry in entries:
+        assert len(entry["recordingNames"]) == len(entry["fileNames"]) >= 1, entry
+        for fname in entry["fileNames"]:
+            assert (tmp_path / fname).exists(), fname
+
+
+def test_build_tone_pack_silent_wav_es_inaudible_y_valido(tmp_path):
+    """El silent.wav que embarcan los cues mudos es un WAV mono 16-bit valido
+    (cargable por CrewChief) y de amplitud CERO (inaudible): el video de estudio
+    no debe sonar en el cue mudo."""
+    import wave
+
+    from fantasma.viz.pacenotes import DEFAULT_CONFIG, build_tone_pack
+
+    gear_shifts = [{"distance": 500, "gear_from": 2, "gear_to": 3}]
+    cue_config = {**DEFAULT_CONFIG, "gear": {"enabled": True, "priority": 75, "sound": False}}
+    build_tone_pack([], [], str(tmp_path), top=5, cue_config=cue_config, gear_shifts=gear_shifts)
+    silent = tmp_path / "silent.wav"
+    assert silent.exists()
+    with wave.open(str(silent), "rb") as wav:
+        assert wav.getnchannels() == 1
+        assert wav.getsampwidth() == 2
+        frames = wav.readframes(wav.getnframes())
+    assert wav.getnframes() > 0
+    assert set(frames) == {0}, "el silent.wav debe ser todo ceros (inaudible)"
+
+
+def test_write_silent_wav_regenera_wav_corrupto(tmp_path):
+    """Hardening #9: _write_silent_wav SIEMPRE escribe (ya no usa el guard
+    `if not path.exists()`), igual que los WAV sonoros. Asi un silent.wav
+    truncado/corrupto de una corrida interrumpida se regenera a un WAV valido
+    en vez de quedar como el WAV-que-CrewChief-no-puede-cargar que #9 cierra.
+    Con el viejo guard este test fallaba: el archivo existia y no se
+    reescribia, dejando la cabecera truncada."""
+    import wave
+
+    from fantasma.viz.pacenotes import _SILENT_WAV_NAME, _write_silent_wav
+
+    corrupt = tmp_path / _SILENT_WAV_NAME
+    corrupt.write_bytes(b"RIFF\x00\x00")  # cabecera truncada: no cargable como WAV
+    name = _write_silent_wav(tmp_path)
+    assert name == _SILENT_WAV_NAME
+    # Se regenero a un WAV mono 16-bit valido y de amplitud cero (inaudible).
+    with wave.open(str(corrupt), "rb") as wav:
+        assert wav.getnchannels() == 1
+        assert wav.getsampwidth() == 2
+        frames = wav.readframes(wav.getnframes())
+    assert wav.getnframes() > 0
+    assert set(frames) == {0}
 
 
 def test_build_cue_ass_gear_rotula_cambio_de_marcha(tmp_path, lap_factory):
@@ -1500,3 +1866,648 @@ def test_build_pack_mode_tones_ignora_kwargs_solo_de_voz(tmp_path):
         rows, corners, str(tmp_path), mode="tones", top=1, min_gap_m=99, voice_lead_s=2.5
     )
     assert result["entries"] >= 1
+
+
+# ── Perfiles de sonido de los cues (QA 2026-07-09) ────────────────────────────
+
+
+def _decode_wav(data):
+    """(muestras float [-1,1], sample_rate) de un WAV mono 16-bit en bytes."""
+    import io
+    import wave
+
+    import numpy as np
+
+    with wave.open(io.BytesIO(data)) as w:
+        rate = w.getframerate()
+        raw = w.readframes(w.getnframes())
+    return np.frombuffer(raw, dtype=np.int16).astype(np.float32) / 32767.0, rate
+
+
+_PROFILE_ROWS = [{"id": "C01", "name": "C01", "time_lost": 0.6, "flags": "vmin+frenada"}]
+_PROFILE_CORNERS = [
+    {
+        "id": "C01",
+        "name": "C01",
+        "milestones": {
+            "brake_start": {"d": 1000, "v": 216},
+            "brake_release": {"d": 1200},
+            "turn_in": {"d": 1400},
+            "throttle_on": {"d": 1800},
+            "full_throttle": {"d": 2000},
+        },
+    }
+]
+
+
+def test_sound_profile_default_es_seno_byte_identico(tmp_path):
+    """Requisito duro: sin `sound_profile` (o con 'seno') el pack es
+    BYTE-IDENTICO. Se compara muestra por muestra el WAV de cada cue, no solo
+    que 'no reviente'."""
+    from fantasma.viz.pacenotes import DEFAULT_SOUND_PROFILE, build_tone_pack
+
+    assert DEFAULT_SOUND_PROFILE == "seno"
+    d_def = tmp_path / "default"
+    d_seno = tmp_path / "seno"
+    build_tone_pack(_PROFILE_ROWS, _PROFILE_CORNERS, str(d_def), top=1)
+    build_tone_pack(_PROFILE_ROWS, _PROFILE_CORNERS, str(d_seno), top=1, sound_profile="seno")
+
+    wavs_def = {p.name: p.read_bytes() for p in sorted(d_def.glob("*.wav"))}
+    wavs_seno = {p.name: p.read_bytes() for p in sorted(d_seno.glob("*.wav"))}
+    assert wavs_def and set(wavs_def) == set(wavs_seno)
+    for name in wavs_def:
+        assert wavs_def[name] == wavs_seno[name], (
+            "el default no es byte-identico a 'seno': %s" % name
+        )
+
+
+def test_sound_profile_seno_reproduce_generate_tone_exacto():
+    """El perfil 'seno' de _render_cue es exactamente generate_tone con la misma
+    frecuencia/duracion de hoy (freno 0.12 s a brake, tic 0.08 s a
+    brake_countdown*scale) — la evidencia byte a byte de que el default no cambio."""
+    from fantasma.viz.pacenotes import (
+        COUNTDOWN_SCALE,
+        DEFAULT_FREQS,
+        _render_cue,
+        generate_tone,
+    )
+
+    freqs = dict(DEFAULT_FREQS)
+    brake = _render_cue({"cue": "brake"}, freqs, 0.12, 0.8, sound_profile="seno")
+    assert brake == generate_tone(DEFAULT_FREQS["brake"], 0.12, volume=0.8)
+
+    tic = _render_cue({"cue": "brake_tic", "step": 1}, freqs, 0.12, 0.8, sound_profile="seno")
+    assert tic == generate_tone(
+        DEFAULT_FREQS["brake_countdown"] * COUNTDOWN_SCALE[1], 0.08, volume=0.8
+    )
+
+
+def test_cada_perfil_genera_wav_valido_sin_clipping(tmp_path):
+    """timbre/ritmo/chirp generan un pack de WAVs validos y sin clipping (pico
+    <= 1.0) para todos los cues que suenan."""
+    import numpy as np
+
+    from fantasma.viz.pacenotes import build_tone_pack
+
+    for profile in ("timbre", "ritmo", "chirp"):
+        outdir = tmp_path / profile
+        result = build_tone_pack(
+            _PROFILE_ROWS, _PROFILE_CORNERS, str(outdir), top=1, sound_profile=profile
+        )
+        assert result["entries"] >= 1
+        wavs = list(outdir.glob("*.wav"))
+        assert wavs, "el perfil %s no genero ningun WAV" % profile
+        for wav in wavs:
+            samples, rate = _decode_wav(wav.read_bytes())
+            assert rate == 24000
+            assert len(samples) > 0
+            peak = float(np.max(np.abs(samples)))
+            assert peak <= 1.0, "clipping en %s (%s): pico=%.3f" % (profile, wav.name, peak)
+
+
+def test_cada_perfil_respeta_la_duracion_disenada():
+    """Cada cue del catalogo de cada perfil produce un WAV con la duracion de
+    diseno (la misma evidencia de qa_runs/2026-07-09-sonidos/)."""
+    from fantasma.viz.pacenotes import DEFAULT_FREQS, _render_cue
+
+    freqs = dict(DEFAULT_FREQS)
+    esperado = {
+        "timbre": {"brake": 0.14, "brake_release": 0.10, "turn_in": 0.09, "throttle_on": 0.12},
+        "ritmo": {"brake": 0.24, "turn_in": 0.05, "throttle_on": 0.15, "coast": 0.18},
+        "chirp": {"brake": 0.16, "turn_in": 0.09, "throttle_on": 0.14, "brake_release": 0.12},
+    }
+    for profile, cues in esperado.items():
+        for cue, dur in cues.items():
+            data = _render_cue({"cue": cue}, freqs, 0.12, 0.8, sound_profile=profile)
+            samples, rate = _decode_wav(data)
+            assert abs(len(samples) / rate - dur) < 0.005, (profile, cue, len(samples) / rate)
+
+
+def test_perfil_timbre_freno_band_limited_sin_alias():
+    """Anti-aliasing del perfil A: el freno es cuadrada band-limited por SUMA de
+    armonicos IMPARES; el mas alto sintetizado queda por debajo de 0.45*SR (no
+    hay energia sobre Nyquist reflejada). Comprobado por el catalogo de
+    armonicos Y por FFT (sin energia significativa sobre 0.47*SR)."""
+    import numpy as np
+
+    from fantasma.viz.pacenotes import (
+        _NYQ_MARGIN,
+        DEFAULT_FREQS,
+        _odd_harmonics,
+        _render_cue,
+    )
+
+    sr = 24000
+    f0 = DEFAULT_FREQS["brake"]  # 1000 Hz
+    harmonics = _odd_harmonics(f0, sr)
+    # solo impares, estrictamente por debajo del limite de banda
+    assert harmonics == [1, 3, 5, 7, 9]
+    assert all(n % 2 == 1 for n in harmonics)
+    assert max(harmonics) * f0 < _NYQ_MARGIN * sr
+
+    data = _render_cue({"cue": "brake"}, dict(DEFAULT_FREQS), 0.12, 0.8, sound_profile="timbre")
+    samples, rate = _decode_wav(data)
+    spectrum = np.abs(np.fft.rfft(samples))
+    freqs = np.fft.rfftfreq(len(samples), 1.0 / rate)
+    total = float(np.sum(spectrum))
+    above = float(np.sum(spectrum[freqs > _NYQ_MARGIN * sr + 500]))
+    assert above / total < 0.01, "energia sobre el limite de banda: %.4f" % (above / total)
+
+
+def test_sound_profile_desconocido_levanta_error_accionable(tmp_path):
+    """Un perfil desconocido levanta ValueError con un mensaje accionable (lista
+    los validos), tanto en build_tone_pack como en _render_cue — nunca falla en
+    silencio ni cae a un fallback mudo."""
+    import pytest
+
+    from fantasma.viz.pacenotes import DEFAULT_FREQS, _render_cue, build_tone_pack
+
+    with pytest.raises(ValueError) as exc:
+        build_tone_pack(
+            _PROFILE_ROWS, _PROFILE_CORNERS, str(tmp_path), top=1, sound_profile="bombo"
+        )
+    assert "bombo" in str(exc.value)
+    assert "seno" in str(exc.value) and "timbre" in str(exc.value)
+
+    with pytest.raises(ValueError):
+        _render_cue({"cue": "brake"}, dict(DEFAULT_FREQS), 0.12, 0.8, sound_profile="bombo")
+
+
+def test_build_pack_propaga_sound_profile_a_los_tonos(tmp_path):
+    """build_pack reenvia `sound_profile` hasta build_tone_pack: el pack en
+    'timbre' difiere byte a byte del default 'seno' (el e2e puede pedir un
+    perfil concreto por el punto de entrada publico)."""
+    from fantasma.viz.pacenotes import build_pack
+
+    d_seno = tmp_path / "seno"
+    d_timbre = tmp_path / "timbre"
+    build_pack(_PROFILE_ROWS, _PROFILE_CORNERS, str(d_seno), mode="tones", top=1)
+    build_pack(
+        _PROFILE_ROWS, _PROFILE_CORNERS, str(d_timbre), mode="tones", top=1, sound_profile="timbre"
+    )
+    brake_seno = next(d_seno.glob("1000_*.wav")).read_bytes()
+    brake_timbre = next(d_timbre.glob("1000_*.wav")).read_bytes()
+    assert brake_seno != brake_timbre
+
+
+# ── Defectos del sintetizador (revision adversarial 2026-07-09) ───────────────
+
+
+def test_a_freq_cero_no_cuelga_y_error_accionable(tmp_path):
+    """(a) freq <= 0 colgaba _odd_harmonics (bucle infinito, la lista crecia
+    hasta agotar memoria) con las paletas aditivas. build_tone_pack ahora valida
+    la frecuencia y falla RAPIDO con mensaje accionable. Se corre en un hilo con
+    timeout: si el bug reaparece (cuelgue), el hilo sigue vivo y el test falla en
+    vez de colgar la suite entera."""
+    import threading
+
+    from fantasma.viz.pacenotes import build_tone_pack
+
+    result = {}
+
+    def _run():
+        try:
+            build_tone_pack(
+                _PROFILE_ROWS,
+                _PROFILE_CORNERS,
+                str(tmp_path / "z"),
+                top=1,
+                freqs={"brake": 0},
+                sound_profile="timbre",
+            )
+        except ValueError as e:
+            result["err"] = str(e)
+        except BaseException as e:  # noqa: BLE001
+            result["other"] = repr(e)
+
+    t = threading.Thread(target=_run, daemon=True)
+    t.start()
+    t.join(timeout=5)
+    assert not t.is_alive(), "build_tone_pack colgo con freq=0 (bucle infinito en _odd_harmonics)"
+    assert "err" in result, "se esperaba ValueError, se obtuvo: %r" % result.get("other")
+    assert "brake" in result["err"] and "0" in result["err"]
+
+
+def test_a_validate_freqs_rechaza_negativa_y_sobre_nyquist():
+    """(a) _validate_freqs exige positiva y < Nyquist (SR/2). Nombra la clave y
+    el valor infractor. DEFAULT_FREQS pasa el guard sin tocar (no-regresion)."""
+    import pytest
+
+    from fantasma.viz.pacenotes import DEFAULT_FREQS, _validate_freqs
+
+    _validate_freqs(dict(DEFAULT_FREQS))  # no levanta
+    for mala in ({"brake": 0}, {"apex": -5}, {"gas": 20000}):
+        with pytest.raises(ValueError) as exc:
+            _validate_freqs({**DEFAULT_FREQS, **mala})
+        (k,) = mala
+        assert k in str(exc.value)
+
+
+def test_b_odd_harmonics_freq_alta_falla_ruidosa():
+    """(b) freq >= 0.45*SR dejaba _odd_harmonics con lista vacia -> onda en todo
+    ceros -> cue MUDO sin aviso. Ahora levanta ValueError (falla ruidosa). En
+    759413f devolvia [] sin quejarse."""
+    import pytest
+
+    from fantasma.viz.pacenotes import _NYQ_MARGIN, _odd_harmonics
+
+    sr = 24000
+    # Justo por debajo del limite: aun devuelve al menos el fundamental.
+    assert _odd_harmonics(_NYQ_MARGIN * sr - 1, sr) == [1]
+    # En o por encima del limite: antes -> [] (mudo); ahora -> ValueError.
+    with pytest.raises(ValueError):
+        _odd_harmonics(_NYQ_MARGIN * sr + 100, sr)
+
+
+def test_c_float_to_wav_volumen_mayor_que_uno_satura_sin_dar_la_vuelta():
+    """(c) con volume > 1 el clip previo a multiplicar por el volumen no protegia:
+    1.0*1.5*32767 = 49150 desbordaba int16 y daba la vuelta a NEGATIVO (un
+    chasquido con el signo invertido). Ahora se recorta DESPUES del volumen: una
+    senal positiva satura a +1.0, nunca voltea de signo."""
+    import numpy as np
+
+    from fantasma.viz.pacenotes import _float_to_wav
+
+    sig = np.ones(200, dtype=np.float64)  # constante +1.0
+    data = _float_to_wav(sig, 1.5, 24000)
+    samples, _ = _decode_wav(data)
+    # Con el fix: saturado alto y positivo. En 759413f: ~ -0.5 (signo volteado).
+    assert samples.min() > 0.99, "el volumen > 1 volteo el signo (int16 overflow): min=%.3f" % (
+        samples.min()
+    )
+
+
+def test_d_chirp_tic_no_revienta_con_countdown_de_3_tics(monkeypatch):
+    """(d) el perfil chirp indexaba una tupla fija de longitud 2 con `step`,
+    acoplado por convencion —no por codigo— a COUNTDOWN_SCALE. Con un
+    COUNTDOWN_SCALE de 3 tics, chirp reventaba con IndexError mientras las otras
+    paletas seguian. Ahora deriva el tono del tic de _tic_freq (cualquier
+    longitud)."""
+    import fantasma.viz.pacenotes as pn
+
+    monkeypatch.setattr(pn, "COUNTDOWN_SCALE", (0.75, 0.875, 0.95))
+    # step=2 solo existe con un COUNTDOWN_SCALE de 3: en 759413f -> IndexError.
+    data = pn._render_cue(
+        {"cue": "brake_tic", "step": 2}, dict(pn.DEFAULT_FREQS), 0.12, 0.8, sound_profile="chirp"
+    )
+    samples, rate = _decode_wav(data)
+    assert rate == 24000 and len(samples) > 0
+    # seno tambien debe soportar el 3er tic (deriva de COUNTDOWN_SCALE[step]).
+    data_seno = pn._render_cue(
+        {"cue": "brake_tic", "step": 2}, dict(pn.DEFAULT_FREQS), 0.12, 0.8, sound_profile="seno"
+    )
+    assert len(_decode_wav(data_seno)[0]) > 0
+
+
+def test_e_paletas_respetan_duration_como_multiplicador():
+    """(e) timbre/ritmo/chirp ignoraban `duration` (duraciones fijas), mientras
+    seno la respetaba. Ahora cada cue escala con duration/_PROFILE_REF_DURATION:
+    `duration` manda en todas las paletas y el contraste relativo se conserva."""
+    from fantasma.viz.pacenotes import DEFAULT_FREQS, _render_cue
+
+    freqs = dict(DEFAULT_FREQS)
+    for profile in ("timbre", "ritmo", "chirp"):
+        corta = _decode_wav(_render_cue({"cue": "brake"}, freqs, 0.12, 0.8, sound_profile=profile))[
+            0
+        ]
+        larga = _decode_wav(_render_cue({"cue": "brake"}, freqs, 0.30, 0.8, sound_profile=profile))[
+            0
+        ]
+        # En 759413f ambas duraban lo mismo (se ignoraba duration).
+        assert len(larga) > len(corta) * 2, profile
+        # Escala proporcional (x2.5) dentro de tolerancia de muestreo.
+        assert abs(len(larga) / len(corta) - 2.5) < 0.05, (profile, len(larga) / len(corta))
+
+
+def test_f_tic_fallback_unificado_seno_vs_paletas():
+    """(f) el fallback del tono base del tic discrepaba: _tic_freq usaba 800 y la
+    rama seno de _render_cue usaba 880. Inalcanzable por la API publica (el merge
+    con DEFAULT_FREQS lo tapa) pero una bomba de relojeria. Ahora ambos caen a
+    DEFAULT_FREQS['brake_countdown'] -> mismo tono base."""
+    from fantasma.viz.pacenotes import _render_cue, _tic_freq, generate_tone
+
+    # freqs SIN 'brake_countdown' fuerza el fallback en ambos caminos.
+    seno_tic = _render_cue({"cue": "brake_tic", "step": 0}, {}, 0.12, 0.8, sound_profile="seno")
+    esperado = generate_tone(_tic_freq({}, 0), 0.08, volume=0.8)
+    # En 759413f: seno usa 880 (->660 Hz) y _tic_freq usa 800 (->600 Hz): difieren.
+    assert seno_tic == esperado
+
+
+def test_g_seno_y_paletas_comparten_un_unico_fade():
+    """(g) generate_tone (seno) reimplementaba la tuberia de _wave_sine con un
+    fade DISTINTO (0.01 s vs 0.008 s), sesgando la comparacion de oido del PO.
+    Ahora generate_tone ES exactamente _float_to_wav(_wave_sine(...)): mismo fade
+    unico. En 759413f estos bytes difieren (fade 0.01 vs 0.008)."""
+    from fantasma.viz.pacenotes import _float_to_wav, _wave_sine, generate_tone
+
+    f, dur, vol, sr = 1000, 0.12, 0.8, 24000
+    assert generate_tone(f, dur, vol) == _float_to_wav(_wave_sine(f, dur, sr), vol, sr)
+
+
+def _tone_pack_inputs():
+    rows = [
+        {
+            "name": "C01",
+            "apex_d": 500,
+            "time_lost": 0.4,
+            "milestones": {"brake": {"d": 450}, "apex": {"d": 500}, "gas": {"d": 550}},
+        },
+    ]
+    corners = [
+        {
+            "id": "C01",
+            "name": "C01",
+            "milestones": {"brake": {"d": 450}, "apex": {"d": 500}, "gas": {"d": 550}},
+        },
+    ]
+    return rows, corners
+
+
+def test_validate_freqs_rechaza_11000_solo_en_timbre():
+    """A2: 11000 Hz supera la cota anti-alias de la sintesis aditiva band-limited
+    (`_NYQ_MARGIN*SR = 10800`) que usa `timbre`, pero es legitima para
+    `seno`/`ritmo`/`chirp` (seno puro / barrido, < Nyquist 12000). El guard debe
+    fallar TEMPRANO y accionable en `timbre` sin regresionar a los demas."""
+    import pytest
+
+    from fantasma.viz.pacenotes import _validate_freqs
+
+    with pytest.raises(ValueError) as exc:
+        _validate_freqs({"brake": 11000.0}, sound_profile="timbre")
+    msg = str(exc.value)
+    # mensaje accionable: nombra el valor infractor y la bandera a revisar
+    assert "11000" in msg
+    assert "timbre" in msg
+    assert "--brake-freq" in msg
+    # sin regresion: seno/ritmo/chirp aceptan 11000 (no usan armonicos)
+    for prof in ("seno", "ritmo", "chirp"):
+        _validate_freqs({"brake": 11000.0}, sound_profile=prof)
+
+
+def test_build_tone_pack_timbre_11000_falla_temprano(tmp_path):
+    """A2 (end-to-end): `build_tone_pack` con timbre + brake 11000 revienta en la
+    VALIDACION (ValueError accionable), no cripticamente dentro de la sintesis."""
+    import pytest
+
+    from fantasma.viz.pacenotes import build_tone_pack
+
+    rows, corners = _tone_pack_inputs()
+    with pytest.raises(ValueError) as exc:
+        build_tone_pack(
+            rows, corners, str(tmp_path), top=1, freqs={"brake": 11000.0}, sound_profile="timbre"
+        )
+    assert "11000" in str(exc.value)
+
+
+def test_build_tone_pack_seno_11000_ok(tmp_path):
+    """A2 (no-regresion): seno con 11000 Hz sigue generando WAVs (seno puro < Nyquist)."""
+    from fantasma.viz.pacenotes import build_tone_pack
+
+    rows, corners = _tone_pack_inputs()
+    result = build_tone_pack(
+        rows, corners, str(tmp_path), top=1, freqs={"brake": 11000.0}, sound_profile="seno"
+    )
+    assert result["entries"] >= 1
+    assert list(tmp_path.glob("*.wav"))
+
+
+def test_build_tone_pack_duration_cero_no_crashea_ningun_perfil(tmp_path):
+    """A3: `--tone-duration 0` (o negativo) reventaba `timbre` (`_tone_norm` sobre
+    array vacio) y `chirp` (division por cero). Con el piso `_MIN_TONE_DURATION`
+    en `build_tone_pack`, NINGUN perfil crashea y todos generan WAVs audibles."""
+    from fantasma.viz.pacenotes import SOUND_PROFILES, build_tone_pack
+
+    rows, corners = _tone_pack_inputs()
+    # Itera la fuente unica de perfiles (incluye "mezcla" y cualquier futuro) para
+    # que el path duration<=0 quede cubierto para TODOS, no una tupla que se olvida.
+    for prof in SOUND_PROFILES:
+        for dur in (0, -0.5):
+            out = tmp_path / ("%s_%s" % (prof, dur))
+            result = build_tone_pack(
+                rows, corners, str(out), top=1, duration=dur, sound_profile=prof
+            )
+            assert result["entries"] >= 1, "%s dur=%s" % (prof, dur)
+            wavs = list(out.glob("*.wav"))
+            assert wavs, "%s dur=%s no genero WAV" % (prof, dur)
+            # WAV con muestras reales (no el mudo de 44 bytes que daba duration 0)
+            assert all(w.stat().st_size > 44 for w in wavs), "%s dur=%s WAV mudo" % (prof, dur)
+
+
+# ── Perfil "mezcla": idioma por-cue (Mariana 2026-07-09) ──────────────────────
+# Aserciones sobre la SEÑAL generada (pendiente de frecuencia, envolvente, energia
+# en banda alta), no comparaciones fragiles de bytes salvo el ancla aprobada.
+
+
+def _dom_freq(samples, rate):
+    """Frecuencia dominante (bin de mayor magnitud) de un tramo de señal."""
+    import numpy as np
+
+    w = samples * np.hanning(len(samples))
+    mag = np.abs(np.fft.rfft(w))
+    fr = np.fft.rfftfreq(len(w), 1.0 / rate)
+    return float(fr[np.argmax(mag)])
+
+
+def _hf_fraction(samples, rate, cutoff=1500.0):
+    """Fraccion de la energia espectral por encima de `cutoff` Hz (brillo)."""
+    import numpy as np
+
+    w = samples * np.hanning(len(samples))
+    mag = np.abs(np.fft.rfft(w))
+    fr = np.fft.rfftfreq(len(w), 1.0 / rate)
+    total = float(mag.sum())
+    return float(mag[fr > cutoff].sum()) / total if total > 0 else 0.0
+
+
+def test_mezcla_brake_y_brake_tic_byte_identicos_a_seno():
+    """(1) El ancla aprobada por el PO NO cambia: en 'mezcla', brake y brake_tic
+    salen BYTE-IDENTICOS al perfil 'seno' — a la duracion default y a otra
+    duracion (el freno respeta `duration`, el tic es fijo a 0.08 s como en seno)."""
+    from fantasma.viz.pacenotes import DEFAULT_FREQS, _render_cue
+
+    freqs = dict(DEFAULT_FREQS)
+    for dur in (0.12, 0.30):
+        brake_mez = _render_cue({"cue": "brake"}, freqs, dur, 0.8, sound_profile="mezcla")
+        brake_seno = _render_cue({"cue": "brake"}, freqs, dur, 0.8, sound_profile="seno")
+        assert brake_mez == brake_seno, "brake no es byte-identico a seno (dur=%s)" % dur
+    for step in (0, 1):
+        tic_mez = _render_cue(
+            {"cue": "brake_tic", "step": step}, freqs, 0.12, 0.8, sound_profile="mezcla"
+        )
+        tic_seno = _render_cue(
+            {"cue": "brake_tic", "step": step}, freqs, 0.12, 0.8, sound_profile="seno"
+        )
+        assert tic_mez == tic_seno, "brake_tic step=%d no es byte-identico a seno" % step
+
+
+def test_mezcla_brake_y_tic_byte_identicos_end_to_end(tmp_path):
+    """(1 e2e) A nivel de pack, los WAV de brake y de los tics de countdown en
+    'mezcla' son byte-identicos a los de 'seno', mientras que los cues con idioma
+    propio (turn_in, full_throttle, ...) SI difieren. El nombre de archivo es por
+    DISTANCIA (mismo plan en ambos perfiles): se mapea distancia->cue via plan.json."""
+    import json
+
+    from fantasma.viz.pacenotes import build_tone_pack
+
+    d_seno = tmp_path / "seno"
+    d_mez = tmp_path / "mezcla"
+    build_tone_pack(_PROFILE_ROWS, _PROFILE_CORNERS, str(d_seno), top=1, sound_profile="seno")
+    build_tone_pack(_PROFILE_ROWS, _PROFILE_CORNERS, str(d_mez), top=1, sound_profile="mezcla")
+
+    plan = json.loads((d_mez / "plan.json").read_text(encoding="utf-8"))
+    cue_por_dist = {int(e["distance"]): e["cue"] for e in plan["events"]}
+
+    anclas = otros = 0
+    for wav in d_mez.glob("*.wav"):
+        dist = int(wav.name.split("_")[0])
+        cue = cue_por_dist.get(dist)
+        seno_bytes = (d_seno / wav.name).read_bytes()
+        mez_bytes = wav.read_bytes()
+        if cue in ("brake", "brake_tic"):
+            assert mez_bytes == seno_bytes, "%s (%s) no es byte-identico a seno" % (wav.name, cue)
+            anclas += 1
+        elif cue is not None:
+            assert mez_bytes != seno_bytes, "%s (%s) deberia diferir de seno" % (wav.name, cue)
+            otros += 1
+    assert anclas >= 2, "no se verificaron el freno y sus tics como ancla"
+    assert otros >= 1, "no se verifico ningun cue con idioma propio"
+
+
+def test_mezcla_brake_release_es_descendente():
+    """(2) brake_release en 'mezcla' es un glide DESCENDENTE: la frecuencia
+    instantanea baja de principio a fin. Se distingue de un tono plano (el
+    brake_release de 'seno' mantiene la frecuencia)."""
+    from fantasma.viz.pacenotes import DEFAULT_FREQS, _render_cue
+
+    freqs = dict(DEFAULT_FREQS)
+    samples, rate = _decode_wav(
+        _render_cue({"cue": "brake_release"}, freqs, 0.12, 0.8, sound_profile="mezcla")
+    )
+    n = len(samples) // 3
+    f_ini = _dom_freq(samples[:n], rate)
+    f_fin = _dom_freq(samples[2 * n :], rate)
+    assert f_ini > f_fin + 50, "brake_release no baja (ini=%.0f fin=%.0f)" % (f_ini, f_fin)
+
+    # Contraste: en 'seno' el mismo cue es un tono plano (ini ~= fin).
+    plano, r2 = _decode_wav(
+        _render_cue({"cue": "brake_release"}, freqs, 0.12, 0.8, sound_profile="seno")
+    )
+    m = len(plano) // 3
+    assert abs(_dom_freq(plano[:m], r2) - _dom_freq(plano[2 * m :], r2)) < 50
+
+
+def test_mezcla_turn_in_es_percusivo_y_corto():
+    """(3a) turn_in en 'mezcla' es un pluck percusivo: envolvente con caida (mucha
+    mas energia al inicio que al final) y mas corto que el tono de frenada."""
+    import numpy as np
+
+    from fantasma.viz.pacenotes import DEFAULT_FREQS, _render_cue
+
+    freqs = dict(DEFAULT_FREQS)
+    turn, rate = _decode_wav(
+        _render_cue({"cue": "turn_in"}, freqs, 0.12, 0.8, sound_profile="mezcla")
+    )
+    q = len(turn) // 4
+    rms_ini = float(np.sqrt(np.mean(turn[:q] ** 2)))
+    rms_fin = float(np.sqrt(np.mean(turn[-q:] ** 2)))
+    assert rms_ini > 3 * rms_fin, "turn_in no decae (ini=%.3f fin=%.3f)" % (rms_ini, rms_fin)
+
+    brake, _ = _decode_wav(_render_cue({"cue": "brake"}, freqs, 0.12, 0.8, sound_profile="mezcla"))
+    assert len(turn) < len(brake), "turn_in no es mas corto que la frenada"
+
+
+def test_mezcla_gas_tiene_brillo_de_alta_frecuencia():
+    """(3b) throttle_on y full_throttle en 'mezcla' tienen energia de alta
+    frecuencia (brillo por armonicos) que el seno puro NO tiene, y full_throttle
+    tiene DOS ataques (doble blip)."""
+    import numpy as np
+
+    from fantasma.viz.pacenotes import DEFAULT_FREQS, _render_cue
+
+    freqs = dict(DEFAULT_FREQS)
+    for cue in ("throttle_on", "full_throttle"):
+        mez, rate = _decode_wav(_render_cue({"cue": cue}, freqs, 0.12, 0.8, sound_profile="mezcla"))
+        seno, _ = _decode_wav(_render_cue({"cue": cue}, freqs, 0.12, 0.8, sound_profile="seno"))
+        hf_mez = _hf_fraction(mez, rate)
+        hf_seno = _hf_fraction(seno, rate)
+        assert hf_mez > 0.05, "%s sin brillo en 'mezcla' (hf=%.4f)" % (cue, hf_mez)
+        assert hf_mez > 10 * hf_seno, (
+            "%s: 'mezcla' no es mas brillante que el seno puro (%.4f vs %.4f)"
+            % (cue, hf_mez, hf_seno)
+        )
+        assert _dom_freq(mez[: len(mez) // 3], rate) < _dom_freq(mez[-len(mez) // 3 :], rate)
+
+    # full_throttle: doble blip -> dos ataques separados por un valle de silencio.
+    ft, rate = _decode_wav(
+        _render_cue({"cue": "full_throttle"}, freqs, 0.12, 0.8, sound_profile="mezcla")
+    )
+    env = np.abs(ft)
+    k = int(rate * 0.005)
+    env = np.convolve(env, np.ones(k) / k, mode="same")
+    above = env > 0.2 * env.max()
+    onsets = int(np.sum((~above[:-1]) & (above[1:])))
+    assert onsets == 2, "full_throttle no tiene dos ataques (onsets=%d)" % onsets
+
+
+def test_mezcla_apex_y_coast_siguen_apagados_por_defecto(tmp_path):
+    """(4) apex y coast siguen enabled=False por defecto: 'mezcla' no los enciende.
+    Un pack en 'mezcla' no emite ningun WAV de apex (400 Hz) ni coast (160 Hz)."""
+    import json
+
+    from fantasma.viz.pacenotes import DEFAULT_CONFIG, build_tone_pack
+
+    assert DEFAULT_CONFIG["apex"]["enabled"] is False
+    assert DEFAULT_CONFIG["coast"]["enabled"] is False
+
+    build_tone_pack(_PROFILE_ROWS, _PROFILE_CORNERS, str(tmp_path), top=1, sound_profile="mezcla")
+    plan = json.loads((tmp_path / "plan.json").read_text(encoding="utf-8"))
+    cues = {e["cue"] for e in plan["events"]}
+    assert "apex" not in cues, "apex sono sin activarse: %s" % cues
+    assert "coast" not in cues, "coast sono sin activarse: %s" % cues
+
+
+def test_mezcla_es_seleccionable_y_no_altera_perfiles_existentes(tmp_path):
+    """(5) 'mezcla' esta registrado (seleccionable via --sound-profile) y el
+    default sigue siendo 'seno'. Los perfiles existentes no cambian: cada uno
+    genera un pack valido y 'mezcla' difiere de todos ellos en un cue no-ancla."""
+    from fantasma.viz.pacenotes import (
+        DEFAULT_FREQS,
+        DEFAULT_SOUND_PROFILE,
+        SOUND_PROFILES,
+        _render_cue,
+        build_tone_pack,
+    )
+
+    assert "mezcla" in SOUND_PROFILES
+    assert DEFAULT_SOUND_PROFILE == "seno"
+
+    freqs = dict(DEFAULT_FREQS)
+    # throttle_on: 'mezcla' (brillante ascendente) difiere de los otros cuatro.
+    mez = _render_cue({"cue": "throttle_on"}, freqs, 0.12, 0.8, sound_profile="mezcla")
+    for prof in ("seno", "timbre", "ritmo", "chirp"):
+        otro = _render_cue({"cue": "throttle_on"}, freqs, 0.12, 0.8, sound_profile=prof)
+        assert mez != otro, "mezcla no difiere de %s en throttle_on" % prof
+        # y cada perfil existente sigue generando un pack valido (no-regresion).
+        out = tmp_path / prof
+        res = build_tone_pack(_PROFILE_ROWS, _PROFILE_CORNERS, str(out), top=1, sound_profile=prof)
+        assert res["entries"] >= 1
+
+
+def test_mezcla_genera_pack_valido_sin_clipping(tmp_path):
+    """'mezcla' genera un pack de WAVs validos (24 kHz) y sin clipping (pico<=1.0)
+    para todos los cues que suenan por defecto."""
+    import numpy as np
+
+    from fantasma.viz.pacenotes import build_tone_pack
+
+    result = build_tone_pack(
+        _PROFILE_ROWS, _PROFILE_CORNERS, str(tmp_path), top=1, sound_profile="mezcla"
+    )
+    assert result["entries"] >= 1
+    wavs = list(tmp_path.glob("*.wav"))
+    assert wavs
+    for wav in wavs:
+        samples, rate = _decode_wav(wav.read_bytes())
+        assert rate == 24000
+        assert len(samples) > 0
+        assert float(np.max(np.abs(samples))) <= 1.0, "clipping en %s" % wav.name

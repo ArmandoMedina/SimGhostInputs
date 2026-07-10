@@ -39,6 +39,21 @@ obtener el video de análisis.
 | **metros** | Distancia recorrida en la vuelta desde meta. | Referencia espacial; úsalo con el vídeo para confirmar en qué metro estás. |
 | **Curva / V-Min objetivo** (arriba a la derecha) | Nombre de la curva actual —del track pack, si lo cargaste con `--corners`; si no, el `id` `C01`…— y debajo su **V-Min objetivo** (la velocidad de paso de la referencia en esa curva) en km/h. | Saber en qué curva vas y a qué velocidad de paso apuntar. |
 
+> **Qué curva se etiqueta (atribución).** La curva «activa» que rotula el HUD se ancla al hito
+> publicado **`brake_start`** de cada curva, **no** al rango `segment_m`. `segment_m` **no** es un
+> contrato de contención: la ventana de propiedad de una curva **puede empezar antes de
+> `segment_m[0]`**. Cuando una frenada larga arranca tras un kink —antes del segmento que la curva
+> declara suyo—, la curva es dueña de esos metros de frenada **desde `brake_start`**. Y ante
+> **solape** de ventanas gana la curva **más tardía**, que es la dueña real de esos metros: así,
+> durante la frenada, el HUD etiqueta la curva que **se está frenando**, no la anterior.
+>
+> *Antes*, con contención estricta por `segment_m`, una frenada que invadía la cola del segmento
+> previo se rotulaba con la curva anterior: en el Nordschleife la **C54** aparecía como **C53** con
+> V-Min 292 km/h (absurda); ahora sale **C54** con V-Min 102 km/h (correcta), confirmado en QA
+> visual. El porqué está en el
+> [ADR 0031](decisions/0031-propiedad-de-la-frenada-y-contrato-de-segment-m.md); la fuente son
+> `_corner_lo` y `_corner_at` en `fantasma/viz/overlay.py`.
+
 ---
 
 ## Los tres paneles
@@ -147,6 +162,30 @@ fantasma compose --video grabacion.mp4 --overlay salida/overlay.webm \
 
 El HUD no cambia visualmente. El comando convierte los metros de `metadata.json` a segundos usando
 la telemetría del piloto (`--driver`) y mezcla los WAVs como una pista de audio de preview.
+
+### Perfil de sonido de los cues (`sound_profile`)
+
+Por defecto cada cue es un **seno puro** y lo único que cambia entre tipos es la **frecuencia**
+(`DEFAULT_FREQS`). El PO reportó que así todos los cues suenan casi igual y un seno se enmascara
+fácil con el ruido del motor. El motor acepta un **perfil de sonido** que cambia sólo la **forma de
+onda / duración / envolvente** de cada cue — **nunca las frecuencias base**. Es un parámetro global
+del pack, `sound_profile`, en `build_tone_pack(...)` y `build_pack(...)` (`fantasma/viz/pacenotes.py`);
+fuente única del catálogo: la constante `SOUND_PROFILES`.
+
+| Perfil | Qué cambia |
+| :-- | :-- |
+| `seno` (por defecto) | Comportamiento actual: seno puro, sólo cambia la frecuencia. Byte-idéntico al de hoy. |
+| `timbre` | Una forma de onda por familia: freno = cuadrada *band-limited*, tics = seno limpio, gas = triangular, turn-in/apex = pulso percusivo. |
+| `ritmo` | Mismo seno de hoy, separado por duración/patrón: freno del doble de largo, gas doble-blip, turn-in pulso único, tics iguales. |
+| `chirp` | Barridos de frecuencia: el freno baja, el gas sube (el significado va en la dirección). |
+
+Todo timbre no senoidal se sintetiza por **suma de armónicos limitada en banda** (< 0.45·SR), así no
+introduce *aliasing*; los chirps son senos de frecuencia instantánea por debajo de Nyquist. Un
+`sound_profile` desconocido levanta un error, no cae a un fallback mudo.
+
+La evidencia auditiva de las tres variantes (WAVs y videos con el mismo tramo, sólo cambia el
+sonido) está en `qa_runs/2026-07-09-sonidos/`. **Cuál adoptar lo decide el PO de oído**: hasta
+entonces el motor sigue en `seno`.
 
 ---
 

@@ -1,6 +1,6 @@
 # ADR 0025 — El último tono del countdown ES el punto de frenada (enmienda al ADR 0024)
 
-- **Estado:** Aceptada · enmendada por [ADR 0026](0026-cues-frenada-universal-countdown-oportunista.md) (2026-07-06) y por [ADR 0028](0028-cues-reencuadre-prioridades-countdown-frecuencias-gear.md) (2026-07-08)
+- **Estado:** Aceptada · enmendada por [ADR 0026](0026-cues-frenada-universal-countdown-oportunista.md) (2026-07-06), por [ADR 0028](0028-cues-reencuadre-prioridades-countdown-frecuencias-gear.md) (2026-07-08) y por [ADR 0032](0032-regla-de-cabida-del-countdown-solo-cede-lo-que-puede-ceder.md) (2026-07-09)
 - **Fecha:** 2026-07-06
 
 > **Enmienda (ADR 0026):** el countdown deja de ser un evento único anclado; pasa a 2 tics
@@ -13,6 +13,13 @@
 > total repartido en fracciones) queda reemplazado por `DEFAULT_COUNTDOWN_GAP_S=0.75` (gap
 > uniforme entre tic1→tic2→frenada); los clamps de `_countdown_lead_m` bajan de `[60, 350]`
 > a `[30, 250]` metros. El valor `3.5` de este ADR ya no es la fuente de verdad del ritmo.
+>
+> **Enmienda ([ADR 0032](0032-regla-de-cabida-del-countdown-solo-cede-lo-que-puede-ceder.md),
+> 2026-07-09):** la regla de cabida cambia. Un tic ya no se omite ante "cualquier cue a menos
+> de `min_gap_m`": solo ceden el paso las **frenadas protegidas** y los **tics de otras curvas**;
+> un cue no protegido (turn_in, throttle_on, full_throttle, brake_release) **cede su hueco al
+> tic** y queda registrado en el rastro de descartes. Invariante intacta: un tic nunca desplaza
+> una frenada protegida — el "¡ya!" sigue intocable.
 
 ## Contexto
 

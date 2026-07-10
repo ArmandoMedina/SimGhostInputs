@@ -480,6 +480,31 @@ async def render(state, navigate):
 
                     vol_slider.on_value_change(_on_vol)
 
+                    from fantasma.viz.pacenotes import (
+                        DEFAULT_SOUND_PROFILE,
+                        SOUND_PROFILES,
+                    )
+
+                    ui.label("Perfil de sonido").classes("text-sm font-bold text-white mb-1 mt-3")
+                    _sound_state = {"value": DEFAULT_SOUND_PROFILE}
+                    sound_select = (
+                        ui.select(
+                            list(SOUND_PROFILES),
+                            value=DEFAULT_SOUND_PROFILE,
+                            label="Perfil de sonido",
+                        )
+                        .classes("w-48")
+                        .tooltip(
+                            "Paleta de sintesis de los cues de tono: seno (actual, solo "
+                            "cambia la frecuencia), timbre (una forma de onda por familia), "
+                            "ritmo (separa por duracion/patron), chirp (barridos) o mezcla "
+                            "(un sonido distinto por cue; freno y contador iguales al de seno)."
+                        )
+                    )
+                    sound_select.on_value_change(
+                        lambda e: _sound_state.update({"value": e.value or DEFAULT_SOUND_PROFILE})
+                    )
+
                     _lang_state = {"value": "es-MX"}
 
                     lang_container = ui.column().classes("w-full")
@@ -553,6 +578,7 @@ async def render(state, navigate):
                         # top=0 = todas las curvas (ADR 0024)
                         _top = 0 if all_corners_chk.value else int(top_number.value or 5)
                         _vol = float(vol_state["value"])
+                        _sound_profile = _sound_state["value"]
                         _lang = _lang_state["value"] if _mode in ("voice", "both") else "es-MX"
                         _rows = state.rows
                         _corners = state.corners
@@ -580,6 +606,7 @@ async def render(state, navigate):
                                 track_name=_track,
                                 cue_config=_cue_config,
                                 gear_shifts=_gear_shifts,
+                                sound_profile=_sound_profile,
                             )
 
                         try:

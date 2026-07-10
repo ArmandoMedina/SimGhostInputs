@@ -158,6 +158,7 @@ def test_pacenotes_cli_genera_pack(tmp_path):
         tone_duration=0.05,
         volume=0.8,
         legacy_all_tones=False,
+        sound_profile="seno",
     )
     cmd_pacenotes(args)
     assert (out / "metadata.json").exists()
@@ -233,6 +234,7 @@ def test_pacenotes_cli_reenvia_gear_shifts_a_build_pack(tmp_path, monkeypatch):
         tone_duration=0.05,
         volume=0.8,
         legacy_all_tones=False,
+        sound_profile="seno",
     )
     cmd_pacenotes(args)
     assert captured["gear_shifts"] == [{"distance": 500, "gear_from": 2, "gear_to": 3}]
@@ -258,3 +260,93 @@ def test_main_retorna_1_cuando_subcomando_lanza_excepcion(monkeypatch):
 
     monkeypatch.setattr("fantasma.cli.cmd_laps", _cmd_boom)
     assert main(["laps", "cualquier.csv"]) == 1
+
+
+def _pacenotes_fixture(tmp_path):
+    """Escribe un corners.json + compare.csv minimos y devuelve sus rutas."""
+    import json
+
+    corners = tmp_path / "corners.json"
+    compare = tmp_path / "corners_compare.csv"
+    corners.write_text(
+        json.dumps(
+            {
+                "corners": [
+                    {
+                        "id": "C01",
+                        "name": "Hatzenbach",
+                        "milestones": {
+                            "brake_start": {"d": 1800, "v": 216},
+                            "brake_release": {"d": 1950},
+                            "turn_in": {"d": 2050},
+                            "throttle_on": {"d": 2200},
+                            "full_throttle": {"d": 2400},
+                        },
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+    compare.write_text(
+        "id,name,apex_d,time_lost,flags\nC01,Hatzenbach,2000,0.6,vmin+frenada\n",
+        encoding="utf-8",
+    )
+    return corners, compare
+
+
+def _wavs(directory):
+    return {p.name: p.read_bytes() for p in sorted(directory.glob("*.wav"))}
+
+
+def test_pacenotes_cli_sound_profile_flag_e2e(tmp_path):
+    """PROBLEMA 1: --sound-profile fluye por el e2e hasta build_pack.
+
+    Blinda que la feature ya no esta muerta de cara al usuario: el flag existe,
+    su default es 'seno' byte-identico, y otra paleta produce WAVs distintos.
+    Antes de 759413f+fix la CLI no exponia el perfil (grep solo lo hallaba en
+    pacenotes.py) y este e2e no podia pedir una paleta.
+    """
+    corners, compare = _pacenotes_fixture(tmp_path)
+    d_default = tmp_path / "pn_default"
+    d_seno = tmp_path / "pn_seno"
+    d_timbre = tmp_path / "pn_timbre"
+
+    base = ["pacenotes", "--corners", str(corners), "--compare", str(compare), "--top", "1"]
+    assert main([*base, "--output-dir", str(d_default)]) == 0
+    assert main([*base, "--output-dir", str(d_seno), "--sound-profile", "seno"]) == 0
+    assert main([*base, "--output-dir", str(d_timbre), "--sound-profile", "timbre"]) == 0
+
+    wav_default = _wavs(d_default)
+    wav_seno = _wavs(d_seno)
+    wav_timbre = _wavs(d_timbre)
+
+    assert wav_default, "el pack default no genero WAVs"
+    # Default == 'seno' explicito, byte a byte.
+    assert wav_default == wav_seno
+    # 'timbre' cambia la forma de onda: mismos nombres de archivo, bytes distintos.
+    assert set(wav_default) == set(wav_timbre)
+    assert any(wav_default[n] != wav_timbre[n] for n in wav_default)
+
+
+def test_pacenotes_cli_sound_profile_invalido_falla_con_codigo(tmp_path, capsys):
+    """Un --sound-profile invalido corta con SystemExit (exit code != 0) y un
+    mensaje accionable que lista las opciones validas (argparse choices)."""
+    corners, compare = _pacenotes_fixture(tmp_path)
+    with pytest.raises(SystemExit) as exc:
+        main(
+            [
+                "pacenotes",
+                "--corners",
+                str(corners),
+                "--compare",
+                str(compare),
+                "--output-dir",
+                str(tmp_path / "out"),
+                "--sound-profile",
+                "bombo",
+            ]
+        )
+    assert exc.value.code != 0
+    err = capsys.readouterr().err
+    assert "bombo" in err and "seno" in err and "timbre" in err
