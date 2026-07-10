@@ -27,8 +27,8 @@ Paso 5, [ADR 0027](decisions/0027-cues-catalogo-configurable-perfiles-coast-subt
 
 | Cue (etiqueta) | Clave | Prioridad | Suena | Por defecto | Protegido | Notas |
 | :-- | :-- | :-- | :-- | :-- | :-- | :-- |
-| Punto de frenada | `brake` | 100 | Sí | Habilitado | **Sí (R1)** | La señal de coaching. Nunca cede su hueco; ningún gap lo descarta ([ADR 0026](decisions/0026-cues-frenada-universal-countdown-oportunista.md)) |
-| Contador de frenada | `brake_countdown` → `brake_tic` | 50 | Sí | Habilitado | No | 2 tics de aviso antes de la frenada. **Oportunista:** entra solo si cabe; su prioridad es metadata, no pelea por cabida (ver [Countdown](#countdown-de-frenada)) |
+| Punto de frenada | `brake` | 100 | Sí | Habilitado | **Sí (R1)** | La señal de coaching. Nunca cede su hueco; ningún gap lo descarta ([ADR 0026](decisions/0026-cues-frenada-universal-countdown-oportunista.md)). **Una curva puede emitir más de uno:** si tiene ≥2 frenadas fuertes reales (`milestones.brake_starts`), suena un `brake` protegido por cada una — protegido contra protegido, se quedan todas ([ADR 0033](decisions/0033-frenadas-multiples-por-curva.md)) |
+| Contador de frenada | `brake_countdown` → `brake_tic` | 50 | Sí | Habilitado | No | 2 tics de aviso antes de **cada** frenada de la curva. **Oportunista por frenada:** cada countdown entra solo si cabe (puede ceder con `tic_sin_espacio` si choca con el de la frenada anterior de la misma curva); su prioridad es metadata, no pelea por cabida (ver [Countdown](#countdown-de-frenada)) |
 | Inicio de acelerador | `throttle_on` | 95 | Sí | Habilitado | No | Ancla en la aceleración **sostenida**, no en el primer roce de pedal ([ADR 0027](decisions/0027-cues-catalogo-configurable-perfiles-coast-subtitulos.md)) |
 | Gas completo | `full_throttle` | 90 | Sí | Habilitado | No | |
 | Turn-in | `turn_in` | 70 | Sí | Habilitado | No | Solo se emite si en esa curva se pierde ≥ 0.25 s (gate propio en `_corner_candidates`) |
@@ -61,8 +61,10 @@ Quién cede lo decide, en orden:
 
 1. **Protección (R1).** El `brake` es el único cue **protegido**. Protegido contra
    no-protegido: cae el no-protegido. Protegido contra protegido: **se quedan los dos** (dos
-   frenadas reales pegadas suenan ambas). Ningún ranking ni configuración puede sacar la
-   frenada del pool sonoro — es la señal que evita que el piloto se pase y se mate.
+   frenadas reales pegadas suenan ambas — incluidas dos frenadas de la **misma** curva cuando
+   trae `milestones.brake_starts`, [ADR 0033](decisions/0033-frenadas-multiples-por-curva.md)).
+   Ningún ranking ni configuración puede sacar la frenada del pool sonoro — es la señal que
+   evita que el piloto se pase y se mate.
 2. **Prioridad.** Entre no-protegidos gana el de mayor `priority`; en empate sobrevive el
    primero por distancia.
 
@@ -92,14 +94,20 @@ Mecánica actual:
 
 - El evento se **ancla en la frenada** (`brake_d`) y lleva su anticipo como dato (`lead_m`).
   `build_tone_pack` lo expande en 2 tics de aviso, en `brake_d − lead_m` y `brake_d − lead_m/2`.
+  **Si la curva trae varias frenadas fuertes reales** (`milestones.brake_starts`,
+  [ADR 0033](decisions/0033-frenadas-multiples-por-curva.md)), cada una arma **su propio**
+  evento de countdown, anclado a su propia `brake_d`.
 - Los tics son **oportunistas por cabida**, con la regla **«solo cede lo que puede ceder»**: un
   tic se coloca salvo que su hueco (< 50 m) lo ocupe un sonido **no cedible** —una **frenada
-  protegida** o un **tic del countdown de OTRA curva**—, en cuyo caso es el tic el que cae. Un
-  cue **no protegido** de otra curva (`turn_in`, `throttle_on`, `full_throttle`, `brake_release`,
-  `coast`) **no bloquea**: **cede su hueco** y el tic se coloca. En curvas muy densas, con dos
-  frenadas ajenas pegadas, el tic no cabe y la curva queda solo con su frenada
+  protegida** o un **tic del countdown de OTRA curva** (u **otra frenada de la misma curva**)—,
+  en cuyo caso es el tic el que cae (razón `tic_sin_espacio`). Un cue **no protegido** de otra
+  curva (`turn_in`, `throttle_on`, `full_throttle`, `brake_release`, `coast`) **no bloquea**:
+  **cede su hueco** y el tic se coloca. En curvas muy densas, con dos frenadas ajenas pegadas
+  (de otra curva o de la misma), el tic no cabe y esa frenada queda sonando **sin** su
+  countdown — nunca se pierde la frenada en sí
   ([ADR 0026](decisions/0026-cues-frenada-universal-countdown-oportunista.md),
-  [ADR 0032](decisions/0032-regla-de-cabida-del-countdown-solo-cede-lo-que-puede-ceder.md)).
+  [ADR 0032](decisions/0032-regla-de-cabida-del-countdown-solo-cede-lo-que-puede-ceder.md),
+  [ADR 0033](decisions/0033-frenadas-multiples-por-curva.md)).
 - **Invariante de seguridad: un tic nunca desplaza una frenada.** La frenada protegida es, por
   construcción, uno de los dos sonidos no cedibles que bloquean al tic; si chocan, cede el tic,
   nunca la frenada ([ADR 0032](decisions/0032-regla-de-cabida-del-countdown-solo-cede-lo-que-puede-ceder.md)).
@@ -125,6 +133,12 @@ metro como dato dado. Qué muestra es cuando la curva tiene varias fases de fren
   dueña de la fase de frenada posterior al ápex de su vecina previa. Por eso `brake_start`
   puede caer fuera del `segment_m` que la curva declara — `segment_m` es banda de vecindad,
   no contrato de contención.
+- `brake_start` (el escalar de esta sección) **no cambia** cuando la curva tiene varias
+  frenadas fuertes reales: sigue siendo la métrica comparable de coaching. Qué frenadas
+  **suenan** es una pregunta aparte que responde `milestones.brake_starts`
+  ([ADR 0033](decisions/0033-frenadas-multiples-por-curva.md), esquema en
+  [`docs/formato-datos.md`](formato-datos.md)) — de ahí que el catálogo de arriba diga que
+  `brake` puede emitirse más de una vez por curva.
 
 ---
 

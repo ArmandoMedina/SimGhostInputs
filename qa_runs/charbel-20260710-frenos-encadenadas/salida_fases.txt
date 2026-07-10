@@ -1,0 +1,10 @@
+Vuelta de referencia: 378.4s, 20592m
+
+--- C03 window=[413, 863] (prev_apex=C02:359, apex=C03:863) ---
+  fase 0: d=[721,836]m t=[15.00,17.24]s v=[245->134]km/h peak_brake=100% <== CHOSEN (brake_start del corner)
+
+--- C05 window=[1006, 1149] (prev_apex=C04:1006, apex=C05:1149) ---
+  fase 0: d=[1042,1064]m t=[22.28,22.78]s v=[175->150]km/h peak_brake=100% <== CHOSEN (brake_start del corner)
+  fase 1: d=[1117,1126]m t=[24.12,24.34]s v=[143->138]km/h peak_brake=90%
+    vs fase 0: gap_s=1.34 still_braking=True -> FASE SEPARADA
+
