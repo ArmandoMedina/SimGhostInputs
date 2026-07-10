@@ -219,11 +219,16 @@ def test_no_coast_when_gas_overlaps_brake():
 # ── brake_start: fases de frenada y frontera entre curvas vecinas ─────────────
 
 
-def _lap_brake_blocks(dt_s, blocks):
+def _lap_brake_blocks(dt_s, blocks, throttle_blocks=None):
     """Vuelta de UNA curva (vmin en ~310 m) con bloques de freno artesanales por
     ÍNDICE, para controlar con precisión el hueco TEMPORAL entre bloques (la
     fusión de fases se decide por tiempo, no por distancia). `blocks` es una
-    lista de (i0, i1, peak): brake=peak en los índices [i0, i1)."""
+    lista de (i0, i1, peak): brake=peak en los índices [i0, i1).
+
+    `throttle_blocks` (opcional) inyecta gas por ÍNDICE sobre el default (para
+    probar la readministración en el hueco que separa dos frenadas, ADR 0033):
+    lista de (i0, i1, pct) que sobrescribe throttle=pct en [i0, i1). Sin él, el
+    throttle queda como siempre (100 en dist>320, 0 antes)."""
     lap = make_lap(
         dt_s=dt_s,
         length_m=900.0,
@@ -237,7 +242,11 @@ def _lap_brake_blocks(dt_s, blocks):
         for i in range(i0, min(i1, n)):
             brake[i] = pk
     lap.channels["brake"] = brake
-    lap.channels["throttle"] = [100.0 if d > 320 else 0.0 for d in dist]
+    throttle = [100.0 if d > 320 else 0.0 for d in dist]
+    for i0, i1, pct in throttle_blocks or []:
+        for i in range(i0, min(i1, n)):
+            throttle[i] = pct
+    lap.channels["throttle"] = throttle
     return lap
 
 
@@ -345,6 +354,51 @@ def test_brake_release_cae_despues_de_una_reaplicacion_suave():
     ms = extract_milestones(lap)[0]["milestones"]
     assert "brake_release" in ms
     assert ms["brake_release"]["d"] > round(dist[149])
+
+
+def test_brake_starts_dos_frenadas_con_gas_en_hueco():
+    # ADR 0033 (C05): dos bloques FUERTES separados, con el coche re-acelerando
+    # (~26%) en el hueco -> son DOS frenadas reales que deben sonar. El escalar
+    # `brake_start` sigue anclado en la PRIMERA (pico máximo 100%), no salta a la
+    # tardía; `brake_starts` lista AMBAS cronológicamente.
+    lap = _lap_brake_blocks(
+        0.05,
+        [(60, 90, 100.0), (140, 165, 90.0)],
+        throttle_blocks=[(95, 135, 26.0)],
+    )
+    dist = lap.channels["dist"]
+    ms = extract_milestones(lap)[0]["milestones"]
+    assert ms["brake_start"]["d"] == round(dist[60])
+    assert "brake_starts" in ms
+    assert len(ms["brake_starts"]) == 2
+    assert ms["brake_starts"][0]["d"] == round(dist[60])
+    assert ms["brake_starts"][1]["d"] == round(dist[140])
+    assert ms["brake_starts"][0]["brake_pct"] == 100
+    assert ms["brake_starts"][1]["brake_pct"] == 90
+
+
+def test_brake_starts_ausente_si_suelta_sin_gas():
+    # Mismos dos bloques que arriba pero con throttle ~0 en el hueco (el piloto
+    # suelta el freno sin volver a acelerar): se funden en UNA frenada -> NO se
+    # publica `brake_starts` (el escalar sigue igual).
+    lap = _lap_brake_blocks(0.05, [(60, 90, 100.0), (140, 165, 90.0)])
+    ms = extract_milestones(lap)[0]["milestones"]
+    assert "brake_start" in ms
+    assert "brake_starts" not in ms
+
+
+def test_brake_starts_ausente_en_trail_braking():
+    # Un solo bloque MODULADO (freno baja de 90% a 30% pero nunca < brake_on=10),
+    # con gas simultáneo en el tramo suave: es UN solo bloque, la fusión ni se
+    # evalúa -> 1 frenada, sin `brake_starts`. El arrastre continuo no se parte.
+    lap = _lap_brake_blocks(
+        0.05,
+        [(60, 100, 90.0), (100, 150, 30.0)],
+        throttle_blocks=[(100, 150, 26.0)],
+    )
+    ms = extract_milestones(lap)[0]["milestones"]
+    assert "brake_start" in ms
+    assert "brake_starts" not in ms
 
 
 def _lap_encadenada_mismo_sentido():

@@ -41,6 +41,11 @@ Metodologia (validada contra telemetria real del Nordschleife):
 BRAKE_ON = 10
 BRAKE_STRONG = 50
 PHASE_GAP_S = 0.5
+# Piso de gas readministrado que separa dos frenadas reales (ADR 0033): en el
+# hueco entre dos bloques de freno, un `throttle` por encima de este umbral es
+# "volvi a acelerar y frene otra vez", no "solte un instante para rotar"
+# (trail-braking). Valor inicial afinable; solo lo consume `detect_brakings`.
+THROTTLE_REAPPLY = 15
 BRAKE_LOOKBACK_M = 450
 
 
@@ -177,6 +182,57 @@ def select_brake_phase(
     return chosen, phases
 
 
+def detect_brakings(
+    lap_samples,
+    window_m,
+    brake_on=BRAKE_ON,
+    brake_strong=BRAKE_STRONG,
+    throttle_reapply=THROTTLE_REAPPLY,
+):
+    """Detecta TODA frenada fuerte real dentro de la ventana, para el audio de
+    pacenotes (ADR 0033). Hermana de `select_brake_phase`, pero responde otra
+    pregunta: no "cual es EL punto de frenada comparable" (metrica de coaching)
+    sino "que frenadas deben SONAR" (audio del piloto).
+
+    Agrupa las muestras con `brake` > `brake_on` en BLOQUES (hueco temporal
+    intra-bloque < 0.3 s), igual que `select_brake_phase`. Funde bloques
+    consecutivos en una misma frenada SALVO que en el hueco entre ellos el
+    piloto readministre gas -- alguna muestra del hueco (tiempo entre el fin del
+    bloque previo y el inicio del siguiente, dentro de la ventana) con
+    `throttle` >= `throttle_reapply`: eso separa "volvi a acelerar y frene otra
+    vez" de "solte un instante para rotar" (trail-braking). Si el pedal nunca
+    baja de `brake_on` es un solo bloque y la fusion ni se evalua, asi que el
+    arrastre modulado jamas se parte en dos avisos.
+
+    Devuelve la lista CRONOLOGICA de frenadas FUERTES (pico
+    `max(s["brake"]) >= brake_strong`), cada una lista de muestras. Sin canal
+    `throttle`, `.get` da 0, que nunca supera el umbral: todo se funde en una
+    frenada (el comportamiento previo al ADR 0033).
+    """
+    lo, hi = window_m
+    win = [s for s in lap_samples if lo < s["dist"] <= hi]
+    blocks, cur = [], None
+    for s in win:
+        if s.get("brake", 0) > brake_on:
+            if cur and s["time"] - cur[-1]["time"] < 0.3:
+                cur.append(s)
+            else:
+                cur = [s]
+                blocks.append(cur)
+    if not blocks:
+        return []
+    brakings = [list(blocks[0])]
+    for b in blocks[1:]:
+        prev_last = brakings[-1][-1]
+        gap = [s for s in win if prev_last["time"] < s["time"] < b[0]["time"]]
+        reapplied = any(s.get("throttle", 0) >= throttle_reapply for s in gap)
+        if reapplied:
+            brakings.append(list(b))
+        else:
+            brakings[-1].extend(b)
+    return [fr for fr in brakings if max(s["brake"] for s in fr) >= brake_strong]
+
+
 def extract_milestones(
     lap,
     events=None,
@@ -303,6 +359,15 @@ def extract_milestones(
             )
             if rel:
                 ms["brake_release"] = _pt(rel)
+            # brake_starts (ADR 0033): lista audible de TODA frenada fuerte real
+            # sobre la MISMA ventana que `select_brake_phase`. Aditiva y opcional
+            # -- solo aparece con >=2 frenadas fuertes; no toca el escalar
+            # `brake_start` ni a `compare`. Su unico consumidor es viz/pacenotes.
+            fuertes = detect_brakings(data, brake_window, brake_on, brake_strong)
+            if len(fuertes) >= 2:
+                ms["brake_starts"] = [
+                    _pt(fr[0], brake_pct=round(max(s["brake"] for s in fr))) for fr in fuertes
+                ]
         elif pre and "throttle" in pre[0]:
             lift = min(pre, key=lambda s: s["throttle"])
             if lift["throttle"] < 80:
