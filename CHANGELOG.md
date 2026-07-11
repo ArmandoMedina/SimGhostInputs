@@ -4,6 +4,18 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/). Versionado
 
 ## [Unreleased]
 
+## [2.5.0] - 2026-07-11
+
+### Método — Homologación de las personas al asiento neutral (ADR 0035)
+- **Auditoría "full join" SGI ⇄ Jidoka:** la maquinaria neutral (hooks, `settings.json`, comandos, tokens de la ley) resultó **byte-idéntica** al método; el drift restante vivía solo en la **prosa** de los `SKILL.md` y en `/arranca`. Cambios de solo documentación/casting: **`fantasma/` no se toca**.
+- **Cada persona declara su asiento neutral** (ahiram→desarrollador, armando→arquitecto-doc, charbel→validador, mariana→revisor-visual, escribano→escribano) — el mapeo persona↔rol pasa de implícito a explícito ([Jidoka `kanban/roles.md`]).
+- **Mariana:** su prosa se corrige a los nombres **reales** de la máquina neutral (`gemba-stop`, `.gemba-marker`, rol `revisor-visual`) — antes nombraba `mariana-stop`/`.mariana-marker` inexistentes.
+- **Charbel:** recupera dos límites neutrales del `validador` (entrada hostil con presupuesto anti-ReDoS; verificar terceros contra su fuente, no su doc), aterrizados en `importers/`.
+- **Autoría de ADR:** se corrige la referencia rota `adr-helper` (inexistente) → **Armando** en `escribano/SKILL.md` y `docs/flujo-de-trabajo.md`; Armando redacta, el PO decide.
+- **`/arranca`** re-homologado a la estructura canónica de Jidoka: recupera "una sola sesión escritora por working tree" y la convención 🎭 de anuncio de asiento.
+- **Excepción de datos de QA visual con nombre:** Mariana usa telemetría real para el HUD (lo sintético no ejercita el render); el dato real **nunca entra al repo** y en `qa_runs/` solo van capturas.
+- Diferido a sesión humana: portar `probar-gate.ps1` (exige editar el propio gate `verificar.ps1`).
+
 ### Método — Convergencia al núcleo neutral de Jidoka (ADR 0034)
 - **Una sola metodología** entre SGI, tracker-financiero y Jidoka. SGI adopta la maquinaria neutral de Jidoka —la versión más nueva del motor— conservando lo suyo. Toca solo la maquinaria de método: **`fantasma/` y la app no se tocan** (pytest sigue verde, 453 passed).
 - **Comandos:** se suman `/planea`, `/gemba`, `/cierra`, `/que-sigue`, `/desatendido` (antes solo `/arranca`, que se conserva).

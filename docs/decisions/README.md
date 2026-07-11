@@ -44,3 +44,4 @@ bifurcación equivocada.
 | [0032](0032-regla-de-cabida-del-countdown-solo-cede-lo-que-puede-ceder.md) | Regla de cabida del countdown: solo cede lo que puede ceder — el tic desplaza cues no protegidos, nunca una frenada protegida (enmienda ADR 0025, 0026 y 0028) | Aceptada (revisable) | 2026-07-09 |
 | [0033](0033-frenadas-multiples-por-curva.md) | Frenadas múltiples por curva: cada frenada real suena — `brake_start` escalar no cambia, `brake_starts` (lista) nuevo para el audio (enmienda ADR 0031) | Aceptada | 2026-07-10 |
 | [0034](0034-convergencia-nucleo-jidoka.md) | Convergencia al núcleo neutral de Jidoka: una sola metodología, maquinaria neutral, casting como personas | Aceptada | 2026-07-10 |
+| [0035](0035-homologacion-personas-asiento-neutral.md) | Homologación de las personas al asiento neutral: cada persona declara su rol, Mariana a nombres reales, límites de Charbel recuperados, `/arranca` re-homologado | Aceptada | 2026-07-11 |
