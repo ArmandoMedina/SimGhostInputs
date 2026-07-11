@@ -15,6 +15,30 @@
 > **`v2.4.0` liberada (2026-07-10) con instalador Windows adjunto.** `master` limpia y al día;
 > detalle en [CHANGELOG](CHANGELOG.md) y [ROADMAP](ROADMAP.md). Lo que queda es de **OÍDO del PO**.
 
+**2026-07-11 — SGI se enchufa al lazo de sincronización labs↔Jidoka (primer consumidor). [ADR 0036]**
+
+> *La lección sube, la máquina baja.* Sobre la convergencia manual de ADR 0034/0035, ahora hay máquina.
+> Rama de trabajo: `lazo-sincronizacion-jidoka` (sin push, sin merge). Solo se **añadieron** archivos —
+> el motor de SGI (`verificar.ps1`/`auditar.ps1`/hooks) **no se tocó**; pytest sigue verde.
+
+- **Sello sembrado** (`tools/jidoka-motor.json`): registra que el motor de SGI corresponde a Jidoka
+  **0.10.1-beta** + el SHA256 de cada pieza mecánica. Es la línea base honesta para futuros `-Actualizar`.
+  NO sella instancia/estética (ley, `product/`, skills-persona, comandos).
+- **Canal de subida disponible:** `tools/reportar-leccion.ps1` (abre el issue prellenado en Jidoka) +
+  guía `docs/guias/reportar-leccion-a-jidoka.md`. Estado consultable con
+  `tools/estado-motor.ps1 -Jidoka <ruta-de-Jidoka>` (aviso, no muro).
+- **El motor NO se auto-actualiza:** la divergencia de dominio (ruff/pytest, `engineering/`, pre-push
+  bash) y estética (casting de personas, comandos sin namespace) **se preserva**; la mecánica común se
+  converge cuando exista la costura, en rama y revisando el diff.
+- **Lecciones draft pendientes de presentar** en `qa_runs/lazo-sync-20260711/` (redactadas, NO subidas):
+  (1) excepción de QA visual "con nombre" para el mandato sintético-only; (2) `probar-gate.ps1` como
+  ítem de **bajada** (necesita `-Cambiados` en `verificar.ps1`, que Jidoka ya tiene); (3) dos cosechadas
+  del ADR 0019 (durabilidad de evidencia con `git add -f`; tope de agentes worktree por hook). También
+  ahí: `divergencias.md` (comparación pieza por pieza) y `estado-motor.txt`.
+- **[Decisión humana]** `estado-motor.ps1` reporta **atrás**: el checkout local de Jidoka ya está en
+  **0.11.0-beta** (rama en-vuelo, sin publicar). Cuando 0.11.0-beta se libere, evaluar la bajada. Detalle
+  en `qa_runs/lazo-sync-20260711/divergencias.md`.
+
 **2026-07-10 — v2.4.0 publicada. La DOBLE FRENADA (ADR 0033) quedó cerrada, mergeada y versionada.**
 
 - **Doble frenada (ADR 0033) en master.** El PO detectó, de oído, que cuando frena → suelta a fondo →

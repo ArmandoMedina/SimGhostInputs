@@ -1,0 +1,7 @@
+== Estado del motor Jidoka ==
+  Tu motor: Jidoka 0.10.1-beta
+  Jidoka actual: 0.11.0-beta
+  [AVISO] Tu sello (0.10.1-beta) difiere de Jidoka (0.11.0-beta): probablemente estas atras.
+          Baja la mecanica (desde el repo Jidoka, apuntando aca):
+            ./tools/instalar.ps1 -Destino 'C:\Repositorios\SimGhostInputs' -Actualizar
+          Corre en una rama -> revisa el diff -> PR (el diff ES la revision).

@@ -1,0 +1,19 @@
+{
+    "version":  "0.10.1-beta",
+    "sembrado_hashes":  {
+                            "tools/verificar.ps1":  "E793B4EE9FF70801C21B126B186E0084B03C24A93962FE5FDC3C9A6ADFE016E1",
+                            "tools/auditar.ps1":  "5A1A9156BD203A2DC9B90C5CA70026E027946159D8DB328E64A22F0889D115A6",
+                            "tools/auditar-radius.ps1":  "42FA968721B749913F4981A1EB54D928A547F2D282A46DE68D3652E6DE6F76F9",
+                            "tools/probar-hooks.ps1":  "2BFAFC664810CF0142141C108857057843951016D57FAE35F4B89F3C2754DF6B",
+                            "tools/probar-auditor.ps1":  "94015E56FBD7D0FDC7DD4F822052D07C12A7BC2930C63C8E6B1331C1B62A305B",
+                            ".claude/settings.json":  "8B7644E13C51D6047D75BC1F2A62B0104E272DB0B0ABF970507DD545F52184DD",
+                            ".claude/hooks/andon-stop.ps1":  "22DD9443AB5F39D4A2E6309EF0ECB1C6DA5D0D351F4ECE4733610D9FEA7CB998",
+                            ".claude/hooks/gemba-stop.ps1":  "14E8FDDE361C6FB1EF0E1340C9DD11C9C1B489E3432A447DA683EE03FEA0661F",
+                            ".claude/hooks/no-memorias-pretooluse.ps1":  "71DE81981311E690C1D49CBF471E5E9301FC9235D88BDE603D7EB1A4EC0EBB6F",
+                            ".claude/hooks/review-stop.ps1":  "53C1D9A2F9501C9942A7EB6B68EE1A5E867EF2977A41E2F3DE816C97DC1EE348",
+                            ".githooks/pre-push":  "CFFDDC5720C3B54BEEB1A825291142EA8E82C41258C5934A6B0D9CC1D16286AD",
+                            ".github/workflows/installer.yml":  "260FBF8C5BEF6E42066EE06FA48DBB362FD3CA1F01953AC7DB6F82765C1965A0",
+                            ".github/workflows/release.yml":  "540E0D67B14D2FCF8657FBEEEA05670499CEBBB9F9E450E70FFED11B725A5861",
+                            ".github/workflows/tests.yml":  "442CFF5551FF1B349E6001FE12068D802B7053BF75F63116F8C146BE401F2F4E"
+                        }
+}
