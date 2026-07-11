@@ -19,7 +19,8 @@
       "engineering/modelos-de-datos/TBL-LAP-*",
       "engineering/modelos-de-datos/TBL-OUT-*"
     ],
-    "rol": "Charbel"
+    "revisa": true,
+    "rol": "validador"
   },
   {
     "nombre": "viz",
@@ -46,7 +47,8 @@
       "engineering/especificaciones/TEC-SYN-*",
       "engineering/componentes/ffmpeg*"
     ],
-    "rol": "Mariana"
+    "revisa": true,
+    "rol": "revisor-visual"
   },
   {
     "nombre": "ui",
@@ -61,7 +63,8 @@
       "engineering/componentes/streamlit*",
       "engineering/componentes/nicegui*"
     ],
-    "rol": "Mariana"
+    "revisa": true,
+    "rol": "revisor-visual"
   },
   {
     "nombre": "importers",
@@ -74,7 +77,8 @@
       "product/modulos/IMP-*",
       "engineering/componentes/motec*"
     ],
-    "rol": "Charbel"
+    "revisa": true,
+    "rol": "validador"
   },
   {
     "nombre": "cli",
@@ -85,7 +89,8 @@
     "product_avisa": [
       "product/procesos/Pipeline*"
     ],
-    "rol": "Reviewer"
+    "revisa": true,
+    "rol": "validador"
   },
   {
     "nombre": "barreras",
@@ -102,7 +107,8 @@
     "doc_bloquea": ["docs/flujo-de-trabajo.md"],
     "doc_avisa": ["docs/benchmark-linter.md"],
     "product_avisa": [],
-    "rol": "Armando"
+    "revisa": true,
+    "rol": "arquitecto-doc"
   },
   {
     "nombre": "orquestacion",
@@ -111,7 +117,7 @@
     "doc_bloquea": [],
     "doc_avisa": ["docs/flujo-de-trabajo.md"],
     "product_avisa": [],
-    "rol": "Armando"
+    "rol": "arquitecto-doc"
   },
   {
     "nombre": "setup",
@@ -120,7 +126,7 @@
     "doc_bloquea": [],
     "doc_avisa": ["README.md", "docs/flujo-de-trabajo.md"],
     "product_avisa": [],
-    "rol": "Reviewer"
+    "rol": "devops"
   },
   {
     "nombre": "raiz",
@@ -131,6 +137,6 @@
     "doc_avisa": ["CONTRIBUTING.md"],
     "mensaje": "un archivo nuevo en la raiz casi siempre esta mal ubicado: muevelo a su carpeta (docs/, product/, tools/, qa_runs/) o declarale un area en tools/blast-radius.json, o agregalo a .gitignore si es artefacto",
     "product_avisa": [],
-    "rol": "Armando"
+    "rol": "arquitecto-doc"
   }
 ]
