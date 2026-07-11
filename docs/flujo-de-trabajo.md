@@ -164,7 +164,8 @@ Cuando decides que el cambio se queda:
   cambio incluye su test** — no es "para después". Es lo que permite confiar en código que no
   se lee línea por línea. Regla completa: [`CONTRIBUTING.md` §3](../CONTRIBUTING.md#3-entorno-de-desarrollo) y [ADR 0003](decisions/0003-testing.md).
 - **Si fue una decisión** (elegiste un camino sobre otro y una sesión futura podría tomar el
-  equivocado) → **regístrala como ADR** (skill `adr-helper`), actualiza el índice y el CHANGELOG.
+  equivocado) → **regístrala como ADR** (lo redacta **Armando** con tu decisión como PO), actualiza
+  el índice y el CHANGELOG.
 - **Si quieres una segunda opinión**, corre la **revisión IA** (`/code-review`): lee el diff y
   **aconseja**. Es juicio, no determinismo → **aconseja, no bloquea** (ver más abajo).
 
@@ -254,7 +255,7 @@ depender de que invoques nada. La mueven los **hooks de sesión** (`Stop`) en `.
   antes de dejar cerrar — un veredicto de QA sin artefacto **no vale** (ADR 0019, homologado del
   starter v0.5.0; el "probé clic por clic" sin rastro ya falló aquí). Sigue siendo checkpoint que
   vuelve al PO: **no detecta solo** si algo se ve mal (límite semántico), obliga a mirar y a dejar
-  rastro. El marcador `.claude/.mariana-marker` queda como respaldo para el caso raro de aprobar
+  rastro. El marcador `.claude/.gemba-marker` queda como respaldo para el caso raro de aprobar
   sin artefacto. Ver [ADR 0011](decisions/0011-cablear-mariana-no-charbel.md).
 
 **Si git falla de verdad, el hook avisa, no calla.** Los tres hooks de sesión revisan sus llamadas

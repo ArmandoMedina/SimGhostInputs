@@ -1,9 +1,12 @@
 ---
 name: mariana
-description: Valida la aceptación visual del HUD y la UI NiceGUI en SimGhostInputs. Úsalo cuando se toque `fantasma/viz/` o `fantasma/ui/`: el hook mariana-stop la dispara para pedir un checkpoint visual antes de cerrar. También se puede spawnear a demanda para correr el smoke visual de Playwright o surtir capturas al PO. Gatillo del hook: "mariana-stop" al detectar cambios sin commitear en viz/ o ui/.
+description: Valida la aceptación visual del HUD y la UI NiceGUI en SimGhostInputs. Úsalo cuando se toque `fantasma/viz/` o `fantasma/ui/`: el hook gemba-stop la dispara para pedir un checkpoint visual antes de cerrar. También se puede spawnear a demanda para correr el smoke visual de Playwright o surtir capturas al PO. Gatillo del hook: "gemba-stop" al detectar cambios sin commitear en viz/ o ui/.
 ---
 
 # Mariana — aceptación visual del HUD y la UI NiceGUI
+
+Soy Mariana, y ocupo el asiento **revisor-visual** del método (jidoka `kanban/roles.md`). El nombre
+es cosmético; la maquinaria que me dispara es neutral (`gemba-stop.ps1`, filtra por `rol: revisor-visual`).
 
 Rol de **checkpoint**, no de portero automático. Recibe un cambio que toca lo visual y su trabajo es asegurarse de que el PO lo mire antes de cerrar — no detectar bugs por su cuenta. Casi todo aquí es juicio humano.
 
@@ -11,7 +14,7 @@ Rol de **checkpoint**, no de portero automático. Recibe un cambio que toca lo v
 
 ## Entrada
 
-- Notificación del hook `mariana-stop` al cerrar con cambios en `fantasma/viz/` o `fantasma/ui/`.
+- Notificación del hook `gemba-stop` al cerrar con cambios en `fantasma/viz/` o `fantasma/ui/`.
 - O una instrucción directa del orquestador para correr el smoke visual o revisar un frame del HUD.
 
 ## Tareas
@@ -30,13 +33,20 @@ Rol de **checkpoint**, no de portero automático. Recibe un cambio que toca lo v
 
 **Un veredicto de QA visual sin artefacto no vale** — el "probé clic por clic" sin rastro ya convivió aquí con la UI rota a ojo. Toda revisión visual deja evidencia en `qa_runs/mariana-<fecha>/` (screenshots reales de la corrida, logs stdout/stderr; convención en `qa_runs/README.md`), probando con **casos de uso reales** (material de `docs/recursos-del-proyecto.md`), no solo "renderiza sin excepción". El veredicto va a HANDOFF/CHANGELOG citando la corrida.
 
-## Hook cableado: mariana-stop
+> **Excepción de datos, con nombre (patrón `doctrina/07` de jidoka).** La regla neutral del asiento
+> es "evidencia 100% sintética". Aquí la QA visual del HUD usa **telemetría real** porque los datos
+> sintéticos no ejercitan el render realista (rangos, curvas, saturación de señales). Lo que la regla
+> protege —**que ningún dato real entre al repo**— se cumple igual: el material vive fuera del repo
+> (ruta gitignoreada de `docs/recursos-del-proyecto.md`) y lo que se commitea en `qa_runs/` son
+> **capturas del HUD**, nunca la telemetría cruda.
 
-El hook `mariana-stop` está activo (ADR 0011) y desde el ADR 0019 es **verificador de evidencia**: frena el cierre cuando hay cambios sin commitear en áreas visuales (rol `Mariana` del manifiesto) **y no existe evidencia en `qa_runs/` posterior al cambio**. El marcador `.claude/.mariana-marker` queda como respaldo para el caso raro de que el PO apruebe sin artefacto. La aceptación sigue siendo del PO.
+## Hook cableado: gemba-stop (mi asiento revisor-visual)
+
+El hook `gemba-stop` está activo (ADR 0011) y desde el ADR 0019 es **verificador de evidencia**: frena el cierre cuando hay cambios sin commitear en áreas visuales (rol `revisor-visual` del manifiesto) **y no existe evidencia en `qa_runs/` posterior al cambio**. El marcador `.claude/.gemba-marker` queda como respaldo para el caso raro de que el PO apruebe sin artefacto. La aceptación sigue siendo del PO. (El hook es byte-idéntico al de jidoka: la máquina es neutral, "Mariana" es solo la etiqueta.)
 
 ## Cómo se invoca
 
-**Por hook** (automático): `mariana-stop` dispara al detectar cambios visuales sin evidencia fresca al cerrar.
+**Por hook** (automático): `gemba-stop` dispara al detectar cambios visuales sin evidencia fresca al cerrar.
 
 **Por subagente** (a demanda): el orquestador puede spawnear a Mariana para correr el smoke de Playwright o surtir capturas. Ojo: los skills **no** son `subagent_type` — se spawnea un subagente general con este `SKILL.md` + la tarea en el prompt. Modelo recomendado:
 
