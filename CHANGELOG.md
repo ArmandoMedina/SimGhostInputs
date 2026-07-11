@@ -4,6 +4,13 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/). Versionado
 
 ## [Unreleased]
 
+### Método — Convergencia al núcleo neutral de Jidoka (ADR 0034)
+- **Una sola metodología** entre SGI, tracker-financiero y Jidoka. SGI adopta la maquinaria neutral de Jidoka —la versión más nueva del motor— conservando lo suyo. Toca solo la maquinaria de método: **`fantasma/` y la app no se tocan** (pytest sigue verde, 453 passed).
+- **Comandos:** se suman `/planea`, `/gemba`, `/cierra`, `/que-sigue`, `/desatendido` (antes solo `/arranca`, que se conserva).
+- **Motor:** `verificar.ps1` gana **falla-cerrado** + `-Base/-Manifiesto/-Repo`; se conservan ruff/pytest/cobertura/CHANGELOG-gate/auditar. `auditar.ps1` += `-Repo`. Self-tests `probar-hooks`/`probar-auditor`.
+- **Hooks neutrales:** `escribano-stop → andon-stop`, `mariana-stop → gemba-stop` (`rol: revisor-visual`), `review-stop` data-driven (lee `revisa: true`).
+- **Casting desacoplado:** la ley usa tokens de rol neutrales (`validador`/`revisor-visual`/`arquitecto-doc`/`devops` — el área `setup` estrena `devops`); los skills **conservan sus nombres** (ahiram/charbel/mariana/armando/escribano) como personas.
+
 ## [2.4.0] - 2026-07-10
 
 ### Corregido
