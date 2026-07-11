@@ -137,8 +137,8 @@ que corren en varios momentos, con autoridad creciente.
 | **Decisiones (ADR)** | El porqué de todo, con su camino descartado | `docs/decisions/` + su `README.md` |
 | **Benchmark del linter** | Por qué ruff y no las alternativas (licencias verificadas) | `docs/benchmark-linter.md` |
 | **Reviewer** | Lee el diff y **aconseja** (bugs, calidad); su contenido no bloquea. **Auto-disparado** por hook de sesión cuando hay código sin revisar | `/code-review` + `.claude/hooks/review-stop.ps1` |
-| **Escribano** | Sincroniza los docs dueños (§8) tras un cambio de código. **Auto-disparado** por hook de sesión al detectar doc-drift | `.claude/skills/escribano/` + `.claude/hooks/escribano-stop.ps1` |
-| **Mariana** | Checkpoint de QA visual: al tocar `viz/` (HUD) o `ui/` (NiceGUI) frena el cierre y manda revisar la UI a ojo. Vuelve al PO; **no juzga sola** lo visual. **Auto-disparado** por hook de sesión | `.claude/hooks/mariana-stop.ps1` ([ADR 0011](decisions/0011-cablear-mariana-no-charbel.md)) |
+| **Escribano** | Sincroniza los docs dueños (§8) tras un cambio de código. **Auto-disparado** por hook de sesión al detectar doc-drift | `.claude/skills/escribano/` + `.claude/hooks/andon-stop.ps1` |
+| **Mariana** | Checkpoint de QA visual: al tocar `viz/` (HUD) o `ui/` (NiceGUI) frena el cierre y manda revisar la UI a ojo. Vuelve al PO; **no juzga sola** lo visual. **Auto-disparado** por hook de sesión | `.claude/hooks/gemba-stop.ps1` ([ADR 0011](decisions/0011-cablear-mariana-no-charbel.md)) |
 | **Hooks de sesión (Claude Code)** | Frenan el cierre de la IA y disparan Reviewer/Escribano/Mariana **sin que nadie los invoque** | `.claude/hooks/` + `.claude/settings.json` |
 | **Router de roles (§8 extendida)** | Mapea cada área a su doc dueño **y** su rol validador (Charbel, Mariana, Reviewer…) | `CONTRIBUTING.md` §8 |
 
@@ -235,9 +235,9 @@ Las barreras de arriba (git hook + CI) corren en `git push`. Antes de eso, **den
 Claude Code**, hay una capa que evita que el trabajo *llegue* sin revisar o con docs desfasados — sin
 depender de que invoques nada. La mueven los **hooks de sesión** (`Stop`) en `.claude/`:
 
-- **review-stop** → si hay código nuevo en `fantasma/` **sin revisar**, frena el cierre y dispara
-  `/code-review`. Marca el diff revisado (`.claude/.review-marker`) para no re-revisar lo mismo.
-- **escribano-stop** → si tocaste código y su **doc dueño quedó desfasado** (§8), frena el cierre y
+- **review-stop** → si hay código **sin revisar** en un área con `revisa: true` de la ley (`fantasma/`), frena el cierre y dispara
+  `/code-review`. *Data-driven* (lee la ley, ya no hardcodea rutas — convergencia ADR 0034). Marca el diff revisado (`.claude/.review-marker`) para no re-revisar lo mismo.
+- **andon-stop** → si tocaste código y su **doc dueño quedó desfasado** (§8), frena el cierre y
   dispara el **Escribano**, que lo actualiza. Cuando ya está sincronizado, deja cerrar. Lee las reglas
   de `tools/blast-radius.json` (fuente única ejecutable): por cada área (`core/`, `viz/`, `ui/`,
   `importers/`, `cli`, `barreras`, `orquestacion`, `setup`) sabe qué `doc_bloquea` debe estar presente. **Scope real del hook:**
@@ -249,7 +249,7 @@ depender de que invoques nada. La mueven los **hooks de sesión** (`Stop`) en `.
   **Nota sobre las dos ventanas:** este hook evalúa `git status --porcelain` (cambios sin commitear).
   Si committeas código sin sus docs, el working tree queda limpio y el hook ya no dispara; el drift
   lo atrapa `verificar.ps1` al hacer push. Para que nada se pierda: commitea código y docs juntos.
-- **mariana-stop** → si tocaste áreas visuales (rol `Mariana` en el manifiesto: `viz/`, `ui/`),
+- **gemba-stop** → si tocaste áreas visuales (`rol: revisor-visual` en el manifiesto; persona **Mariana**: `viz/`, `ui/`),
   exige **evidencia verificable en `qa_runs/`** posterior al cambio (screenshots, logs de la corrida)
   antes de dejar cerrar — un veredicto de QA sin artefacto **no vale** (ADR 0019, homologado del
   starter v0.5.0; el "probé clic por clic" sin rastro ya falló aquí). Sigue siendo checkpoint que
@@ -290,10 +290,12 @@ Le hablas a **Mau**; Mau ocupa o delega los demás asientos.
 | **Ahiram** | **desarrollador**: escribe `fantasma/` y sus tests | `.claude/skills/ahiram/`; puede correr en sesión o como subagente | no (deliberado) |
 | **Armando** | **arquitecto-doc**: jerarquía `product/`+`engineering/`, wikilinks, frontmatter, **ADRs** | `.claude/skills/armando/` | no (deliberado) |
 | **Charbel** | **validador** de telemetría (`core/`, importers) | `.claude/skills/charbel/` | no (sus tests son el asiento) |
-| **Mariana** | **revisor-visual** del HUD/UI (`viz/`, `ui/`) | `.claude/skills/mariana/` | sí (mariana-stop) |
-| **Escribano** | **sincroniza** docs↔código (§8) | `.claude/skills/escribano/` | sí (escribano-stop) |
+| **Mariana** | **revisor-visual** del HUD/UI (`viz/`, `ui/`) | `.claude/skills/mariana/` | sí (gemba-stop) |
+| **Escribano** | **sincroniza** docs↔código (§8) | `.claude/skills/escribano/` | sí (andon-stop) |
 | **Reviewer** | revisa el diff (bugs, calidad) — función, no persona | `/code-review` | sí (review-stop) |
-| **Oscar** | **infra y ops del entorno**: VMs, SSH, Windows Sandbox, mounts, despliegues, la "PC potente" para QA limpio | agente de plataforma global (no vive en el repo) | no |
+| **Oscar** | **infra y ops del entorno** (rol `devops`): VMs, SSH, Windows Sandbox, mounts, despliegues, la "PC potente" para QA limpio | agente de plataforma global (no vive en el repo) | no |
+
+> **La maquinaria es neutral; el nombre es la persona** (convergencia ADR 0034). La ley (`blast-radius.json`) y los hooks usan el **token de rol genérico** (`rol: revisor-visual`, `validador`, `arquitecto-doc`, `devops`); las carpetas de skills (`mariana/`, `charbel/`…) son el **casting** — la etiqueta de persona. La autoridad la da la ley, no el nombre. Por eso SGI corre *la misma metodología* que Jidoka y tracker-financiero, con su propio casting. Cero metodologías paralelas.
 
 > **Asiento ≠ skill.** Una **skill** es un comportamiento especializado, disparable, con límites
 > escritos (lo que SÍ y lo que NO hace) — un archivo en `.claude/skills/`. Un **asiento** es el
@@ -555,7 +557,7 @@ C:\Repositorio personal\SimGhostInputs\   <- raíz del repo
 ├─ .github/workflows/installer.yml         <- CI ensayo del empaquetado en PR (installer-smoke), sin publicar nada
 ├─ .claude/                                <- roles y auto-cableado en sesión (viaja con el repo)
 │  ├─ settings.json                        <- registra los hooks de sesión (Stop)
-│  ├─ hooks/                               <- review-stop, escribano-stop, mariana-stop (frenan el cierre, disparan el rol)
+│  ├─ hooks/                               <- review-stop, andon-stop, gemba-stop (frenan el cierre, disparan el rol)
 │  └─ skills/                              <- los asientos-skill: escribano, armando (arquitecto), charbel, mariana
 ├─ .gitignore                              <- qué NO se versiona
 ├─ pyproject.toml                          <- versión, deps, extras y config de ruff
