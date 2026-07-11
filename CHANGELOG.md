@@ -4,6 +4,13 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/). Versionado
 
 ## [Unreleased]
 
+## [2.6.0] - 2026-07-11
+
+### Método — Actualización al núcleo Jidoka 0.13.0-beta + curación del sello del lazo
+- **`-Actualizar` al motor 0.13.0-beta:** SGI baja la mecánica genérica al día (guías, dirs de referencia `kanban/`/`andon/`/`doctrina/` que curan enlaces muertos de los comandos sembrados, plantillas del kit). `fantasma/` no se toca.
+- **Bug del sello curado (auto-sanante):** el sello `tools/jidoka-motor.json` grababa las piezas **code-first** (`verificar.ps1`, `auditar.ps1`, `probar-hooks.ps1`, `.githooks/pre-push`, `escribano/SKILL.md`, `gemba-stop.ps1`) como semilla pristina — un `-Actualizar` las habría **pisado**. Ahora graba el hash de Jidoka: `child ≠ seed` ⇒ la próxima `-Actualizar` las ve DIVERGE y las **preserva**. La mecánica code-first (ruff/pytest) queda intacta; su convergencia genérica vía costura `verificar.local.ps1` es trabajo post-1.0 diferido.
+- **Verde:** 453 tests + ruff + `probar-hooks` 10/10 + `probar-auditor` 5/5 + `auditar` (grafo íntegro). `estado-motor` reporta al día con Jidoka 0.13.0-beta.
+
 ## [2.5.0] - 2026-07-11
 
 ### Método — Homologación de las personas al asiento neutral (ADR 0035)
