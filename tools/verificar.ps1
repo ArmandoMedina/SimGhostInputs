@@ -11,14 +11,27 @@
 #
 # Nota: archivo ASCII a proposito (sin acentos) para no depender del BOM en PS 5.1.
 
-$repo = Split-Path -Parent $PSScriptRoot
-Set-Location $repo
+param(
+  [string]$Base = '',
+  [string]$Manifiesto = '',
+  [string]$Repo = ''
+)
+
+if (-not $Repo) { $Repo = Split-Path -Parent $PSScriptRoot }
+Set-Location $Repo
 $script:warn = 0
 $script:block = 0
 
 function Note($msg)  { Write-Host "  [AVISO] $msg"   -ForegroundColor Yellow; $script:warn++ }
 function Block($msg) { Write-Host "  [BLOQUEA] $msg" -ForegroundColor Red;    $script:block++ }
 function Ok($msg)    { Write-Host "  [OK] $msg"      -ForegroundColor Green }
+function Fail($msg) {
+  # Falla CERRADO (convergencia con Jidoka): si el gate no puede medir, NO aprueba (exit 2).
+  Write-Host "  [ERROR] $msg" -ForegroundColor Red
+  Write-Host ""
+  Write-Host "== Gate sin veredicto: FALLA CERRADO (exit 2). ==" -ForegroundColor Red
+  exit 2
+}
 
 # Matcher del manifiesto (homologado a starter v0.5.0, ADR 0019):
 # un patron SIN '/' solo casa archivos en la raiz del repo.
@@ -55,9 +68,12 @@ else { Note "pytest fallo (arriba). Un rojo se diagnostica, no se silencia." }
 
 # 4. Cobertura de tests: codigo tocado sin tests ----------------------------
 Write-Host "`n-- Cobertura de tests --"
-$upstreamCov = git rev-parse --abbrev-ref --symbolic-full-name '@{u}' 2>$null
-if ($LASTEXITCODE -eq 0) { $changedCov = git diff --name-only '@{u}..HEAD' }
-else { $changedCov = git diff --name-only HEAD }
+if ($Base) { $changedCov = git diff --name-only "$Base...HEAD" 2>$null }
+else {
+  $upstreamCov = git rev-parse --abbrev-ref --symbolic-full-name '@{u}' 2>$null
+  if ($LASTEXITCODE -eq 0) { $changedCov = git diff --name-only '@{u}..HEAD' }
+  else { $changedCov = git diff --name-only HEAD }
+}
 $tocoCodigoCov = $changedCov | Where-Object { $_ -like 'fantasma/*' }
 $tocoTests     = $changedCov | Where-Object { $_ -like 'tests/*' }
 if ($tocoCodigoCov -and -not $tocoTests) {
@@ -68,9 +84,21 @@ else { Ok "tests acompanan los cambios de codigo (o sin cambios en fantasma/)" }
 
 # 5-a. Doc-gate: codigo tocado sin CHANGELOG ----------------------------------
 Write-Host "`n-- Doc-gate (CHANGELOG) --"
-$upstream = git rev-parse --abbrev-ref --symbolic-full-name '@{u}' 2>$null
-if ($LASTEXITCODE -eq 0) { $changed = git diff --name-only '@{u}..HEAD' }
-else { $changed = git diff --name-only HEAD }
+if ($Base) {
+  $changed = git diff --name-only "$Base...HEAD" 2>$null
+  if ($LASTEXITCODE -ne 0) { Fail "no pude calcular el rango $Base...HEAD (base inexistente o historia incompleta)" }
+}
+else {
+  $upstream = git rev-parse --abbrev-ref --symbolic-full-name '@{u}' 2>$null
+  if ($LASTEXITCODE -eq 0) {
+    $changed = git diff --name-only '@{u}..HEAD' 2>$null
+    if ($LASTEXITCODE -ne 0) { Fail "no pude calcular el rango @{u}..HEAD" }
+  }
+  else {
+    $changed = git diff --name-only HEAD 2>$null
+    if ($LASTEXITCODE -ne 0) { Fail "no pude leer el working tree (git diff HEAD)" }
+  }
+}
 $tocoCodigo    = $changed | Where-Object { $_ -like 'fantasma/*' }
 $tocoChangelog = $changed | Where-Object { $_ -eq 'CHANGELOG.md' }
 if ($tocoCodigo -and -not $tocoChangelog) {
@@ -83,7 +111,10 @@ else { Ok "CHANGELOG al dia (o sin cambios de codigo)" }
 # Fuente unica de verdad ejecutable. Para agregar un area o un doc dueno: edita
 # blast-radius.json y esto funciona sin mas cambios. Ver CONTRIBUTING.md seccion 8.
 Write-Host "`n-- Doc-gate (blast-radius seccion 8) --"
-$manifest = Get-Content "$PSScriptRoot/blast-radius.json" -Raw | ConvertFrom-Json
+if (-not $Manifiesto) { $Manifiesto = "$PSScriptRoot/blast-radius.json" }
+if (-not (Test-Path $Manifiesto)) { Fail "no encuentro la ley ($Manifiesto)" }
+$manifest = Get-Content $Manifiesto -Raw | ConvertFrom-Json
+if (-not $manifest) { Fail "la ley ($Manifiesto) no parsea como JSON" }
 $hayBlastFalta = $false
 $hayBlastAviso = $false
 

@@ -25,10 +25,12 @@
 [CmdletBinding()]
 param(
   [string]$Range,
-  [switch]$Bloquea
+  [switch]$Bloquea,
+  [string]$Repo = ''
 )
 
-$repo = Split-Path -Parent $PSScriptRoot
+if (-not $Repo) { $Repo = Split-Path -Parent $PSScriptRoot }
+$repo = $Repo
 Set-Location $repo
 $utf8 = New-Object System.Text.UTF8Encoding($false)
 
