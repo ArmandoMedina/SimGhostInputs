@@ -45,3 +45,4 @@ bifurcación equivocada.
 | [0033](0033-frenadas-multiples-por-curva.md) | Frenadas múltiples por curva: cada frenada real suena — `brake_start` escalar no cambia, `brake_starts` (lista) nuevo para el audio (enmienda ADR 0031) | Aceptada | 2026-07-10 |
 | [0034](0034-convergencia-nucleo-jidoka.md) | Convergencia al núcleo neutral de Jidoka: una sola metodología, maquinaria neutral, casting como personas | Aceptada | 2026-07-10 |
 | [0035](0035-homologacion-personas-asiento-neutral.md) | Homologación de las personas al asiento neutral: cada persona declara su rol, Mariana a nombres reales, límites de Charbel recuperados, `/arranca` re-homologado | Aceptada | 2026-07-11 |
+| [0036](0036-participacion-lazo-labs-jidoka.md) | SGI participa del lazo de sincronización labs↔Jidoka (primer consumidor): sello + canal de subida + estado-motor sembrados; el motor no se auto-actualiza por su divergencia de dominio/estética | Aceptada | 2026-07-11 |
