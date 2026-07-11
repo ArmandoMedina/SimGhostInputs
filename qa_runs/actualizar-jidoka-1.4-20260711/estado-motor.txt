@@ -1,0 +1,14 @@
+== Estado del motor Jidoka ==
+  Tu motor: Jidoka 1.4.0
+  Jidoka actual: 1.4.0
+  [OK] Tu maquinaria declara la version de Jidoka 1.4.0.
+
+  Detalle por pieza (mecanica) vs Jidoka 1.4.0:
+    [DIVERGE]  tools/verificar.ps1
+    [DIVERGE]  tools/auditar.ps1
+    [AUSENTE]  tools/probar-gate.ps1
+    [DIVERGE]  .claude/skills/escribano/SKILL.md
+    [DIVERGE]  .githooks/pre-push
+    [AUSENTE]  .github/workflows/andon.yml
+  Resumen por pieza: 68 al dia | 4 divergen | 2 ausente(s).
+  (las divergentes son customizaciones tuyas o piezas atras; -Actualizar preserva lo customizado y baja lo pristino.)

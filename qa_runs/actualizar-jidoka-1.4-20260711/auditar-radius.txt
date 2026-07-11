@@ -1,0 +1,6 @@
+== Auditoria blast-radius (seccion 8) ==
+-- rango origin/master...HEAD (22 archivo[s]) --
+  [OK] area 'barreras' con su dueno 'docs/flujo-de-trabajo.md'
+  [AVISA] area 'barreras': {.claude/hooks/gemba-stop.ps1, .claude/hooks/no-memorias-pretooluse.ps1, .claude/settings.json} sin tocar 'docs/benchmark-linter.md' (rol arquitecto-doc).
+
+== AUDITORIA con 1 aviso(s) (ninguno bloquea). ==

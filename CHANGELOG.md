@@ -4,6 +4,16 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/). Versionado
 
 ## [Unreleased]
 
+## [2.7.0] - 2026-07-11
+
+### Método — Actualización al núcleo Jidoka 1.4.0
+- **`-Actualizar` al motor 1.4.0:** SGI baja las mejoras genéricas al día (66 piezas pristinas). Entre ellas: el hook **`no-memorias`** ahora cubre también comandos **Bash** (antes solo Write/Edit), la nueva herramienta **`probar-disparos.ps1`** (prueba de vida del registro de disparos `kit/.jidoka/disparos`), `estado-motor.ps1` enriquecido, `settings.json`, `andon/README.md` y `kit/.jidoka/disparos/README.md`. `fantasma/` no se toca.
+- **Hasheo del lazo EOL-agnóstico (ADR 0021):** el sello ahora normaliza a LF antes de hashear, así que el drift de CRLF/LF ya no produce falsos DIVERGE. El sello `tools/jidoka-motor.json` se **re-normalizó** con `-Sellar`: las genéricas quedan pristinas contra 1.4.0 y las 6 code-first se preservan (no entran a la semilla).
+- **`gemba-stop` endurecido + su test:** se adopta la 1.4.0 de `gemba-stop.ps1` (exige que la evidencia de `qa_runs/` esté **rastreada por git**, no solo fresca — cierra un Goodhart, ADR 0013) junto con `probar-hooks.ps1`, que sube de 10 a **17 casos**. Son piezas genéricas (hooks/tests agnósticos al lenguaje), no code-first.
+- **Code-first preservado:** `verificar.ps1`, `auditar.ps1`, `.githooks/pre-push`, `escribano/SKILL.md` se conservan como instancia de SGI (DIVERGE intencional).
+- **Back-out de piezas incompatibles:** `probar-gate.ps1` (choca con el `verificar.ps1` code-first de SGI) y `.github/workflows/andon.yml` (duplica `tests.yml`) no se adoptaron.
+- **Verde:** 453 tests + 11 skipped, ruff check + format, `probar-hooks` **17/17** (no-memorias cubre Bash; gemba-stop exige evidencia rastreada por git), `probar-auditor` 5/5, `auditar` (grafo íntegro), `probar-disparos` 4/4. `estado-motor` reporta Jidoka **1.4.0** con las 4 code-first DIVERGE y las genéricas al día.
+
 ## [2.6.0] - 2026-07-11
 
 ### Método — Actualización al núcleo Jidoka 0.13.0-beta + curación del sello del lazo
