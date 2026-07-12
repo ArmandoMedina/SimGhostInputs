@@ -24,7 +24,7 @@ El estado del proyecto vive en artefactos, no en la memoria de nadie:
 
 ## 2. Desconfía de la compactación
 
-> **Los resúmenes de compactación pueden mentir.** Si esta sesión viene de un resumen (compactación o cierre anterior), antes de retomar algo verifica contra el **artefacto real** —el código, el archivo, este HANDOFF— no contra el resumen. Un plan de trabajo o un HANDOFF en disco es fuente primaria; tu recuerdo de la conversación, no.
+> **Los resúmenes de compactación pueden mentir** (disparo `desconfia-de-la-compactacion`). Si esta sesión viene de un resumen (compactación o cierre anterior), antes de retomar algo verifica contra el **artefacto real** —el código, el archivo, este HANDOFF— no contra el resumen. Un plan de trabajo o un HANDOFF en disco es fuente primaria; tu recuerdo de la conversación, no.
 
 ## 3. Fija las reglas duras de la sesión
 

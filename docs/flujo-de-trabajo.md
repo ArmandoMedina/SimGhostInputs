@@ -257,6 +257,23 @@ depender de que invoques nada. La mueven los **hooks de sesión** (`Stop`) en `.
   vuelve al PO: **no detecta solo** si algo se ve mal (límite semántico), obliga a mirar y a dejar
   rastro. El marcador `.claude/.gemba-marker` queda como respaldo para el caso raro de aprobar
   sin artefacto. Ver [ADR 0011](decisions/0011-cablear-mariana-no-charbel.md).
+  **Endurecido (actualización núcleo Jidoka 1.4.0):** la evidencia de `qa_runs/` ya no basta con
+  estar **fresca**; debe estar **rastreada por git** (`git add -f`). Antes, un archivo fresco pero
+  sin versionar satisfacía el gate y luego no viajaba en el commit — un Goodhart clásico (la métrica
+  "hay artefacto" se cumplía sin que el artefacto quedara). Ahora un artefacto fresco pero **no
+  rastreado bloquea**. La prueba de vida del hook (`tools/probar-hooks.ps1`) cubre ambos casos
+  (bloquea evidencia fresca-pero-no-rastreada; deja cerrar con `git add -f`). El cambio baja del
+  núcleo Jidoka (su ADR 0013); en SGI extiende la regla de evidencia ya asentada en
+  [ADR 0019](decisions/0019-adopcion-homologacion-starter-v0.5.0.md).
+- **no-memorias** (hook `PreToolUse`, no `Stop`) → **deniega escribir** en la carpeta de memoria de
+  Claude (`~/.claude/projects/<slug>/memory/`): el disparo anti-memoria de Jidoka manda todo al repo,
+  nunca a una memoria privada del LLM. **Leer/recall de la memoria sí se permite** — solo bloquea la
+  escritura. **Actualización 1.4.0:** el matcher pasó de `Write|Edit` a `Write|Edit|Bash` — antes un
+  `Set-Content`/`Out-File` o una redirección `>` por Bash rodeaban el gate; ahora también los atrapa
+  (busca un cmdlet de escritura + la ruta de memoria, o una redirección cuyo destino sea la memoria).
+  Con cuidado deliberado de **no** bloquear en falso las redirecciones de stderr (`2>&1`,
+  `2>/dev/null`), que no son escrituras a memoria. Límite confesado: aliases (`sc`/`ni`) y rutas
+  ofuscadas evaden el matcher heurístico; no hay cobertura server-side (frontera en `andon/README.md`).
 
 **Si git falla de verdad, el hook avisa, no calla.** Los tres hooks de sesión revisan sus llamadas
 reales a `git status`/`git diff` (no solo interpretan "sin salida" como "sin cambios"): si git falla
@@ -268,6 +285,19 @@ no por código: ver [ADR 0019](decisions/0019-adopcion-homologacion-starter-v0.5
 
 Ambos son **auto-terminantes**: bloquean solo mientras falte el paso. Es poka-yoke: *el sistema no te
 deja olvidar; y si algo se cuela, el bloqueo del push (doc-gate §8) + git (todo reversible) te dejan corregir.*
+
+> **Actualización del núcleo Jidoka (1.4.0) — mecánica del lazo, además de los hooks de arriba.**
+> Junto al endurecimiento de `gemba-stop` y `no-memorias`, esta bajada de núcleo trajo:
+> - **`tools/probar-disparos.ps1`** (nuevo): prueba de vida del **registro de disparos** cableados
+>   (`kit/.jidoka/disparos`). Verifica que cada disparo declare su estado y que cada punto marcado
+>   *Cableado* nombre el slug real de su barrera; omite los disparos cuyo target no está sembrado en
+>   este clon (p. ej. los que apuntan a piezas que SGI no adoptó).
+> - **`tools/estado-motor.ps1 -Detallado`**: reporta la divergencia **pieza por pieza y por hash**
+>   contra la versión de Jidoka del sello (`al día` / `DIVERGE` / `AUSENTE`), no solo la versión global.
+> - **Hasheo del sello EOL-agnóstico:** el sello del lazo (`tools/jidoka-motor.json`) normaliza a LF
+>   antes de hashear, así que el drift CRLF↔LF ya no produce **falsos DIVERGE**. Las piezas genéricas
+>   quedan pristinas contra el núcleo; las **code-first** de SGI (`verificar.ps1`, `auditar.ps1`,
+>   `.githooks/pre-push`, `escribano/SKILL.md`) se preservan intencionalmente como DIVERGE.
 
 **Los roles.** Cada cambio enciende a quien valida, según el **router de la §8 extendida**
 (`CONTRIBUTING.md`): **Reviewer** (todo código) y **Escribano** (docs) van siempre; los especialistas

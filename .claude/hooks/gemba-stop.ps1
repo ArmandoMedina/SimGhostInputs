@@ -73,10 +73,21 @@ foreach ($f in $visChanged) {
     if ($t -gt $lastVis) { $lastVis = $t }
   }
 }
-$qaDir = Join-Path $repo 'qa_runs'
-if (Test-Path $qaDir) {
-  $fresh = Get-ChildItem $qaDir -Recurse -File | Where-Object { $_.LastWriteTime -gt $lastVis } | Select-Object -First 1
-  if ($fresh) { exit 0 }   # hay artefacto de QA posterior al cambio: evidencia valida
+# Evidencia fresca Y RASTREADA POR GIT: la evidencia citada debe estar en el indice
+# (git add -f; qa_runs/ suele estar gitignoreado), no solo en disco. Un archivo que
+# nunca se commitea satisface el mtime pero no vale -- evidencia-no-palabra exige que
+# EXISTA EN GIT, no solo en disco (leccion de campo, cosecha del lazo: un gate que mira
+# el working tree se satisface con evidencia que git nunca vera). Solo cuentan los
+# archivos de qa_runs/ que git rastrea.
+# core.quotepath=false: que git NO cite/octalice rutas no-ASCII (asi Test-Path las halla).
+$qaTrackedRaw = git -C $repo -c core.quotepath=false ls-files -- qa_runs 2>&1
+if ($LASTEXITCODE -ne 0) { Write-GitFailWarning 'git ls-files -- qa_runs' ($qaTrackedRaw -join ' '); exit 0 }
+foreach ($rel in @($qaTrackedRaw)) {
+  if (-not $rel) { continue }
+  $abs = Join-Path $repo $rel
+  if ((Test-Path -LiteralPath $abs) -and ((Get-Item -LiteralPath $abs).LastWriteTime -gt $lastVis)) {
+    exit 0   # artefacto de QA rastreado por git y posterior al cambio: evidencia valida
+  }
 }
 
 # Respaldo anti-bucle: este diff exacto ya fue aprobado por el cliente sin artefacto.
@@ -93,7 +104,7 @@ $fecha = Get-Date -Format 'yyyyMMdd-HHmmss'
 $ctx = "Gemba (revisor-visual): tocaste areas visuales (" + (($visChanged | Select-Object -First 5) -join ', ') + ") " +
        "y NO hay evidencia en qa_runs/ posterior al cambio. Un veredicto de QA sin artefacto no vale (evidencia-no-palabra). " +
        "QUE HACER: [1] corre la UI o el render DE VERDAD con casos de uso reales (datos sinteticos), no 'renderiza sin excepcion'; " +
-       "[2] guarda la evidencia (capturas, logs de la corrida) en qa_runs/gemba-$fecha/ (convencion en qa_runs/README.md); " +
+       "[2] guarda la evidencia (capturas, logs de la corrida) en qa_runs/gemba-$fecha/ y FORZALA al indice con 'git add -f qa_runs/gemba-$fecha/...' -- qa_runs/ esta gitignoreado, y solo cuenta la evidencia que git rastrea (no basta dejarla en disco); " +
        "[3] presenta las capturas al cliente -- Gemba es checkpoint que vuelve al cliente, no juzga solo. " +
        "Caso raro (el cliente aprueba sin artefacto): Set-Content -Encoding ASCII '.claude/.gemba-marker' '$sha'"
 $out = @{

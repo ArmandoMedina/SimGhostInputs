@@ -1,0 +1,11 @@
+== Prueba de vida del registro de disparos (kit/.jidoka/disparos) ==
+  [PASA]  catalogo real: todos los disparos con estado y cada Cableado presente nombra su slug
+  [PASA]  catalogo real: se leyeron los 12 disparos del catalogo v0
+  (12 disparos: 10 cableados, 2 catalogo-solo)
+  [OMITIDO] no-verify-es-teatro -> .github/PULL_REQUEST_TEMPLATE.md (no sembrado en este install; omitido)
+  [OMITIDO] prueba-de-humo-del-gate -> tools/probar-gate.ps1 (no sembrado en este install; omitido)
+  [OMITIDO] frontera-nda -> .github/ISSUE_TEMPLATE/leccion.md (no sembrado en este install; omitido)
+  [PASA]  sintetico: DETECTA el cableado podrido (punto que no nombra el slug)
+  [PASA]  sintetico: NO marca el cableado sano
+
+== Registro sano: los 4 casos se comportan como se espera. ==

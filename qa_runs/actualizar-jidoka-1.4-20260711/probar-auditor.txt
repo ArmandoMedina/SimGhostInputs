@@ -1,0 +1,8 @@
+== Prueba de vida del auditor del grafo (tools/auditar.ps1) ==
+  [PASA]  valido: capacidad vigente completa no bloquea
+  [PASA]  bloquea: nota sin frontmatter YAML
+  [PASA]  bloquea: wikilink roto
+  [PASA]  bloquea: capacidad vigente sin criterios de aceptacion
+  [PASA]  modula: capacidad en_definicion sin criterios no bloquea
+
+== Auditor sano: los 5 casos se comportan como se espera. ==

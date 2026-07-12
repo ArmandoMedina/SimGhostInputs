@@ -53,6 +53,24 @@ Check 'no-memorias: DENIEGA escritura a la carpeta de memoria' ($outDeny.Contain
 $outAllow = Invoke-Hook $noMem '{"tool_input":{"file_path":"C:\\repo\\HANDOFF.md"}}' $null
 Check 'no-memorias: DEJA pasar una ruta normal del repo' (-not $outAllow.Contains('deny')) "denego de mas: $outAllow"
 
+# Grieta 2 (auditoria externa): el bypass por Bash. Antes el matcher era solo Write|Edit
+# y un Set-Content/redireccion por Bash rodeaba el deny. Ahora se inspecciona
+# tool_input.command: ESCRITURA a la memoria bloquea; LECTURA (recall) no.
+$outBashSet = Invoke-Hook $noMem '{"tool_name":"Bash","tool_input":{"command":"Set-Content -Path C:\\Users\\x\\.claude\\projects\\slug\\memory\\foo.md -Value hola"}}' $null
+Check 'no-memorias: DENIEGA escritura a memoria por Bash (Set-Content)' ($outBashSet.Contains('"permissionDecision":"deny"')) "no denego el bypass: $outBashSet"
+$outBashRedir = Invoke-Hook $noMem '{"tool_name":"Bash","tool_input":{"command":"echo hola > ~/.claude/projects/slug/memory/foo.md"}}' $null
+Check 'no-memorias: DENIEGA escritura a memoria por Bash (redireccion >)' ($outBashRedir.Contains('"permissionDecision":"deny"')) "no denego el redirect: $outBashRedir"
+$outBashRead = Invoke-Hook $noMem '{"tool_name":"Bash","tool_input":{"command":"cat C:\\Users\\x\\.claude\\projects\\slug\\memory\\foo.md"}}' $null
+Check 'no-memorias: DEJA LEER memoria por Bash (recall no se bloquea)' (-not $outBashRead.Contains('deny')) "bloqueo una lectura: $outBashRead"
+$outBashNorm = Invoke-Hook $noMem '{"tool_name":"Bash","tool_input":{"command":"Set-Content -Path C:\\repo\\HANDOFF.md -Value hi"}}' $null
+Check 'no-memorias: DEJA pasar una escritura Bash normal del repo' (-not $outBashNorm.Contains('deny')) "denego de mas por Bash: $outBashNorm"
+# Regresion v1.1.0: el token '>' casaba con '2>&1'/'2>/dev/null' (redireccion de stderr,
+# NO escritura a memoria) y bloqueaba lecturas comunes. Deben DEJAR pasar.
+$outBashErr1 = Invoke-Hook $noMem '{"tool_name":"Bash","tool_input":{"command":"cat ~/.claude/projects/slug/memory/foo.md 2>&1"}}' $null
+Check 'no-memorias: DEJA LEER memoria con 2>&1 (no es escritura)' (-not $outBashErr1.Contains('deny')) "falso positivo 2>&1: $outBashErr1"
+$outBashErr2 = Invoke-Hook $noMem '{"tool_name":"Bash","tool_input":{"command":"ls -1 ~/.claude/projects/slug/memory/ 2>/dev/null"}}' $null
+Check 'no-memorias: DEJA LISTAR memoria con 2>/dev/null (no es escritura)' (-not $outBashErr2.Contains('deny')) "falso positivo 2>/dev/null: $outBashErr2"
+
 # --- stop_hook_active: los Stop-hooks no re-bloquean ---
 foreach ($h in @('review-stop.ps1','gemba-stop.ps1','andon-stop.ps1')) {
   $o = Invoke-Hook (Join-Path $hooksDir $h) '{"stop_hook_active":true}' $null
@@ -84,14 +102,22 @@ Push-Location $r2; git add -A 2>&1 | Out-Null; git commit -q -m init 2>&1 | Out-
 Set-Content (Join-Path $r2 'ui/app.js') "// v2 cambio visual" -Encoding Ascii
 $oVBlock = Invoke-Hook (Join-Path $hooksDir 'gemba-stop.ps1') '{}' $r2
 Check 'gemba-stop: BLOQUEA cambio visual sin evidencia' ($oVBlock.Contains('"decision":"block"') -and $oVBlock.Contains('qa_runs')) "no bloqueo: $oVBlock"
-# Caso PASA: evidencia fresca en qa_runs/ (mtime posterior al cambio visual).
+# Caso BLOQUEA (Goodhart): evidencia fresca por mtime pero NO rastreada por git.
+# qa_runs/ esta gitignoreado; un archivo sin 'git add -f' satisface el mtime pero git
+# nunca lo vera -- no vale (evidencia-no-palabra: existe en git, no solo en disco).
+Set-Content (Join-Path $r2 '.gitignore') "qa_runs/" -Encoding Ascii
 $qa = Join-Path $r2 'qa_runs/gemba-prueba'
 New-Item -ItemType Directory -Path $qa -Force | Out-Null
 $log = Join-Path $qa 'LOG.md'
 Set-Content $log "corrida" -Encoding Ascii
-(Get-Item $log).LastWriteTime = (Get-Date).AddMinutes(5)   # garantiza mtime posterior
+(Get-Item $log).LastWriteTime = (Get-Date).AddMinutes(5)   # fresca por mtime, pero sin trackear
+$oVUntracked = Invoke-Hook (Join-Path $hooksDir 'gemba-stop.ps1') '{}' $r2
+Check 'gemba-stop: BLOQUEA evidencia fresca pero NO rastreada por git (Goodhart)' ($oVUntracked.Contains('"decision":"block"')) "no bloqueo evidencia no-commiteada: $oVUntracked"
+# Caso PASA: la misma evidencia, ahora forzada al indice con git add -f.
+Push-Location $r2; git add -f qa_runs/gemba-prueba/LOG.md 2>&1 | Out-Null; Pop-Location
+(Get-Item $log).LastWriteTime = (Get-Date).AddMinutes(5)   # re-garantiza mtime posterior al cambio
 $oVPass = Invoke-Hook (Join-Path $hooksDir 'gemba-stop.ps1') '{}' $r2
-Check 'gemba-stop: DEJA cerrar con evidencia fresca en qa_runs/' (-not $oVPass.Contains('"decision":"block"')) "bloqueo indebido: $oVPass"
+Check 'gemba-stop: DEJA cerrar con evidencia rastreada y fresca (git add -f)' (-not $oVPass.Contains('"decision":"block"')) "bloqueo indebido: $oVPass"
 Remove-Item $r2 -Recurse -Force -ErrorAction SilentlyContinue
 
 # --- gemba-stop DORMIDO: sin area rol revisor-visual, no dispara ---

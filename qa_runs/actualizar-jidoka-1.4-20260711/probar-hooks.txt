@@ -1,0 +1,20 @@
+== Prueba de vida de los hooks (.claude/hooks) ==
+  [PASA]  no-memorias: DENIEGA escritura a la carpeta de memoria
+  [PASA]  no-memorias: DEJA pasar una ruta normal del repo
+  [PASA]  no-memorias: DENIEGA escritura a memoria por Bash (Set-Content)
+  [PASA]  no-memorias: DENIEGA escritura a memoria por Bash (redireccion >)
+  [PASA]  no-memorias: DEJA LEER memoria por Bash (recall no se bloquea)
+  [PASA]  no-memorias: DEJA pasar una escritura Bash normal del repo
+  [PASA]  no-memorias: DEJA LEER memoria con 2>&1 (no es escritura)
+  [PASA]  no-memorias: DEJA LISTAR memoria con 2>/dev/null (no es escritura)
+  [PASA]  review-stop.ps1: respeta stop_hook_active (no re-bloquea)
+  [PASA]  gemba-stop.ps1: respeta stop_hook_active (no re-bloquea)
+  [PASA]  andon-stop.ps1: respeta stop_hook_active (no re-bloquea)
+  [PASA]  review-stop: BLOQUEA codigo sin /code-review
+  [PASA]  review-stop: DEJA cerrar sin codigo pendiente
+  [PASA]  gemba-stop: BLOQUEA cambio visual sin evidencia
+  [PASA]  gemba-stop: BLOQUEA evidencia fresca pero NO rastreada por git (Goodhart)
+  [PASA]  gemba-stop: DEJA cerrar con evidencia rastreada y fresca (git add -f)
+  [PASA]  gemba-stop: DORMIDO si no hay area revisor-visual
+
+== Hooks sanos: los 17 casos se comportan como se espera. ==
