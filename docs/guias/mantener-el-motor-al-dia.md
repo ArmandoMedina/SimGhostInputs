@@ -55,6 +55,10 @@ Cada `[DIVERGE]` deja un sidecar `<pieza>.jidoka-nuevo` con la versión de Jidok
 - Reconciliar a mano, o mover tu ajuste a la costura `.local` (p.ej. `tools/verificar.local.ps1`), para que la
   mecánica converja sin bifurcarse.
 
+> **Los `.jidoka-nuevo` son andamio de reconciliación, no herramienta terminada: bórralos antes de commitear.** En
+> cualquiera de los tres caminos, el sidecar desaparece del árbol una vez que decidiste — lo que entra al diff del PR
+> es tu decisión *aplicada* (adoptaste, conservaste o reconciliaste), nunca el `.jidoka-nuevo` en sí.
+
 **Corre siempre en una rama, revisa el diff, ábrelo como PR** — el diff ES la revisión. Y **corre tu suite de
 tests antes de mergear** (el motor bajado no vale hasta que corre verde en tu repo).
 
