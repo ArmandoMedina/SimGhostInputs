@@ -73,6 +73,14 @@ override. Regla práctica: **`deny` para lo irreversible y peligroso; `ask` con 
 que requiere juicio** — y Boeing solo funciona si se combate el automation bias con cross-check
 obligatorio. Mezclar filosofías, no elegir una.
 
+> **Matiz del envelope Airbus** (fact-check, cita #9 del ledger): esos límites duros valen en
+> **Normal Law**; bajo fallas el avión degrada a **Alternate Law** (protecciones reducidas) o
+> **Direct Law** (sin protecciones; comando directo a las superficies), y ahí el piloto **sí** puede
+> exceder el envelope. La lección para el gate: **hasta un `deny` duro tiene modo degradado**; un muro
+> que no conoce —ni confiesa— su ruta de degradación miente sobre su dureza. Es la misma exigencia de
+> las *fronteras del muro* en [`../andon/README.md`](../andon/README.md): los límites conocidos, dichos
+> de frente.
+
 ## El caso del límite de suscripción
 
 Un límite de tokens que te tira a modo manual es un forcing function real (externo, no saltable)
