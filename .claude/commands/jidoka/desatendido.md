@@ -4,7 +4,7 @@ argument-hint: "[el alcance del pase: qué revisar/construir/limpiar]"
 allowed-tools: Read, Bash(git status:*), Bash(git branch:*), Bash(git log:*)
 ---
 
-Vas a trabajar **sin un humano presente**. La regla no es "¿qué puedo hacer?" sino **"¿qué NO debo decidir solo?"**. Sigue el protocolo de `kanban/desatendido.md`.
+Vas a trabajar **sin un humano presente**. La regla no es "¿qué puedo hacer?" sino **"¿qué NO debo decidir solo?"**. Sigue el protocolo de `docs/desatendido.md`.
 
 Alcance del pase: **$ARGUMENTS**
 
@@ -13,7 +13,7 @@ Alcance del pase: **$ARGUMENTS**
 - Trabaja en una **rama dedicada** (`auto/<fecha>` o el nombre que el alcance sugiera). Nada de esto toca `main`.
 - **Reconoce primero:** inventaría lo que está sano y confirma/refuta pistas antes de tocar nada. Un informe que solo lista problemas no dice qué revisaste.
 
-## 2. Reparte en las dos lanes (usa `@kit/.jidoka/templates/desatendido.md`)
+## 2. Reparte en las dos lanes (usa `@templates/desatendido.md`)
 
 Ordena todo por prioridad declarada: **seguridad y fugas > corrección > robustez > salud de docs > estilo**. Las secciones sin nada se dejan **vacías a propósito** — no infles la agenda.
 

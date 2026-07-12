@@ -401,7 +401,7 @@ PO (tú, humano)  ──hablas──►  Sesión principal de Claude Code (ORQUE
 ```
 
 - **Tú solo haces la primera flecha: hablas.** No spawneás nada a mano. Abres `claude` dentro del
-  repo, arrancas con `/arranca` (o *"lee `docs/flujo-de-trabajo.md` + `CONTRIBUTING §8` a detalle"*), y
+  repo, arrancas con `/jidoka:arranca` (o *"lee `docs/flujo-de-trabajo.md` + `CONTRIBUTING §8` a detalle"*), y
   describes la tarea en lenguaje normal.
 - **El orquestador hace el resto**, guiado por la política de arriba: decide si lo hace en sesión o
   delega, con qué modelo, y dispara los subagentes. Tú **no** tocas la herramienta de subagentes —

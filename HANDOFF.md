@@ -7,7 +7,7 @@
 > y este HANDOFF *lo efímero* (dónde voy, qué falta ahora).
 >
 > **Ciclo de vida (ADR 0019): se llena al cerrar, se lee y se LIMPIA al abrir.** Al arrancar
-> sesión (`/arranca` lo instruye): lee esto y borra lo ya atendido — un HANDOFF que acumula
+> sesión (`/jidoka:arranca` lo instruye): lee esto y borra lo ya atendido — un HANDOFF que acumula
 > historia deja de leerse. La historia va al CHANGELOG; el porqué, a los ADRs.
 
 ## Estado actual

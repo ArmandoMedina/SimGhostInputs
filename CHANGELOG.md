@@ -4,6 +4,16 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/). Versionado
 
 ## [Unreleased]
 
+## [2.8.0] - 2026-07-11
+
+### Método — Estructura canónica (ADR 0023 de Jidoka): comandos namespaced únicos, skills persona conservados
+- **Comandos deduplicados a la forma canónica namespaced.** SGI cargaba **12** comandos: 6 planos (`/arranca`, …, invocados `/arranca`) + 6 namespaced (`.claude/commands/jidoka/*`). Por dirección del cliente se **re-derivaron desde Jidoka**: se borraron los 12, se tomaron los 6 canónicos de Jidoka como base y se **re-personalizaron** con el sabor de instancia de SGI (persona **Mau (orquestador)**, rutas reales `docs/flujo-de-trabajo.md` / `docs/recursos-del-proyecto.md` / `templates/*`, reglas propias — ADR 0019, `CONTRIBUTING §8`, asiento de Mariana, hook `no-memorias`) y las referencias internas ya namespaced (`/jidoka:cierra`, `/jidoka:planea`, `/jidoka:que-sigue`). Quedan **6** comandos, solo `/jidoka:*`. Cada ruta citada se verificó que **exista** en SGI. `fantasma/` no se toca.
+- **`cierra.md`:** la verificación pre-push apunta a la herramienta real de SGI (`./tools/verificar.ps1`), no al `probar-gate.ps1` de Jidoka (que SGI hace back-out).
+- **Skills: sabor persona conservado, neutrales duplicados retirados.** SGI conserva sus 4 personas (`ahiram`/`armando`/`charbel`/`mariana`) + `escribano`. Las carpetas de skill **neutrales** (`arquitecto-doc`/`revisor-visual`/`validador`) eran duplicados sembrados que SGI no usa (nada operativo las referencia como carpeta; las personas ya declaran su asiento neutral por nombre — ADR 0035). Se **borraron** y se **excluyeron** del sello del lazo. Los **roles** neutrales en la ley (`tools/blast-radius.json`) y en las máquinas (hooks filtran por `rol:`) se quedan: son el mecanismo, no la carpeta.
+- **`excluir` formalizado en el sello** (`tools/jidoka-motor.json`): las 3 carpetas de skill neutrales + los back-outs vigentes (`tools/probar-gate.ps1`, `.github/workflows/andon.yml`). Cierra el drift recurrente (ADR 0022): `-Actualizar` ya no re-agrega lo excluido — sale `[EXCLUIDA]`.
+- **El lazo bajó a Jidoka 1.7.1 de paso:** `-Actualizar` actualizó lo pristino (doctrina `03-aviacion`, `citas-verificadas`; nueva guía `docs/guias/mantener-el-motor-al-dia.md`) y **preservó** lo code-first (`verificar.ps1`, `auditar.ps1`, `.githooks/pre-push`, `escribano/SKILL.md`) y los 4 comandos re-personalizados como DIVERGE. Sello re-escrito limpio con `-Sellar` (62 pristinas | 8 preservadas | `excluir` intacto).
+- **Verde:** 453 tests + 11 skipped, ruff check + format (81 archivos), `probar-hooks` 17/17, `probar-auditor` 5/5, `probar-disparos` 4/4 (registro sano), `auditar` (grafo íntegro). Los comandos namespaced siguen presentes y válidos.
+
 ## [2.7.0] - 2026-07-11
 
 ### Método — Actualización al núcleo Jidoka 1.4.0

@@ -1,5 +1,5 @@
 {
-    "version":  "1.4.0",
+    "version":  "1.7.1",
     "sembrado_hashes":  {
                             "tools/probar-hooks.ps1":  "6720E1E8278825E5FB650E92036F39EAC64B0BD3ADC6794B07D9AADCF1D321C8",
                             "tools/probar-auditor.ps1":  "918B6F945037688C1824F5002967B1A1B7A733BCF113439287B08F052452C2ED",
@@ -11,17 +11,11 @@
                             ".claude/hooks/gemba-stop.ps1":  "0474345660047FA9707F2E751084D708F1053A8336C5AA0084196E524FB407F2",
                             ".claude/hooks/no-memorias-pretooluse.ps1":  "AC9E7BD027A35E367D354E7CD67B94AC2BF5D33E585A792E694876AA52E29C9C",
                             ".claude/hooks/review-stop.ps1":  "DBB8E6DEBB1C786745CCBA4F43A5D10B4C98AFAB6820D7EBC2E5F6C6D1B58684",
-                            ".claude/commands/jidoka/arranca.md":  "0EE99A852021CE6006BDB82FF73D9AEC99315248022BE15A65DB251546D1D0BD",
-                            ".claude/commands/jidoka/cierra.md":  "F5EAA3962B9D797321C91DF99A34D9FB4CAEAEF281BC82CB27E2F900AEFC05C6",
-                            ".claude/commands/jidoka/desatendido.md":  "F6A04638B1223F42C716E023AE5B1CEA0B6014A6B9F81BB84567CD1850306246",
                             ".claude/commands/jidoka/gemba.md":  "06467D419C30A1924AA8E9AE80EC1A7BE37094FBD162458E96C7209ABD8EA29F",
-                            ".claude/commands/jidoka/planea.md":  "A34B39124C06DC15A82FBC62A11AD3387D529C0D6D3FD232D7EF869F18DD59FF",
                             ".claude/commands/jidoka/que-sigue.md":  "F26880CCE84A2E951C3019593603B39481A4100EEE92ADA6AFCDA0EE71CB1E95",
-                            ".claude/skills/arquitecto-doc/SKILL.md":  "0F4E9E2F3FF1A20448D0041CABA21E1DBFC3BB50F950FC861153D51BE842DCD1",
-                            ".claude/skills/revisor-visual/SKILL.md":  "84272E8B478737ED6C8C8D4B54DFD025CEA3780B32ED5BFD9A006FEA595B5A52",
-                            ".claude/skills/validador/SKILL.md":  "6A0957E2DB207F63D439020F4064F32656227A0C2B98D9AC12919BAD5AB352A2",
                             "docs/guias/reportar-leccion-a-jidoka.md":  "75414F8B60BD594540E8357A85D1E677AB1E7E0C7AF21E2593514C785A15430F",
                             "docs/guias/entorno-windows-powershell51.md":  "000E2AFB117B5264D2D313D9F97EBF30F67966D1F473367EB850B5E7DCD13C16",
+                            "docs/guias/mantener-el-motor-al-dia.md":  "3F974D77A0A31841D1EC8916D767F6F353889D166637CC63D5ADA395A96CAA78",
                             "kanban/auditoria.md":  "1402A8FDD4B9DD72FDA4F4CA4B6E4A77FF627C7F340FC09FC1E20F410C5F8714",
                             "kanban/desatendido.md":  "9776AB6FE79F4B9E41C9698C6101D7EDEAC2651DB828E735366E7B10BCA3DEC4",
                             "kanban/estados.md":  "E004B622CBCF8D61F93EE65EFEA0BDBA952637E5DB36C49EA8AA046BA76D9B7D",
@@ -35,12 +29,12 @@
                             "doctrina/00-tesis.md":  "E9B556BF729DE839A71B8968909039C03EC9002A8F4EA3C80A3EED54C4FA80A8",
                             "doctrina/01-linaje-manufactura.md":  "F034380B43FBEBCB0DED601AF6533243BBA6B47D0EAA68466905DC2ACDC69CF5",
                             "doctrina/02-linaje-software.md":  "C837B4C04F2F9ECA1A6374FC05CF9BD5AABE105CE36B1A30AF1466159B033E9D",
-                            "doctrina/03-aviacion.md":  "6287F15F3ADA20F55198D247229FC67D28B1235DB065F14BC86601822B643DE2",
+                            "doctrina/03-aviacion.md":  "7F1EB3B3B62CC2CCF37CFFD2835AB0EFDE1CB975965E8FF929EA427F6EFD3192",
                             "doctrina/04-como-se-pudre.md":  "A379EAB974221F41B9645CAE3A20EADA1177EF64043B4BDAEFC2578DAB58D907",
                             "doctrina/05-instrumentacion.md":  "C7D7EDEBBA0147AA445FA109C3BD1221B6EF011F41D80D53AFAFDB27F2D0C32C",
                             "doctrina/06-fronteras.md":  "58AB44201DE5F6D492A0D8D910A147C3179252C8929CC8217E6F40EFC050283F",
                             "doctrina/07-receta-de-traslado.md":  "5EDA41B1E91EF422C8115EA138B38EBE36E6ACB45798B23EAEE870672C2378C0",
-                            "doctrina/citas-verificadas.md":  "99525EF41A09C0159BC69C2BF6FCAE0E0FE0D7AF2DCEE706A3FC73F88CFB440A",
+                            "doctrina/citas-verificadas.md":  "29E226B36C4504CFD93E25F8160A667CB94ED76538414065CA4513452BD71BAE",
                             "doctrina/README.md":  "48A71B826D8A10B89D45B965C065DC56E80E5B70A2E6E2EEAD5AE7C0E9D2D5AF",
                             "doctrina/decisiones/0001-repo-propio-separado.md":  "30387E44925A59D69FEA9213778648FCAF2056A40851650B6A4FB199E97707AA",
                             "doctrina/decisiones/0002-sin-api-propia-como-gobierno.md":  "A59CB60575576C6DC3FE9B5058EE3535F48E79349D4B715390C84BF1D08F0DA9",
@@ -69,5 +63,12 @@
                             "kit/.jidoka/templates/producto/solucion.md":  "34C8DF809B7EBE84D7CAC537069450A77526EE9CC396B48E5127C900B7D3BEFB",
                             "kit/.jidoka/disparos/README.md":  "6CD474434557141969867EA1B2129441D4FD5268F202E75F7A2C0D3E7212D632",
                             "kit/.jidoka/qa_runs/README.md":  "FF5DC058CAE1B9586A1ED5C9F35FB0622CD11E402299BF4CFDCF0D5C78C2C1B4"
-                        }
+                        },
+    "excluir":  [
+                    ".claude/skills/arquitecto-doc/SKILL.md",
+                    ".claude/skills/revisor-visual/SKILL.md",
+                    ".claude/skills/validador/SKILL.md",
+                    "tools/probar-gate.ps1",
+                    ".github/workflows/andon.yml"
+                ]
 }

@@ -1,6 +1,6 @@
 # Recursos del proyecto — lo que la sesión no debe preguntarte
 
-> Recursos externos que toda sesión necesita y que no se deducen del código (ADR 0019, homologado del starter v0.5.0). **Por qué existe:** la ruta del material de pruebas se dictó 3 veces en 3 sesiones, y la cuenta equivocada de `gh` tumbó un PR. `/arranca` lee este archivo al abrir. Si un dato caduca, actualízalo aquí. **Nunca pegues secretos** (va al repo): solo punteros.
+> Recursos externos que toda sesión necesita y que no se deducen del código (ADR 0019, homologado del starter v0.5.0). **Por qué existe:** la ruta del material de pruebas se dictó 3 veces en 3 sesiones, y la cuenta equivocada de `gh` tumbó un PR. `/jidoka:arranca` lee este archivo al abrir. Si un dato caduca, actualízalo aquí. **Nunca pegues secretos** (va al repo): solo punteros.
 
 ## Material de pruebas / datos reales
 
